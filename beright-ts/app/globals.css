@@ -1,0 +1,431 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-card: #1a1a1a;
+  --border: #2a2a2a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888888;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+  --purple: #8b5cf6;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* Terminal card */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+/* ============================================
+   TERMINAL LAYOUT - Fixed structure
+   ============================================ */
+
+.terminal-container {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropdown-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: visible !important;
+  position: relative;
+}
+
+.command-output {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: #888;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.command-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Blinking cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Status dot pulse */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.status-online {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Price change colors */
+.price-up { color: var(--green); }
+.price-down { color: var(--red); }
+.price-neutral { color: var(--text-secondary); }
+
+/* Feed entry animation */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.feed-entry {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Platform badges */
+.badge-polymarket { color: #8b5cf6; }
+.badge-kalshi { color: #3b82f6; }
+.badge-manifold { color: #eab308; }
+.badge-limitless { color: #22c55e; }
+.badge-metaculus { color: #ef4444; }
+
+/* ============================================
+   DROPDOWN SYSTEM - Floating Overlay Design
+   ============================================ */
+
+/* Dropdown Header/Trigger */
+.accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border-radius: 8px;
+}
+
+.accordion-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.accordion-header:hover::before {
+  opacity: 1;
+}
+
+.accordion-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Gradient Indicator Bar */
+.accordion-indicator {
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Markets - Amber/Orange gradient */
+.accordion-indicator-markets {
+  background: linear-gradient(180deg, #f59e0b 0%, #ea580c 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+}
+
+.accordion-header-markets::before {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+}
+
+/* Predictions - Blue/Cyan gradient */
+.accordion-indicator-predictions {
+  background: linear-gradient(180deg, #3b82f6 0%, #06b6d4 100%);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+
+.accordion-header-predictions::before {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+}
+
+/* Arbitrage - Red/Pink gradient */
+.accordion-indicator-arbitrage {
+  background: linear-gradient(180deg, #ef4444 0%, #ec4899 100%);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+}
+
+.accordion-header-arbitrage::before {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 50%);
+}
+
+/* Feed - Green/Emerald gradient */
+.accordion-indicator-feed {
+  background: linear-gradient(180deg, #22c55e 0%, #10b981 100%);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+}
+
+.accordion-header-feed::before {
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+}
+
+/* Section Title */
+.accordion-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+/* Badge Counter */
+.accordion-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.accordion-badge-alert {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(236, 72, 153, 0.25) 100%);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Chevron Icon */
+.section-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.section-chevron-open {
+  transform: rotate(180deg);
+}
+
+/* ============================================
+   DROPDOWN TRIGGER - The clickable header row
+   ============================================ */
+
+.dropdown-trigger {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dropdown-trigger-active {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   FLOATING DROPDOWN PANEL - Portal rendered
+   ============================================ */
+
+.dropdown-panel {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  overflow: hidden;
+
+  /* Animation */
+  animation: dropdownSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  /* Dramatic layered shadow for floating effect */
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-panel-body {
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 16px;
+
+  /* Top highlight */
+  background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 30%);
+}
+
+/* Custom scrollbar for dropdown */
+.dropdown-panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-panel-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  margin: 8px 0;
+}
+
+.dropdown-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.dropdown-panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   BACKDROP - Closes dropdown on click outside
+   ============================================ */
+
+.dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.dropdown-backdrop-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ============================================
+   CONTENT ROWS
+   ============================================ */
+
+/* Stat Row */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.stat-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Market Row */
+.market-row {
+  padding: 10px 12px;
+  margin: 0 -12px 8px -12px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.market-row:last-child {
+  margin-bottom: 0;
+}
+
+.market-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Arb Row */
+.arb-row {
+  padding: 12px;
+  margin: 0 -12px 8px -12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(236, 72, 153, 0.04) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  transition: all 0.15s ease;
+}
+
+.arb-row:last-child {
+  margin-bottom: 0;
+}
+
+.arb-row:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(236, 72, 153, 0.08) 100%);
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}

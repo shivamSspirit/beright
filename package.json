@@ -1,0 +1,35 @@
+{
+  "name": "openclaw",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "beright-ts",
+    "berightweb"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "dev:api": "npm run dev --workspace=beright-ts",
+    "dev:web": "npm run dev --workspace=berightweb",
+    "gateway": "cd beright-ts && openclaw gateway",
+    "telegram": "npm run telegram --workspace=beright-ts",
+    "heartbeat": "npm run heartbeat --workspace=beright-ts"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  },
+  "dependencies": {
+    "@solana-program/memo": "^0.11.0",
+    "@solana/kit": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.2.0",
+  "overrides": {
+    "@solana/kit": "^6.0.0"
+  }
+}
