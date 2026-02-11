@@ -1,0 +1,203 @@
+You are BeRight Builder, an autonomous code generation agent.
+
+PROJECT STRUCTURE:
+- beright-ts/: Backend (Next.js 14, TypeScript, Supabase, Solana)
+- berightweb/: Frontend (Next.js 16, React 19, Tailwind v4)
+- Monorepo managed by Turbo
+
+TASK: Supabase integration
+PRIORITY: P0
+
+CODEBASE CONTEXT:
+--- CLAUDE.md ---
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+BeRight Protocol (TypeScript edition) - Prediction market intelligence terminal built for OpenClaw/Clawdbot platform. Provides arbitrage detection, superforecaster analysis, whale tracking, and news/social intelligence via Telegram.
+
+**Autonomous Building**: This codebase includes a Builder subagent that can autonomously build and improve itself 24/7.
+
+## Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run skills directly
+npx ts-node skills/markets.ts search "bitcoin"
+npx ts-node skills/arbitrage.ts "fed rate"
+npx ts-node skills/research.ts "trump 2028"
+npx ts-node skills/whale.ts scan
+npx ts-node skills/intel.ts news "crypto"
+npx ts-node skills/heartbeat.ts once
+
+# Run heartbeat loop (5 min intervals)
+npx ts-node skills/heartbeat.ts loop 300
+
+# Build TypeScript
+npm run build
+
+# ============================================
+# BUILDER COMMANDS (Autonomous Development)
+# ============================================
+
+# Run one build iteration (analyze, implement, test, commit)
+npx ts-node skills/buildLoop.ts once
+
+# Run continuous build loop (default: every 30 minutes)
+npx ts-node skills/buildLoop.ts loop
+
+# Run with custom interval (seconds)
+npx ts-node skills/buildLoop.ts loop 1800
+
+# Check builder status
+npx ts-node skills/buildLoop.ts status
+
+# List discovered tasks
+npx ts-node skills/buildLoop.ts tasks
+
+# Development Skills
+npx ts-node skills/devBackend.ts analyze      # Find backend issues
+npx ts-node skills/devBackend.ts typecheck    # Run TypeScript check
+npx ts-node skills/devBackend.ts todos        # Find all TODOs
+npx ts-node skills/devFrontend.ts analyze     # Find frontend issues
+npx ts-node skills/devTest.ts generate <skill> # Generate tests for a skill
+npx ts-node skills/devTest.ts validate        # Run full validation
+```
+
+## Architecture
+
+### OpenClaw Skills Pattern
+
+```
+agent/system.md          # Agent identity + skill registration
+skills/
+├── telegramHandler.ts   # Main router/dispatcher (triggered by telegram)
+├── markets.ts           # Unified market data (Polymarket, Kalshi, Manifold)
+├── arbitrage.ts         # Cross-platform arb detection
+├── research.ts          # Superforecaster analysis
+├── whale.ts             # Solana wallet monitoring (Helius)
+├── intel.ts             # News RSS + Reddit sentiment
+├── heartbeat.ts         # Autonomous periodic tasks (cron)
+├── utils.ts             # Helpers
+│
+# Builder Subagent (Autonomous Development)
+├── builder/SKILL.md     # Builder agent definition
+├── buildLoop.ts         # Main autonomous build loop
+├── devFrontend.ts       # Frontend development helpers
+├── devBackend.ts        # Backend development helpers
+└── devTest.ts           # Test generation and validation
+```
+
+### Builder Subagent
+
+The Builder is an autonomous agent that builds and improves the codebase 24/7:
+
+```
+ANALYZE → PLAN → IMPLEMENT → TEST → COMMIT → PUSH
+   ↑           
+
+--- BERIGHT_ARCHITECTURE.md ---
+# BeRight Protocol - Canonical Architecture Reference
+
+> **5-Phase Synthesis: Competitive Intelligence + On-Chain Calibration System**
+>
+> **Date:** February 9, 2026
+> **Status:** Canonical Reference Document
+> **Authors:** BeRight Engineering
+
+---
+
+## Phase 1: Deep Understanding
+
+### 1.1 Competitive Landscape Summary
+
+From analyzing **515 projects** in the Colosseum Agent Hackathon, key patterns emerged:
+
+| Pattern | Leading Projects | Adoption Rate |
+|---------|-----------------|---------------|
+| **Modular Plugin Architecture** | Solana Agent Kit, ElizaOS | ~80% of winning agents |
+| **Skill-Based Routing** | OpenClaw, Clodds | ~60% of multi-function agents |
+| **Simulation-First Execution** | DeFi Risk Guardian | ~40% of trading agents |
+| **On-Chain Commitment** | SOLPRISM, KAMIYO | ~20% (emerging) |
+| **Human-in-the-Loop** | Solana Agent Kit v2 | ~70% of trading agents |
+
+### 1.2 BeRight's Unique Position
+
+**Where BeRight is UNIQUE (No competitor has this):**
+1. **Superforecaster methodology** - Tetlock's calibration framework applied to prediction markets
+2. **Brier score tracking** - Scientific accuracy measurement over time
+3. **Custom On-Chain Calibration** - Native Solana Memo Program (not dependent on SOLPRISM beta)
+4. **Multi-agent specialization** - Scout/Analyst/Trader with appropriate model costs
+
+**Where BeRight Competes:**
+| Feature | BeRight | Clodds | Predly |
+|---------|---------|--------|--------|
+| Market aggregation | 3 platforms | 2+ platforms | 2 platforms |
+| Arbitrage detection | Yes | Yes (more comprehensive) | No |
+| AI forecasting | Superforecaster | None | AI probability |
+| Multi-channel | Telegram (OpenClaw) | 22 platforms | Web only |
+| On-chain verification | **Native Memo** | None | None |
+| Calibration tracking | **Brier Score** | None | None |
+
+### 1.3 On-Chain Module Architecture
+
+The custom on-chain system uses **Solana Memo Program** for trustless prediction tracking:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ON-CHAIN CALIBRATION SYSTEM                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐ │
+│  │   memo.ts       │    │   commit.ts     │    │  verify.ts  │ │
+│  │                 │    │                 │    │             │ │
+│  │ • formatPre-    │    │ • commitPre-    │    │ • fetchPre- │ │
+│  │   dictionMemo   │───▶│   diction       │───▶│   diction   │ │
+│  │ • formatReso-   │    │ • resolvePre-   │    │ • verifyPre │ │
+│  │   lutionMemo    │    │   diction       │    │   diction   │ │
+│  │ • calculateBri- │    │ • batchCommit   │    │ • generate- │ │
+│  │   erScore       │    │                 │    │   Proof     │ │
+│  └─────────────────┘    └─────────────────┘    └─────────────┘ │
+│           │                      │                     │        │
+│           └──────────────────────┼────
+
+--- types/index.ts ---
+/**
+ * BeRight Protocol - Type Exports
+ */
+
+export * from './market';
+export * from './response';
+export * from './wallet';
+export * from './memory';
+
+
+YOUR TASK:
+Implement the requested feature/fix by generating TypeScript code.
+
+RULES:
+1. Follow existing patterns in the codebase
+2. Use TypeScript with proper types
+3. Use SkillResponse interface for skills: { text: string, mood: Mood, data?: unknown }
+4. Use Tailwind CSS for styling
+5. Handle errors properly with try/catch
+6. Keep changes minimal and focused
+
+OUTPUT FORMAT:
+Return a JSON object with this structure:
+{
+  "explanation": "Brief explanation of changes",
+  "changes": [
+    {
+      "filePath": "relative/path/to/file.ts",
+      "action": "create" | "modify",
+      "content": "full file content here"
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY valid JSON, no markdown code blocks or other text.
