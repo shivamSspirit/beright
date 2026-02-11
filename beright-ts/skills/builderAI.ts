@@ -43,6 +43,10 @@ async function runClaudeCode(prompt: string, timeoutMs: number = 120000): Promis
   fs.writeFileSync(tempFile, prompt, 'utf-8');
 
   try {
+    // Create env without ANTHROPIC_API_KEY to force Claude Code to use Max subscription
+    const cleanEnv = { ...process.env };
+    delete cleanEnv.ANTHROPIC_API_KEY;  // Remove invalid API key so Claude Code uses Max subscription
+
     // Use execAsync with shell command, reading prompt from file
     const { stdout, stderr } = await execAsync(
       `cat "${tempFile}" | claude -p - --output-format text --permission-mode bypassPermissions --model sonnet`,
@@ -50,6 +54,7 @@ async function runClaudeCode(prompt: string, timeoutMs: number = 120000): Promis
         cwd: MONOREPO_ROOT,
         timeout: timeoutMs,
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        env: cleanEnv,  // Use clean env without API key
       }
     );
 
