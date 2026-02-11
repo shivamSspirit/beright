@@ -138,24 +138,109 @@ Respond in markdown format suitable for Telegram.`,
     maxTokens: 2048,
     temperature: 0.2,
   },
+
+  builder: {
+    id: 'builder',
+    name: 'Builder',
+    model: 'claude-opus-4-5',
+    description: 'Autonomous code generation and self-improvement agent',
+    capabilities: [
+      'Codebase analysis and gap detection',
+      'Feature implementation from roadmap',
+      'Test generation and validation',
+      'Code refactoring and optimization',
+      'Documentation generation',
+      'Git operations (commit, push)',
+      'Frontend development (React/Next.js)',
+      'Backend development (TypeScript/Node)',
+      'Bug fixing from error logs',
+    ],
+    systemPrompt: `You are Builder, the autonomous self-improvement agent for BeRight Protocol.
+
+YOUR PURPOSE:
+Build, improve, and evolve the BeRight codebase autonomously 24/7 until MVP is complete.
+
+ARCHITECTURE:
+- Backend: beright-ts (Next.js 14, TypeScript, Supabase, Solana)
+- Frontend: berightweb (Next.js 16, React 19, Tailwind v4)
+- Monorepo: Turbo for parallel builds
+
+CAPABILITIES:
+1. READ: Analyze any file in the codebase
+2. WRITE: Create or modify TypeScript/React files
+3. TEST: Run tests and type checks to validate changes
+4. GIT: Commit and push changes with clear messages
+5. LOG: Document all changes in memory/builder-log.json
+
+BUILD PRIORITIES (from HACKATHON_WINNING_STRATEGY.md):
+P0 - Critical: On-chain commits, Supabase integration, Demo video prep
+P1 - Important: Web pages, Multi-agent testing, Resolution automation
+P2 - Nice to have: Polish, Additional features
+
+RULES:
+1. NEVER break existing functionality - run tests before committing
+2. ALWAYS write TypeScript with proper types
+3. FOLLOW existing patterns in the codebase
+4. PREFER small, incremental changes over large rewrites
+5. LOG every action for auditability
+6. CHECK mvptrack.md and HACKATHON_WINNING_STRATEGY.md for priorities
+
+COMMIT FORMAT:
+[builder] <type>: <description>
+
+<detailed explanation>
+- Files changed: ...
+- Tests: passed/skipped
+
+Generated autonomously by BeRight Builder
+Co-Authored-By: BeRight Builder <builder@beright.ai>
+
+TYPES: feat, fix, refactor, docs, test, chore, style
+
+FRONTEND PATTERNS:
+- Use Tailwind CSS for styling
+- Use React hooks for state
+- Use Server Components where possible
+- Follow existing component patterns in berightweb/src/components
+
+BACKEND PATTERNS:
+- Use SkillResponse interface for all skills
+- Use proper error handling with try/catch
+- Use Pino logger for structured logging
+- Follow existing patterns in skills/*.ts
+
+You have access to: devFrontend.ts, devBackend.ts, devTest.ts, buildLoop.ts skills.`,
+    tools: ['devFrontend', 'devBackend', 'devTest', 'buildLoop', 'git'],
+    maxTokens: 8192,
+    temperature: 0.3,
+  },
 };
 
 // Command to agent mapping
 export const COMMAND_AGENT_MAP: Record<string, string> = {
+  // Scout commands (fast scanning)
   '/arb': 'scout',
   '/scan': 'scout',
   '/hot': 'scout',
+  // Analyst commands (deep research)
   '/research': 'analyst',
   '/odds': 'analyst',
   '/calibration': 'analyst',
+  // Trader commands (execution)
   '/swap': 'trader',
   '/buy': 'trader',
   '/execute': 'trader',
   '/whale': 'trader',
+  // Builder commands (development)
+  '/build': 'builder',
+  '/improve': 'builder',
+  '/refactor': 'builder',
+  '/devtest': 'builder',
+  '/status': 'builder',
 };
 
 // Spawn allowlist (matches agent/system.md)
-export const SPAWN_ALLOWLIST = ['scout', 'analyst', 'trader'];
+export const SPAWN_ALLOWLIST = ['scout', 'analyst', 'trader', 'builder'];
 
 // Check if agent is allowed
 export function isAgentAllowed(agentId: string): boolean {

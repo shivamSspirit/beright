@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BeRight Protocol (TypeScript edition) - Prediction market intelligence terminal built for OpenClaw/Clawdbot platform. Provides arbitrage detection, superforecaster analysis, whale tracking, and news/social intelligence via Telegram.
 
+**Autonomous Building**: This codebase includes a Builder subagent that can autonomously build and improve itself 24/7.
+
 ## Commands
 
 ```bash
@@ -25,6 +27,33 @@ npx ts-node skills/heartbeat.ts loop 300
 
 # Build TypeScript
 npm run build
+
+# ============================================
+# BUILDER COMMANDS (Autonomous Development)
+# ============================================
+
+# Run one build iteration (analyze, implement, test, commit)
+npx ts-node skills/buildLoop.ts once
+
+# Run continuous build loop (default: every 30 minutes)
+npx ts-node skills/buildLoop.ts loop
+
+# Run with custom interval (seconds)
+npx ts-node skills/buildLoop.ts loop 1800
+
+# Check builder status
+npx ts-node skills/buildLoop.ts status
+
+# List discovered tasks
+npx ts-node skills/buildLoop.ts tasks
+
+# Development Skills
+npx ts-node skills/devBackend.ts analyze      # Find backend issues
+npx ts-node skills/devBackend.ts typecheck    # Run TypeScript check
+npx ts-node skills/devBackend.ts todos        # Find all TODOs
+npx ts-node skills/devFrontend.ts analyze     # Find frontend issues
+npx ts-node skills/devTest.ts generate <skill> # Generate tests for a skill
+npx ts-node skills/devTest.ts validate        # Run full validation
 ```
 
 ## Architecture
@@ -41,8 +70,35 @@ skills/
 ├── whale.ts             # Solana wallet monitoring (Helius)
 ├── intel.ts             # News RSS + Reddit sentiment
 ├── heartbeat.ts         # Autonomous periodic tasks (cron)
-└── utils.ts             # Helpers
+├── utils.ts             # Helpers
+│
+# Builder Subagent (Autonomous Development)
+├── builder/SKILL.md     # Builder agent definition
+├── buildLoop.ts         # Main autonomous build loop
+├── devFrontend.ts       # Frontend development helpers
+├── devBackend.ts        # Backend development helpers
+└── devTest.ts           # Test generation and validation
 ```
+
+### Builder Subagent
+
+The Builder is an autonomous agent that builds and improves the codebase 24/7:
+
+```
+ANALYZE → PLAN → IMPLEMENT → TEST → COMMIT → PUSH
+   ↑                                           |
+   └───────────────────────────────────────────┘
+```
+
+**Trigger Methods:**
+1. Manual: `/build`, `/improve` commands
+2. Heartbeat: Every 30 minutes via cron
+3. Continuous: `npm run builder` for 24/7 operation
+
+**Build Priorities:**
+- P0: TypeScript errors, critical bugs, hackathon requirements
+- P1: MVP features, missing tests, TODOs in code
+- P2: Refactoring, documentation, polish
 
 ### Skill Response Format
 

@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "skills:build": "tsc",
     "skills:start": "ts-node skills/telegramHandler.ts",
     "arb": "ts-node skills/arbitrage.ts",
@@ -17,7 +18,15 @@
     "brief": "ts-node skills/brief.ts",
     "heartbeat": "ts-node skills/heartbeat.ts",
     "telegram": "ts-node skills/telegram.ts",
-    "test": "echo \"Running tests...\" && ts-node skills/markets.ts search bitcoin"
+    "test": "echo \"Running tests...\" && ts-node skills/markets.ts search bitcoin",
+    "builder": "ts-node skills/buildLoop.ts loop",
+    "builder:once": "ts-node skills/buildLoop.ts once",
+    "builder:status": "ts-node skills/buildLoop.ts status",
+    "builder:tasks": "ts-node skills/buildLoop.ts tasks",
+    "dev:frontend": "ts-node skills/devFrontend.ts",
+    "dev:backend": "ts-node skills/devBackend.ts",
+    "dev:test": "ts-node skills/devTest.ts",
+    "validate": "npm run typecheck && npm run lint"
   },
   "dependencies": {
     "@solana/web3.js": "^1.95.0",

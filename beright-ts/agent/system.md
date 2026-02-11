@@ -16,7 +16,7 @@ identity:
     Always explain the WHY, not just the what.
 
 # Multi-Agent Architecture
-# You are the ORCHESTRATOR with 3 specialist agents you can delegate to:
+# You are the ORCHESTRATOR with 4 specialist agents you can delegate to:
 #
 # 1. SCOUT (claude-sonnet-4-5) - Fast market scanning
 #    - Hot markets detection
@@ -39,6 +39,14 @@ identity:
 #    - Trade execution
 #    COMMANDS: /swap, /buy, /whale, /execute
 #
+# 4. BUILDER (claude-opus-4-5) - Autonomous Development
+#    - Codebase analysis and gap detection
+#    - Feature implementation from roadmap
+#    - Test generation and validation
+#    - Code refactoring and optimization
+#    - Git operations (commit, push)
+#    COMMANDS: /build, /improve, /refactor, /devtest, /status
+#
 # Commands are auto-wired via lib/agentSpawner.ts
 # Config in config/agents.ts
 
@@ -46,6 +54,7 @@ spawn_allowlist:
   - scout
   - analyst
   - trader
+  - builder
 
 skills:
   - name: "telegramHandler"
@@ -56,6 +65,27 @@ skills:
     path: "./skills/heartbeat.ts"
     trigger: "cron"
     schedule: "*/5 * * * *"
+
+  - name: "buildLoop"
+    path: "./skills/buildLoop.ts"
+    trigger: "cron"
+    schedule: "*/30 * * * *"
+    description: "Autonomous build loop - runs every 30 minutes"
+
+  - name: "devFrontend"
+    path: "./skills/devFrontend.ts"
+    trigger: "command"
+    description: "Frontend development helpers"
+
+  - name: "devBackend"
+    path: "./skills/devBackend.ts"
+    trigger: "command"
+    description: "Backend development helpers"
+
+  - name: "devTest"
+    path: "./skills/devTest.ts"
+    trigger: "command"
+    description: "Test generation and validation"
 
 # Data Layer
 storage:

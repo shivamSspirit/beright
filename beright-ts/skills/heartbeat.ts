@@ -22,8 +22,12 @@ import { checkAndSendNotifications, generateArbAlerts, generateWhaleAlerts, queu
 import { checkAlerts as checkPriceAlerts, getPendingTriggers, formatTriggeredAlert } from './priceAlerts';
 import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade';
 import { refreshPositionPrices, getExpiringPositions } from './positions';
+import { buildOnce as runBuilderOnce } from './buildLoop';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Builder runs every 30 minutes
+const BUILDER_INTERVAL = 30 * 60 * 1000;
 
 interface HeartbeatState {
   lastArbScan: string | null;
@@ -35,6 +39,7 @@ interface HeartbeatState {
   lastPriceAlertCheck: string | null;
   lastAutoRuleCheck: string | null;
   lastPositionRefresh: string | null;
+  lastBuilderRun: string | null;
   totalScans: number;
   totalArbsFound: number;
   totalWhaleAlerts: number;
@@ -42,6 +47,7 @@ interface HeartbeatState {
   totalAlertsQueued: number;
   totalPriceAlertsTriggered: number;
   totalAutoExecutions: number;
+  totalBuilderRuns: number;
 }
 
 const STATE_FILE = path.join(process.cwd(), 'memory', 'heartbeat-state.json');
@@ -61,6 +67,7 @@ function loadState(): HeartbeatState {
     lastPriceAlertCheck: null,
     lastAutoRuleCheck: null,
     lastPositionRefresh: null,
+    lastBuilderRun: null,
     totalScans: 0,
     totalArbsFound: 0,
     totalWhaleAlerts: 0,
@@ -68,6 +75,7 @@ function loadState(): HeartbeatState {
     totalAlertsQueued: 0,
     totalPriceAlertsTriggered: 0,
     totalAutoExecutions: 0,
+    totalBuilderRuns: 0,
   };
   try {
     if (fs.existsSync(STATE_FILE)) {
@@ -81,6 +89,7 @@ function loadState(): HeartbeatState {
         totalWhaleAlerts: loaded.totalWhaleAlerts ?? 0,
         totalDecisions: loaded.totalDecisions ?? 0,
         totalAlertsQueued: loaded.totalAlertsQueued ?? 0,
+        totalBuilderRuns: loaded.totalBuilderRuns ?? 0,
       };
     }
   } catch (error) {
@@ -322,7 +331,31 @@ Reason: ${exec.reason}
     }
   }
 
-  // 8. Log heartbeat to chain
+  // 8. Run builder (autonomous code generation) - every 30 minutes
+  if (shouldRun(state.lastBuilderRun, BUILDER_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running autonomous builder...`);
+      const builderResult = await runBuilderOnce();
+      state.lastBuilderRun = timestamp();
+      state.totalBuilderRuns++;
+      saveState(state);
+
+      if (builderResult.mood === 'BULLISH') {
+        console.log(`[${timestamp()}] Builder completed tasks successfully`);
+        alerts.push({
+          text: `🔧 *BUILDER UPDATE*\n${builderResult.text.slice(0, 500)}`,
+          mood: 'BULLISH',
+          data: builderResult.data,
+        });
+      } else {
+        console.log(`[${timestamp()}] Builder: ${builderResult.text.slice(0, 100)}`);
+      }
+    } catch (err) {
+      console.warn('Builder run failed:', err);
+    }
+  }
+
+  // 9. Log heartbeat to chain
   const brierScore = getCalibrationStats().overallBrierScore;
   try {
     await logHeartbeat(
@@ -428,10 +461,12 @@ if (process.argv[1]?.endsWith('heartbeat.ts')) {
     console.log(`  Whale alerts: ${state.totalWhaleAlerts}`);
     console.log(`  Decisions logged: ${state.totalDecisions}`);
     console.log(`  Alerts queued: ${state.totalAlertsQueued}`);
+    console.log(`  Builder runs: ${state.totalBuilderRuns}`);
     console.log(`  Last arb scan: ${state.lastArbScan || 'never'}`);
     console.log(`  Last whale scan: ${state.lastWhaleScan || 'never'}`);
     console.log(`  Last notification: ${state.lastNotificationCheck || 'never'}`);
     console.log(`  Last price snapshot: ${state.lastPriceSnapshot || 'never'}`);
+    console.log(`  Last builder run: ${state.lastBuilderRun || 'never'}`);
   } else {
     console.log('Usage:');
     console.log('  ts-node heartbeat.ts once           - Run single check');
