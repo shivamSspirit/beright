@@ -5,9 +5,14 @@
  * Runs 24/7 analyzing, planning, implementing, testing, and committing code.
  */
 
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load environment variables FIRST before any other imports
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 import { SkillResponse, Mood } from '../types/index';
 import * as fs from 'fs';
-import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
