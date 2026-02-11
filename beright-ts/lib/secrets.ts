@@ -14,6 +14,9 @@
  * - Use secrets manager in production (AWS Secrets Manager, Vault, etc.)
  */
 
+// Auto-load .env file
+import 'dotenv/config';
+
 export interface SecretsConfig {
   // Solana
   solanaPrivateKey?: number[];

@@ -1,17 +1,13 @@
 /**
- * Builder AI - Claude-Powered Code Generation
+ * Builder AI - Claude Code Powered Code Generation
  *
- * Uses Claude API to autonomously implement features, fix bugs,
- * and improve the codebase.
+ * Uses Claude Code CLI (which uses your Max subscription) to autonomously
+ * implement features, fix bugs, and improve the codebase.
+ *
+ * NO API KEY REQUIRED - Uses your Claude Max plan via Claude Code CLI
  */
 
-import * as dotenv from 'dotenv';
 import * as path from 'path';
-
-// Load environment variables from .env file
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-
-import Anthropic from '@anthropic-ai/sdk';
 import { SkillResponse, Mood } from '../types/index';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -21,9 +17,6 @@ const execAsync = promisify(exec);
 
 const ROOT = path.join(__dirname, '..');
 const MONOREPO_ROOT = path.join(ROOT, '..');
-
-// Initialize Anthropic client
-const anthropic = new Anthropic();
 
 interface CodeChange {
   filePath: string;
@@ -36,6 +29,47 @@ interface ImplementationResult {
   changes: CodeChange[];
   explanation: string;
   error?: string;
+}
+
+/**
+ * Run Claude Code CLI with a prompt
+ * Uses your Max subscription - no API key needed
+ */
+async function runClaudeCode(prompt: string, timeoutMs: number = 120000): Promise<string> {
+  console.log('[BuilderAI] Invoking Claude Code CLI (non-interactive)...');
+
+  // Write prompt to a temp file to avoid shell escaping issues
+  const tempFile = path.join(ROOT, 'memory', '.builder-prompt.txt');
+  fs.writeFileSync(tempFile, prompt, 'utf-8');
+
+  try {
+    // Use execAsync with shell command, reading prompt from file
+    const { stdout, stderr } = await execAsync(
+      `cat "${tempFile}" | claude -p - --output-format text --permission-mode bypassPermissions --model sonnet`,
+      {
+        cwd: MONOREPO_ROOT,
+        timeout: timeoutMs,
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      }
+    );
+
+    // Cleanup temp file
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+
+    if (stderr) {
+      console.log('[BuilderAI] stderr:', stderr.slice(0, 200));
+    }
+
+    return stdout;
+  } catch (error) {
+    // Cleanup temp file on error
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -95,7 +129,8 @@ async function getContextFiles(task: string): Promise<string> {
 }
 
 /**
- * Use Claude to implement a task
+ * Use Claude Code CLI to implement a task
+ * No API key needed - uses your Max subscription
  */
 export async function implementWithClaude(
   taskDescription: string,
@@ -105,12 +140,18 @@ export async function implementWithClaude(
 
   const context = await getContextFiles(taskDescription);
 
-  const systemPrompt = `You are BeRight Builder, an autonomous code generation agent.
+  const prompt = `You are BeRight Builder, an autonomous code generation agent.
 
 PROJECT STRUCTURE:
 - beright-ts/: Backend (Next.js 14, TypeScript, Supabase, Solana)
 - berightweb/: Frontend (Next.js 16, React 19, Tailwind v4)
 - Monorepo managed by Turbo
+
+TASK: ${taskDescription}
+PRIORITY: ${priority}
+
+CODEBASE CONTEXT:
+${context}
 
 YOUR TASK:
 Implement the requested feature/fix by generating TypeScript code.
@@ -136,54 +177,27 @@ Return a JSON object with this structure:
   ]
 }
 
-IMPORTANT: Return ONLY valid JSON, no markdown code blocks.`;
+IMPORTANT: Return ONLY valid JSON, no markdown code blocks or other text.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `TASK: ${taskDescription}
-PRIORITY: ${priority}
-
-CODEBASE CONTEXT:
-${context}
-
-Generate the implementation as JSON.`,
-        },
-      ],
-    });
-
-    // Extract text from response
-    const textContent = response.content.find(c => c.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
-      return {
-        success: false,
-        changes: [],
-        explanation: 'No text response from Claude',
-        error: 'Empty response',
-      };
-    }
+    const response = await runClaudeCode(prompt, 180000); // 3 minute timeout
 
     // Parse JSON response
     let result;
     try {
       // Try to extract JSON from the response
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
       } else {
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
-      console.error('[BuilderAI] Failed to parse response:', textContent.text.slice(0, 500));
+      console.error('[BuilderAI] Failed to parse response:', response.slice(0, 500));
       return {
         success: false,
         changes: [],
-        explanation: 'Failed to parse Claude response',
+        explanation: 'Failed to parse Claude Code response',
         error: String(parseError),
       };
     }
@@ -194,11 +208,11 @@ Generate the implementation as JSON.`,
       explanation: result.explanation || 'No explanation provided',
     };
   } catch (error) {
-    console.error('[BuilderAI] Claude API error:', error);
+    console.error('[BuilderAI] Claude Code error:', error);
     return {
       success: false,
       changes: [],
-      explanation: 'Claude API call failed',
+      explanation: 'Claude Code call failed',
       error: String(error),
     };
   }
@@ -303,7 +317,7 @@ export async function commitChanges(
     // Commit
     const fullMessage = `[builder-ai] ${message}
 
-Generated by BeRight BuilderAI using Claude
+Generated by BeRight BuilderAI using Claude Code
 Co-Authored-By: BeRight Builder <builder@beright.ai>`;
 
     await execAsync(`cd ${MONOREPO_ROOT} && git commit -m "${fullMessage.replace(/"/g, '\\"')}"`);
@@ -334,9 +348,10 @@ export async function autonomousImplement(
   console.log(`[BuilderAI] Starting autonomous implementation`);
   console.log(`Task: ${taskDescription}`);
   console.log(`Priority: ${priority}`);
+  console.log('Using: Claude Code CLI (Max subscription)');
   console.log('='.repeat(50));
 
-  // 1. Generate implementation with Claude
+  // 1. Generate implementation with Claude Code
   const implementation = await implementWithClaude(taskDescription, priority);
 
   if (!implementation.success || implementation.changes.length === 0) {
@@ -408,7 +423,7 @@ ${commitHash ? `\nCommit: ${commitHash}` : ''}`,
 }
 
 /**
- * Fix a TypeScript error using Claude
+ * Fix a TypeScript error using Claude Code
  */
 export async function fixTypeScriptError(errorMessage: string): Promise<SkillResponse> {
   // Extract file path from error
@@ -447,8 +462,32 @@ Fix the error while keeping the rest of the code intact.`,
   );
 }
 
+/**
+ * Check if Claude Code CLI is available
+ */
+export async function checkClaudeCodeAvailable(): Promise<boolean> {
+  try {
+    await execAsync('which claude');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Main export
 export async function builderAI(command?: string, ...args: string[]): Promise<SkillResponse> {
+  // Check if Claude Code is available
+  const available = await checkClaudeCodeAvailable();
+  if (!available) {
+    return {
+      text: `Claude Code CLI not found. Please install it:
+  npm install -g @anthropic-ai/claude-code
+
+Then authenticate with your Max subscription.`,
+      mood: 'ERROR' as Mood,
+    };
+  }
+
   switch (command) {
     case 'implement':
       const task = args.join(' ');
@@ -470,11 +509,19 @@ export async function builderAI(command?: string, ...args: string[]): Promise<Sk
       }
       return fixTypeScriptError(error);
 
+    case 'check':
+      return {
+        text: `Claude Code CLI: Available ✓
+Uses your Max subscription - no API key needed!`,
+        mood: 'BULLISH' as Mood,
+      };
+
     default:
       return {
-        text: `BuilderAI Commands:
-- implement <task> - Implement a feature using Claude
+        text: `BuilderAI Commands (uses Claude Code CLI - no API key needed):
+- implement <task> - Implement a feature using Claude Code
 - fix <error> - Fix a TypeScript error
+- check - Verify Claude Code is available
 
 Examples:
   npx ts-node skills/builderAI.ts implement "Add /portfolio API route"
