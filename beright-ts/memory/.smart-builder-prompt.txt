@@ -1,0 +1,79 @@
+You are implementing a feature for BeRight Protocol (crypto prediction market platform).
+
+TASK: Add arbitrage.ts test coverage
+DESCRIPTION: Create tests for beright-ts/skills/arbitrage.ts validating: cross-platform opportunity detection logic, percentage difference calculations, minimum threshold enforcement (from config/thresholds.ts), market matching across platforms, and response formatting with ALERT mood for significant opportunities
+TYPE: test
+TARGET FILES: beright-ts/__tests__/skills/arbitrage.test.ts
+
+EXISTING CODE:
+No existing files - create new ones
+
+SAMPLE SKILL PATTERN:
+/**
+ * Markets Skill for BeRight Protocol
+ * Unified API for fetching prediction market data
+ * All fetchers use AbortSignal timeouts and run in parallel via allSettled
+ */
+
+import { Market, Platform, MarketEvent, OddsComparison, TokenizedMarket, isTokenizedMarket } from '../types/index';
+import { PLATFORMS } from '../config/platforms';
+import { formatUsd, formatPct, calculateSimilarity } from './utils';
+import { fetchMetaculus } from './metaculus';
+import { expandWithSynonyms, SYNONYM_GROUPS } from '../config/synonyms';
+
+// Per-platform timeout (ms) — fast platforms get tight deadlines
+const PLATFORM_TIMEOUT: Record<Platform, number> = {
+  polymarket: 4000,
+  kalshi: 4000,
+  manifold: 4000,
+  limitless: 4000,
+  metaculus: 5000,
+};
+
+// DFlow API for tokenized Kalshi markets (FREE, no key required)
+const DFLOW_API = 'https://dev-prediction-markets-api.dflow.net/api/v1';
+
+// Simple response cache (30s TTL)
+const marketCache: Map<string, { data: Market[]; expiry: number }> = new Map();
+const CACHE_TTL = 30_000;
+
+function getCached(key: string): Market[] | null {
+  const entry = marketCache.get(key);
+  if (entry && entry.expiry > Date.now()) return entry.data;
+  return null;
+}
+
+function setCache(key: string, data: Market[]): void {
+  marketCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
+
+/**
+ * Fetch markets from Polymarket
+ */
+async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
+  const cacheKey = `poly:${query || ''}:${limit}`;
+  const cac
+
+KEY PATTERNS TO FOLLOW:
+1. Skills return: { text: string, mood: Mood, data?: unknown }
+2. Mood options: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'ALERT' | 'EDUCATIONAL' | 'ERROR'
+3. Use proper TypeScript types
+4. Handle errors with try/catch
+5. Use async/await for API calls
+
+OUTPUT FORMAT (JSON only, no markdown):
+{
+  "explanation": "What was implemented",
+  "changes": [
+    {
+      "filePath": "relative/path/from/beright-ts/file.ts",
+      "action": "create|modify",
+      "content": "FULL file content here"
+    }
+  ]
+}
+
+IMPORTANT:
+- Output ONLY valid JSON
+- Include COMPLETE file contents, not partial
+- Follow existing code patterns exactly
