@@ -26,8 +26,8 @@ import { buildOnce as runBuilderOnce } from './buildLoop';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Builder runs every 30 minutes
-const BUILDER_INTERVAL = 30 * 60 * 1000;
+// Builder runs every 7 minutes
+const BUILDER_INTERVAL = 7 * 60 * 1000;
 
 interface HeartbeatState {
   lastArbScan: string | null;

@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS predictions (
   resolved_at TIMESTAMPTZ,
   outcome BOOLEAN,
   brier_score DECIMAL(6,4),
-  on_chain_tx TEXT
+  on_chain_tx TEXT,
+  on_chain_confirmed BOOLEAN DEFAULT FALSE,
+  stake_amount DECIMAL(18,8),
+  stake_currency TEXT
 );
 
 -- Watchlist
@@ -63,18 +66,30 @@ CREATE OR REPLACE VIEW leaderboard AS
 SELECT
   u.id,
   u.username,
+  u.telegram_id,
   u.telegram_username,
   u.wallet_address,
   COUNT(p.id) as total_predictions,
+  COUNT(p.id) as prediction_count,
   COUNT(p.id) FILTER (WHERE p.outcome IS NOT NULL) as resolved_predictions,
   AVG(p.brier_score) FILTER (WHERE p.brier_score IS NOT NULL) as avg_brier_score,
   COUNT(p.id) FILTER (WHERE
     (p.direction = 'YES' AND p.outcome = TRUE) OR
     (p.direction = 'NO' AND p.outcome = FALSE)
-  ) as correct_predictions
+  ) as correct_predictions,
+  CASE
+    WHEN COUNT(p.id) FILTER (WHERE p.outcome IS NOT NULL) > 0
+    THEN COUNT(p.id) FILTER (WHERE
+      (p.direction = 'YES' AND p.outcome = TRUE) OR
+      (p.direction = 'NO' AND p.outcome = FALSE)
+    )::DECIMAL / COUNT(p.id) FILTER (WHERE p.outcome IS NOT NULL)
+    ELSE 0
+  END as accuracy,
+  MAX(p.created_at) as last_prediction_at
 FROM users u
 LEFT JOIN predictions p ON u.id = p.user_id
-GROUP BY u.id, u.username, u.telegram_username, u.wallet_address
+GROUP BY u.id, u.username, u.telegram_id, u.telegram_username, u.wallet_address
+HAVING COUNT(p.id) FILTER (WHERE p.outcome IS NOT NULL) >= 5
 ORDER BY avg_brier_score ASC NULLS LAST;
 
 -- Indexes

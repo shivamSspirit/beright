@@ -553,7 +553,7 @@ export async function buildOnce(): Promise<SkillResponse> {
 /**
  * Run continuous build loop
  */
-export async function buildLoop(intervalMs: number = 30 * 60 * 1000): Promise<void> {
+export async function buildLoop(intervalMs: number = 7 * 60 * 1000): Promise<void> {
   console.log(`[Builder] Starting continuous build loop (interval: ${intervalMs / 1000}s)`);
   console.log('[Builder] Press Ctrl+C to stop');
 

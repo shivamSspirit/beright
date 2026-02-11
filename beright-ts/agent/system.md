@@ -69,8 +69,8 @@ skills:
   - name: "buildLoop"
     path: "./skills/buildLoop.ts"
     trigger: "cron"
-    schedule: "*/30 * * * *"
-    description: "Autonomous build loop - runs every 30 minutes"
+    schedule: "*/7 * * * *"
+    description: "Autonomous build loop - runs every 7 minutes"
 
   - name: "devFrontend"
     path: "./skills/devFrontend.ts"
