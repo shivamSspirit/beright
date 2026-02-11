@@ -16,7 +16,9 @@
     "whale": "ts-node skills/whale.ts",
     "markets": "ts-node skills/markets.ts",
     "brief": "ts-node skills/brief.ts",
-    "heartbeat": "ts-node skills/heartbeat.ts",
+    "heartbeat": "ts-node skills/heartbeat.ts loop",
+    "heartbeat:once": "ts-node skills/heartbeat.ts once",
+    "heartbeat:stats": "ts-node skills/heartbeat.ts stats",
     "telegram": "ts-node skills/telegram.ts",
     "test": "echo \"Running tests...\" && ts-node skills/markets.ts search bitcoin",
     "builder": "ts-node skills/buildLoop.ts loop",
@@ -29,6 +31,7 @@
     "validate": "npm run typecheck && npm run lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
     "@solana/web3.js": "^1.95.0",
     "@supabase/supabase-js": "^2.95.3",
     "bs58": "^5.0.0",

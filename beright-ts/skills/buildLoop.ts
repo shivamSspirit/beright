@@ -16,6 +16,14 @@ import { devBackend } from './devBackend';
 import { devFrontend } from './devFrontend';
 import { devTest } from './devTest';
 
+// Import AI builder for complex tasks
+let builderAI: typeof import('./builderAI') | null = null;
+try {
+  builderAI = require('./builderAI');
+} catch {
+  console.log('[Builder] BuilderAI not available (missing Anthropic SDK?)');
+}
+
 const execAsync = promisify(exec);
 
 const ROOT = path.join(__dirname, '..');
@@ -332,11 +340,57 @@ async function executeTestTask(task: BuildTask): Promise<{ success: boolean; fil
 }
 
 /**
- * Execute a TypeScript error fix (simplified - real impl would use Claude)
+ * Execute a TypeScript error fix using Claude AI
  */
 async function executeTypeErrorFix(task: BuildTask): Promise<{ success: boolean; filesChanged: string[] }> {
-  // For now, just log and skip - real implementation needs Claude API
-  console.log(`[Builder] TypeScript error detected but auto-fix requires Claude API: ${task.description}`);
+  if (!builderAI) {
+    console.log(`[Builder] TypeScript error detected but BuilderAI not available: ${task.description}`);
+    return { success: false, filesChanged: [] };
+  }
+
+  try {
+    const result = await builderAI.fixTypeScriptError(task.description);
+    if (result.mood === 'BULLISH' && result.data) {
+      const data = result.data as { files?: string[] };
+      return {
+        success: true,
+        filesChanged: data.files || [],
+      };
+    }
+  } catch (error) {
+    console.log(`[Builder] Claude API error: ${error}`);
+  }
+
+  return { success: false, filesChanged: [] };
+}
+
+/**
+ * Execute a feature task using Claude AI
+ */
+async function executeFeatureTask(task: BuildTask): Promise<{ success: boolean; filesChanged: string[] }> {
+  if (!builderAI) {
+    console.log(`[Builder] Feature requires BuilderAI: ${task.description}`);
+    return { success: false, filesChanged: [] };
+  }
+
+  try {
+    const result = await builderAI.autonomousImplement(task.description, {
+      priority: task.priority,
+      autoCommit: false, // We handle commit in the main loop
+      validateFirst: true,
+    });
+
+    if (result.mood === 'BULLISH' && result.data) {
+      const data = result.data as { files?: string[] };
+      return {
+        success: true,
+        filesChanged: data.files || [],
+      };
+    }
+  } catch (error) {
+    console.log(`[Builder] Claude API error: ${error}`);
+  }
+
   return { success: false, filesChanged: [] };
 }
 
@@ -360,10 +414,17 @@ async function executeTask(task: BuildTask, log: BuildLog): Promise<{
     result = await executeTestTask(task);
   } else if (task.type === 'fix' && task.source === 'error') {
     result = await executeTypeErrorFix(task);
+  } else if (task.type === 'feat' || task.type === 'refactor') {
+    // Use Claude AI for feature implementation
+    result = await executeFeatureTask(task);
   } else {
-    // For complex tasks, skip for now (requires Claude API)
-    console.log(`[Builder] Task requires Claude API for implementation: ${task.description}`);
-    result = { success: false, filesChanged: [] };
+    // For other tasks, try Claude AI if available
+    if (builderAI) {
+      result = await executeFeatureTask(task);
+    } else {
+      console.log(`[Builder] Task requires BuilderAI: ${task.description}`);
+      result = { success: false, filesChanged: [] };
+    }
   }
 
   if (!result.success) {
