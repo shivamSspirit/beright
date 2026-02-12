@@ -50,7 +50,7 @@ export const GET = withMiddleware(
       success: true,
       mode: wallet ? 'track' : 'scan',
       wallet: wallet || undefined,
-      activity: result.data?.activity || [],
+      activity: (result.data as any)?.activity || [],
       summary: result.text,
       mood: result.mood,
       scannedAt: new Date().toISOString(),

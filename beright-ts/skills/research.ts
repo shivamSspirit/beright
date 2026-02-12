@@ -1,6 +1,11 @@
 /**
  * Research Skill for BeRight Protocol
  * Superforecaster-style analysis with market data + news + social
+ *
+ * Enhanced with Tavily for:
+ * - Real-time web search (instead of just RSS)
+ * - AI-powered fact verification
+ * - Deep research reports
  */
 
 import { SkillResponse, ResearchReport, Analysis, Market } from '../types/index';
@@ -9,6 +14,17 @@ import { getSourceTier, calculateSourceConfidence } from '../config/platforms';
 import { searchMarkets, formatMarkets } from './markets';
 import { searchNews } from './intel';
 import { formatUsd, formatPct, timestamp } from './utils';
+import {
+  isTavilyConfigured,
+  tavilySearch,
+  tavilyNewsSearch,
+  tavilyFinanceSearch,
+  tavilyResearch,
+  getFactsForPrediction,
+  getNewsContext,
+  verifyClaim,
+  TavilySearchResponse,
+} from '../lib/tavily';
 
 /**
  * Search Reddit for sentiment (inline to avoid circular dependency)
@@ -278,35 +294,74 @@ Always ask: "What's my source quality?"
 
 /**
  * Full research on a topic
+ * Uses Tavily when available for better accuracy
  */
 export async function research(query: string): Promise<SkillResponse> {
   try {
     console.log(`Researching: ${query}`);
+
+    // Check if Tavily is available for enhanced research
+    const useTavily = isTavilyConfigured();
+    if (useTavily) {
+      console.log('  Using Tavily-enhanced research...');
+    }
 
     // Fetch data in parallel
     console.log('  Fetching market data...');
     const marketsPromise = searchMarkets(query);
 
     console.log('  Fetching news...');
-    const newsPromise = searchNews(query);
+    const newsPromise = useTavily
+      ? getNewsContext(query)  // Tavily news search
+      : searchNews(query);     // Fallback to RSS
 
     console.log('  Fetching Reddit sentiment...');
     const redditPromise = searchReddit(query);
 
-    const [markets, news, reddit] = await Promise.all([
+    // If Tavily available, also get fact verification
+    const factsPromise = useTavily
+      ? getFactsForPrediction(query)
+      : Promise.resolve(null);
+
+    const [markets, news, reddit, facts] = await Promise.all([
       marketsPromise,
       newsPromise,
       redditPromise,
+      factsPromise,
     ]);
 
+    // Convert Tavily news to standard format if needed
+    const normalizedNews: { articles: any[]; articleCount: number; sources?: string[]; sourceConfidence?: number; officialCount?: number } = useTavily
+      ? convertTavilyNews(news as any)
+      : news as { articles: any[]; articleCount: number; sources?: string[]; sourceConfidence?: number; officialCount?: number };
+
     // Analyze
-    const analysis = analyze(markets, news, reddit);
+    const analysis = analyze(markets, normalizedNews, reddit);
+
+    // Enhance analysis with Tavily facts
+    if (facts && facts.facts.length > 0) {
+      (analysis as any).tavilyFacts = facts.facts;
+      (analysis as any).tavilyAnswer = facts.answer;
+      (analysis as any).tavilyConfidence = facts.confidence;
+      (analysis as any).tavilySources = facts.sources;
+
+      // Boost confidence if Tavily confirms with high confidence
+      if (facts.confidence === 'high') {
+        analysis.confidence = 'high';
+        (analysis as any).dataQuality = 'excellent';
+      }
+    }
 
     const report: ResearchReport = {
       query,
       timestamp: timestamp(),
       markets,
-      news,
+      news: {
+        topic: query,
+        articleCount: normalizedNews.articleCount,
+        articles: normalizedNews.articles,
+        sources: normalizedNews.sources || [],
+      },
       reddit,
       analysis,
     };
@@ -319,6 +374,197 @@ export async function research(query: string): Promise<SkillResponse> {
   } catch (error) {
     return {
       text: `Research failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Convert Tavily news context to standard news format
+ */
+function convertTavilyNews(tavilyNews: {
+  headlines: Array<{ title: string; url: string; date?: string }>;
+  summary?: string;
+  sentiment: string;
+  lastUpdated: string;
+}): { articles: any[]; articleCount: number; sources?: string[]; sourceConfidence?: number; officialCount?: number } {
+  const articles = tavilyNews.headlines.map(h => ({
+    title: h.title,
+    link: h.url,
+    source: new URL(h.url).hostname.replace('www.', ''),
+    pubDate: h.date || '',
+    description: '',
+    type: 'news',
+  }));
+
+  const sources = [...new Set(articles.map(a => a.source))];
+
+  return {
+    articles,
+    articleCount: articles.length,
+    sources,
+    sourceConfidence: 90, // Tavily provides high-quality sources
+    officialCount: 0,
+  };
+}
+
+/**
+ * Deep research using Tavily's research endpoint
+ * Provides comprehensive analysis with multi-step research
+ */
+export async function deepResearch(query: string): Promise<SkillResponse> {
+  if (!isTavilyConfigured()) {
+    return {
+      text: '❌ Deep research requires Tavily API key.\nSet TAVILY_API_KEY in your environment.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    console.log(`Deep researching: ${query}`);
+    console.log('  This may take a moment...');
+
+    const [researchResult, markets, facts] = await Promise.all([
+      tavilyResearch(query),
+      searchMarkets(query),
+      getFactsForPrediction(query),
+    ]);
+
+    let output = `
+${'='.repeat(60)}
+🔬 DEEP RESEARCH: ${query.toUpperCase()}
+${'='.repeat(60)}
+
+Generated: ${timestamp().slice(0, 19)}
+Research time: ${(researchResult.responseTime / 1000).toFixed(1)}s
+Powered by: Tavily AI Research
+
+📋 RESEARCH REPORT
+${'─'.repeat(50)}
+
+${researchResult.report}
+
+`;
+
+    // Add market data if available
+    if (markets.length > 0) {
+      output += `
+📈 CURRENT MARKET ODDS
+${'─'.repeat(50)}
+`;
+      for (const m of markets.slice(0, 5)) {
+        const platform = m.platform.charAt(0).toUpperCase() + m.platform.slice(1);
+        const yes = formatPct(m.yesPrice);
+        const vol = m.volume > 0 ? formatUsd(m.volume) : 'N/A';
+        output += `${platform.padEnd(15)} YES: ${yes.padEnd(10)} Vol: ${vol}\n`;
+      }
+    }
+
+    // Add verified facts
+    if (facts.facts.length > 0) {
+      output += `
+✅ VERIFIED FACTS (${facts.confidence} confidence)
+${'─'.repeat(50)}
+`;
+      for (const fact of facts.facts.slice(0, 5)) {
+        output += `• ${fact}\n`;
+      }
+    }
+
+    // Add sources
+    if (researchResult.sources.length > 0) {
+      output += `
+📚 SOURCES
+${'─'.repeat(50)}
+`;
+      for (const source of researchResult.sources.slice(0, 5)) {
+        output += `• ${source.title}\n  ${source.url}\n`;
+      }
+    }
+
+    output += `
+💡 METHODOLOGY
+${'─'.repeat(50)}
+This report uses multi-step AI research:
+1. Web search across trusted sources
+2. Content extraction and synthesis
+3. Cross-reference verification
+4. Prediction market data correlation
+
+Always verify critical information independently.
+`;
+
+    return {
+      text: output,
+      mood: 'EDUCATIONAL',
+      data: { research: researchResult, markets, facts },
+    };
+  } catch (error) {
+    return {
+      text: `Deep research failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Verify a claim using Tavily
+ */
+export async function verifyClaimSkill(claim: string): Promise<SkillResponse> {
+  if (!isTavilyConfigured()) {
+    return {
+      text: '❌ Claim verification requires Tavily API key.\nSet TAVILY_API_KEY in your environment.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    const result = await verifyClaim(claim);
+
+    const statusEmoji = result.verified ? '✅' : '❌';
+    const status = result.verified ? 'SUPPORTED' : 'QUESTIONABLE';
+
+    let output = `
+${'='.repeat(50)}
+🔍 CLAIM VERIFICATION
+${'='.repeat(50)}
+
+CLAIM: "${claim}"
+
+STATUS: ${statusEmoji} ${status}
+CONFIDENCE: ${result.confidence}%
+
+📋 EVIDENCE
+${'─'.repeat(40)}
+`;
+
+    for (const evidence of result.evidence.slice(0, 3)) {
+      output += `• ${evidence}\n\n`;
+    }
+
+    output += `
+📚 SOURCES
+${'─'.repeat(40)}
+`;
+    for (const source of result.sources.slice(0, 3)) {
+      output += `• ${source.title}\n  ${source.url}\n`;
+    }
+
+    output += `
+💡 NOTE
+${'─'.repeat(40)}
+This is an automated fact-check. For high-stakes decisions,
+always verify with primary sources and expert analysis.
+`;
+
+    return {
+      text: output,
+      mood: result.verified ? 'EDUCATIONAL' : 'ALERT',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      text: `Verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       mood: 'ERROR',
     };
   }
@@ -351,16 +597,34 @@ export async function quickLookup(query: string): Promise<SkillResponse> {
 // CLI interface
 if (process.argv[1]?.endsWith('research.ts')) {
   const args = process.argv.slice(2);
+  const command = args[0];
+  const query = args.slice(1).join(' ');
 
-  if (args[0] === 'quick' && args.length > 1) {
-    const query = args.slice(1).join(' ');
-    quickLookup(query).then(r => console.log(r.text));
-  } else if (args.length > 0) {
-    const query = args.join(' ');
-    research(query).then(r => console.log(r.text));
-  } else {
-    console.log('Usage:');
-    console.log('  ts-node research.ts <query>       - Full research report');
-    console.log('  ts-node research.ts quick <query> - Quick market lookup');
-  }
+  (async () => {
+    if (command === 'quick' && query) {
+      const result = await quickLookup(query);
+      console.log(result.text);
+    } else if (command === 'deep' && query) {
+      const result = await deepResearch(query);
+      console.log(result.text);
+    } else if (command === 'verify' && query) {
+      const result = await verifyClaimSkill(query);
+      console.log(result.text);
+    } else if (args.length > 0 && command !== 'quick' && command !== 'deep' && command !== 'verify') {
+      const fullQuery = args.join(' ');
+      const result = await research(fullQuery);
+      console.log(result.text);
+    } else {
+      console.log('Research CLI - BeRight Protocol\n');
+      console.log('Usage:');
+      console.log('  npx ts-node skills/research.ts <query>        - Full research report');
+      console.log('  npx ts-node skills/research.ts quick <query>  - Quick market lookup');
+      console.log('  npx ts-node skills/research.ts deep <query>   - Deep AI research (Tavily)');
+      console.log('  npx ts-node skills/research.ts verify <claim> - Fact-check a claim (Tavily)');
+      console.log('\nExamples:');
+      console.log('  npx ts-node skills/research.ts "bitcoin 100k"');
+      console.log('  npx ts-node skills/research.ts deep "Fed rate decision impact"');
+      console.log('  npx ts-node skills/research.ts verify "Bitcoin is above 50k"');
+    }
+  })();
 }

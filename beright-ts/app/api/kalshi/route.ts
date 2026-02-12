@@ -44,8 +44,9 @@ export async function GET(request: NextRequest) {
           connected: true,
           balance: balance ? {
             total: balance.balance / 100,
-            available: balance.available_balance / 100,
-            payout: balance.payout_balance / 100,
+            available: (balance.available_balance ?? balance.balance) / 100,
+            payout: (balance.payout_balance ?? 0) / 100,
+            portfolioValue: (balance.portfolio_value ?? 0) / 100,
           } : null,
         });
       }
@@ -99,7 +100,8 @@ export async function GET(request: NextRequest) {
           connected: true,
           portfolio: {
             totalBalance: balance ? balance.balance / 100 : 0,
-            availableCash: balance ? balance.available_balance / 100 : 0,
+            availableCash: balance ? (balance.available_balance ?? balance.balance) / 100 : 0,
+            portfolioValue: balance ? (balance.portfolio_value ?? 0) / 100 : 0,
             positionsValue,
             positions: positionDetails,
           },

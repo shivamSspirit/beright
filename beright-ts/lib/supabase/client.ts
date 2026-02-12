@@ -54,6 +54,17 @@ export const db = {
   // USERS
   // ----------------------------------------
   users: {
+    async getById(userId: string): Promise<User | null> {
+      const { data, error } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data as User | null;
+    },
+
     async getByTelegramId(telegramId: number): Promise<User | null> {
       const { data, error } = await supabaseAdmin
         .from('users')

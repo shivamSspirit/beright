@@ -48,11 +48,11 @@ export const POST = withMiddleware(
       analysis: {
         summary: result.text,
         mood: result.mood,
-        confidence: result.data?.confidence || 'medium',
-        sources: result.data?.sources || [],
-        marketData: result.data?.markets || [],
-        baseRate: result.data?.baseRate,
-        recommendation: result.data?.recommendation,
+        confidence: (result.data as any)?.confidence || 'medium',
+        sources: (result.data as any)?.sources || [],
+        marketData: (result.data as any)?.markets || [],
+        baseRate: (result.data as any)?.baseRate,
+        recommendation: (result.data as any)?.recommendation,
       },
       analyzedAt: new Date().toISOString(),
     });

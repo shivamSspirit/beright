@@ -268,3 +268,8 @@ export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toISOString().slice(0, 19).replace('T', ' ');
 }
+
+/**
+ * Alias for calculateSimilarity for backwards compatibility
+ */
+export const textSimilarity = calculateSimilarity;

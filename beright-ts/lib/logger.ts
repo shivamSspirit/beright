@@ -196,7 +196,7 @@ class Logger {
    */
   logSkillExecution(skill: {
     name: string;
-    agent?: string;
+    agent?: 'scout' | 'analyst' | 'trader' | 'commander';
     duration: number;
     success: boolean;
     error?: string;

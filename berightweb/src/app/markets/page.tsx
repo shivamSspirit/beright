@@ -3,17 +3,19 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useBackendStatus } from '@/hooks/useMarkets';
-import { searchMarkets, getHotMarkets, ApiMarket } from '@/lib/api';
+import { searchMarkets, getHotMarkets, ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent } from '@/lib/api';
 import { mockApiMarkets } from '@/lib/mockData';
 import BottomNav from '@/components/BottomNav';
+import TradingModal from '@/components/TradingModal';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES & CONFIG
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 type Category = 'all' | 'crypto' | 'politics' | 'economics' | 'tech' | 'sports';
-type Provider = 'all' | 'kalshi' | 'polymarket' | 'manifold' | 'metaculus';
+type Provider = 'all' | 'dflow' | 'kalshi' | 'polymarket' | 'manifold' | 'metaculus';
 type SortOption = 'trending' | 'newest' | 'volume' | 'ending';
 
 const categories: { id: Category; label: string; icon: string }[] = [
@@ -27,6 +29,7 @@ const categories: { id: Category; label: string; icon: string }[] = [
 
 const providers: { id: Provider; label: string; color: string }[] = [
   { id: 'all', label: 'All Platforms', color: '#A78BFA' },
+  { id: 'dflow', label: 'DFlow (Tokenized)', color: '#14F195' },
   { id: 'kalshi', label: 'Kalshi', color: '#00D4AA' },
   { id: 'polymarket', label: 'Polymarket', color: '#818CF8' },
   { id: 'manifold', label: 'Manifold', color: '#34D399' },
@@ -219,42 +222,68 @@ function getMultiplier(pct: number): string {
 // MARKET CARD
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-function MarketCard({ market }: { market: ApiMarket }) {
+interface MarketCardProps {
+  market: MarketWithDFlow;
+  onTrade?: (market: MarketWithDFlow) => void;
+}
+
+function MarketCard({ market, onTrade }: MarketCardProps) {
   const dateInfo = formatDate(market.endDate);
+  const hasDFlow = !!market.dflow;
+
+  const handleTradeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onTrade?.(market);
+  };
 
   return (
-    <a
-      href={market.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="market-card"
-    >
-      <div className="card-header">
-        <h3 className="card-title">{market.question || market.title}</h3>
-        <div className={`card-date ${dateInfo.isLive ? 'live' : ''}`}>
-          {dateInfo.isLive && <span className="live-dot" />}
-          {dateInfo.text}
+    <div className="market-card">
+      <a
+        href={market.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="market-card-link"
+      >
+        <div className="card-header">
+          <h3 className="card-title">{market.question || market.title}</h3>
+          <div className={`card-date ${dateInfo.isLive ? 'live' : ''}`}>
+            {dateInfo.isLive && <span className="live-dot" />}
+            {dateInfo.text}
+          </div>
         </div>
-      </div>
 
-      <div className="outcomes">
-        <div className="outcome-row">
-          <span className="outcome-name">Yes</span>
-          <span className="outcome-multiplier">{getMultiplier(market.yesPct)}</span>
-          <span className="outcome-pct yes">{market.yesPct}%</span>
+        <div className="outcomes">
+          <div className="outcome-row">
+            <span className="outcome-name">Yes</span>
+            <span className="outcome-multiplier">{getMultiplier(market.yesPct)}</span>
+            <span className="outcome-pct yes">{market.yesPct}%</span>
+          </div>
+          <div className="outcome-row">
+            <span className="outcome-name">No</span>
+            <span className="outcome-multiplier">{getMultiplier(market.noPct)}</span>
+            <span className="outcome-pct no">{market.noPct}%</span>
+          </div>
         </div>
-        <div className="outcome-row">
-          <span className="outcome-name">No</span>
-          <span className="outcome-multiplier">{getMultiplier(market.noPct)}</span>
-          <span className="outcome-pct no">{market.noPct}%</span>
-        </div>
-      </div>
+      </a>
 
       <div className="card-footer">
-        <span className="volume">{formatVolume(market.volume)} vol</span>
-        <span className="platform">{market.platform}</span>
+        <div className="footer-left">
+          <span className="volume">{formatVolume(market.volume)} vol</span>
+          <span className={`platform ${hasDFlow ? 'dflow' : ''}`}>
+            {hasDFlow ? 'DFlow' : market.platform}
+          </span>
+        </div>
+        {hasDFlow && (
+          <button className="trade-btn" onClick={handleTradeClick} type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Trade
+          </button>
+        )}
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -262,28 +291,84 @@ function MarketCard({ market }: { market: ApiMarket }) {
 // MAIN PAGE
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+// Extended market type with DFlow trading data
+interface MarketWithDFlow extends ApiMarket {
+  dflow?: DFlowEvent;
+}
+
+// Convert DFlow event to ApiMarket format
+function dflowToApiMarket(event: DFlowEvent): MarketWithDFlow {
+  return {
+    id: event.ticker,
+    platform: 'dflow',
+    title: event.title,
+    question: event.title,
+    yesPrice: event.yesPrice || 0,
+    noPrice: event.noPrice || 0,
+    yesPct: Math.round(event.yesPct || 0),
+    noPct: Math.round(event.noPct || 0),
+    volume: event.volume || 0,
+    liquidity: event.liquidity || 0,
+    endDate: event.strikeDate ? new Date(event.strikeDate * 1000).toISOString() : null,
+    status: event.status as any || 'active',
+    url: event.url,
+    dflow: event, // Keep original DFlow data for trading
+  };
+}
+
 export default function MarketsPage() {
   const { isConnected } = useBackendStatus();
-  const [markets, setMarkets] = useState<ApiMarket[]>([]);
+  const { login, authenticated, ready } = usePrivy();
+  const { wallets } = useWallets();
+
+  const [markets, setMarkets] = useState<MarketWithDFlow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [selectedProvider, setSelectedProvider] = useState<Provider>('all');
   const [selectedSort, setSelectedSort] = useState<SortOption>('trending');
+  const [dataSource, setDataSource] = useState<'api' | 'dflow'>('api');
+
+  // Trading modal state
+  const [tradingMarket, setTradingMarket] = useState<MarketWithDFlow | null>(null);
+
+  // Get wallet address from Privy for header display
+  const solanaWallet = wallets.find(w =>
+    w.walletClientType === 'privy' ||
+    w.walletClientType === 'phantom' ||
+    w.walletClientType === 'solflare'
+  );
+  const walletAddress = solanaWallet?.address;
 
   const fetchMarkets = useCallback(async () => {
     setLoading(true);
     try {
-      const response = searchQuery
-        ? await searchMarkets(searchQuery, { limit: 50 })
-        : await getHotMarkets(50);
-      setMarkets(response.markets);
+      // Use DFlow API when DFlow provider is selected
+      if (selectedProvider === 'dflow') {
+        const dflowResponse = searchQuery
+          ? await searchDFlowMarkets(searchQuery, 50)
+          : await getDFlowHotMarkets(50);
+
+        if (dflowResponse.success) {
+          setMarkets(dflowResponse.events.map(dflowToApiMarket));
+          setDataSource('dflow');
+        } else {
+          setMarkets([]);
+        }
+      } else {
+        // Standard API
+        const response = searchQuery
+          ? await searchMarkets(searchQuery, { limit: 50 })
+          : await getHotMarkets(50);
+        setMarkets(response.markets);
+        setDataSource('api');
+      }
     } catch {
       setMarkets(mockApiMarkets as ApiMarket[]);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, selectedProvider]);
 
   useEffect(() => {
     fetchMarkets();
@@ -297,7 +382,9 @@ export default function MarketsPage() {
   const filteredMarkets = useMemo(() => {
     let filtered = markets;
 
-    if (selectedProvider !== 'all') {
+    // When DFlow is selected, we already fetched DFlow data, no need to filter by platform
+    // For other providers, filter as usual
+    if (selectedProvider !== 'all' && selectedProvider !== 'dflow') {
       filtered = filtered.filter(m => m.platform === selectedProvider);
     }
 
@@ -305,8 +392,29 @@ export default function MarketsPage() {
       filtered = filtered.filter(m => categorizeMarket(m.title) === selectedCategory);
     }
 
+    // Apply sorting
+    switch (selectedSort) {
+      case 'volume':
+        filtered = [...filtered].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+        break;
+      case 'ending':
+        filtered = [...filtered].sort((a, b) => {
+          if (!a.endDate) return 1;
+          if (!b.endDate) return -1;
+          return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
+        });
+        break;
+      case 'newest':
+        // Reverse the default order (assuming API returns newest first)
+        break;
+      case 'trending':
+      default:
+        // Keep default order (hot/trending)
+        break;
+    }
+
     return filtered;
-  }, [markets, selectedCategory, selectedProvider]);
+  }, [markets, selectedCategory, selectedProvider, selectedSort]);
 
   return (
     <div className="markets-page">
@@ -319,9 +427,26 @@ export default function MarketsPage() {
             </svg>
           </Link>
           <h1 className="page-title">Browse Markets</h1>
-          <div className={`status-badge ${isConnected ? 'live' : ''}`}>
-            <span className="status-dot" />
-            {isConnected ? 'Live' : 'Demo'}
+          <div className="header-right">
+            {ready && !authenticated ? (
+              <button className="connect-wallet-btn" onClick={login}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 7V4a1 1 0 00-1-1H5a2 2 0 00-2 2v14a2 2 0 002 2h13a1 1 0 001-1v-4" />
+                  <path d="M16 10h6M18 8v4" />
+                </svg>
+                Connect
+              </button>
+            ) : walletAddress ? (
+              <div className="wallet-badge">
+                <span className="wallet-dot" />
+                {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+              </div>
+            ) : (
+              <div className={`status-badge ${isConnected ? 'live' : ''}`}>
+                <span className="status-dot" />
+                {isConnected ? 'Live' : 'Demo'}
+              </div>
+            )}
           </div>
         </div>
 
@@ -368,6 +493,12 @@ export default function MarketsPage() {
         {/* Results count */}
         <div className="results-info">
           <span className="results-count">{filteredMarkets.length} markets</span>
+          {dataSource === 'dflow' && (
+            <span className="data-source dflow">
+              <span className="source-dot" />
+              DFlow Tokenized
+            </span>
+          )}
         </div>
       </header>
 
@@ -396,13 +527,43 @@ export default function MarketsPage() {
         ) : (
           <div className="markets-grid">
             {filteredMarkets.map((market) => (
-              <MarketCard key={market.id} market={market} />
+              <MarketCard
+                key={market.id}
+                market={market}
+                onTrade={setTradingMarket}
+              />
             ))}
           </div>
         )}
       </main>
 
       <BottomNav />
+
+      {/* Trading Modal */}
+      {tradingMarket && tradingMarket.dflow && (
+        <TradingModal
+          isOpen={true}
+          onClose={() => setTradingMarket(null)}
+          prediction={{
+            id: tradingMarket.id || tradingMarket.dflow.ticker,
+            question: tradingMarket.question || tradingMarket.title,
+            marketOdds: tradingMarket.yesPct,
+            source: 'dflow',
+            endDate: tradingMarket.endDate ?? undefined,
+            dflow: {
+              ticker: tradingMarket.dflow.ticker,
+              seriesTicker: tradingMarket.dflow.seriesTicker || '',
+              volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
+              yesBid: tradingMarket.dflow.yesBid || 0,
+              yesAsk: tradingMarket.dflow.yesAsk || 0,
+              noBid: tradingMarket.dflow.noBid || 0,
+              noAsk: tradingMarket.dflow.noAsk || 0,
+              spread: tradingMarket.dflow.spread || 0,
+              tokens: tradingMarket.dflow.tokens,
+            },
+          }}
+        />
+      )}
 
       <style jsx>{`
         .markets-page {
@@ -483,6 +644,57 @@ export default function MarketsPage() {
         @keyframes glow {
           0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
           50% { opacity: 0.6; box-shadow: 0 0 4px currentColor; }
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+        }
+
+        .connect-wallet-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: linear-gradient(135deg, #14F195 0%, #10B981 100%);
+          border: none;
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #000;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .connect-wallet-btn:hover {
+          background: linear-gradient(135deg, #22F9A3 0%, #14F195 100%);
+          transform: scale(1.02);
+        }
+
+        .connect-wallet-btn svg {
+          stroke: #000;
+        }
+
+        .wallet-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          background: rgba(20, 241, 149, 0.12);
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          font-family: var(--font-mono);
+          color: #14F195;
+        }
+
+        .wallet-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #14F195;
+          box-shadow: 0 0 8px #14F195;
+          animation: glow 2s ease-in-out infinite;
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -763,6 +975,9 @@ export default function MarketsPage() {
 
         /* Results info */
         .results-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
           padding: 0 16px 14px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
@@ -771,6 +986,29 @@ export default function MarketsPage() {
           font-size: 12px;
           color: rgba(255, 255, 255, 0.4);
           font-family: var(--font-mono);
+        }
+
+        .data-source {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
+        .data-source.dflow {
+          background: rgba(20, 241, 149, 0.12);
+          color: #14F195;
+        }
+
+        .source-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          animation: pulse 2s ease-in-out infinite;
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -794,18 +1032,24 @@ export default function MarketsPage() {
         .markets-grid :global(.market-card) {
           display: flex;
           flex-direction: column;
-          padding: 16px;
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.06);
           border-radius: 16px;
-          text-decoration: none;
           transition: all 0.2s;
+          overflow: hidden;
         }
 
         .markets-grid :global(.market-card:hover) {
           background: rgba(255, 255, 255, 0.04);
           border-color: rgba(255, 255, 255, 0.1);
           transform: translateY(-2px);
+        }
+
+        .markets-grid :global(.market-card-link) {
+          display: block;
+          padding: 16px;
+          text-decoration: none;
+          color: inherit;
         }
 
         .markets-grid :global(.card-header) {
@@ -849,7 +1093,6 @@ export default function MarketsPage() {
           display: flex;
           flex-direction: column;
           gap: 8px;
-          margin-bottom: 14px;
         }
 
         .markets-grid :global(.outcome-row) {
@@ -896,8 +1139,14 @@ export default function MarketsPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-top: 12px;
+          padding: 12px 16px;
           border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .markets-grid :global(.footer-left) {
+          display: flex;
+          align-items: center;
+          gap: 10px;
         }
 
         .markets-grid :global(.volume) {
@@ -913,6 +1162,40 @@ export default function MarketsPage() {
           padding: 4px 8px;
           background: rgba(255, 255, 255, 0.04);
           border-radius: 6px;
+        }
+
+        .markets-grid :global(.platform.dflow) {
+          background: rgba(20, 241, 149, 0.12);
+          color: #14F195;
+          font-weight: 600;
+        }
+
+        .markets-grid :global(.trade-btn) {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: linear-gradient(135deg, #14F195 0%, #10B981 100%);
+          border: none;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #000;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .markets-grid :global(.trade-btn:hover) {
+          background: linear-gradient(135deg, #22F9A3 0%, #14F195 100%);
+          transform: scale(1.02);
+        }
+
+        .markets-grid :global(.trade-btn:active) {
+          transform: scale(0.98);
+        }
+
+        .markets-grid :global(.trade-btn svg) {
+          stroke: #000;
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

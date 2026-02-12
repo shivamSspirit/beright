@@ -297,6 +297,52 @@ export async function resolvePrediction(
   return data as Prediction;
 }
 
+/**
+ * Update prediction with on-chain transaction signature
+ */
+export async function updatePredictionOnChain(
+  predictionId: string,
+  onChainTx: string,
+  confirmed: boolean = true
+): Promise<Prediction> {
+  const db = getSupabase();
+
+  const { data, error } = await db
+    .from('predictions')
+    .update({
+      on_chain_tx: onChainTx,
+      on_chain_confirmed: confirmed,
+    })
+    .eq('id', predictionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Prediction;
+}
+
+/**
+ * Update prediction with on-chain resolution transaction
+ */
+export async function updatePredictionResolutionTx(
+  predictionId: string,
+  resolutionTx: string
+): Promise<Prediction> {
+  const db = getSupabase();
+
+  const { data, error } = await db
+    .from('predictions')
+    .update({
+      on_chain_resolution_tx: resolutionTx,
+    })
+    .eq('id', predictionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Prediction;
+}
+
 // ========== Leaderboard Operations ==========
 
 /**

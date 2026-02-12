@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { validateStartup } from '../../../lib/startup';
-import { getSubscriberCount } from '../stream/route';
+import { getSubscriberCount } from '../../../lib/stream';
 import { secrets } from '../../../lib/secrets';
 
 export async function GET(request: NextRequest) {

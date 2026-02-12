@@ -12,8 +12,8 @@ const API_BASE = '';
 
 // ============ TYPES (synced with beright-ts/types/) ============
 
-export type Platform = 'polymarket' | 'kalshi' | 'manifold' | 'limitless' | 'metaculus';
-export type DisplayPlatform = 'Kalshi' | 'Polymarket' | 'Manifold' | 'Limitless' | 'Metaculus';
+export type Platform = 'polymarket' | 'kalshi' | 'manifold' | 'limitless' | 'metaculus' | 'dflow';
+export type DisplayPlatform = 'Kalshi' | 'Polymarket' | 'Manifold' | 'Limitless' | 'Metaculus' | 'DFlow';
 
 export interface ApiMarket {
   id: string | null;
@@ -574,6 +574,685 @@ export async function checkBackendHealth(): Promise<boolean> {
   }
 }
 
+// ============ TAVILY API (Web Search & Research) ============
+
+export interface TavilySearchResult {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+  publishedDate?: string;
+}
+
+export interface TavilySearchResponse {
+  success: boolean;
+  query: string;
+  type: string;
+  result: {
+    query: string;
+    results: TavilySearchResult[];
+    answer?: string;
+    responseTime: number;
+    images?: string[];
+  };
+  searchedAt: string;
+}
+
+export interface TavilyNewsResponse {
+  success: boolean;
+  query: string;
+  type: string;
+  result: {
+    headlines: Array<{ title: string; url: string; date?: string }>;
+    summary?: string;
+    sentiment: 'bullish' | 'bearish' | 'neutral';
+    lastUpdated: string;
+  };
+  searchedAt: string;
+}
+
+export interface TavilyFactsResponse {
+  success: boolean;
+  query: string;
+  type: string;
+  result: {
+    facts: string[];
+    sources: Array<{ title: string; url: string }>;
+    answer?: string;
+    confidence: 'high' | 'medium' | 'low';
+  };
+  searchedAt: string;
+}
+
+export interface TavilyVerifyResponse {
+  success: boolean;
+  query: string;
+  type: string;
+  result: {
+    verified: boolean;
+    evidence: string[];
+    sources: Array<{ title: string; url: string }>;
+    confidence: number;
+  };
+  searchedAt: string;
+}
+
+export interface TavilyResearchResponse {
+  success: boolean;
+  query: string;
+  type: string;
+  result: {
+    topic: string;
+    report: string;
+    sources: Array<{ url: string; title: string }>;
+    responseTime: number;
+  };
+  searchedAt: string;
+}
+
+/**
+ * Search the web using Tavily AI-powered search
+ */
+export async function tavilySearch(query: string, options?: {
+  maxResults?: number;
+  days?: number;
+  includeDomains?: string[];
+  excludeDomains?: string[];
+}): Promise<TavilySearchResponse> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query,
+      type: 'search',
+      options,
+    }),
+  });
+}
+
+/**
+ * Search news using Tavily
+ */
+export async function tavilyNewsSearch(query: string, days?: number): Promise<TavilySearchResponse> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query,
+      type: 'news',
+      options: { days: days || 7 },
+    }),
+  });
+}
+
+/**
+ * Search financial news using Tavily
+ */
+export async function tavilyFinanceSearch(query: string): Promise<TavilySearchResponse> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query,
+      type: 'finance',
+    }),
+  });
+}
+
+/**
+ * Get verified facts for a prediction question
+ */
+export async function tavilyGetFacts(question: string): Promise<TavilyFactsResponse> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query: question,
+      type: 'facts',
+    }),
+  });
+}
+
+/**
+ * Verify a claim using Tavily
+ */
+export async function tavilyVerifyClaim(claim: string): Promise<TavilyVerifyResponse> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query: claim,
+      type: 'verify',
+    }),
+  });
+}
+
+/**
+ * Deep research on a topic using Tavily
+ */
+export async function tavilyResearch(topic: string): Promise<TavilyResearchResponse> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query: topic,
+      type: 'research',
+    }),
+  });
+}
+
+/**
+ * Extract content from a URL using Tavily
+ */
+export async function tavilyExtract(url: string): Promise<{
+  success: boolean;
+  query: string;
+  type: string;
+  result: {
+    results: Array<{
+      url: string;
+      rawContent: string;
+      extractedContent?: string;
+    }>;
+    failedUrls?: string[];
+  };
+}> {
+  return apiFetch('/api/tavily', {
+    method: 'POST',
+    body: JSON.stringify({
+      query: url,
+      type: 'extract',
+    }),
+  });
+}
+
+/**
+ * Quick Tavily search (GET endpoint)
+ */
+export async function tavilyQuickSearch(query: string, type?: 'search' | 'news' | 'facts'): Promise<any> {
+  const params = new URLSearchParams({ q: query });
+  if (type) params.set('type', type);
+  return apiFetch(`/api/tavily?${params}`);
+}
+
+// ============ DFLOW API (Tokenized Prediction Markets) ============
+
+/**
+ * DFlow Market Token Info
+ * SPL token addresses for on-chain trading via wallet signing
+ */
+export interface DFlowTokens {
+  yesMint: string | null;
+  noMint: string | null;
+  marketLedger: string | null;
+  isInitialized: boolean;
+  redemptionStatus: 'open' | 'closed';
+}
+
+/**
+ * DFlow Market (nested within event)
+ */
+export interface DFlowMarketInfo {
+  ticker: string;
+  title: string;
+  status: string;
+  result?: string;
+  yesBid: number;
+  yesAsk: number;
+  noBid: number;
+  noAsk: number;
+  volume: number;
+  openInterest: number;
+  closeTime: number;
+  expirationTime: number;
+  tokens: DFlowTokens;
+}
+
+/**
+ * DFlow Event (main market entity)
+ */
+export interface DFlowEvent {
+  ticker: string;
+  seriesTicker: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  volume: number;
+  volume24h: number;
+  liquidity: number;
+  openInterest: number;
+  strikeDate?: number;
+  strikePeriod?: string;
+  settlementSources?: Array<{ name: string; url: string }>;
+
+  // Computed prices
+  marketTicker?: string;
+  status: string;
+  yesPrice: number;
+  noPrice: number;
+  yesPct: number;
+  noPct: number;
+  yesBid: number;
+  yesAsk: number;
+  noBid: number;
+  noAsk: number;
+  spread: number;
+
+  // Token addresses for trading
+  tokens: DFlowTokens | null;
+
+  // All markets in event
+  markets?: DFlowMarketInfo[];
+
+  // External link
+  url: string;
+}
+
+/**
+ * DFlow Order Response (for trading)
+ */
+export interface DFlowOrderResponse {
+  inputMint: string;
+  outputMint: string;
+  inAmount: string;
+  outAmount: string;
+  slippageBps: number;
+  priceImpactPct: string;
+  executionMode: string;
+  transaction: string;  // Base64 encoded, sign and submit
+  routePlan?: any[];
+  platformFee?: {
+    amount: string;
+    feeBps: number;
+  };
+}
+
+/**
+ * DFlow Order Status
+ */
+export interface DFlowOrderStatus {
+  status: 'pending' | 'expired' | 'failed' | 'open' | 'pendingClose' | 'closed';
+  inAmount: string;
+  outAmount: string;
+  fills?: Array<{
+    signature: string;
+    inputMint: string;
+    inAmount: string;
+    outputMint: string;
+    outAmount: string;
+  }>;
+}
+
+/**
+ * DFlow Position
+ */
+export interface DFlowPosition {
+  mint: string;
+  side: 'YES' | 'NO' | 'unknown';
+  ticker?: string;
+  eventTicker?: string;
+  title?: string;
+  status?: string;
+  result?: string;
+  currentPrice?: number;
+  tokens?: DFlowTokens;
+}
+
+/**
+ * DFlow Trade
+ */
+export interface DFlowTrade {
+  tradeId: string;
+  price: number;
+  yesPriceDollars: string;
+  noPriceDollars: string;
+  count: number;
+  takerSide: 'yes' | 'no';
+  timestamp: number;
+  time: string;
+}
+
+/**
+ * DFlow Orderbook
+ */
+export interface DFlowOrderbook {
+  sequence?: number;
+  yesBids?: Record<string, number>;
+  yesAsks?: Record<string, number>;
+  noBids?: Record<string, number>;
+  noAsks?: Record<string, number>;
+}
+
+// ===== DFlow API Functions =====
+
+/**
+ * Get hot DFlow markets sorted by 24h volume
+ */
+export async function getDFlowHotMarkets(limit = 20): Promise<{
+  success: boolean;
+  count: number;
+  events: DFlowEvent[];
+}> {
+  return apiFetch(`/api/dflow?action=hot&limit=${limit}`);
+}
+
+/**
+ * Search DFlow markets
+ */
+export async function searchDFlowMarkets(query: string, limit = 20): Promise<{
+  success: boolean;
+  query: string;
+  count: number;
+  events: DFlowEvent[];
+}> {
+  return apiFetch(`/api/dflow?action=search&q=${encodeURIComponent(query)}&limit=${limit}`);
+}
+
+/**
+ * Get single DFlow market by ticker or mint
+ */
+export async function getDFlowMarket(params: { ticker?: string; mint?: string }): Promise<{
+  success: boolean;
+  market: DFlowEvent | null;
+  error?: string;
+}> {
+  const query = new URLSearchParams();
+  query.set('action', 'market');
+  if (params.ticker) query.set('ticker', params.ticker);
+  if (params.mint) query.set('mint', params.mint);
+  return apiFetch(`/api/dflow?${query}`);
+}
+
+/**
+ * Get DFlow orderbook
+ */
+export async function getDFlowOrderbook(ticker: string): Promise<{
+  success: boolean;
+  ticker: string;
+  orderbook: DFlowOrderbook;
+}> {
+  return apiFetch(`/api/dflow?action=orderbook&ticker=${encodeURIComponent(ticker)}`);
+}
+
+/**
+ * Get DFlow trades
+ */
+export async function getDFlowTrades(ticker: string, limit = 50): Promise<{
+  success: boolean;
+  ticker: string;
+  count: number;
+  trades: DFlowTrade[];
+}> {
+  return apiFetch(`/api/dflow?action=trades&ticker=${encodeURIComponent(ticker)}&limit=${limit}`);
+}
+
+/**
+ * Get DFlow categories
+ */
+export async function getDFlowCategories(): Promise<{
+  success: boolean;
+  categories: Record<string, string[]>;
+}> {
+  return apiFetch('/api/dflow?action=categories');
+}
+
+/**
+ * Get DFlow positions for wallet
+ */
+export async function getDFlowPositions(mints: string[]): Promise<{
+  success: boolean;
+  count: number;
+  positions: DFlowPosition[];
+}> {
+  return apiFetch(`/api/dflow?action=positions&mints=${mints.join(',')}`);
+}
+
+/**
+ * Get DFlow order transaction for trading
+ * Returns base64 encoded transaction to sign and submit
+ */
+export async function getDFlowOrder(params: {
+  inputMint: string;
+  outputMint: string;
+  amount: number;
+  userPublicKey: string;
+  slippageBps?: number;
+}): Promise<{
+  success: boolean;
+  order: DFlowOrderResponse;
+}> {
+  return apiFetch('/api/dflow', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'order',
+      ...params,
+    }),
+  });
+}
+
+/**
+ * Check DFlow order status
+ */
+export async function getDFlowOrderStatus(signature: string): Promise<{
+  success: boolean;
+  status: DFlowOrderStatus;
+}> {
+  return apiFetch('/api/dflow', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'status',
+      signature,
+    }),
+  });
+}
+
+/**
+ * Filter mints to find outcome tokens
+ */
+export async function filterDFlowOutcomeMints(addresses: string[]): Promise<{
+  success: boolean;
+  total: number;
+  outcomeTokens: number;
+  outcomeMints: string[];
+}> {
+  return apiFetch('/api/dflow', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'filter-mints',
+      addresses,
+    }),
+  });
+}
+
+// ===== DFlow Predictions API =====
+
+/**
+ * DFlow Prediction Response
+ */
+export interface DFlowPredictionResponse {
+  success: boolean;
+  prediction: {
+    id: string;
+    question: string;
+    platform: 'dflow';
+    market_id: string;
+    market_url: string;
+    predicted_probability: number;
+    direction: 'YES' | 'NO';
+    confidence: 'low' | 'medium' | 'high';
+    reasoning: string | null;
+    created_at: string;
+    on_chain_tx: string | null;
+    on_chain_confirmed: boolean;
+    dflow_event_ticker: string | null;
+    dflow_market_ticker: string;
+    yes_mint: string | null;
+    no_mint: string | null;
+    market: {
+      ticker: string;
+      title: string;
+      status: string;
+      yesPrice: number;
+      noPrice: number;
+      volume: number;
+      closeTime: number | null;
+    };
+    tokens: {
+      yesMint: string | null;
+      noMint: string | null;
+      canTrade: boolean;
+    };
+  };
+  onChain: {
+    committed: boolean;
+    signature: string | null;
+    explorerUrl: string | null;
+    error: string | null;
+  } | null;
+}
+
+/**
+ * Create a prediction on a DFlow tokenized market
+ * Automatically commits to Solana blockchain
+ */
+export async function createDFlowPrediction(params: {
+  ticker: string;
+  probability: number;
+  direction: 'YES' | 'NO';
+  reasoning?: string;
+  confidence?: 'low' | 'medium' | 'high';
+  walletAddress?: string;
+  telegramId?: number;
+}): Promise<DFlowPredictionResponse> {
+  return apiFetch('/api/dflow/predictions', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * Get user's DFlow predictions
+ */
+export async function getDFlowPredictions(params: {
+  wallet?: string;
+  telegramId?: number;
+  status?: 'pending' | 'resolved' | 'all';
+}): Promise<{
+  count: number;
+  predictions: Array<{
+    id: string;
+    question: string;
+    platform: 'dflow';
+    predicted_probability: number;
+    direction: 'YES' | 'NO';
+    dflow_market_ticker: string;
+    yes_mint: string | null;
+    no_mint: string | null;
+    on_chain_tx: string | null;
+    outcome: boolean | null;
+    brier_score: number | null;
+    created_at: string;
+  }>;
+}> {
+  const query = new URLSearchParams();
+  if (params.wallet) query.set('wallet', params.wallet);
+  if (params.telegramId) query.set('telegramId', String(params.telegramId));
+  if (params.status) query.set('status', params.status);
+  return apiFetch(`/api/dflow/predictions?${query}`);
+}
+
+// ===== DFlow Transform Helpers =====
+
+/**
+ * Transform DFlow event to frontend Prediction format
+ */
+export function transformDFlowToPrediction(event: DFlowEvent): Prediction {
+  const category = categorizeDFlowMarket(event.title);
+  const volume = formatVolume(event.volume || 0);
+
+  // AI prediction based on market odds
+  const { aiPrediction, aiReasoning, aiEvidence } = generateAIPrediction({
+    id: event.ticker,
+    platform: 'kalshi',
+    title: event.title,
+    question: event.title,
+    yesPrice: event.yesPrice,
+    noPrice: event.noPrice,
+    yesPct: event.yesPct,
+    noPct: event.noPct,
+    volume: event.volume,
+    liquidity: event.liquidity,
+    endDate: event.strikeDate ? new Date(event.strikeDate * 1000).toISOString() : null,
+    status: event.status as any,
+    url: event.url,
+  });
+
+  return {
+    id: event.ticker,
+    question: event.title,
+    category,
+    marketOdds: Math.round(event.yesPct),
+    platform: 'DFlow',  // DFlow tokenized markets
+    volume,
+    resolvesAt: event.strikeDate
+      ? new Date(event.strikeDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'TBD',
+    aiPrediction,
+    aiReasoning,
+    aiEvidence,
+    url: event.url,
+    liquidity: event.liquidity,
+    status: event.status as any,
+
+    // DFlow-specific fields
+    dflow: {
+      ticker: event.ticker,
+      seriesTicker: event.seriesTicker,
+      volume24h: event.volume24h,
+      yesBid: event.yesBid,
+      yesAsk: event.yesAsk,
+      noBid: event.noBid,
+      noAsk: event.noAsk,
+      spread: event.spread,
+      tokens: event.tokens,
+      markets: event.markets,
+    },
+  };
+}
+
+/**
+ * Categorize DFlow market
+ */
+function categorizeDFlowMarket(title: string): Category {
+  const lower = title.toLowerCase();
+
+  if (lower.includes('bitcoin') || lower.includes('btc') || lower.includes('eth') ||
+      lower.includes('crypto') || lower.includes('solana') || lower.includes('token')) {
+    return 'crypto';
+  }
+  if (lower.includes('trump') || lower.includes('biden') || lower.includes('election') ||
+      lower.includes('president') || lower.includes('senate') || lower.includes('congress') ||
+      lower.includes('fed chair') || lower.includes('nominate')) {
+    return 'politics';
+  }
+  if (lower.includes('fed') || lower.includes('rate') || lower.includes('inflation') ||
+      lower.includes('gdp') || lower.includes('recession') || lower.includes('economy')) {
+    return 'economics';
+  }
+  if (lower.includes('ai') || lower.includes('spacex') || lower.includes('tesla') ||
+      lower.includes('apple') || lower.includes('google') || lower.includes('tech')) {
+    return 'tech';
+  }
+  if (lower.includes('nba') || lower.includes('nfl') || lower.includes('world cup') ||
+      lower.includes('super bowl') || lower.includes('championship') || lower.includes('match') ||
+      lower.includes('game') || lower.includes(' vs ') || lower.includes(' at ')) {
+    return 'sports';
+  }
+
+  return 'politics'; // Default
+}
+
+/**
+ * Transform multiple DFlow events
+ */
+export function transformDFlowEvents(events: DFlowEvent[]): Prediction[] {
+  return events.map(transformDFlowToPrediction);
+}
+
 // ============ TRANSFORM HELPERS ============
 
 import { Prediction, Category } from './types';
@@ -585,6 +1264,7 @@ const platformDisplayNames: Record<Platform, DisplayPlatform> = {
   manifold: 'Manifold',
   limitless: 'Limitless',
   metaculus: 'Metaculus',
+  dflow: 'DFlow',
 };
 
 // Categorize markets based on keywords
@@ -671,7 +1351,7 @@ export function transformMarketToPrediction(market: ApiMarket): Prediction {
     question: market.question || market.title,
     category: categorizeMarket(market.title),
     marketOdds: Math.round(market.yesPct),
-    platform: platformDisplayNames[market.platform] || 'Polymarket',
+    platform: platformDisplayNames[market.platform] || market.platform as any,
     volume: formatVolume(market.volume),
     resolvesAt: formatDate(market.endDate),
     aiPrediction,

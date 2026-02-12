@@ -1,9 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { animated, useSpring } from '@react-spring/web';
 import CardStack from '@/components/CardStack';
 import BottomNav from '@/components/BottomNav';
+import MoodPills, { MoodFilter, filterByMood, getMoodCounts } from '@/components/MoodPills';
+import {
+  DailyChallengeBanner,
+  ShareFilterButton,
+  useChallenges,
+} from '@/components/ViralMechanics';
 import { useMarkets } from '@/hooks/useMarkets';
 import Link from 'next/link';
 
@@ -82,13 +88,52 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
+// Empty filter state
+function EmptyFilterState({ mood, onReset }: { mood: MoodFilter; onReset: () => void }) {
+  const moodLabels: Record<MoodFilter, { emoji: string; label: string }> = {
+    all: { emoji: '✨', label: 'All' },
+    hot: { emoji: '🔥', label: 'Hot' },
+    easy: { emoji: '💰', label: 'Easy Money' },
+    soon: { emoji: '⏰', label: 'Soon' },
+    risky: { emoji: '🎲', label: 'Risky' },
+    'ai-edge': { emoji: '🧠', label: 'AI Edge' },
+    crypto: { emoji: '₿', label: 'Crypto' },
+    politics: { emoji: '🏛', label: 'Politics' },
+  };
+
+  const { emoji, label } = moodLabels[mood] || { emoji: '🔍', label: 'Filter' };
+
+  return (
+    <div className="empty-filter-container">
+      <span className="empty-filter-emoji">{emoji}</span>
+      <h3 className="empty-filter-title">No {label} markets</h3>
+      <p className="empty-filter-desc">Try a different filter or check back later</p>
+      <button onClick={onReset} className="empty-filter-btn">
+        Show All Markets
+      </button>
+    </div>
+  );
+}
+
 // Social proof banner
-function SocialProof() {
+function SocialProof({ dataSource }: { dataSource: 'api' | 'dflow' | 'mock' }) {
   return (
     <div className="social-proof">
       <span className="proof-dot" />
       <span className="proof-text">
-        <strong>2.4K</strong> predictions in the last hour
+        {dataSource === 'dflow' ? (
+          <>
+            <strong>DFlow</strong> tokenized markets on Solana
+          </>
+        ) : dataSource === 'mock' ? (
+          <>
+            Demo mode - <strong>connect to see live markets</strong>
+          </>
+        ) : (
+          <>
+            <strong>2.4K</strong> predictions in the last hour
+          </>
+        )}
       </span>
     </div>
   );
@@ -97,35 +142,82 @@ function SocialProof() {
 export default function Home() {
   const [completedToday, setCompletedToday] = useState(0);
   const [streak] = useState(3);
+  const [selectedMood, setSelectedMood] = useState<MoodFilter>('all');
 
-  const { predictions, loading, error, refetch } = useMarkets({
-    mode: 'hot',
-    limit: 10,
+  // Viral mechanics
+  const { challenges } = useChallenges();
+
+  const { predictions, loading, error, refetch, dataSource } = useMarkets({
+    mode: 'dflow',  // Use DFlow tokenized markets as primary source
+    limit: 20,
     useMockOnError: true,
   });
+
+  // Filter predictions based on selected mood
+  const filteredPredictions = useMemo(() => {
+    return filterByMood(predictions, selectedMood);
+  }, [predictions, selectedMood]);
+
+  // Get counts for each mood filter
+  const moodCounts = useMemo(() => {
+    return getMoodCounts(predictions);
+  }, [predictions]);
+
+  // Handle mood selection with haptic feedback
+  const handleMoodSelect = (mood: MoodFilter) => {
+    if (navigator.vibrate) navigator.vibrate(5);
+    setSelectedMood(mood);
+  };
 
   return (
     <div className="home-page">
       <MinimalHeader
         streak={streak}
-        progress={{ done: completedToday, total: predictions.length || 7 }}
+        progress={{ done: completedToday, total: filteredPredictions.length || 7 }}
       />
 
       {/* Main Content */}
       <main className="home-main">
+        {/* Daily Challenges */}
+        {!loading && predictions.length > 0 && (
+          <DailyChallengeBanner challenges={challenges.slice(0, 2)} />
+        )}
+
+        {/* Mood Filter Pills + Share */}
+        {!loading && predictions.length > 0 && (
+          <div className="filter-row">
+            <MoodPills
+              selected={selectedMood}
+              onSelect={handleMoodSelect}
+              counts={moodCounts}
+            />
+            {selectedMood !== 'all' && (
+              <ShareFilterButton
+                mood={selectedMood}
+                count={filteredPredictions.length}
+              />
+            )}
+          </div>
+        )}
+
         {loading ? (
           <LoadingSkeleton />
         ) : error && predictions.length === 0 ? (
           <ErrorState message={error} onRetry={refetch} />
-        ) : predictions.length > 0 ? (
-          <CardStack predictions={predictions} />
+        ) : filteredPredictions.length > 0 ? (
+          <CardStack predictions={filteredPredictions} key={selectedMood} />
+        ) : selectedMood !== 'all' ? (
+          <EmptyFilterState
+            mood={selectedMood}
+            onReset={() => setSelectedMood('all')}
+          />
         ) : (
           <ErrorState message="No predictions available" onRetry={refetch} />
         )}
       </main>
 
       {/* Social Proof */}
-      {!loading && predictions.length > 0 && <SocialProof />}
+      {!loading && predictions.length > 0 && <SocialProof dataSource={dataSource} />}
 
       <BottomNav />
 
@@ -136,10 +228,11 @@ export default function Home() {
           background: radial-gradient(ellipse at 50% 0%, rgba(0, 230, 118, 0.04) 0%, transparent 50%),
                       radial-gradient(ellipse at 50% 100%, rgba(99, 102, 241, 0.04) 0%, transparent 50%),
                       #0A0A0F;
+          overflow: hidden;
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           HEADER - MINIMAL & CLEAN
+           HEADER - MINIMAL & COMPACT
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         .home-header {
           position: fixed;
@@ -148,9 +241,9 @@ export default function Home() {
           right: 0;
           z-index: 100;
           padding-top: env(safe-area-inset-top, 0px);
-          background: rgba(10, 10, 15, 0.9);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          background: rgba(10, 10, 15, 0.95);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
 
@@ -158,9 +251,11 @@ export default function Home() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 12px 16px;
+          padding: 10px 12px;
           max-width: 500px;
           margin: 0 auto;
+          height: 44px;
+          box-sizing: content-box;
         }
 
         .streak-pill {
@@ -244,18 +339,34 @@ export default function Home() {
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           MAIN CONTENT
+           FILTER ROW
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+        .filter-row {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 4px;
+        }
+
+        .filter-row :global(.mood-pills-container) {
+          margin-bottom: 0;
+        }
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+           MAIN CONTENT - Centered & Compact
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         .home-main {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          min-height: 100dvh;
-          padding-top: calc(70px + env(safe-area-inset-top, 0px));
-          padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-          padding-left: 8px;
-          padding-right: 8px;
+          min-height: calc(100dvh - 56px - 72px);
+          max-width: 500px;
+          margin: 0 auto;
+          padding: 16px 12px;
+          padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px);
+          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 16px);
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -366,25 +477,81 @@ export default function Home() {
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           SOCIAL PROOF
+           EMPTY FILTER STATE
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+        .empty-filter-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 48px 24px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          max-width: 320px;
+          width: 100%;
+        }
+
+        .empty-filter-emoji {
+          font-size: 56px;
+          margin-bottom: 16px;
+          filter: grayscale(0.3);
+        }
+
+        .empty-filter-title {
+          font-size: 18px;
+          font-weight: 700;
+          color: #fff;
+          margin: 0 0 8px;
+        }
+
+        .empty-filter-desc {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.5);
+          margin: 0 0 24px;
+        }
+
+        .empty-filter-btn {
+          padding: 12px 24px;
+          background: rgba(0, 230, 118, 0.15);
+          border: 1px solid rgba(0, 230, 118, 0.3);
+          border-radius: 12px;
+          color: #00E676;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .empty-filter-btn:hover {
+          background: rgba(0, 230, 118, 0.25);
+          border-color: rgba(0, 230, 118, 0.5);
+        }
+
+        .empty-filter-btn:active {
+          transform: scale(0.98);
+        }
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+           SOCIAL PROOF - Above bottom nav
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         .social-proof {
           position: fixed;
-          bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+          bottom: calc(76px + env(safe-area-inset-bottom, 0px));
           left: 50%;
           transform: translateX(-50%);
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 10px 16px;
-          background: rgba(10, 10, 15, 0.9);
+          gap: 6px;
+          padding: 8px 14px;
+          background: rgba(10, 10, 15, 0.95);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border-radius: 20px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
           z-index: 60;
-          margin: 0 12px;
-          max-width: calc(100% - 24px);
+          max-width: calc(100% - 32px);
+          white-space: nowrap;
         }
 
         .proof-dot {
@@ -407,7 +574,7 @@ export default function Home() {
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE
+           RESPONSIVE - Mobile-first
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         @media (max-width: 359px) {
           .header-content {
@@ -429,14 +596,14 @@ export default function Home() {
           }
 
           .home-main {
-            padding-left: 6px;
-            padding-right: 6px;
+            padding: 12px 8px;
+            padding-top: calc(48px + env(safe-area-inset-top, 0px) + 12px);
+            padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px);
           }
 
           .social-proof {
-            padding: 8px 12px;
-            margin: 0 8px;
-            max-width: calc(100% - 16px);
+            padding: 6px 10px;
+            bottom: calc(68px + env(safe-area-inset-bottom, 0px));
           }
 
           .proof-text {
@@ -446,7 +613,7 @@ export default function Home() {
 
         @media (min-width: 481px) {
           .header-content {
-            padding: 14px 20px;
+            padding: 12px 20px;
           }
 
           .logo-text {
@@ -454,31 +621,18 @@ export default function Home() {
           }
 
           .home-main {
-            padding-left: 16px;
-            padding-right: 16px;
+            padding: 20px 16px;
+            padding-top: calc(56px + env(safe-area-inset-top, 0px) + 20px);
+            padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 20px);
           }
         }
 
-        @media (min-width: 769px) {
-          .header-content {
-            max-width: 600px;
-          }
-
-          .home-main {
-            max-width: 600px;
-            margin: 0 auto;
-          }
-        }
-
-        /* Landscape */
+        /* Landscape - compact everything */
         @media (max-height: 500px) and (orientation: landscape) {
-          .home-header {
-            position: relative;
-          }
-
           .home-main {
-            padding-top: 16px;
-            min-height: auto;
+            min-height: calc(100dvh - 48px - 56px);
+            padding-top: calc(48px + env(safe-area-inset-top, 0px) + 8px);
+            padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
           }
 
           .social-proof {

@@ -34,12 +34,12 @@ export const GET = withMiddleware(
     // Fetch based on type
     if (type === 'news' || type === 'all') {
       const newsResult = await newsSearch(query || 'prediction markets');
-      newsData = newsResult.data?.articles || [];
+      newsData = (newsResult.data as any)?.articles || [];
     }
 
     if (type === 'social' || type === 'all') {
       const socialResult = await socialSearch(query || 'prediction markets');
-      socialData = socialResult.data?.posts || [];
+      socialData = (socialResult.data as any)?.posts || [];
     }
 
     const duration = timer();

@@ -1,12 +1,26 @@
 /**
  * Intel Skill for BeRight Protocol
  * News and social media aggregation
+ *
+ * Enhanced with Tavily for:
+ * - Real-time web search (beyond RSS limitations)
+ * - AI-powered news summaries
+ * - Better source verification
  */
 
 import { SkillResponse, NewsArticle, NewsResult, RedditSentiment } from '../types/index';
 import { RSS_FEEDS, GOOGLE_NEWS_RSS, OFFICIAL_SOURCES, SOURCE_TIERS, getSourceTier, calculateSourceConfidence } from '../config/platforms';
 import { SENTIMENT } from '../config/thresholds';
 import { timestamp } from './utils';
+import {
+  isTavilyConfigured,
+  tavilySearch,
+  tavilyNewsSearch,
+  tavilyFinanceSearch,
+  tavilyExtract,
+  getNewsContext,
+  TavilySearchResponse,
+} from '../lib/tavily';
 
 /**
  * Parse RSS feed XML (simplified parser)
@@ -446,29 +460,55 @@ export async function socialSearch(query: string): Promise<SkillResponse> {
 
 /**
  * Full intel report (news + social)
+ * Uses Tavily when available for enhanced accuracy
  */
 export async function intelReport(query: string): Promise<SkillResponse> {
   try {
-    const [news, reddit] = await Promise.all([
+    const useTavily = isTavilyConfigured();
+
+    const [news, reddit, tavilyNews] = await Promise.all([
       searchNews(query),
       searchReddit(query),
+      useTavily ? getNewsContext(query) : Promise.resolve(null),
     ]);
 
-    const sentiment = analyzeNewsSentiment(news.articles);
+    const sentiment = tavilyNews ? tavilyNews.sentiment : analyzeNewsSentiment(news.articles);
 
     let output = `
 🔍 INTEL REPORT: ${query.toUpperCase()}
 ${'='.repeat(50)}
 Generated: ${timestamp().slice(0, 19)}
+${useTavily ? '🔎 Enhanced with Tavily AI Search' : ''}
 
 📰 NEWS SUMMARY
-Articles: ${news.articleCount}
+Articles: ${news.articleCount}${tavilyNews ? ` + ${tavilyNews.headlines.length} web results` : ''}
 Sentiment: ${sentiment.toUpperCase()}
-
 `;
 
-    for (const article of news.articles.slice(0, 5)) {
-      output += `• [${article.source.toUpperCase()}] ${article.title.slice(0, 55)}...\n`;
+    // Show AI summary if available
+    if (tavilyNews?.summary) {
+      output += `
+📝 AI SUMMARY
+${'─'.repeat(40)}
+${tavilyNews.summary}
+`;
+    }
+
+    output += `
+📰 HEADLINES
+${'─'.repeat(40)}
+`;
+
+    // Combine RSS and Tavily results, prioritizing Tavily
+    if (tavilyNews && tavilyNews.headlines.length > 0) {
+      for (const headline of tavilyNews.headlines.slice(0, 5)) {
+        const domain = new URL(headline.url).hostname.replace('www.', '');
+        output += `• [${domain.toUpperCase()}] ${headline.title.slice(0, 55)}...\n`;
+      }
+    } else {
+      for (const article of news.articles.slice(0, 5)) {
+        output += `• [${article.source.toUpperCase()}] ${article.title.slice(0, 55)}...\n`;
+      }
     }
 
     output += `
@@ -492,11 +532,169 @@ Use this as ONE input in your analysis.
     return {
       text: output,
       mood: sentiment === 'bullish' ? 'BULLISH' : sentiment === 'bearish' ? 'BEARISH' : 'NEUTRAL',
-      data: { news, reddit, sentiment },
+      data: { news, reddit, sentiment, tavilyNews },
     };
   } catch (error) {
     return {
       text: `Intel report failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+// ============================================
+// TAVILY-POWERED INTEL FUNCTIONS
+// ============================================
+
+/**
+ * AI-powered news search using Tavily
+ * Returns comprehensive news with AI summary
+ */
+export async function tavilyIntelSearch(query: string): Promise<SkillResponse> {
+  if (!isTavilyConfigured()) {
+    return {
+      text: '❌ Tavily intel search requires TAVILY_API_KEY.\nFalling back to RSS feeds.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    const result = await tavilyNewsSearch(query, { maxResults: 15, days: 7 });
+
+    let output = `
+🔎 TAVILY INTEL: ${query.toUpperCase()}
+${'='.repeat(50)}
+Response time: ${result.responseTime}ms
+Results: ${result.results.length}
+`;
+
+    if (result.answer) {
+      output += `
+📝 AI SUMMARY
+${'─'.repeat(40)}
+${result.answer}
+`;
+    }
+
+    output += `
+📰 TOP RESULTS
+${'─'.repeat(40)}
+`;
+
+    for (const r of result.results.slice(0, 10)) {
+      const domain = new URL(r.url).hostname.replace('www.', '');
+      const date = r.publishedDate ? ` (${r.publishedDate.slice(0, 10)})` : '';
+      output += `\n[${domain.toUpperCase()}]${date}\n`;
+      output += `${r.title}\n`;
+      output += `${r.content.slice(0, 150)}...\n`;
+    }
+
+    return {
+      text: output,
+      mood: 'NEUTRAL',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      text: `Tavily search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Finance-focused news search
+ */
+export async function financeIntel(query: string): Promise<SkillResponse> {
+  if (!isTavilyConfigured()) {
+    // Fallback to RSS finance news
+    const news = await getFinanceNews();
+    return {
+      text: formatNewsResults({ topic: query, articleCount: news.length, articles: news, sources: [] }),
+      mood: 'NEUTRAL',
+      data: { articles: news },
+    };
+  }
+
+  try {
+    const result = await tavilyFinanceSearch(query, { maxResults: 15 });
+
+    let output = `
+💹 FINANCE INTEL: ${query.toUpperCase()}
+${'='.repeat(50)}
+Powered by: Tavily Finance Search
+Sources: Bloomberg, Reuters, WSJ, FT, Fed, SEC, Treasury
+
+`;
+
+    if (result.answer) {
+      output += `📝 MARKET BRIEF\n${'─'.repeat(40)}\n${result.answer}\n`;
+    }
+
+    output += `
+📈 FINANCIAL NEWS
+${'─'.repeat(40)}
+`;
+
+    for (const r of result.results.slice(0, 8)) {
+      const domain = new URL(r.url).hostname.replace('www.', '');
+      output += `\n[${domain.toUpperCase()}] ${r.title}\n`;
+      output += `${r.content.slice(0, 120)}...\n`;
+    }
+
+    return {
+      text: output,
+      mood: 'NEUTRAL',
+      data: result,
+    };
+  } catch (error) {
+    return {
+      text: `Finance intel failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Extract content from a specific URL
+ */
+export async function extractUrl(url: string): Promise<SkillResponse> {
+  if (!isTavilyConfigured()) {
+    return {
+      text: '❌ URL extraction requires TAVILY_API_KEY.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    const result = await tavilyExtract([url]);
+
+    if (result.results.length === 0) {
+      return {
+        text: `❌ Could not extract content from: ${url}`,
+        mood: 'ERROR',
+      };
+    }
+
+    const extracted = result.results[0];
+
+    let output = `
+📄 EXTRACTED CONTENT
+${'='.repeat(50)}
+URL: ${extracted.url}
+
+${'─'.repeat(40)}
+${extracted.rawContent.slice(0, 2000)}${extracted.rawContent.length > 2000 ? '\n\n[Truncated...]' : ''}
+`;
+
+    return {
+      text: output,
+      mood: 'NEUTRAL',
+      data: extracted,
+    };
+  } catch (error) {
+    return {
+      text: `Extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       mood: 'ERROR',
     };
   }
@@ -522,12 +720,33 @@ if (process.argv[1]?.endsWith('intel.ts')) {
       const articles = await getTopNews();
       console.log('Top News:');
       articles.forEach(a => console.log(`[${a.source}] ${a.title}`));
+    } else if (command === 'search' && query) {
+      // Tavily-powered search
+      const result = await tavilyIntelSearch(query);
+      console.log(result.text);
+    } else if (command === 'finance' && query) {
+      // Finance-focused search
+      const result = await financeIntel(query);
+      console.log(result.text);
+    } else if (command === 'extract' && query) {
+      // Extract URL content
+      const result = await extractUrl(query);
+      console.log(result.text);
     } else {
+      console.log('Intel CLI - BeRight Protocol\n');
       console.log('Usage:');
-      console.log('  ts-node intel.ts news <query>');
-      console.log('  ts-node intel.ts social <query>');
-      console.log('  ts-node intel.ts report <query>');
-      console.log('  ts-node intel.ts top');
+      console.log('  npx ts-node skills/intel.ts news <query>    - RSS news search');
+      console.log('  npx ts-node skills/intel.ts social <query>  - Reddit sentiment');
+      console.log('  npx ts-node skills/intel.ts report <query>  - Full intel report');
+      console.log('  npx ts-node skills/intel.ts top             - Top headlines');
+      console.log('\nTavily-Powered (requires TAVILY_API_KEY):');
+      console.log('  npx ts-node skills/intel.ts search <query>  - AI web search');
+      console.log('  npx ts-node skills/intel.ts finance <query> - Finance news');
+      console.log('  npx ts-node skills/intel.ts extract <url>   - Extract URL content');
+      console.log('\nExamples:');
+      console.log('  npx ts-node skills/intel.ts report "bitcoin"');
+      console.log('  npx ts-node skills/intel.ts search "Fed rate decision"');
+      console.log('  npx ts-node skills/intel.ts finance "inflation data"');
     }
   })();
 }

@@ -1,4 +1,25 @@
-import { Prediction, LeaderboardEntry } from './types';
+import { Prediction, LeaderboardEntry, DFlowData } from './types';
+
+// Mock DFlow token data for demo mode
+const mockDFlowTokens = (isInitialized = true) => ({
+  yesMint: isInitialized ? 'yesMint' + Math.random().toString(36).slice(2, 10) : null,
+  noMint: isInitialized ? 'noMint' + Math.random().toString(36).slice(2, 10) : null,
+  marketLedger: isInitialized ? 'ledger' + Math.random().toString(36).slice(2, 10) : null,
+  isInitialized,
+  redemptionStatus: 'open' as const,
+});
+
+const mockDFlowData = (odds: number): DFlowData => ({
+  ticker: 'MOCK-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+  seriesTicker: 'MOCK-SERIES',
+  volume24h: Math.floor(Math.random() * 500000),
+  yesBid: odds / 100 - 0.01,
+  yesAsk: odds / 100 + 0.01,
+  noBid: (100 - odds) / 100 - 0.01,
+  noAsk: (100 - odds) / 100 + 0.01,
+  spread: 0.02,
+  tokens: mockDFlowTokens(true),
+});
 
 export const mockPredictions: Prediction[] = [
   {
@@ -6,7 +27,7 @@ export const mockPredictions: Prediction[] = [
     question: 'Will Bitcoin hit $150K by end of 2026?',
     category: 'crypto',
     marketOdds: 42,
-    platform: 'Polymarket',
+    platform: 'DFlow',
     volume: '$2.1M',
     resolvesAt: 'Dec 31, 2026',
     aiPrediction: 38,
@@ -22,14 +43,15 @@ export const mockPredictions: Prediction[] = [
         'Fed policy uncertainty',
         'Regulatory crackdowns in EU'
       ]
-    }
+    },
+    dflow: mockDFlowData(42),
   },
   {
     id: '2',
     question: 'Will Trump win 2028 election?',
     category: 'politics',
     marketOdds: 31,
-    platform: 'Kalshi',
+    platform: 'DFlow',
     volume: '$890K',
     resolvesAt: 'Nov 5, 2028',
     aiPrediction: 24,
@@ -45,14 +67,15 @@ export const mockPredictions: Prediction[] = [
         'Legal challenges ongoing',
         'Party may seek fresh candidates'
       ]
-    }
+    },
+    dflow: mockDFlowData(31),
   },
   {
     id: '3',
     question: 'Will Fed cut rates in March 2026?',
     category: 'economics',
     marketOdds: 45,
-    platform: 'Kalshi',
+    platform: 'DFlow',
     volume: '$1.4M',
     resolvesAt: 'Mar 15, 2026',
     aiPrediction: 32,
@@ -68,14 +91,15 @@ export const mockPredictions: Prediction[] = [
         'Fed guidance hawkish',
         'Strong GDP growth'
       ]
-    }
+    },
+    dflow: mockDFlowData(45),
   },
   {
     id: '4',
     question: 'Will SpaceX land humans on Mars by 2030?',
     category: 'tech',
     marketOdds: 28,
-    platform: 'Polymarket',
+    platform: 'DFlow',
     volume: '$560K',
     resolvesAt: 'Dec 31, 2030',
     aiPrediction: 15,
@@ -91,14 +115,15 @@ export const mockPredictions: Prediction[] = [
         'Radiation shielding challenges',
         'Historical timeline slippage'
       ]
-    }
+    },
+    dflow: mockDFlowData(28),
   },
   {
     id: '5',
     question: 'Will there be a US recession in 2026?',
     category: 'economics',
     marketOdds: 38,
-    platform: 'Manifold',
+    platform: 'DFlow',
     volume: '$320K',
     resolvesAt: 'Dec 31, 2026',
     aiPrediction: 45,
@@ -114,14 +139,15 @@ export const mockPredictions: Prediction[] = [
         'Corporate earnings solid',
         'Fed has room to cut'
       ]
-    }
+    },
+    dflow: mockDFlowData(38),
   },
   {
     id: '6',
     question: 'Will AI pass the Turing Test definitively by 2027?',
     category: 'tech',
     marketOdds: 52,
-    platform: 'Manifold',
+    platform: 'DFlow',
     volume: '$180K',
     resolvesAt: 'Dec 31, 2027',
     aiPrediction: 68,
@@ -137,14 +163,15 @@ export const mockPredictions: Prediction[] = [
         'Reasoning gaps persist',
         'Embodiment may be required'
       ]
-    }
+    },
+    dflow: mockDFlowData(52),
   },
   {
     id: '7',
     question: 'Will Lakers win 2026 NBA Championship?',
     category: 'sports',
     marketOdds: 12,
-    platform: 'Kalshi',
+    platform: 'DFlow',
     volume: '$450K',
     resolvesAt: 'Jun 30, 2026',
     aiPrediction: 8,
@@ -160,7 +187,8 @@ export const mockPredictions: Prediction[] = [
         'Stacked Western Conference',
         'Depth concerns'
       ]
-    }
+    },
+    dflow: mockDFlowData(12),
   }
 ];
 

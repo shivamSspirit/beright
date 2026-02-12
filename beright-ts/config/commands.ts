@@ -181,6 +181,28 @@ export const KEYWORD_TRIGGERS: Record<string, string> = {
   reddit: 'INTEL',
 };
 
+// Intelligence & Feedback Commands (Phase 1 Automation)
+export const INTELLIGENCE_COMMANDS: Command[] = [
+  {
+    name: '/intelligence',
+    description: 'Get AI-powered prediction analysis with base rates, bias warnings, and recommended probability',
+    usage: '/intelligence <question>',
+    agent: 'COMMANDER',
+  },
+  {
+    name: '/analyze',
+    description: 'Alias for /intelligence',
+    usage: '/analyze <question>',
+    agent: 'COMMANDER',
+  },
+  {
+    name: '/feedback',
+    description: 'Get personalized calibration feedback and improvement recommendations',
+    usage: '/feedback',
+    agent: 'COMMANDER',
+  },
+];
+
 // New MVP Commands
 export const MVP_COMMANDS: Command[] = [
   {
@@ -264,6 +286,18 @@ DAILY ESSENTIALS
 PREDICTIONS
 /predict <question> <prob> YES|NO - Make prediction
 /calibration - Your calibration report
+/feedback - Personalized improvement tips
+
+BE RIGHT MOSTLY (AI-Powered Analysis)
+/intelligence <question> - Base rates, bias warnings, recommended probability
+/analyze <question> - Alias for /intelligence
+/recommend - Personalized market recommendations
+/compare - Compare your predictions vs market
+/learnings - Insights from past predictions
+
+SMART PREDICTIONS (Auto-Resolution)
+/findmarket <query> - Find DFlow markets to predict on
+/smartpredict <ticker> <prob> YES|NO - Predict with auto-resolution
 
 RESEARCH & ANALYSIS
 /research <topic> - Superforecaster analysis

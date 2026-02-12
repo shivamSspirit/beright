@@ -7,7 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withMiddleware, ApiContext } from '../../../lib/apiMiddleware';
-import { scanAll, ArbitrageOpportunity } from '../../../skills/arbitrage';
+import { scanAll } from '../../../skills/arbitrage';
+import { ArbitrageOpportunity } from '../../../types/index';
 import { getSkillLogger } from '../../../lib/logger';
 
 const log = getSkillLogger('arbitrage');
@@ -51,16 +52,16 @@ export const GET = withMiddleware(
         topic: opp.topic,
         platformA: opp.platformA,
         platformB: opp.platformB,
-        marketA: opp.marketA,
-        marketB: opp.marketB,
+        marketATitle: opp.marketATitle,
+        marketBTitle: opp.marketBTitle,
         priceAYes: opp.priceAYes,
         priceBYes: opp.priceBYes,
         spread: opp.spread,
         profitPercent: opp.profitPercent,
         strategy: opp.strategy,
         confidence: opp.matchConfidence,
-        urlA: opp.urlA,
-        urlB: opp.urlB,
+        volumeA: opp.volumeA,
+        volumeB: opp.volumeB,
       })),
       scannedAt: new Date().toISOString(),
     });

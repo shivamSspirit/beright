@@ -53,22 +53,24 @@ export function useBackendStatus() {
 // ============ Markets Hook ============
 
 interface UseMarketsOptions {
-  mode?: 'hot' | 'search' | 'all';
+  mode?: 'hot' | 'search' | 'all' | 'dflow';
   query?: string;
   platform?: Platform;
   limit?: number;
   compare?: boolean;
   useMockOnError?: boolean;
+  preferDFlow?: boolean;  // Use DFlow as primary data source
 }
 
 export function useMarkets(options: UseMarketsOptions = {}) {
-  const { mode = 'hot', query, platform, limit = 20, compare = false, useMockOnError = true } = options;
+  const { mode = 'hot', query, platform, limit = 20, compare = false, useMockOnError = true, preferDFlow = false } = options;
 
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [arbitrage, setArbitrage] = useState<ApiArbitrage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingMock, setUsingMock] = useState(false);
+  const [dataSource, setDataSource] = useState<'api' | 'dflow' | 'mock'>('api');
 
   const fetchMarkets = useCallback(async () => {
     setLoading(true);
@@ -77,6 +79,32 @@ export function useMarkets(options: UseMarketsOptions = {}) {
     try {
       let response: MarketsResponse;
 
+      // Use DFlow as primary source if preferDFlow is true or mode is 'dflow'
+      if (preferDFlow || mode === 'dflow') {
+        const { getDFlowHotMarkets, searchDFlowMarkets, transformDFlowEvents } = await import('../lib/api');
+
+        if (mode === 'search' && query) {
+          const dflowResponse = await searchDFlowMarkets(query, limit);
+          if (dflowResponse.success) {
+            setPredictions(transformDFlowEvents(dflowResponse.events));
+            setDataSource('dflow');
+            setUsingMock(false);
+            setLoading(false);
+            return;
+          }
+        } else {
+          const dflowResponse = await getDFlowHotMarkets(limit);
+          if (dflowResponse.success) {
+            setPredictions(transformDFlowEvents(dflowResponse.events));
+            setDataSource('dflow');
+            setUsingMock(false);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback to standard API
       if (mode === 'search' && query) {
         response = await searchMarkets(query, { platform, limit, compare });
       } else if (mode === 'hot') {
@@ -87,6 +115,7 @@ export function useMarkets(options: UseMarketsOptions = {}) {
 
       const transformed = transformMarkets(response.markets);
       setPredictions(transformed);
+      setDataSource('api');
 
       if (response.arbitrage) {
         setArbitrage(response.arbitrage);
@@ -101,11 +130,12 @@ export function useMarkets(options: UseMarketsOptions = {}) {
         console.warn('Using mock data due to error:', message);
         setPredictions(mockPredictions);
         setUsingMock(true);
+        setDataSource('mock');
       }
     } finally {
       setLoading(false);
     }
-  }, [mode, query, platform, limit, compare, useMockOnError]);
+  }, [mode, query, platform, limit, compare, useMockOnError, preferDFlow]);
 
   useEffect(() => {
     fetchMarkets();
@@ -117,6 +147,7 @@ export function useMarkets(options: UseMarketsOptions = {}) {
     loading,
     error,
     usingMock,
+    dataSource,
     refetch: fetchMarkets,
   };
 }

@@ -40,16 +40,20 @@ export const GET = withMiddleware(
       success: true,
     });
 
+    const portfolioData = portfolio as any;
+    const pnlData = pnl as any;
+    const calibrationData = calibration as any;
+
     return NextResponse.json({
       success: true,
       userId,
       portfolio: {
-        totalValue: portfolio.totalValue || 0,
-        cashBalance: portfolio.cashBalance || 0,
-        positionsValue: portfolio.positionsValue || 0,
-        totalPnL: pnl.totalPnL || 0,
-        dayChange: pnl.periodPnL || 0,
-        positionCount: portfolio.positionCount || 0,
+        totalValue: portfolioData.totalValue || 0,
+        cashBalance: portfolioData.cashBalance || 0,
+        positionsValue: portfolioData.positionsValue || 0,
+        totalPnL: pnlData.totalPnl || 0,
+        dayChange: pnlData.totalPnl || 0,
+        positionCount: portfolioData.positionCount || positions.length || 0,
       },
       positions: positions.map((p: any) => ({
         id: p.id,
@@ -64,20 +68,20 @@ export const GET = withMiddleware(
         status: p.status,
       })),
       calibration: {
-        totalPredictions: calibration.totalPredictions,
-        resolvedPredictions: calibration.resolvedPredictions,
-        pendingPredictions: calibration.pendingPredictions,
-        brierScore: calibration.overallBrierScore,
-        accuracy: calibration.accuracy,
-        streak: calibration.streak,
-        byBucket: calibration.bucketStats,
+        totalPredictions: calibrationData.totalPredictions,
+        resolvedPredictions: calibrationData.resolvedPredictions,
+        pendingPredictions: calibrationData.pendingPredictions,
+        brierScore: calibrationData.overallBrierScore,
+        accuracy: calibrationData.accuracy,
+        streak: calibrationData.streak,
+        byBucket: calibrationData.bucketStats || calibrationData.byBucket,
       },
-      pendingPredictions: pendingPredictions.slice(0, 10).map(p => ({
+      pendingPredictions: pendingPredictions.slice(0, 10).map((p: any) => ({
         id: p.id,
         question: p.question,
-        probability: p.probability,
+        probability: p.predicted_probability || p.probability,
         direction: p.direction,
-        createdAt: p.createdAt,
+        createdAt: p.created_at || p.createdAt,
       })),
       updatedAt: new Date().toISOString(),
     });

@@ -176,6 +176,7 @@ async function executeAgentTask(
 
 /**
  * Scout agent execution - Fast market scanning
+ * Enhanced with Tavily for real-time news
  */
 async function executeScoutTask(
   agent: AgentConfig,
@@ -187,10 +188,12 @@ async function executeScoutTask(
   // Import scout tools
   const { arbitrage } = await import('../skills/arbitrage');
   const { getHotMarkets, searchMarkets } = await import('../skills/markets');
-  const { newsSearch } = await import('../skills/intel');
+  const { newsSearch, tavilyIntelSearch, financeIntel } = await import('../skills/intel');
+  const { isTavilyConfigured } = await import('./tavily');
 
   // Determine task type from keywords
   const taskLower = task.toLowerCase();
+  const useTavily = isTavilyConfigured();
 
   let response: SkillResponse;
 
@@ -209,11 +212,21 @@ async function executeScoutTask(
       mood: 'BULLISH' as Mood,
       data: markets,
     };
+  } else if (taskLower.includes('finance') || taskLower.includes('market') || taskLower.includes('stock')) {
+    // Finance news scanning (prefer Tavily)
+    const query = extractQuery(task) || 'market news';
+    response = await financeIntel(query);
+    response.text = `🔍 *SCOUT SCAN: FINANCE*\n${'─'.repeat(30)}\n\n${response.text}`;
   } else if (taskLower.includes('news')) {
-    // News scanning
+    // News scanning (use Tavily if available for better results)
     const query = extractQuery(task) || 'prediction market';
-    response = await newsSearch(query);
-    response.text = `🔍 *SCOUT SCAN: NEWS*\n${'─'.repeat(30)}\n\n${response.text}`;
+    if (useTavily) {
+      response = await tavilyIntelSearch(query);
+      response.text = `🔍 *SCOUT SCAN: AI NEWS*\n${'─'.repeat(30)}\n\n${response.text}`;
+    } else {
+      response = await newsSearch(query);
+      response.text = `🔍 *SCOUT SCAN: NEWS*\n${'─'.repeat(30)}\n\n${response.text}`;
+    }
   } else {
     // General market search
     const query = extractQuery(task) || task;
@@ -235,6 +248,7 @@ async function executeScoutTask(
 
 /**
  * Analyst agent execution - Deep research
+ * Enhanced with Tavily for comprehensive research
  */
 async function executeAnalystTask(
   agent: AgentConfig,
@@ -244,9 +258,10 @@ async function executeAnalystTask(
   const startTime = Date.now();
 
   // Import analyst tools
-  const { research } = await import('../skills/research');
+  const { research, deepResearch, verifyClaimSkill } = await import('../skills/research');
   const { calibration } = await import('../skills/calibration');
   const { compareOdds } = await import('../skills/markets');
+  const { isTavilyConfigured } = await import('./tavily');
 
   const taskLower = task.toLowerCase();
   let response: SkillResponse;
@@ -271,8 +286,18 @@ async function executeAnalystTask(
         mood: 'NEUTRAL' as Mood,
       };
     }
+  } else if (taskLower.includes('verify') || taskLower.includes('fact check') || taskLower.includes('factcheck')) {
+    // Claim verification using Tavily
+    const claim = extractQuery(task) || task;
+    response = await verifyClaimSkill(claim);
+    response.text = `📊 *ANALYST: VERIFICATION*\n${'─'.repeat(30)}\n\n${response.text}`;
+  } else if ((taskLower.includes('deep') || taskLower.includes('comprehensive')) && isTavilyConfigured()) {
+    // Deep research with Tavily
+    const query = extractQuery(task) || task;
+    response = await deepResearch(query);
+    response.text = `📊 *ANALYST DEEP RESEARCH*\n${'─'.repeat(30)}\n\n${response.text}`;
   } else {
-    // Deep research
+    // Standard research (enhanced with Tavily if available)
     const query = extractQuery(task) || task;
     response = await research(query);
     response.text = `📊 *ANALYST REPORT: ${query.toUpperCase()}*\n${'─'.repeat(30)}\n\n${response.text}`;

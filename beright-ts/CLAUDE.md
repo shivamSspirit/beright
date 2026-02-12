@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BeRight Protocol (TypeScript edition) - Prediction market intelligence terminal built for OpenClaw/Clawdbot platform. Provides arbitrage detection, superforecaster analysis, whale tracking, and news/social intelligence via Telegram.
+BeRight Protocol - Prediction market intelligence terminal built on OpenClaw technology. Provides arbitrage detection, superforecaster analysis, whale tracking, and news/social intelligence via Telegram.
 
 **Autonomous Building**: This codebase includes a Builder subagent that can autonomously build and improve itself 24/7.
 

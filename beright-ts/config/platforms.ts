@@ -38,6 +38,41 @@ export const PLATFORMS: Record<string, PlatformConfig> = {
   },
 };
 
+// ============================================
+// DFLOW API CONFIGURATION
+// Tokenized prediction markets on Solana
+// ============================================
+export const DFLOW = {
+  // Metadata API - Market data, events, search, trades (free, no auth for dev)
+  metadataApi: 'https://dev-prediction-markets-api.dflow.net/api/v1',
+  metadataApiProd: 'https://prediction-markets-api.dflow.net/api/v1',
+
+  // Trade API - Order execution (free for users, wallet signing)
+  tradeApi: 'https://dev-quote-api.dflow.net',
+  tradeApiProd: 'https://quote-api.dflow.net',
+
+  // WebSocket - Real-time price/trade/orderbook feeds
+  websocket: 'wss://dev-prediction-markets-api.dflow.net/ws',
+  websocketProd: 'wss://prediction-markets-api.dflow.net/ws',
+
+  // Fee tiers (based on 30-day volume)
+  feeTiers: {
+    frost: { minVolume: 0, takerScale: 0.09, makerScale: 0.0225 },
+    glacier: { minVolume: 50_000_000, takerScale: 0.0875, makerScale: 0.021875 },
+    steel: { minVolume: 150_000_000, takerScale: 0.085, makerScale: 0.02125 },
+    obsidian: { minVolume: 300_000_000, takerScale: 0.08, makerScale: 0.02 },
+  },
+
+  // Market status types
+  statuses: ['initialized', 'active', 'inactive', 'closed', 'determined', 'finalized'] as const,
+
+  // Rate limits (without API key)
+  rateLimits: {
+    devRequests: 100,    // Per minute (approximate)
+    devBurst: 10,        // Concurrent requests
+  },
+};
+
 // Solana Configuration
 export const SOLANA = {
   rpcEndpoint: process.env.HELIUS_RPC_MAINNET || `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`,

@@ -3,7 +3,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { animated, useSpring, useTransition } from '@react-spring/web';
 import SwipeCard from './SwipeCard';
-import { Prediction } from '@/lib/types';
+import AIFactCheckModal from './AIFactCheckModal';
+import TradingModal from './TradingModal';
+import { Prediction, DFlowData } from '@/lib/types';
 import confetti from 'canvas-confetti';
 
 interface CardStackProps {
@@ -15,6 +17,8 @@ interface PredictionResult {
   prediction: Prediction;
   direction: 'yes' | 'no';
   timestamp: Date;
+  factChecked?: boolean;
+  traded?: boolean;
 }
 
 // Result Overlay Component
@@ -200,6 +204,18 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<PredictionResult | null>(null);
 
+  // AI Fact-Check Modal state
+  const [showFactCheck, setShowFactCheck] = useState(false);
+  const [pendingSwipe, setPendingSwipe] = useState<{
+    prediction: Prediction;
+    direction: 'yes' | 'no';
+  } | null>(null);
+
+  // Trading Modal state
+  const [showTrading, setShowTrading] = useState(false);
+  const [tradingPrediction, setTradingPrediction] = useState<Prediction | null>(null);
+  const [tradingSide, setTradingSide] = useState<'YES' | 'NO'>('YES');
+
   // Reset when predictions change
   useEffect(() => {
     setCurrentIndex(0);
@@ -212,27 +228,111 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
 
   const isComplete = currentIndex >= predictions.length;
 
+  // Handle initial swipe - show fact-check modal instead of immediately processing
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', prediction: Prediction) => {
-      const result: PredictionResult = {
+      // Store the pending swipe and show fact-check modal
+      setPendingSwipe({
         prediction,
         direction: direction === 'right' ? 'yes' : 'no',
+      });
+      setShowFactCheck(true);
+
+      // Small confetti on initial swipe
+      const colors = direction === 'right' ? ['#00E676', '#00C853'] : ['#FF5252', '#D32F2F'];
+      confetti({
+        particleCount: 20,
+        spread: 40,
+        origin: { x: direction === 'right' ? 0.75 : 0.25, y: 0.5 },
+        colors,
+        gravity: 0.8,
+        scalar: 0.7,
+      });
+    },
+    []
+  );
+
+  // Handle fact-check confirmation - proceed to trading
+  const handleFactCheckConfirm = useCallback(
+    (finalChoice: 'yes' | 'no') => {
+      if (!pendingSwipe) return;
+
+      setShowFactCheck(false);
+
+      // Check if this market supports trading (has DFlow tokens)
+      const canTrade = pendingSwipe.prediction.dflow?.tokens?.isInitialized;
+
+      if (canTrade) {
+        // Show trading modal
+        setTradingPrediction(pendingSwipe.prediction);
+        setTradingSide(finalChoice === 'yes' ? 'YES' : 'NO');
+        setShowTrading(true);
+      } else {
+        // No trading available - just record the prediction
+        finalizePrediction(pendingSwipe.prediction, finalChoice, true, false);
+      }
+    },
+    [pendingSwipe]
+  );
+
+  // Handle fact-check skip - just record prediction without trading
+  const handleFactCheckSkip = useCallback(() => {
+    if (!pendingSwipe) return;
+
+    setShowFactCheck(false);
+    finalizePrediction(pendingSwipe.prediction, pendingSwipe.direction, false, false);
+  }, [pendingSwipe]);
+
+  // Handle fact-check close
+  const handleFactCheckClose = useCallback(() => {
+    setShowFactCheck(false);
+    setPendingSwipe(null);
+  }, []);
+
+  // Handle trading modal close
+  const handleTradingClose = useCallback(() => {
+    setShowTrading(false);
+
+    // Record the prediction after trading modal closes
+    if (pendingSwipe) {
+      const traded = true; // Could check actual trade status
+      finalizePrediction(
+        pendingSwipe.prediction,
+        tradingSide === 'YES' ? 'yes' : 'no',
+        true,
+        traded
+      );
+    }
+
+    setTradingPrediction(null);
+    setPendingSwipe(null);
+  }, [pendingSwipe, tradingSide]);
+
+  // Finalize and record the prediction
+  const finalizePrediction = useCallback(
+    (prediction: Prediction, direction: 'yes' | 'no', factChecked: boolean, traded: boolean) => {
+      const result: PredictionResult = {
+        prediction,
+        direction,
         timestamp: new Date(),
+        factChecked,
+        traded,
       };
 
       setResults((prev) => [...prev, result]);
       setLastResult(result);
       setShowResult(true);
+      setPendingSwipe(null);
 
-      // Trigger confetti on swipe
-      const colors = direction === 'right' ? ['#00E676', '#00C853'] : ['#FF5252', '#D32F2F'];
+      // Big celebration confetti
+      const colors = direction === 'yes' ? ['#00E676', '#00C853', '#4CAF50'] : ['#FF5252', '#D32F2F', '#E91E63'];
       confetti({
-        particleCount: 40,
-        spread: 60,
-        origin: { x: direction === 'right' ? 0.75 : 0.25, y: 0.5 },
+        particleCount: 60,
+        spread: 80,
+        origin: { x: 0.5, y: 0.6 },
         colors,
         gravity: 0.8,
-        scalar: 0.9,
+        scalar: 1,
       });
     },
     []
@@ -248,6 +348,10 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
     setResults([]);
     setLastResult(null);
     setShowResult(false);
+    setShowFactCheck(false);
+    setShowTrading(false);
+    setPendingSwipe(null);
+    setTradingPrediction(null);
   }, []);
 
   // Stagger animation for card stack
@@ -260,22 +364,48 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
   });
 
   return (
-    <div className="relative w-full" style={{ height: 'calc(70vh + 20px)', minHeight: '460px', maxHeight: '640px' }}>
+    <div className="card-stack-container">
       {/* Card Stack */}
       {!isComplete ? (
-        <div className="relative w-full h-full">
+        <div className="card-stack-inner">
           {visibleCards.map((prediction, index) => (
             <SwipeCard
               key={prediction.id}
               prediction={prediction}
               onSwipe={handleSwipe}
-              isTop={index === 0}
+              isTop={index === 0 && !showFactCheck && !showTrading}
               stackIndex={index}
             />
           ))}
         </div>
       ) : (
         <CompletionScreen results={results} onReset={handleReset} />
+      )}
+
+      {/* AI Fact-Check Modal */}
+      {pendingSwipe && (
+        <AIFactCheckModal
+          prediction={pendingSwipe.prediction}
+          userChoice={pendingSwipe.direction}
+          isOpen={showFactCheck}
+          onConfirm={handleFactCheckConfirm}
+          onSkip={handleFactCheckSkip}
+          onClose={handleFactCheckClose}
+        />
+      )}
+
+      {/* Trading Modal */}
+      {tradingPrediction && (
+        <TradingModal
+          prediction={{
+            id: tradingPrediction.id,
+            question: tradingPrediction.question,
+            marketOdds: tradingPrediction.marketOdds,
+            dflow: tradingPrediction.dflow,
+          }}
+          isOpen={showTrading}
+          onClose={handleTradingClose}
+        />
       )}
 
       {/* Result Overlay */}
@@ -286,6 +416,72 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
           stats={{ correct: 0, total: results.length }}
         />
       )}
+
+      <style jsx global>{`
+        /* ═══════════════════════════════════════════════════════════
+           CARD STACK CONTAINER - Compact & Centered
+
+           The card stack fills the main content area which is:
+           - max-width: 500px
+           - centered on desktop
+           - full-width on mobile
+           ═══════════════════════════════════════════════════════════ */
+
+        .card-stack-container {
+          position: relative;
+          width: 100%;
+          height: calc(100dvh - 56px - 72px - 56px - 32px);
+          min-height: 320px;
+          max-height: 520px;
+        }
+
+        .card-stack-inner {
+          position: relative;
+          width: 100%;
+          height: 100%;
+        }
+
+        /* iOS safe areas */
+        @supports (padding-top: env(safe-area-inset-top)) {
+          .card-stack-container {
+            height: calc(100dvh - 56px - 72px - 56px - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+          }
+        }
+
+        /* Very small phones (iPhone SE, etc) */
+        @media (max-height: 667px) {
+          .card-stack-container {
+            height: calc(100dvh - 48px - 64px - 48px - 24px);
+            min-height: 280px;
+            max-height: 420px;
+          }
+        }
+
+        /* Taller phones - more room but capped */
+        @media (min-height: 800px) {
+          .card-stack-container {
+            max-height: 560px;
+          }
+        }
+
+        /* Desktop - fixed reasonable height */
+        @media (min-width: 769px) {
+          .card-stack-container {
+            height: 480px;
+            min-height: 400px;
+            max-height: 520px;
+          }
+        }
+
+        /* Landscape - compact */
+        @media (max-height: 500px) and (orientation: landscape) {
+          .card-stack-container {
+            height: calc(100dvh - 44px - 56px - 24px);
+            min-height: 200px;
+            max-height: 320px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

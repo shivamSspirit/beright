@@ -8,12 +8,58 @@
 export type Category = 'crypto' | 'politics' | 'economics' | 'tech' | 'sports';
 
 // API platform names (lowercase, from backend)
-export type ApiPlatform = 'polymarket' | 'kalshi' | 'manifold' | 'limitless' | 'metaculus';
+export type ApiPlatform = 'polymarket' | 'kalshi' | 'manifold' | 'limitless' | 'metaculus' | 'dflow';
 
 // Display platform names (capitalized, for UI)
-export type Platform = 'Kalshi' | 'Polymarket' | 'Manifold' | 'Limitless' | 'Metaculus';
+export type Platform = 'Kalshi' | 'Polymarket' | 'Manifold' | 'Limitless' | 'Metaculus' | 'DFlow';
 
 // ============ PREDICTION TYPES ============
+
+/**
+ * DFlow Token Info (for on-chain trading)
+ */
+export interface DFlowTokens {
+  yesMint: string | null;
+  noMint: string | null;
+  marketLedger: string | null;
+  isInitialized: boolean;
+  redemptionStatus: 'open' | 'closed';
+}
+
+/**
+ * DFlow Market Info (nested within event)
+ */
+export interface DFlowMarketInfo {
+  ticker: string;
+  title: string;
+  status: string;
+  result?: string;
+  yesBid: number;
+  yesAsk: number;
+  noBid: number;
+  noAsk: number;
+  volume: number;
+  openInterest: number;
+  closeTime: number;
+  expirationTime: number;
+  tokens: DFlowTokens;
+}
+
+/**
+ * DFlow-specific data for prediction
+ */
+export interface DFlowData {
+  ticker: string;
+  seriesTicker: string;
+  volume24h: number;
+  yesBid: number;
+  yesAsk: number;
+  noBid: number;
+  noAsk: number;
+  spread: number;
+  tokens: DFlowTokens | null;
+  markets?: DFlowMarketInfo[];
+}
 
 export interface Prediction {
   id: string;
@@ -33,6 +79,8 @@ export interface Prediction {
   url?: string;
   liquidity?: number;
   status?: 'active' | 'closed' | 'resolved';
+  // DFlow-specific data (for tokenized markets)
+  dflow?: DFlowData;
 }
 
 export interface UserPrediction {

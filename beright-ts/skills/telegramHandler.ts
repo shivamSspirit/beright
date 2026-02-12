@@ -12,6 +12,12 @@ import { whaleWatch, addWhale } from './whale';
 import { newsSearch, socialSearch, intelReport } from './intel';
 import { morningBrief, quickBrief } from './brief';
 import { calibration, predict, getCalibrationStats, listPending } from './calibration';
+import { analyze as analyzeIntelligence, quickCheck } from './intelligence';
+import { feedback as feedbackSkill } from './feedback';
+import { recommendations as recommendationsSkill } from './recommendations';
+import { compare as compareSkill } from './comparison';
+import { learnings as learningsSkill } from './learnings';
+import { predict as smartPredictSkill, searchMarketsForPrediction } from './smartPredict';
 import { getQuote as getSwapQuote } from './swap';
 import { getSolPrice } from './prices';
 import { withFailover } from './rpc';
@@ -41,6 +47,9 @@ import { db } from '../lib/supabase/client';
 // Multi-agent spawner
 import { spawnAgent, AgentTask } from '../lib/agentSpawner';
 import { getAgentForCommand, AGENTS } from '../config/agents';
+
+// Market watcher for auto-resolution
+import { getMarketWatcher } from '../services/marketWatcher';
 
 /**
  * Route message to appropriate agent
@@ -82,6 +91,15 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/ksell')) return 'KALSHI';
   if (lower.startsWith('/connect')) return 'COMMANDER';
   if (lower.startsWith('/profile')) return 'COMMANDER';
+  if (lower.startsWith('/intelligence')) return 'COMMANDER';
+  if (lower.startsWith('/analyze')) return 'COMMANDER';
+  if (lower.startsWith('/feedback')) return 'COMMANDER';
+  if (lower.startsWith('/recommend')) return 'COMMANDER';
+  if (lower.startsWith('/compare')) return 'COMMANDER';
+  if (lower.startsWith('/learnings')) return 'COMMANDER';
+  if (lower.startsWith('/learn')) return 'COMMANDER';
+  if (lower.startsWith('/smartpredict')) return 'COMMANDER';
+  if (lower.startsWith('/findmarket')) return 'COMMANDER';
   if (lower.startsWith('/subscribe')) return 'COMMANDER';
   if (lower.startsWith('/unsubscribe')) return 'COMMANDER';
   if (lower.startsWith('/alerts')) return 'COMMANDER';
@@ -264,6 +282,18 @@ Your predictions are stored in Supabase and committed on-chain to Solana for ver
     } catch (chainError) {
       console.warn('On-chain commit failed:', chainError);
       chainResult = { success: false, error: String(chainError) };
+    }
+
+    // 4.5. Register with MarketWatcher for auto-resolution if market_id exists (acts as ticker)
+    if (prediction.market_id) {
+      try {
+        const watcher = getMarketWatcher();
+        await watcher.watchPrediction(prediction.id, prediction.market_id);
+        console.log(`[Prediction] Registered for auto-resolution: ${prediction.market_id}`);
+      } catch (watcherError) {
+        // Don't fail the prediction if watcher registration fails
+        console.warn('MarketWatcher registration failed:', watcherError);
+      }
     }
 
     // 5. Also store in file-based system for backward compatibility
@@ -988,7 +1018,7 @@ Then restart the bot.
 ${'─'.repeat(35)}
 
 💰 *Balance:* $${balance ? (balance.balance / 100).toFixed(2) : '0.00'}
-💵 *Available:* $${balance ? (balance.available_balance / 100).toFixed(2) : '0.00'}
+💵 *Available:* $${balance?.available_balance ? (balance.available_balance / 100).toFixed(2) : '0.00'}
 📊 *Positions:* ${positions.length}
 📈 *Position Value:* $${totalValue.toFixed(2)}
 
@@ -1029,8 +1059,8 @@ async function handleKalshiBalance(): Promise<SkillResponse> {
 ${'─'.repeat(35)}
 
 Total: $${(balance.balance / 100).toFixed(2)}
-Available: $${(balance.available_balance / 100).toFixed(2)}
-Payout: $${(balance.payout_balance / 100).toFixed(2)}
+Available: $${((balance.available_balance ?? 0) / 100).toFixed(2)}
+Payout: $${((balance.payout_balance ?? 0) / 100).toFixed(2)}
 `,
       mood: 'NEUTRAL',
       data: balance,
@@ -1282,6 +1312,228 @@ async function handleCalibration(): Promise<SkillResponse> {
 }
 
 /**
+ * Handle /intelligence command - Prediction analysis to "be right mostly"
+ */
+async function handleIntelligence(question: string): Promise<SkillResponse> {
+  try {
+    const result = await analyzeIntelligence(question);
+    return result;
+  } catch (error) {
+    console.error('Intelligence analysis error:', error);
+    return {
+      text: `❌ Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /feedback command - Personalized calibration feedback
+ */
+async function handleFeedback(telegramId?: string): Promise<SkillResponse> {
+  if (!telegramId) {
+    return {
+      text: '❌ Could not identify your account. Please try again.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    // Get user from Supabase
+    const user = await db.users.getByTelegramId(parseInt(telegramId));
+
+    if (!user) {
+      return {
+        text: `
+📊 *CALIBRATION FEEDBACK*
+
+You don't have an account yet! Make some predictions first:
+
+/predict <question> <probability> YES|NO
+
+Once you have 5+ resolved predictions, you'll get personalized feedback on:
+• Your calibration accuracy
+• Overconfidence/underconfidence patterns
+• Performance trends
+• Areas of strength and weakness
+• Actionable recommendations
+`,
+        mood: 'EDUCATIONAL',
+      };
+    }
+
+    const result = await feedbackSkill(user.id);
+    return result;
+  } catch (error) {
+    console.error('Feedback error:', error);
+    return {
+      text: `❌ Feedback failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /recommend command - Personalized market recommendations
+ */
+async function handleRecommendations(telegramId?: string): Promise<SkillResponse> {
+  if (!telegramId) {
+    return {
+      text: '❌ Could not identify your account. Please try again.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    const user = await db.users.getByTelegramId(parseInt(telegramId));
+    if (!user) {
+      return {
+        text: `
+🎯 *MARKET RECOMMENDATIONS*
+
+You need an account to get personalized recommendations.
+Make some predictions first with /predict!
+`,
+        mood: 'EDUCATIONAL',
+      };
+    }
+
+    return await recommendationsSkill(user.id);
+  } catch (error) {
+    console.error('Recommendations error:', error);
+    return {
+      text: `❌ Recommendations failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /compare command - Compare predictions vs market
+ */
+async function handleCompare(telegramId?: string): Promise<SkillResponse> {
+  if (!telegramId) {
+    return {
+      text: '❌ Could not identify your account. Please try again.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    const user = await db.users.getByTelegramId(parseInt(telegramId));
+    if (!user) {
+      return {
+        text: 'You need an account to compare predictions. Make some predictions first with /predict!',
+        mood: 'EDUCATIONAL',
+      };
+    }
+
+    return await compareSkill(user.id);
+  } catch (error) {
+    console.error('Compare error:', error);
+    return {
+      text: `❌ Comparison failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /learnings command - Learning insights from past predictions
+ */
+async function handleLearnings(telegramId?: string): Promise<SkillResponse> {
+  if (!telegramId) {
+    return {
+      text: '❌ Could not identify your account. Please try again.',
+      mood: 'ERROR',
+    };
+  }
+
+  try {
+    const user = await db.users.getByTelegramId(parseInt(telegramId));
+    if (!user) {
+      return {
+        text: 'You need an account to see learning insights. Make some predictions first with /predict!',
+        mood: 'EDUCATIONAL',
+      };
+    }
+
+    return await learningsSkill(user.id);
+  } catch (error) {
+    console.error('Learnings error:', error);
+    return {
+      text: `❌ Learnings failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /smartpredict command - Prediction with market linking
+ */
+async function handleSmartPredict(args: string, telegramId?: string): Promise<SkillResponse> {
+  if (!telegramId) {
+    return {
+      text: '❌ Could not identify your account. Please try again.',
+      mood: 'ERROR',
+    };
+  }
+
+  // Parse: <ticker> <probability> YES|NO [reasoning]
+  const match = args.match(/^(\S+)\s+(\d+(?:\.\d+)?)\s+(YES|NO)(?:\s+(.+))?$/i);
+
+  if (!match) {
+    return {
+      text: `
+❌ Invalid format.
+
+Usage: /smartpredict <ticker> <probability> YES|NO [reasoning]
+
+Example: /smartpredict KXBTC-26DEC31 65 YES Strong ETF flows
+
+Find market tickers with /findmarket <query>
+`,
+      mood: 'ERROR',
+    };
+  }
+
+  const [, ticker, probStr, direction, reasoning] = match;
+  const probability = parseFloat(probStr) / 100;
+  const directionUpper = direction.toUpperCase() as 'YES' | 'NO';
+
+  if (probability < 0 || probability > 1) {
+    return { text: 'Probability must be between 0 and 100', mood: 'ERROR' };
+  }
+
+  try {
+    const user = await db.users.getByTelegramId(parseInt(telegramId));
+    if (!user) {
+      return {
+        text: 'You need an account to make predictions. Try /predict first!',
+        mood: 'EDUCATIONAL',
+      };
+    }
+
+    return await smartPredictSkill(
+      `Prediction linked to ${ticker}`,
+      probability,
+      directionUpper,
+      user.id,
+      {
+        reasoning,
+        marketTicker: ticker.toUpperCase(),
+      }
+    );
+  } catch (error) {
+    console.error('SmartPredict error:', error);
+    return {
+      text: `❌ Smart predict failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
  * Handle /portfolio command - now uses positions.ts
  */
 async function handlePortfolio(telegramId: string): Promise<SkillResponse> {
@@ -1387,6 +1639,93 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
     }
     if (lower === '/calibration') return await handleCalibration();
     if (lower === '/accuracy') return await handleMe(telegramId); // Alias for /me
+
+    // Prediction intelligence - help users "be right mostly"
+    if (lower.startsWith('/intelligence') || lower.startsWith('/analyze')) {
+      const query = extractQuery(text, lower.startsWith('/intelligence') ? '/intelligence' : '/analyze');
+      if (!query) {
+        return {
+          text: `
+🔮 *PREDICTION INTELLIGENCE*
+
+Get AI-powered analysis to make better predictions.
+
+Usage: /intelligence <question>
+
+Examples:
+/intelligence Will Bitcoin reach $100K by end of 2026?
+/intelligence Will the Fed cut rates in March?
+/analyze Trump wins 2028 election
+
+This provides:
+• Base rate analysis from similar markets
+• Market consensus & divergence
+• Key factors to consider
+• Cognitive bias warnings
+• Recommended probability range
+`,
+          mood: 'EDUCATIONAL',
+        };
+      }
+      return await handleIntelligence(query);
+    }
+
+    // Calibration feedback - personalized improvement suggestions
+    if (lower === '/feedback') {
+      return await handleFeedback(telegramId);
+    }
+
+    // Recommendations - markets based on user strengths
+    if (lower === '/recommend' || lower === '/recommendations') {
+      return await handleRecommendations(telegramId);
+    }
+
+    // Compare predictions vs market consensus
+    if (lower === '/compare') {
+      return await handleCompare(telegramId);
+    }
+
+    // Learning insights from resolved predictions
+    if (lower === '/learnings' || lower === '/learn') {
+      return await handleLearnings(telegramId);
+    }
+
+    // Smart predict with market linking
+    if (lower.startsWith('/smartpredict')) {
+      const args = extractQuery(text, '/smartpredict');
+      if (!args) {
+        return {
+          text: `
+🎯 *SMART PREDICT*
+
+Make predictions that auto-link to real markets for automatic resolution.
+
+Usage: /smartpredict <ticker> <probability> YES|NO [reasoning]
+
+Examples:
+/smartpredict KXBTC-26DEC31 65 YES Strong ETF flows
+/smartpredict PRES-2028-DT 40 NO Historical incumbency
+
+Or search for markets first:
+/findmarket bitcoin 100k
+`,
+          mood: 'EDUCATIONAL',
+        };
+      }
+      return await handleSmartPredict(args, telegramId);
+    }
+
+    // Find markets to predict on
+    if (lower.startsWith('/findmarket')) {
+      const query = extractQuery(text, '/findmarket');
+      if (!query) {
+        return {
+          text: 'Usage: /findmarket <search term>\n\nExample: /findmarket bitcoin 100k',
+          mood: 'EDUCATIONAL',
+        };
+      }
+      return await searchMarketsForPrediction(query);
+    }
 
     // Portfolio & P&L commands
     if (lower === '/portfolio' || lower.startsWith('/portfolio ')) {

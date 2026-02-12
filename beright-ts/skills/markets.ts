@@ -5,10 +5,16 @@
  */
 
 import { Market, Platform, MarketEvent, OddsComparison, TokenizedMarket, isTokenizedMarket } from '../types/index';
-import { PLATFORMS } from '../config/platforms';
+import { PLATFORMS, DFLOW } from '../config/platforms';
 import { formatUsd, formatPct, calculateSimilarity } from './utils';
 import { fetchMetaculus } from './metaculus';
 import { expandWithSynonyms, SYNONYM_GROUPS } from '../config/synonyms';
+import {
+  getDFlowClient,
+  getDFlowHotMarkets as fetchDFlowHotEvents,
+  searchDFlowMarkets as searchDFlowEvents,
+  USDC_MINT,
+} from '../lib/dflow';
 
 // Per-platform timeout (ms) — fast platforms get tight deadlines
 const PLATFORM_TIMEOUT: Record<Platform, number> = {
@@ -20,7 +26,7 @@ const PLATFORM_TIMEOUT: Record<Platform, number> = {
 };
 
 // DFlow API for tokenized Kalshi markets (FREE, no key required)
-const DFLOW_API = 'https://dev-prediction-markets-api.dflow.net/api/v1';
+const DFLOW_API = DFLOW.metadataApi;
 
 // Simple response cache (30s TTL)
 const marketCache: Map<string, { data: Market[]; expiry: number }> = new Map();

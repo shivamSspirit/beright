@@ -62,6 +62,12 @@ export interface Database {
           brier_score: number | null;
           on_chain_tx: string | null;
           on_chain_confirmed: boolean | null;
+          // DFlow-specific fields
+          dflow_event_ticker: string | null;
+          dflow_market_ticker: string | null;
+          yes_mint: string | null;
+          no_mint: string | null;
+          on_chain_resolution_tx: string | null;
         };
         Insert: {
           id?: string;
@@ -83,6 +89,12 @@ export interface Database {
           brier_score?: number | null;
           on_chain_tx?: string | null;
           on_chain_confirmed?: boolean | null;
+          // DFlow-specific fields
+          dflow_event_ticker?: string | null;
+          dflow_market_ticker?: string | null;
+          yes_mint?: string | null;
+          no_mint?: string | null;
+          on_chain_resolution_tx?: string | null;
         };
         Update: {
           id?: string;
@@ -104,6 +116,12 @@ export interface Database {
           brier_score?: number | null;
           on_chain_tx?: string | null;
           on_chain_confirmed?: boolean | null;
+          // DFlow-specific fields
+          dflow_event_ticker?: string | null;
+          dflow_market_ticker?: string | null;
+          yes_mint?: string | null;
+          no_mint?: string | null;
+          on_chain_resolution_tx?: string | null;
         };
       };
 

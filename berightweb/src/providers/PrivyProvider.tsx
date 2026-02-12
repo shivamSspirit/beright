@@ -38,7 +38,9 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
 
         // Embedded wallets - create for users without wallets
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
+          solana: {
+            createOnLogin: 'users-without-wallets',
+          },
         },
 
         // External wallet connectors (Phantom, Solflare, etc.)
@@ -48,11 +50,6 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
           },
         },
 
-        // Solana clusters
-        solanaClusters: [
-          { name: 'mainnet-beta', rpcUrl: 'https://api.mainnet-beta.solana.com' },
-          { name: 'devnet', rpcUrl: 'https://api.devnet.solana.com' },
-        ],
       }}
     >
       {children}

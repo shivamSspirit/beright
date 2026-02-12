@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-OpenClaw is a prediction market intelligence terminal with an autonomous AI agent platform. The flagship product is **BeRight Protocol** - a superforecaster-style prediction market analyzer that runs 24/7 via autonomous agents.
+BeRight is a prediction market intelligence terminal with an autonomous AI agent platform, built on OpenClaw technology. It's a superforecaster-style prediction market analyzer that runs 24/7 via autonomous agents.
 
 This is a Turbo monorepo with two workspaces:
 - `beright-ts` - Backend API + AI agents (Next.js 14, port 3001)

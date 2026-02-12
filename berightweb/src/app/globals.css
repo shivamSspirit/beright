@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 @import "tailwindcss";
 
@@ -1580,4 +1580,711 @@ body::before {
 .empty-desc {
   font-size: 14px;
   color: var(--text-muted);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SWIPE CARD V3 - VIRAL TRADING TERMINAL (Nikita Bier Style)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.swipe-card-v3 {
+  touch-action: none;
+  user-select: none;
+  will-change: transform, opacity;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  font-family: 'Outfit', var(--font-display);
+}
+
+.swipe-card-v3.is-pressed {
+  cursor: grabbing;
+}
+
+.swipe-card-v3 .card-inner-v3 {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(168deg, #0F0F1A 0%, #0A0A14 50%, #0D0D18 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* Subtle scan line effect */
+.swipe-card-v3 .card-inner-v3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.01) 2px,
+    rgba(255, 255, 255, 0.01) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Stamps */
+.swipe-card-v3 .stamp {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 12px 24px;
+  border: 4px solid currentColor;
+  border-radius: 12px;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  font-family: 'Outfit', sans-serif;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.swipe-card-v3 .stamp-yes {
+  right: 16px;
+  color: #00E676;
+  text-shadow: 0 0 30px rgba(0, 230, 118, 0.8);
+  box-shadow: 0 0 40px rgba(0, 230, 118, 0.4);
+}
+
+.swipe-card-v3 .stamp-no {
+  left: 16px;
+  color: #FF5252;
+  text-shadow: 0 0 30px rgba(255, 82, 82, 0.8);
+  box-shadow: 0 0 40px rgba(255, 82, 82, 0.4);
+}
+
+/* === TOP BAR === */
+.swipe-card-v3 .card-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.swipe-card-v3 .topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swipe-card-v3 .cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* LIVE Indicator - Pulsing */
+.swipe-card-v3 .live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 6px;
+}
+
+.swipe-card-v3 .live-dot {
+  width: 6px;
+  height: 6px;
+  background: #FF3B30;
+  border-radius: 50%;
+  animation: livePulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 8px #FF3B30;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px #FF3B30;
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+    box-shadow: 0 0 16px #FF3B30;
+  }
+}
+
+.swipe-card-v3 .live-text {
+  font-size: 10px;
+  font-weight: 700;
+  color: #FF3B30;
+  letter-spacing: 1px;
+}
+
+.swipe-card-v3 .live-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* HOT Badge */
+.swipe-card-v3 .hot-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: linear-gradient(135deg, rgba(255, 107, 0, 0.2), rgba(255, 59, 48, 0.2));
+  border: 1px solid rgba(255, 107, 0, 0.3);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #FF6B00;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.swipe-card-v3 .hot-badge.on-fire {
+  background: linear-gradient(135deg, rgba(255, 59, 48, 0.25), rgba(255, 149, 0, 0.25));
+  border-color: rgba(255, 59, 48, 0.4);
+  color: #FF3B30;
+  animation: fireGlow 2s ease-in-out infinite;
+}
+
+@keyframes fireGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 59, 48, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(255, 59, 48, 0.5); }
+}
+
+/* === QUESTION HERO === */
+.swipe-card-v3 .question-hero {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.swipe-card-v3 .question-text-v3 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+/* === PRICE SECTION === */
+.swipe-card-v3 .price-section {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+.swipe-card-v3 .price-card {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.swipe-card-v3 .price-card.yes {
+  border-color: rgba(0, 230, 118, 0.2);
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.08), rgba(0, 0, 0, 0.4));
+}
+
+.swipe-card-v3 .price-card.no {
+  border-color: rgba(255, 82, 82, 0.2);
+  background: linear-gradient(135deg, rgba(255, 82, 82, 0.08), rgba(0, 0, 0, 0.4));
+}
+
+.swipe-card-v3 .price-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.swipe-card-v3 .price-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.swipe-card-v3 .price-card.yes .price-label {
+  color: #00E676;
+}
+
+.swipe-card-v3 .price-card.no .price-label {
+  color: #FF5252;
+}
+
+.swipe-card-v3 .mini-sparkline {
+  width: 40px;
+  height: 16px;
+}
+
+.swipe-card-v3 .price-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.swipe-card-v3 .price-value {
+  font-size: 28px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+
+.swipe-card-v3 .price-card.yes .price-value {
+  color: #00E676;
+  text-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+}
+
+.swipe-card-v3 .price-card.no .price-value {
+  color: #FF5252;
+  text-shadow: 0 0 20px rgba(255, 82, 82, 0.4);
+}
+
+.swipe-card-v3 .price-pct {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Price Movement Arrow */
+.swipe-card-v3 .price-movement {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.swipe-card-v3 .price-movement.up {
+  color: #00E676;
+}
+
+.swipe-card-v3 .price-movement.down {
+  color: #FF5252;
+}
+
+.swipe-card-v3 .price-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 1px;
+}
+
+/* === STATS BAR === */
+.swipe-card-v3 .stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  position: relative;
+  z-index: 2;
+}
+
+.swipe-card-v3 .stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.swipe-card-v3 .stat-label {
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.swipe-card-v3 .stat-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.swipe-card-v3 .stat-change {
+  font-size: 9px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.swipe-card-v3 .stat-change.up {
+  color: #00E676;
+}
+
+.swipe-card-v3 .stat-change.down {
+  color: #FF5252;
+}
+
+.swipe-card-v3 .stat-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* === META ROW === */
+.swipe-card-v3 .meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.swipe-card-v3 .meta-platform {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Countdown Timer */
+.swipe-card-v3 .countdown-timer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.swipe-card-v3 .countdown-timer.urgent {
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #FF3B30;
+  animation: urgentPulse 2s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.swipe-card-v3 .timer-icon {
+  font-size: 12px;
+}
+
+/* === ACTION ROW V3 === */
+.swipe-card-v3 .action-row-v3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.swipe-card-v3 .trade-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.swipe-card-v3 .trade-btn.yes {
+  background: rgba(0, 230, 118, 0.1);
+  border-color: rgba(0, 230, 118, 0.4);
+}
+
+.swipe-card-v3 .trade-btn.yes:hover {
+  background: rgba(0, 230, 118, 0.2);
+  border-color: #00E676;
+  transform: scale(1.03);
+  box-shadow: 0 0 30px rgba(0, 230, 118, 0.3);
+}
+
+.swipe-card-v3 .trade-btn.yes:active {
+  background: #00E676;
+  transform: scale(0.97);
+}
+
+.swipe-card-v3 .trade-btn.yes:active .trade-side,
+.swipe-card-v3 .trade-btn.yes:active .trade-price {
+  color: #000;
+}
+
+.swipe-card-v3 .trade-btn.no {
+  background: rgba(255, 82, 82, 0.1);
+  border-color: rgba(255, 82, 82, 0.4);
+}
+
+.swipe-card-v3 .trade-btn.no:hover {
+  background: rgba(255, 82, 82, 0.2);
+  border-color: #FF5252;
+  transform: scale(1.03);
+  box-shadow: 0 0 30px rgba(255, 82, 82, 0.3);
+}
+
+.swipe-card-v3 .trade-btn.no:active {
+  background: #FF5252;
+  transform: scale(0.97);
+}
+
+.swipe-card-v3 .trade-btn.no:active .trade-side,
+.swipe-card-v3 .trade-btn.no:active .trade-price {
+  color: #fff;
+}
+
+.swipe-card-v3 .trade-side {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.swipe-card-v3 .trade-btn.yes .trade-side {
+  color: #00E676;
+}
+
+.swipe-card-v3 .trade-btn.no .trade-side {
+  color: #FF5252;
+}
+
+.swipe-card-v3 .trade-price {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.swipe-card-v3 .trade-btn.yes .trade-price {
+  color: #00E676;
+}
+
+.swipe-card-v3 .trade-btn.no .trade-price {
+  color: #FF5252;
+}
+
+/* Swipe Hint */
+.swipe-card-v3 .swipe-hint-v3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.swipe-card-v3 .hint-arrow {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.15);
+  animation: hintPulse 2s ease-in-out infinite;
+}
+
+.swipe-card-v3 .hint-arrow:first-child {
+  animation-name: hintLeft;
+}
+
+.swipe-card-v3 .hint-arrow:last-child {
+  animation-name: hintRight;
+  animation-delay: 0.5s;
+}
+
+@keyframes hintLeft {
+  0%, 100% { opacity: 0.15; transform: translateX(0); }
+  50% { opacity: 0.4; transform: translateX(-2px); }
+}
+
+@keyframes hintRight {
+  0%, 100% { opacity: 0.15; transform: translateX(0); }
+  50% { opacity: 0.4; transform: translateX(2px); }
+}
+
+.swipe-card-v3 .hint-text {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* === RESPONSIVE V3 === */
+
+/* Small Mobile */
+@media (max-width: 359px) {
+  .swipe-card-v3 .card-inner-v3 {
+    padding: 12px;
+    gap: 8px;
+    border-radius: 18px;
+  }
+
+  .swipe-card-v3 .question-text-v3 {
+    font-size: 16px;
+  }
+
+  .swipe-card-v3 .price-value {
+    font-size: 22px;
+  }
+
+  .swipe-card-v3 .trade-btn {
+    padding: 10px 12px;
+  }
+
+  .swipe-card-v3 .trade-price {
+    font-size: 14px;
+  }
+
+  .swipe-card-v3 .stats-bar {
+    padding: 8px;
+  }
+
+  .swipe-card-v3 .stat-value {
+    font-size: 10px;
+  }
+
+  .swipe-card-v3 .live-indicator {
+    padding: 3px 6px;
+  }
+
+  .swipe-card-v3 .live-count {
+    display: none;
+  }
+}
+
+/* Mobile */
+@media (min-width: 360px) and (max-width: 480px) {
+  .swipe-card-v3 .card-inner-v3 {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .swipe-card-v3 .question-text-v3 {
+    font-size: 18px;
+  }
+
+  .swipe-card-v3 .price-value {
+    font-size: 24px;
+  }
+}
+
+/* Tablet+ */
+@media (min-width: 481px) {
+  .swipe-card-v3 .card-inner-v3 {
+    padding: 20px;
+    gap: 14px;
+    border-radius: 28px;
+  }
+
+  .swipe-card-v3 .question-text-v3 {
+    font-size: 24px;
+  }
+
+  .swipe-card-v3 .price-value {
+    font-size: 32px;
+  }
+
+  .swipe-card-v3 .trade-btn {
+    padding: 16px 20px;
+  }
+
+  .swipe-card-v3 .trade-price {
+    font-size: 20px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 769px) {
+  .swipe-card-v3 .card-inner-v3 {
+    padding: 24px;
+    border-radius: 32px;
+  }
+
+  .swipe-card-v3 .question-text-v3 {
+    font-size: 28px;
+  }
+
+  .swipe-card-v3 .price-card {
+    padding: 16px;
+  }
+
+  .swipe-card-v3 .price-value {
+    font-size: 36px;
+  }
+
+  .swipe-card-v3 .stamp {
+    font-size: 40px;
+    padding: 16px 32px;
+  }
+}
+
+/* Landscape */
+@media (max-height: 500px) and (orientation: landscape) {
+  .swipe-card-v3 .card-inner-v3 {
+    padding: 10px 16px;
+    gap: 6px;
+  }
+
+  .swipe-card-v3 .question-hero {
+    padding: 4px 0;
+  }
+
+  .swipe-card-v3 .question-text-v3 {
+    font-size: 14px;
+  }
+
+  .swipe-card-v3 .price-card {
+    padding: 8px;
+  }
+
+  .swipe-card-v3 .price-value {
+    font-size: 18px;
+  }
+
+  .swipe-card-v3 .stats-bar {
+    padding: 6px;
+  }
+
+  .swipe-card-v3 .trade-btn {
+    padding: 8px 12px;
+  }
+}
+
+/* Touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .swipe-card-v3 .trade-btn:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .swipe-card-v3 .trade-btn:active {
+    transform: scale(0.95);
+  }
 }

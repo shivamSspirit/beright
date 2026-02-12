@@ -11,7 +11,13 @@ import {
   resolvePrediction,
   getOrCreateUserByWallet,
   getOrCreateUserByTelegram,
+  updatePredictionOnChain,
+  updatePredictionResolutionTx,
 } from '../../../lib/db';
+import {
+  commitPrediction as commitOnChain,
+  resolvePrediction as resolveOnChain,
+} from '../../../lib/onchain/commit';
 
 // For now, we'll also support file-based predictions for local dev
 import { addPrediction, listPending, getCalibrationStats } from '../../../skills/calibration';
@@ -131,9 +137,38 @@ export async function POST(request: NextRequest) {
         resolves_at: null,
       });
 
+      // Commit prediction on-chain (non-blocking - prediction saved even if on-chain fails)
+      let onChainResult = null;
+      try {
+        const userPubkey = walletAddress || `telegram:${telegramId}`;
+        const chainMarketId = marketId || question.substring(0, 50);
+
+        onChainResult = await commitOnChain(
+          userPubkey,
+          chainMarketId,
+          probability,
+          direction as 'YES' | 'NO'
+        );
+
+        // If successful, update prediction with tx signature
+        if (onChainResult.success && onChainResult.signature) {
+          await updatePredictionOnChain(prediction.id, onChainResult.signature, true);
+          (prediction as any).on_chain_tx = onChainResult.signature;
+          (prediction as any).on_chain_confirmed = true;
+        }
+      } catch (onChainError) {
+        console.error('On-chain commit failed (prediction still saved):', onChainError);
+      }
+
       return NextResponse.json({
         success: true,
         prediction,
+        onChain: onChainResult ? {
+          committed: onChainResult.success,
+          signature: onChainResult.signature,
+          explorerUrl: onChainResult.explorerUrl,
+          error: onChainResult.error,
+        } : null,
       }, { status: 201 });
     } else {
       // Use local file-based system
@@ -176,9 +211,38 @@ export async function PATCH(request: NextRequest) {
 
     if (hasDb) {
       const prediction = await resolvePrediction(predictionId, outcome);
+
+      // If prediction was committed on-chain, also resolve on-chain
+      let onChainResult = null;
+      const predictionAny = prediction as any;
+      if (predictionAny.on_chain_tx) {
+        try {
+          onChainResult = await resolveOnChain(
+            predictionAny.on_chain_tx,
+            prediction.predicted_probability,
+            prediction.direction as 'YES' | 'NO',
+            outcome
+          );
+
+          // If successful, update prediction with resolution tx signature
+          if (onChainResult.success && onChainResult.signature) {
+            await updatePredictionResolutionTx(prediction.id, onChainResult.signature);
+            predictionAny.on_chain_resolution_tx = onChainResult.signature;
+          }
+        } catch (onChainError) {
+          console.error('On-chain resolution failed (DB updated):', onChainError);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         prediction,
+        onChain: onChainResult ? {
+          resolved: onChainResult.success,
+          signature: onChainResult.signature,
+          explorerUrl: onChainResult.explorerUrl,
+          error: onChainResult.error,
+        } : null,
       });
     } else {
       // Use local file-based system

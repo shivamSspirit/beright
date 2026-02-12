@@ -12,72 +12,17 @@
 import { NextRequest } from 'next/server';
 import { getSkillLogger } from '../../../lib/logger';
 import { secrets } from '../../../lib/secrets';
+import {
+  StreamEvent,
+  StreamEventType,
+  subscribe,
+  broadcastEvent,
+} from '../../../lib/stream';
 
 const log = getSkillLogger('stream');
 
-// Event types
-export type StreamEventType = 'arbitrage' | 'whale' | 'price' | 'heartbeat' | 'error' | 'connected';
-
-export interface StreamEvent {
-  type: StreamEventType;
-  data: unknown;
-  timestamp: string;
-}
-
-// Global event emitter for broadcasting
-type EventCallback = (event: StreamEvent) => void;
-const subscribers = new Set<EventCallback>();
-
-// Broadcast an event to all connected clients
-export function broadcastEvent(type: StreamEventType, data: unknown): void {
-  const event: StreamEvent = {
-    type,
-    data,
-    timestamp: new Date().toISOString(),
-  };
-
-  log.debug('Broadcasting event', { type, subscriberCount: subscribers.size });
-
-  subscribers.forEach((callback) => {
-    try {
-      callback(event);
-    } catch (error) {
-      log.error('Error broadcasting to subscriber', error);
-    }
-  });
-}
-
-// Helper to broadcast arbitrage
-export function broadcastArbitrage(opportunity: {
-  topic: string;
-  platformA: string;
-  platformB: string;
-  spread: number;
-  profitPercent: number;
-}): void {
-  broadcastEvent('arbitrage', opportunity);
-}
-
-// Helper to broadcast whale activity
-export function broadcastWhale(activity: {
-  wallet: string;
-  action: string;
-  amount: number;
-  market?: string;
-}): void {
-  broadcastEvent('whale', activity);
-}
-
-// Helper to broadcast price alert
-export function broadcastPrice(alert: {
-  market: string;
-  platform: string;
-  oldPrice: number;
-  newPrice: number;
-  changePercent: number;
-}): void {
-  broadcastEvent('price', alert);
-}
+// Re-export types for convenience
+export type { StreamEventType, StreamEvent };
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -85,61 +30,56 @@ export async function GET(request: NextRequest) {
   // Optional: filter by event type
   const filterTypes = searchParams.get('types')?.split(',') as StreamEventType[] | undefined;
 
+  log.info('New SSE connection', { filterTypes });
+
   // Create a readable stream
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
 
-      // Send initial connection event
-      const connectEvent = `event: connected\ndata: ${JSON.stringify({
-        message: 'Connected to BeRight stream',
-        timestamp: new Date().toISOString(),
-        filters: filterTypes || 'all',
-      })}\n\n`;
-      controller.enqueue(encoder.encode(connectEvent));
-
-      log.info('Client connected to stream', {
-        filters: filterTypes,
-      });
-
-      // Subscribe to events
-      const callback: EventCallback = (event) => {
-        // Apply filter if specified
+      // Helper to send SSE-formatted data
+      const sendEvent = (event: StreamEvent) => {
+        // Filter if needed
         if (filterTypes && !filterTypes.includes(event.type)) {
           return;
         }
 
+        const data = `data: ${JSON.stringify(event)}\n\n`;
         try {
-          const sseData = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-          controller.enqueue(encoder.encode(sseData));
+          controller.enqueue(encoder.encode(data));
         } catch (error) {
-          log.error('Error sending SSE event', error);
+          // Client disconnected
+          log.debug('Client disconnected during write');
         }
       };
 
-      subscribers.add(callback);
+      // Send initial connected event
+      sendEvent({
+        type: 'connected',
+        data: {
+          message: 'Connected to BeRight stream',
+          filterTypes: filterTypes || 'all',
+        },
+        timestamp: new Date().toISOString(),
+      });
 
-      // Send heartbeat every 30 seconds to keep connection alive
+      // Subscribe to events
+      const unsubscribe = subscribe(sendEvent);
+
+      // Heartbeat to keep connection alive
       const heartbeatInterval = setInterval(() => {
-        try {
-          const heartbeat = `event: heartbeat\ndata: ${JSON.stringify({
-            type: 'heartbeat',
-            timestamp: new Date().toISOString(),
-            subscribers: subscribers.size,
-          })}\n\n`;
-          controller.enqueue(encoder.encode(heartbeat));
-        } catch {
-          // Client disconnected
-          clearInterval(heartbeatInterval);
-          subscribers.delete(callback);
-        }
+        sendEvent({
+          type: 'heartbeat',
+          data: { status: 'ok' },
+          timestamp: new Date().toISOString(),
+        });
       }, 30000);
 
-      // Cleanup on close
+      // Cleanup on client disconnect
       request.signal.addEventListener('abort', () => {
-        log.info('Client disconnected from stream');
+        log.info('Client disconnected');
         clearInterval(heartbeatInterval);
-        subscribers.delete(callback);
+        unsubscribe();
       });
     },
   });
@@ -152,9 +92,4 @@ export async function GET(request: NextRequest) {
       'X-Accel-Buffering': 'no', // Disable Nginx buffering
     },
   });
-}
-
-// Export subscriber count for monitoring
-export function getSubscriberCount(): number {
-  return subscribers.size;
 }

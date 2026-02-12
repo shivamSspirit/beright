@@ -353,19 +353,8 @@ async function executeTypeErrorFix(task: BuildTask): Promise<{ success: boolean;
     return { success: false, filesChanged: [] };
   }
 
-  try {
-    const result = await builderAI.fixTypeScriptError(task.description);
-    if (result.mood === 'BULLISH' && result.data) {
-      const data = result.data as { files?: string[] };
-      return {
-        success: true,
-        filesChanged: data.files || [],
-      };
-    }
-  } catch (error) {
-    console.log(`[Builder] Claude API error: ${error}`);
-  }
-
+  // TODO: Implement fixTypeScriptError via Claude Code CLI or API
+  console.log(`[Builder] TypeScript error fix not yet implemented: ${task.description}`);
   return { success: false, filesChanged: [] };
 }
 
@@ -378,24 +367,8 @@ async function executeFeatureTask(task: BuildTask): Promise<{ success: boolean; 
     return { success: false, filesChanged: [] };
   }
 
-  try {
-    const result = await builderAI.autonomousImplement(task.description, {
-      priority: task.priority,
-      autoCommit: false, // We handle commit in the main loop
-      validateFirst: true,
-    });
-
-    if (result.mood === 'BULLISH' && result.data) {
-      const data = result.data as { files?: string[] };
-      return {
-        success: true,
-        filesChanged: data.files || [],
-      };
-    }
-  } catch (error) {
-    console.log(`[Builder] Claude API error: ${error}`);
-  }
-
+  // TODO: Implement autonomousImplement via Claude Code CLI or API
+  console.log(`[Builder] Feature implementation not yet implemented: ${task.description}`);
   return { success: false, filesChanged: [] };
 }
 
