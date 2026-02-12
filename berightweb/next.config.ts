@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+// API URL: Use environment variable in production, localhost in development
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 const nextConfig: NextConfig = {
   // Fix Turbopack monorepo root detection
   turbopack: {
@@ -12,7 +15,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        destination: `${API_URL}/api/:path*`,
       },
     ];
   },
