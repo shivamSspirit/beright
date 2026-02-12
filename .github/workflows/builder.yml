@@ -20,7 +20,7 @@ on:
         default: 'true'
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
 
 jobs:
   # ============================================
@@ -38,16 +38,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: |
-            beright-ts/package-lock.json
-            berightweb/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install Backend Dependencies
-        working-directory: beright-ts
-        run: npm ci
-
-      - name: Install Frontend Dependencies
-        working-directory: berightweb
+      - name: Install All Dependencies (Monorepo)
         run: npm ci
 
       - name: TypeCheck Backend
@@ -96,10 +89,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: beright-ts/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install Dependencies
-        working-directory: beright-ts
+      - name: Install Dependencies (Monorepo)
         run: npm ci
 
       - name: Configure Git
