@@ -6,9 +6,8 @@
  * No duplicate API routes - single source of truth
  */
 
-// API base URL - use local proxy (rewrites in next.config.ts handle forwarding to backend)
-// This avoids CORS issues in the browser
-const API_BASE = '';
+// API base URL - use environment variable in production, empty string (proxy) in development
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // ============ TYPES (synced with beright-ts/types/) ============
 

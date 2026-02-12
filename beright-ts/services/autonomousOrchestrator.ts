@@ -842,4 +842,5 @@ if (require.main === module) {
   }
 }
 
-export { ORCHESTRATOR_CONFIG, OrchestratorState, OperationalReport, SubsystemStatus };
+export { ORCHESTRATOR_CONFIG };
+export type { OrchestratorState, OperationalReport, SubsystemStatus };

@@ -1,0 +1,28 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'beright-ts/**'
+      - 'package.json'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/beright
+            git pull origin main
+            npm install
+            cd beright-ts && npm install && npm run build && cd ..
+            cp /opt/beright/.env /opt/beright/beright-ts/.env
+            pm2 restart all
+            pm2 save
