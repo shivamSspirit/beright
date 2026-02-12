@@ -44,38 +44,3 @@ beright-ts/memory/*.json
 *.pem
 *.key
 credentials.json
-
-# Documentation (ignore scratch/notes, keep READMEs)
-*.md
-!README.md
-!**/README.md
-!CLAUDE.md
-!**/CLAUDE.md
-!SKILL.md
-!**/SKILL.md
-!HOOK.md
-!**/HOOK.md
-!HEARTBEAT.md
-!**/HEARTBEAT.md
-!MEMORY.md
-!**/MEMORY.md
-
-# Lock files (telegram, etc)
-*.lock
-!package-lock.json
-!pnpm-lock.yaml
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-
-# OpenClaw workspace
-.openclaw/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Python
-__pycache__/
-*.pyc
