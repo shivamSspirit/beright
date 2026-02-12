@@ -212,8 +212,49 @@ export default function MoodPills({ selected, onSelect, counts }: MoodPillsProps
           background: linear-gradient(-90deg, rgba(10, 10, 15, 1) 0%, transparent 100%);
         }
 
-        /* Responsive */
+        /* ─── RESPONSIVE ─── */
+
+        /* Very small phones (< 360px) */
         @media (max-width: 359px) {
+          .mood-pills-container {
+            margin-bottom: 8px;
+          }
+
+          .mood-pills-scroll {
+            gap: 6px;
+            padding: 2px 2px 6px;
+          }
+
+          .mood-pill {
+            padding: 5px 8px;
+            gap: 3px;
+            border-radius: 16px;
+          }
+
+          .mood-emoji {
+            font-size: 11px;
+          }
+
+          .mood-label {
+            font-size: 10px;
+          }
+
+          .mood-count {
+            padding: 1px 4px;
+            font-size: 9px;
+          }
+
+          .mood-fade {
+            width: 16px;
+          }
+        }
+
+        /* Small phones (360-400px) */
+        @media (min-width: 360px) and (max-width: 399px) {
+          .mood-pills-scroll {
+            gap: 6px;
+          }
+
           .mood-pill {
             padding: 6px 10px;
             gap: 4px;
@@ -225,6 +266,163 @@ export default function MoodPills({ selected, onSelect, counts }: MoodPillsProps
 
           .mood-label {
             font-size: 11px;
+          }
+        }
+
+        /* Tablets (640px+) */
+        @media (min-width: 640px) {
+          .mood-pills-container {
+            margin-bottom: 14px;
+          }
+
+          .mood-pills-scroll {
+            gap: 10px;
+            padding: 4px 4px 10px;
+            justify-content: center;
+          }
+
+          .mood-pill {
+            padding: 10px 16px;
+            gap: 6px;
+            border-radius: 24px;
+            font-size: 14px;
+          }
+
+          .mood-emoji {
+            font-size: 16px;
+          }
+
+          .mood-label {
+            font-size: 13px;
+          }
+
+          .mood-count {
+            padding: 2px 8px;
+            font-size: 11px;
+          }
+
+          .mood-fade {
+            width: 32px;
+          }
+        }
+
+        /* Tablets portrait (768px+) */
+        @media (min-width: 768px) {
+          .mood-pills-scroll {
+            gap: 12px;
+          }
+
+          .mood-pill {
+            padding: 12px 18px;
+          }
+
+          .mood-label {
+            font-size: 14px;
+          }
+
+          .mood-count {
+            font-size: 12px;
+          }
+        }
+
+        /* Desktop (768px+) - Compact minimal pills */
+        @media (min-width: 768px) {
+          .mood-pills-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 12px;
+          }
+
+          .mood-pills-scroll {
+            display: inline-flex;
+            gap: 5px;
+            padding: 0;
+            background: transparent;
+            overflow-x: visible;
+            scrollbar-width: none;
+          }
+
+          .mood-fade {
+            display: none;
+          }
+
+          .mood-pill {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            color: rgba(255, 255, 255, 0.5);
+            transition: all 0.15s ease;
+            gap: 4px;
+          }
+
+          .mood-pill:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.8);
+          }
+
+          .mood-pill.selected {
+            background: #00E676;
+            border-color: #00E676;
+            color: #000;
+          }
+
+          .mood-pill.selected:hover {
+            background: #00C853;
+            border-color: #00C853;
+          }
+
+          .mood-emoji {
+            font-size: 11px;
+          }
+
+          .mood-label {
+            font-size: 11px;
+            font-weight: 600;
+          }
+
+          .mood-count {
+            padding: 1px 5px;
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+          }
+
+          .mood-pill.selected .mood-count {
+            background: rgba(0, 0, 0, 0.15);
+            color: #000;
+          }
+        }
+
+        /* Landscape - compact */
+        @media (max-height: 500px) and (orientation: landscape) {
+          .mood-pills-container {
+            margin-bottom: 4px;
+          }
+
+          .mood-pills-scroll {
+            gap: 4px;
+            padding: 2px 2px 4px;
+          }
+
+          .mood-pill {
+            padding: 4px 8px;
+            gap: 3px;
+          }
+
+          .mood-emoji {
+            font-size: 10px;
+          }
+
+          .mood-label {
+            font-size: 9px;
+          }
+
+          .mood-count {
+            padding: 1px 4px;
+            font-size: 8px;
           }
         }
       `}</style>

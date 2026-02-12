@@ -1,14 +1,29 @@
 /**
  * Telegram Bot Runner for BeRight Protocol
  * Connects to Telegram API and routes messages to telegramHandler
+ *
+ * IMPORTANT: Only ONE instance of this bot should run at a time!
+ * The Telegram API only allows one getUpdates connection per bot.
+ * This uses a lock file to prevent multiple instances.
+ *
+ * Other agents (heartbeat, etc.) should use sendTelegramMessage()
+ * from notificationDelivery.ts - they DON'T poll, they just send.
  */
 
 import 'dotenv/config';
 import * as https from 'https';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { telegramHandler } from './telegramHandler';
+// Use secure handler instead of raw telegramHandler
+import { secureTelegramHandler, getTierAppropriateHelp } from '../lib/secureHandler';
 import { TelegramMessage } from '../types/response';
+import {
+  acquireLock,
+  releaseLock,
+  startLockHeartbeat,
+  getLockStatus,
+  forceReleaseLock,
+} from '../lib/telegramLock';
 
 const execAsync = promisify(exec);
 
@@ -42,6 +57,7 @@ async function curlRequest(url: string, options: { method?: string; body?: strin
 // Polling state
 let lastUpdateId = 0;
 let isRunning = true;
+let lockHeartbeatTimer: NodeJS.Timeout | null = null;
 
 /**
  * Send a message to a Telegram chat
@@ -137,14 +153,15 @@ async function processUpdate(update: any): Promise<void> {
   };
 
   try {
-    // Process with handler
-    const response = await telegramHandler(telegramMessage);
+    // Process with SECURE handler (includes rate limiting, input sanitization, etc.)
+    const response = await secureTelegramHandler(telegramMessage);
 
     // Send response
     await sendMessage(chatId, response.text);
 
     console.log(`  -> ${response.mood || 'NEUTRAL'} response sent`);
   } catch (error) {
+    // Don't leak error details in production
     console.error('Handler error:', error);
     await sendMessage(chatId, 'Sorry, something went wrong. Please try again.');
   }
@@ -177,12 +194,49 @@ async function pollLoop(): Promise<void> {
 function shutdown(): void {
   console.log('\nShutting down bot...');
   isRunning = false;
+
+  // Clear lock heartbeat timer
+  if (lockHeartbeatTimer) {
+    clearInterval(lockHeartbeatTimer);
+    lockHeartbeatTimer = null;
+  }
+
+  // Release the lock so another instance can start
+  releaseLock();
+
   process.exit(0);
 }
 
 // Handle shutdown signals
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+// Handle --force-unlock CLI argument to clear stale locks
+if (process.argv.includes('--force-unlock')) {
+  console.log('Force unlocking Telegram bot...');
+  forceReleaseLock();
+  console.log('Lock cleared. You can now start the bot.');
+  process.exit(0);
+}
+
+// Handle --status CLI argument to check lock status
+if (process.argv.includes('--status')) {
+  const status = getLockStatus();
+  console.log('\nTelegram Bot Lock Status:');
+  console.log('─'.repeat(40));
+  if (!status.locked) {
+    console.log('Status: NOT LOCKED (no bot running)');
+  } else {
+    console.log(`Status: LOCKED`);
+    console.log(`Owner PID: ${status.owner?.pid}`);
+    console.log(`Started: ${status.owner?.startedAt}`);
+    console.log(`Hostname: ${status.owner?.hostname}`);
+    console.log(`Is ours: ${status.isOurs}`);
+    console.log(`Is stale: ${status.isStale}`);
+  }
+  console.log('─'.repeat(40));
+  process.exit(0);
+}
 
 // Start the bot
 if (!TELEGRAM_BOT_TOKEN) {
@@ -194,8 +248,35 @@ if (!TELEGRAM_BOT_TOKEN) {
   process.exit(1);
 }
 
+// CRITICAL: Acquire lock before starting
+// This prevents multiple bot instances from polling simultaneously
+const lockResult = acquireLock();
+if (!lockResult.acquired) {
+  console.error('\n╔════════════════════════════════════════════════════════════╗');
+  console.error('║  TELEGRAM BOT ALREADY RUNNING                              ║');
+  console.error('╚════════════════════════════════════════════════════════════╝');
+  console.error(`\nError: ${lockResult.error}`);
+  console.error('\nOnly ONE Telegram bot instance can poll at a time.');
+  console.error('The Telegram API does not allow multiple getUpdates connections.');
+  console.error('\nOptions:');
+  console.error('  1. Stop the existing bot first');
+  console.error('  2. Use: npx ts-node skills/telegram.ts --status to check');
+  console.error('  3. Use: npx ts-node skills/telegram.ts --force-unlock if stuck');
+  process.exit(1);
+}
+
+// Start lock heartbeat to keep the lock fresh
+lockHeartbeatTimer = startLockHeartbeat();
+
 console.log('============================================');
 console.log('BeRight Protocol - Telegram Bot');
+console.log('============================================');
+console.log('LOCK: Acquired (single instance guaranteed)');
+console.log('Security Layer: ENABLED');
+console.log('   - Rate limiting');
+console.log('   - Input sanitization');
+console.log('   - Command allowlisting');
+console.log('   - Output filtering');
 console.log('============================================');
 
 // Test connection before starting
@@ -218,11 +299,13 @@ async function testConnection(): Promise<boolean> {
 testConnection().then(ok => {
   if (!ok) {
     console.error('Failed to connect to Telegram. Check your network and token.');
+    releaseLock(); // Release lock on failure
     process.exit(1);
   }
   console.log('Starting polling...\n');
   pollLoop().catch(error => {
     console.error('Fatal error:', error);
+    releaseLock(); // Release lock on error
     process.exit(1);
   });
 });

@@ -1,12 +1,29 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { animated, useSpring, useTransition } from '@react-spring/web';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { animated, useSpring, useTransition, config } from '@react-spring/web';
 import SwipeCard from './SwipeCard';
 import AIFactCheckModal from './AIFactCheckModal';
 import TradingModal from './TradingModal';
 import { Prediction, DFlowData } from '@/lib/types';
 import confetti from 'canvas-confetti';
+
+// ═══════════════════════════════════════════════════════════
+// SPRING CONFIGS - Optimized for smooth card stack animations
+// ═══════════════════════════════════════════════════════════
+
+const STACK_SPRING_CONFIG = {
+  // Card reveal - smooth bounce when next card becomes active
+  reveal: { tension: 280, friction: 24, mass: 1 },
+  // Card enter - staggered entrance
+  enter: { tension: 220, friction: 26, clamp: false },
+  // Card leave - fast dismissal
+  leave: { tension: 320, friction: 28, clamp: true },
+  // Result overlay
+  overlay: { tension: 300, friction: 20 },
+  // Completion screen
+  completion: { tension: 280, friction: 24 },
+};
 
 interface CardStackProps {
   predictions: Prediction[];
@@ -48,7 +65,7 @@ function ResultOverlay({
   const [spring] = useSpring(() => ({
     from: { opacity: 0, scale: 0.8, y: 20 },
     to: { opacity: 1, scale: 1, y: 0 },
-    config: { tension: 300, friction: 20 },
+    config: STACK_SPRING_CONFIG.overlay,
   }));
 
   return (
@@ -116,7 +133,7 @@ function CompletionScreen({
   const [spring] = useSpring(() => ({
     from: { opacity: 0, scale: 0.9 },
     to: { opacity: 1, scale: 1 },
-    config: { tension: 280, friction: 24 },
+    config: STACK_SPRING_CONFIG.completion,
   }));
 
   useEffect(() => {
@@ -354,26 +371,54 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
     setTradingPrediction(null);
   }, []);
 
-  // Stagger animation for card stack
+  // Track if we're transitioning between cards for smoother reveal
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const lastIndex = useRef(currentIndex);
+
+  // Detect when we're moving to next card
+  useEffect(() => {
+    if (currentIndex !== lastIndex.current) {
+      setIsTransitioning(true);
+      lastIndex.current = currentIndex;
+      // Reset after transition completes
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex]);
+
+  // Enhanced stagger animation for card stack with smoother physics
   const transitions = useTransition(visibleCards, {
     keys: (item) => item.id,
-    from: { opacity: 0, scale: 0.8, y: 50 },
-    enter: { opacity: 1, scale: 1, y: 0 },
-    leave: { opacity: 0, scale: 0.9, y: -20 },
-    config: { tension: 280, friction: 24 },
+    from: { opacity: 0, scale: 0.85, y: 40, rotateZ: 0 },
+    enter: (item, index) => ({
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      rotateZ: 0,
+      delay: index * 50, // Stagger delay for dramatic effect
+    }),
+    leave: { opacity: 0, scale: 0.92, y: -30 },
+    config: (item, index, phase) => {
+      if (phase === 'leave') return STACK_SPRING_CONFIG.leave;
+      if (phase === 'enter') return STACK_SPRING_CONFIG.enter;
+      return STACK_SPRING_CONFIG.reveal;
+    },
+    trail: 80, // Slight trail for staggered entrance
   });
 
   return (
     <div className="card-stack-container">
       {/* Card Stack */}
       {!isComplete ? (
-        <div className="card-stack-inner">
+        <div className={`card-stack-inner ${isTransitioning ? 'is-transitioning' : ''}`}>
           {visibleCards.map((prediction, index) => (
             <SwipeCard
               key={prediction.id}
               prediction={prediction}
               onSwipe={handleSwipe}
-              isTop={index === 0 && !showFactCheck && !showTrading}
+              isTop={index === 0 && !showFactCheck && !showTrading && !isTransitioning}
               stackIndex={index}
             />
           ))}
@@ -419,12 +464,7 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
 
       <style jsx global>{`
         /* ═══════════════════════════════════════════════════════════
-           CARD STACK CONTAINER - Compact & Centered
-
-           The card stack fills the main content area which is:
-           - max-width: 500px
-           - centered on desktop
-           - full-width on mobile
+           CARD STACK CONTAINER - Responsive across all devices
            ═══════════════════════════════════════════════════════════ */
 
         .card-stack-container {
@@ -439,6 +479,16 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
           position: relative;
           width: 100%;
           height: 100%;
+          will-change: contents;
+          transform: translateZ(0);
+          -webkit-transform: translateZ(0);
+          perspective: 1200px;
+          perspective-origin: center center;
+        }
+
+        /* Smooth card reveal animation states */
+        .card-stack-inner.is-transitioning {
+          pointer-events: none;
         }
 
         /* iOS safe areas */
@@ -448,37 +498,148 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
           }
         }
 
-        /* Very small phones (iPhone SE, etc) */
-        @media (max-height: 667px) {
+        /* ─── VERY SMALL PHONES (< 360px) ─── */
+        @media (max-width: 359px) {
           .card-stack-container {
-            height: calc(100dvh - 48px - 64px - 48px - 24px);
+            height: calc(100dvh - 44px - 60px - 44px - 20px);
+            min-height: 260px;
+            max-height: 380px;
+          }
+        }
+
+        /* ─── SMALL PHONES (360-400px) ─── */
+        @media (min-width: 360px) and (max-width: 399px) {
+          .card-stack-container {
+            height: calc(100dvh - 52px - 68px - 52px - 24px);
             min-height: 280px;
             max-height: 420px;
           }
         }
 
-        /* Taller phones - more room but capped */
+        /* ─── SHORT PHONES (height < 667px) ─── */
+        @media (max-height: 667px) {
+          .card-stack-container {
+            height: calc(100dvh - 48px - 64px - 48px - 24px);
+            min-height: 260px;
+            max-height: 380px;
+          }
+        }
+
+        /* ─── MEDIUM PHONES (400-480px) ─── */
+        @media (min-width: 400px) and (max-width: 479px) {
+          .card-stack-container {
+            height: calc(100dvh - 56px - 72px - 52px - 28px);
+            min-height: 300px;
+            max-height: 460px;
+          }
+        }
+
+        /* ─── LARGE PHONES (480-640px) ─── */
+        @media (min-width: 480px) and (max-width: 639px) {
+          .card-stack-container {
+            height: calc(100dvh - 56px - 72px - 56px - 36px);
+            min-height: 340px;
+            max-height: 500px;
+          }
+        }
+
+        /* ─── SMALL TABLETS (640-768px) ─── */
+        @media (min-width: 640px) and (max-width: 767px) {
+          .card-stack-container {
+            height: calc(100dvh - 60px - 76px - 56px - 40px);
+            min-height: 360px;
+            max-height: 480px;
+          }
+        }
+
+        /* ─── TABLETS (768-1024px) ─── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .card-stack-container {
+            height: calc(100dvh - 64px - 80px - 56px - 48px);
+            min-height: 380px;
+            max-height: 500px;
+          }
+        }
+
+        /* ─── DESKTOP (1024px+) ─── */
+        @media (min-width: 1024px) {
+          .card-stack-container {
+            height: 480px;
+            min-height: 420px;
+            max-height: 520px;
+          }
+        }
+
+        /* ─── TALL PHONES (height > 800px) ─── */
         @media (min-height: 800px) {
           .card-stack-container {
             max-height: 560px;
           }
         }
 
-        /* Desktop - fixed reasonable height */
-        @media (min-width: 769px) {
+        /* ─── EXTRA TALL PHONES (height > 850px) ─── */
+        @media (min-height: 850px) {
           .card-stack-container {
-            height: 480px;
             min-height: 400px;
-            max-height: 520px;
+            max-height: 600px;
           }
         }
 
-        /* Landscape - compact */
+        /* ─── LANDSCAPE - SHORT (height < 500px) ─── */
         @media (max-height: 500px) and (orientation: landscape) {
           .card-stack-container {
-            height: calc(100dvh - 44px - 56px - 24px);
-            min-height: 200px;
-            max-height: 320px;
+            height: calc(100dvh - 42px - 52px - 16px);
+            min-height: 180px;
+            max-height: 300px;
+          }
+        }
+
+        /* ─── LANDSCAPE - MEDIUM (500-700px) ─── */
+        @media (min-height: 500px) and (max-height: 700px) and (orientation: landscape) {
+          .card-stack-container {
+            height: calc(100dvh - 52px - 64px - 24px);
+            min-height: 240px;
+            max-height: 360px;
+          }
+        }
+
+        /* ─── FOLDABLE DEVICES ─── */
+        @media (min-aspect-ratio: 20/9) {
+          .card-stack-container {
+            max-height: 400px;
+          }
+        }
+
+        /* Result overlay responsive */
+        .result-overlay {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: rgba(10, 10, 15, 0.95);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-radius: 16px;
+          padding: 24px;
+          z-index: 100;
+        }
+
+        @media (max-width: 359px) {
+          .result-overlay {
+            padding: 16px;
+          }
+
+          .result-overlay h2 {
+            font-size: 1.25rem;
+          }
+        }
+
+        @media (min-width: 768px) {
+          .result-overlay {
+            padding: 32px;
+            border-radius: 24px;
           }
         }
       `}</style>

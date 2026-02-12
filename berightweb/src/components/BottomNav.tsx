@@ -47,7 +47,7 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    href: '/stats',
+    href: '/beright-terminal',
     label: 'Terminal',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

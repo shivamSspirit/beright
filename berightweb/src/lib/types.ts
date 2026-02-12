@@ -59,6 +59,7 @@ export interface DFlowData {
   spread: number;
   tokens: DFlowTokens | null;
   markets?: DFlowMarketInfo[];
+  imageUrl?: string;
 }
 
 export interface Prediction {

@@ -103,9 +103,36 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
 }
 
 /**
+ * Sports/parlay keywords to filter out from DFlow
+ * These are sports betting parlays, not prediction markets
+ */
+const SPORTS_PARLAY_KEYWORDS = [
+  'nba', 'nfl', 'nhl', 'mlb', 'ncaa', 'college',
+  'parlay', 'spread', 'over/under', 'moneyline',
+  'basketball', 'football', 'hockey', 'baseball',
+  'lakers', 'celtics', 'warriors', 'bulls', 'nets',
+  'chiefs', 'eagles', 'cowboys', '49ers', 'patriots',
+  'yankees', 'dodgers', 'cubs', 'red sox',
+  'game 1', 'game 2', 'game 3', 'game 4', 'game 5', 'game 6', 'game 7',
+  'series', 'playoff', 'championship', 'finals',
+  'points', 'rebounds', 'assists', 'touchdowns', 'yards',
+  'vs.', ' at ', 'home team', 'away team',
+];
+
+/**
+ * Check if a market title looks like a sports parlay
+ */
+function isSportsParlay(title: string): boolean {
+  const titleLower = title.toLowerCase();
+  return SPORTS_PARLAY_KEYWORDS.some(keyword => titleLower.includes(keyword));
+}
+
+/**
  * Fetch markets from DFlow (Tokenized Kalshi on Solana)
  * This replaces the basic Kalshi API with superior tokenized version
  * Includes: live orderbook, SPL token addresses, higher volume
+ *
+ * IMPORTANT: Filters out sports parlays which have broken pricing
  */
 async function fetchDFlow(query?: string, limit = 20): Promise<Market[]> {
   const cacheKey = `dflow:${query || ''}:${limit}`;
@@ -115,12 +142,19 @@ async function fetchDFlow(query?: string, limit = 20): Promise<Market[]> {
   try {
     // Fetch events with nested markets for full data
     // IMPORTANT: status=active to exclude finalized markets (they have null prices)
-    const url = `${DFLOW_API}/events?limit=${limit}&withNestedMarkets=true&sort=volume24h&status=active`;
+    const url = `${DFLOW_API}/events?limit=${limit * 2}&withNestedMarkets=true&sort=volume24h&status=active`;
     const response = await fetch(url, { signal: AbortSignal.timeout(PLATFORM_TIMEOUT.kalshi) });
     if (!response.ok) return [];
 
     const data = await response.json() as { events: any[] };
     let events = data.events || [];
+
+    // Filter out sports parlays (these have broken pricing and aren't prediction markets)
+    events = events.filter(e => {
+      const title = (e.title || '').toLowerCase();
+      const ticker = (e.ticker || '').toLowerCase();
+      return !isSportsParlay(title) && !isSportsParlay(ticker);
+    });
 
     // Filter by query if provided
     if (query) {
@@ -141,14 +175,21 @@ async function fetchDFlow(query?: string, limit = 20): Promise<Market[]> {
         // Skip finalized/closed markets (they have null prices)
         if (m.status !== 'active') continue;
 
+        // Skip sports parlays at market level too
+        if (isSportsParlay(m.title || '') || isSportsParlay(m.ticker || '')) continue;
+
         // Parse prices (DFlow returns as strings like "0.3200")
         const yesBid = parseFloat(m.yesBid) || 0;
         const yesAsk = parseFloat(m.yesAsk) || 0;
         const noBid = parseFloat(m.noBid) || 0;
         const noAsk = parseFloat(m.noAsk) || 0;
 
-        // Skip markets with no price data
+        // Skip markets with no price data or broken pricing
         if (yesBid === 0 && yesAsk === 0) continue;
+
+        // Skip markets with zero volume (likely inactive/broken)
+        const volume = m.volume || event.volume || 0;
+        if (volume === 0 && !query) continue;  // Allow zero volume only for searches
 
         // Use mid-price for display
         const yesPrice = yesBid > 0 && yesAsk > 0 ? (yesBid + yesAsk) / 2 : yesBid || yesAsk;
@@ -455,24 +496,46 @@ export async function getHotMarkets(limit = 20): Promise<Market[]> {
 /**
  * Get DFlow top markets by 24h volume (tokenized Kalshi)
  * Best for seeing what's hot RIGHT NOW
+ *
+ * IMPORTANT: Filters out sports parlays which have broken pricing
  */
 export async function getDFlowHotMarkets(limit = 15): Promise<Market[]> {
   try {
-    const url = `${DFLOW_API}/events?limit=${limit}&sort=volume24h&withNestedMarkets=true`;
+    const url = `${DFLOW_API}/events?limit=${limit * 3}&sort=volume24h&withNestedMarkets=true&status=active`;
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return [];
 
     const data = await response.json() as { events: any[] };
-    const events = data.events || [];
+    let events = data.events || [];
+
+    // Filter out sports parlays (broken pricing, not real prediction markets)
+    events = events.filter(e => {
+      const title = (e.title || '').toLowerCase();
+      const ticker = (e.ticker || '').toLowerCase();
+      return !isSportsParlay(title) && !isSportsParlay(ticker);
+    });
 
     const result: Market[] = [];
     for (const event of events) {
+      if (result.length >= limit) break;
+
       // Get the primary market for each event
       const primaryMarket = event.markets?.[0];
       if (!primaryMarket) continue;
 
+      // Skip sports parlays at market level
+      if (isSportsParlay(primaryMarket.title || '') || isSportsParlay(primaryMarket.ticker || '')) continue;
+
       const yesBid = parseFloat(primaryMarket.yesBid) || 0;
       const yesAsk = parseFloat(primaryMarket.yesAsk) || 0;
+
+      // Skip markets with broken pricing
+      if (yesBid === 0 && yesAsk === 0) continue;
+
+      // Skip zero volume markets
+      const volume = event.volume || 0;
+      if (volume === 0) continue;
+
       const yesPrice = yesBid > 0 && yesAsk > 0 ? (yesBid + yesAsk) / 2 : yesBid || yesAsk;
 
       result.push({
@@ -484,7 +547,7 @@ export async function getDFlowHotMarkets(limit = 15): Promise<Market[]> {
         noPrice: 1 - yesPrice,
         yesPct: yesPrice * 100,
         noPct: (1 - yesPrice) * 100,
-        volume: event.volume || 0,
+        volume: volume,
         volume24h: event.volume24h || 0,
         liquidity: event.liquidity || 0,
         endDate: null,
@@ -520,15 +583,24 @@ export async function getTradeableMarkets(query?: string, limit = 20): Promise<T
 /**
  * Get hot tradeable markets sorted by 24h volume
  * For Trading UI homepage - shows most active tokenized markets
+ *
+ * IMPORTANT: Filters out sports parlays which have broken pricing
  */
 export async function getHotTradeableMarkets(limit = 15): Promise<TokenizedMarket[]> {
   try {
-    const url = `${DFLOW_API}/events?limit=${limit * 2}&sort=volume24h&withNestedMarkets=true&status=active`;
+    const url = `${DFLOW_API}/events?limit=${limit * 3}&sort=volume24h&withNestedMarkets=true&status=active`;
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return [];
 
     const data = await response.json() as { events: any[] };
-    const events = data.events || [];
+    let events = data.events || [];
+
+    // Filter out sports parlays (broken pricing, not real prediction markets)
+    events = events.filter(e => {
+      const title = (e.title || '').toLowerCase();
+      const ticker = (e.ticker || '').toLowerCase();
+      return !isSportsParlay(title) && !isSportsParlay(ticker);
+    });
 
     const result: TokenizedMarket[] = [];
     for (const event of events) {
@@ -537,12 +609,20 @@ export async function getHotTradeableMarkets(limit = 15): Promise<TokenizedMarke
       for (const m of markets) {
         if (m.status !== 'active') continue;
 
+        // Skip sports parlays at market level
+        if (isSportsParlay(m.title || '') || isSportsParlay(m.ticker || '')) continue;
+
         const yesBid = parseFloat(m.yesBid) || 0;
         const yesAsk = parseFloat(m.yesAsk) || 0;
         const noBid = parseFloat(m.noBid) || 0;
         const noAsk = parseFloat(m.noAsk) || 0;
 
+        // Skip broken pricing
         if (yesBid === 0 && yesAsk === 0) continue;
+
+        // Skip zero volume
+        const volume = m.volume || event.volume || 0;
+        if (volume === 0) continue;
 
         const yesPrice = yesBid > 0 && yesAsk > 0 ? (yesBid + yesAsk) / 2 : yesBid || yesAsk;
         const noPrice = noBid > 0 && noAsk > 0 ? (noBid + noAsk) / 2 : noBid || noAsk;
@@ -562,7 +642,7 @@ export async function getHotTradeableMarkets(limit = 15): Promise<TokenizedMarke
           noPrice,
           yesPct: yesPrice * 100,
           noPct: noPrice * 100,
-          volume: m.volume || event.volume || 0,
+          volume: volume,
           volume24h: event.volume24h || 0,
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,

@@ -21,6 +21,7 @@ import {
   checkDFlowOrderStatus,
   filterDFlowOutcomeMints,
   batchGetDFlowMarkets,
+  getCandlesticks,
   USDC_MINT,
   SOL_MINT,
   DFlowEvent,
@@ -318,6 +319,42 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      case 'candlesticks': {
+        // Get historical price data (candlesticks)
+        if (!ticker) {
+          return NextResponse.json({ error: 'ticker parameter required' }, { status: 400 });
+        }
+        const resolution = searchParams.get('resolution') as '1m' | '5m' | '15m' | '1h' | '4h' | '1d' || '1h';
+
+        // Default to last 24 hours if no time range specified
+        const now = Math.floor(Date.now() / 1000);
+        const fromParam = searchParams.get('from');
+        const toParam = searchParams.get('to');
+        const from = fromParam ? parseInt(fromParam) : now - 24 * 60 * 60;
+        const to = toParam ? parseInt(toParam) : now;
+
+        const candleResponse = await getCandlesticks(ticker, { resolution, from, to });
+
+        if (!candleResponse.success || !candleResponse.data) {
+          return NextResponse.json({
+            success: false,
+            ticker,
+            error: candleResponse.error || 'Failed to fetch candlesticks',
+            candles: [],
+          });
+        }
+
+        return NextResponse.json({
+          success: true,
+          ticker,
+          resolution,
+          from,
+          to,
+          count: candleResponse.data.length,
+          candles: candleResponse.data,
+        });
+      }
+
       case 'events': {
         // List events with optional filters
         const result = await client.getEvents({
@@ -354,7 +391,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           {
             error: 'Invalid action',
-            validActions: ['hot', 'search', 'market', 'orderbook', 'trades', 'categories', 'positions', 'events', 'series'],
+            validActions: ['hot', 'search', 'market', 'orderbook', 'trades', 'candlesticks', 'categories', 'positions', 'events', 'series'],
           },
           { status: 400 }
         );

@@ -566,6 +566,7 @@ ${'─'.repeat(35)}
 
 /**
  * Run notification check (called by heartbeat)
+ * NOW ACTUALLY SENDS ALERTS TO TELEGRAM USERS!
  */
 export async function checkAndSendNotifications(): Promise<number> {
   let alertsSent = 0;
@@ -574,16 +575,42 @@ export async function checkAndSendNotifications(): Promise<number> {
   const briefAlerts = await generateMorningBriefAlerts();
   if (briefAlerts.length > 0) {
     queueAlerts(briefAlerts);
-    alertsSent += briefAlerts.length;
   }
 
   // Get pending alerts
   const pending = getPendingAlerts();
-  console.log(`${pending.length} alerts pending to send`);
 
-  // Note: Actual sending via Telegram requires OpenClaw's outbound API
-  // For now, we queue them and they can be sent via webhook or manual check
+  if (pending.length === 0) {
+    return 0;
+  }
 
+  console.log(`[Notifications] ${pending.length} alerts pending to send`);
+
+  // Import telegram sender
+  const { sendTelegramMessage } = await import('../services/notificationDelivery');
+
+  // ACTUALLY SEND ALERTS TO TELEGRAM USERS
+  for (const alert of pending) {
+    for (const userId of alert.targetUsers) {
+      try {
+        const result = await sendTelegramMessage(userId, alert.message, { parseMode: 'Markdown' });
+
+        if (result.success) {
+          alertsSent++;
+          console.log(`[Notifications] ✅ Sent ${alert.type} alert to user ${userId}`);
+        } else {
+          console.warn(`[Notifications] ❌ Failed to send to ${userId}: ${result.error}`);
+        }
+      } catch (err) {
+        console.error(`[Notifications] Error sending to ${userId}:`, err);
+      }
+    }
+
+    // Mark as sent
+    markAlertSent(alert.id);
+  }
+
+  console.log(`[Notifications] Sent ${alertsSent} alerts to users`);
   return alertsSent;
 }
 

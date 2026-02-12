@@ -7,7 +7,9 @@
     "berightweb"
   ],
   "scripts": {
+    "agent": "npm run agent --workspace=beright-ts",
     "dev": "turbo run dev",
+    "dev:full": "npx concurrently \"turbo run dev\" \"sleep 5 && npm run agent\"",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
@@ -16,6 +18,8 @@
     "dev:web": "npm run dev --workspace=berightweb",
     "gateway": "cd beright-ts && openclaw gateway",
     "telegram": "npm run telegram --workspace=beright-ts",
+    "telegram:status": "npm run telegram:status --workspace=beright-ts",
+    "telegram:unlock": "npm run telegram:unlock --workspace=beright-ts",
     "heartbeat": "npm run heartbeat --workspace=beright-ts"
   },
   "devDependencies": {

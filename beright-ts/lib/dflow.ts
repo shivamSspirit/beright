@@ -646,6 +646,41 @@ export async function batchGetDFlowMarkets(mints: string[]): Promise<DFlowMarket
   return result.markets;
 }
 
+/**
+ * Get candlestick (OHLCV) data for a market
+ */
+export async function getCandlesticks(
+  ticker: string,
+  options: {
+    resolution?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+    from?: number;
+    to?: number;
+  } = {}
+): Promise<{ success: boolean; data?: Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }>; error?: string }> {
+  try {
+    const client = getDFlowClient();
+    const result = await client.getMarketCandlesticks(ticker, {
+      resolution: options.resolution || '1h',
+      startTime: options.from,
+      endTime: options.to,
+    });
+
+    // Transform the response to match expected format
+    const candles = result.candlesticks.map(c => ({
+      time: c.openTime,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      volume: c.volume,
+    }));
+
+    return { success: true, data: candles };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 // ============================================
 // WEBSOCKET CLIENT
 // ============================================

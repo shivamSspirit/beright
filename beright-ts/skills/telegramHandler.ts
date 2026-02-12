@@ -7,6 +7,13 @@ import { SkillResponse, TelegramMessage } from '../types/index';
 import { COMMANDS, KEYWORD_TRIGGERS, HELP_TEXT } from '../config/commands';
 import { searchMarkets, formatMarkets, compareOdds, formatComparison, getHotMarkets } from './markets';
 import { arbitrage } from './arbitrage';
+import {
+  handleArbMonitorCommand,
+  subscribeToArb,
+  unsubscribeFromArb,
+  runQuickScan,
+  setTelegramSender,
+} from './arbMonitor';
 import { research } from './research';
 import { whaleWatch, addWhale } from './whale';
 import { newsSearch, socialSearch, intelReport } from './intel';
@@ -39,6 +46,7 @@ import { handlePortfolio as handlePortfolioCmd, handlePnl, handleExpiring } from
 import { handleAlert, checkAlerts } from './priceAlerts';
 import { handleLimits, handleAutobet, handleStopLoss, handleTakeProfit, handleDCA, checkLimits } from './autoTrade';
 import { logConversation, searchLearnings, handleMemory, getRecentContext } from './memory';
+import { handleWallet as handleDFlowWallet, handleDFlowSearch, handleTrade as handleDFlowTrade, handlePositions as handleDFlowPositions } from './dflowTrade';
 
 // On-chain + Supabase integration
 import { commitPrediction, calculateBrierScore, interpretBrierScore } from '../lib/onchain';
@@ -60,6 +68,7 @@ function routeMessage(text: string): string {
   // MVP commands (handled directly in main handler)
   if (lower.startsWith('/brief')) return 'COMMANDER';
   if (lower.startsWith('/hot')) return 'COMMANDER';
+  if (lower.startsWith('/alpha')) return 'COMMANDER';
   if (lower.startsWith('/predict')) return 'COMMANDER';
   if (lower.startsWith('/me')) return 'COMMANDER';
   if (lower.startsWith('/leaderboard')) return 'COMMANDER';
@@ -67,6 +76,9 @@ function routeMessage(text: string): string {
 
   // Explicit commands
   if (lower.startsWith('/research')) return 'RESEARCH';
+  if (lower.startsWith('/arb-monitor')) return 'ARBITRAGE';
+  if (lower.startsWith('/arb-subscribe')) return 'ARBITRAGE';
+  if (lower.startsWith('/arb-unsubscribe')) return 'ARBITRAGE';
   if (lower.startsWith('/arb')) return 'ARBITRAGE';
   if (lower.startsWith('/odds')) return 'RESEARCH';
   if (lower.startsWith('/whale')) return 'WHALE';
@@ -76,12 +88,17 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/intel')) return 'INTEL';
   if (lower.startsWith('/execute')) return 'EXECUTOR';
   if (lower.startsWith('/wallet')) return 'EXECUTOR';
+  if (lower.startsWith('/mywallet')) return 'EXECUTOR';
   if (lower.startsWith('/swap')) return 'EXECUTOR';
   if (lower.startsWith('/buy')) return 'EXECUTOR';
   if (lower.startsWith('/scan')) return 'EXECUTOR';
   if (lower.startsWith('/balance')) return 'EXECUTOR';
   if (lower.startsWith('/volume')) return 'EXECUTOR';
   if (lower.startsWith('/lp')) return 'EXECUTOR';
+  if (lower.startsWith('/dflow')) return 'EXECUTOR';
+  if (lower.startsWith('/trade')) return 'EXECUTOR';
+  if (lower.startsWith('/positions')) return 'EXECUTOR';
+  if (lower.startsWith('/mypositions')) return 'EXECUTOR';
   // Kalshi direct commands
   if (lower.startsWith('/kalshi')) return 'KALSHI';
   if (lower.startsWith('/kbalance')) return 'KALSHI';
@@ -135,6 +152,164 @@ function extractQuery(text: string, command: string): string {
 }
 
 /**
+ * Detect if text looks like a legitimate market/topic query
+ * vs random text, greetings, or system requests
+ */
+function looksLikeMarketQuery(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+
+  // Too short to be a real query
+  if (lower.length < 4) return false;
+
+  // Common non-market patterns to REJECT
+  const nonMarketPatterns = [
+    // Greetings
+    /^(hi|hello|hey|yo|sup|hola|greetings)/i,
+    // System requests
+    /^(show|give|tell|get|display|print|list)\s+(me\s+)?(the\s+)?(logs?|errors?|status|config|settings|info|data|users?|messages?)/i,
+    // Meta questions about the bot
+    /^(who|what)\s+(are|is)\s+(you|this|beright)/i,
+    /^(can|do|will|how)\s+you/i,
+    /^(help|assist|support)/i,
+    // Random commands
+    /^(test|testing|debug|check)/i,
+    // Thank you / acknowledgments
+    /^(thanks?|thank\s+you|ok|okay|cool|nice|great|good|awesome)/i,
+    // Questions about capabilities
+    /^what\s+can\s+(you|i)/i,
+    /^how\s+(do|does|to)/i,
+    // Complaints or feedback
+    /^(this|that|it)\s+(is|was|doesn't|does not)/i,
+  ];
+
+  for (const pattern of nonMarketPatterns) {
+    if (pattern.test(lower)) return false;
+  }
+
+  // Market-related keywords that SUGGEST a real query
+  const marketKeywords = [
+    'price', 'market', 'odds', 'bet', 'predict', 'election', 'trump', 'biden',
+    'bitcoin', 'btc', 'eth', 'crypto', 'stock', 'fed', 'rate', 'inflation',
+    'war', 'ukraine', 'china', 'taiwan', 'ai', 'gpt', 'openai', 'tesla',
+    'apple', 'google', 'microsoft', 'amazon', 'nvidia', 'meta', 'spacex',
+    'senate', 'house', 'congress', 'supreme', 'court', 'impeach', 'indictment',
+    'gdp', 'recession', 'unemployment', 'cpi', 'earnings', 'ipo', 'merger',
+    'championship', 'super bowl', 'world cup', 'olympics', 'nba', 'nfl',
+    'will', 'when', 'what', 'who wins', 'chance', 'probability', 'likelihood',
+  ];
+
+  // Check if contains any market keyword
+  for (const keyword of marketKeywords) {
+    if (lower.includes(keyword)) return true;
+  }
+
+  // If it's a question format, might be a market query
+  if (lower.includes('?') || lower.startsWith('will ') || lower.startsWith('what if')) {
+    return true;
+  }
+
+  // Default: probably not a market query
+  return false;
+}
+
+/**
+ * Handle freeform non-command input
+ * Returns response for greetings, meta questions, off-topic
+ */
+function handleFreeformInput(text: string): SkillResponse | null {
+  const lower = text.toLowerCase().trim();
+
+  // Greetings
+  if (/^(hi|hello|hey|yo|sup|hola|greetings)/i.test(lower)) {
+    return {
+      text: `Hey! I'm BeRight, your prediction market intelligence agent.
+
+What would you like to explore?
+• /hot - See trending markets
+• /arb - Find arbitrage opportunities
+• /research <topic> - Deep dive on a topic
+
+Or just ask me about any market topic!`,
+      mood: 'NEUTRAL',
+    };
+  }
+
+  // Who are you / What is this
+  if (/^(who|what)\s+(are|is)\s+(you|this|beright)/i.test(lower)) {
+    return {
+      text: `I'm BeRight - a prediction market intelligence terminal.
+
+I help you:
+🎯 Find mispriced markets & arbitrage
+📊 Analyze odds across platforms
+🐋 Track whale (smart money) activity
+📈 Improve your forecasting calibration
+
+I'm not a general chatbot - I'm specialized for prediction markets.
+
+Try /help to see what I can do.`,
+      mood: 'EDUCATIONAL',
+    };
+  }
+
+  // What can you do
+  if (/^what\s+can\s+(you|i)/i.test(lower) || /^(can|do|will)\s+you/i.test(lower)) {
+    return {
+      text: `Here's what I can help with:
+
+📊 *Market Analysis*
+/hot - Trending markets
+/odds <topic> - Compare prices across platforms
+/research <topic> - Superforecaster analysis
+
+💰 *Trading*
+/arb - Find arbitrage opportunities
+/whale - Track smart money
+/trade - Execute trades (verified users)
+
+🎯 *Forecasting*
+/predict - Make predictions
+/calibration - Track your accuracy
+/leaderboard - See top forecasters
+
+Type /help for the full command list.`,
+      mood: 'EDUCATIONAL',
+    };
+  }
+
+  // System/admin requests (politely decline)
+  if (/^(show|give|tell|get|display|print|list)\s+(me\s+)?(the\s+)?(logs?|errors?|status|config|settings|data|users?|messages?|secrets?|keys?|env)/i.test(lower)) {
+    return {
+      text: `I'm a prediction market agent, not a system admin tool.
+
+I can help you with:
+• /hot - Market trends
+• /arb - Arbitrage opportunities
+• /research <topic> - Market analysis
+
+What market topic interests you?`,
+      mood: 'NEUTRAL',
+    };
+  }
+
+  // Thanks / acknowledgments
+  if (/^(thanks?|thank\s+you|ok|okay|cool|nice|great|good|awesome|got\s+it)/i.test(lower)) {
+    return {
+      text: `You're welcome! Let me know if you need anything else.
+
+Quick actions:
+• /hot - What's trending
+• /brief - Morning briefing
+• /me - Your stats`,
+      mood: 'NEUTRAL',
+    };
+  }
+
+  // Not a recognized pattern - let caller handle
+  return null;
+}
+
+/**
  * Handle /start command
  */
 function handleStart(): SkillResponse {
@@ -177,27 +352,30 @@ async function handleBrief(): Promise<SkillResponse> {
 
 /**
  * Handle /hot command (trending markets)
+ *
+ * NEW: Clean alpha-focused format with signals
  */
 async function handleHot(): Promise<SkillResponse> {
+  const { formatTrendingMarkets } = await import('./formatters');
   const markets = await getHotMarkets(10);
 
-  let text = `
-🔥 *TRENDING MARKETS*
-${'─'.repeat(35)}
-
-`;
-
-  for (let i = 0; i < Math.min(10, markets.length); i++) {
-    const m = markets[i];
-    const platformEmoji = m.platform === 'polymarket' ? '🟣' : m.platform === 'kalshi' ? '🔵' : '🟡';
-    text += `${i + 1}. ${platformEmoji} ${m.title.slice(0, 40)}...\n`;
-    text += `   YES: ${formatPct(m.yesPrice)} | Vol: ${formatUsd(m.volume)}\n\n`;
-  }
-
-  text += `📊 /odds <topic> - Compare across platforms\n`;
-  text += `🎯 /predict to make a prediction`;
+  const text = formatTrendingMarkets(markets);
 
   return { text, mood: 'NEUTRAL', data: markets };
+}
+
+/**
+ * Handle /alpha command - actionable market opportunities
+ *
+ * Shows high conviction plays, contentious markets, and whale activity
+ */
+async function handleAlpha(): Promise<SkillResponse> {
+  const { formatAlphaMarkets } = await import('./formatters');
+  const markets = await getHotMarkets(20);
+
+  const text = formatAlphaMarkets(markets);
+
+  return { text, mood: 'BULLISH', data: markets };
 }
 
 /**
@@ -1615,6 +1793,7 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
     if (lower === '/help') return handleHelp();
     if (lower === '/brief') return await handleBrief();
     if (lower === '/hot') return await handleHot();
+    if (lower === '/alpha') return await handleAlpha();
     if (lower.startsWith('/predict')) return await handlePredict(text, telegramId, username);
     if (lower === '/me') return await handleMe(telegramId);
     if (lower === '/leaderboard') return await handleLeaderboard(telegramId);
@@ -1826,8 +2005,30 @@ Or search for markets first:
       }
 
       case 'ARBITRAGE': {
-        // Spawn scout agent for arbitrage scanning
+        // Handle arb-monitor commands (24/7 early detection system)
+        if (lower.startsWith('/arb-monitor')) {
+          return await handleArbMonitorCommand(text, telegramId || '');
+        }
+
+        // Handle arb-subscribe
+        if (lower === '/arb-subscribe') {
+          return subscribeToArb(telegramId || '');
+        }
+
+        // Handle arb-unsubscribe
+        if (lower === '/arb-unsubscribe') {
+          return unsubscribeFromArb(telegramId || '');
+        }
+
+        // Quick scan for /arb command - use the real-time monitor
         const query = extractQuery(text, '/arb') || '';
+
+        // If no query, run quick scan from monitor (faster, uses registry)
+        if (!query) {
+          return await runQuickScan();
+        }
+
+        // For topic-specific searches, use the scout agent
         const task: AgentTask = {
           agentId: 'scout',
           task: `scan for arbitrage opportunities ${query}`.trim(),
@@ -1887,7 +2088,59 @@ Or search for markets first:
       }
 
       case 'EXECUTOR': {
-        // Trading commands - spawn trader agent
+        // ============================================
+        // DFLOW TRADING COMMANDS (Primary)
+        // ============================================
+
+        // /wallet - Create or view your DFlow trading wallet
+        if (lower === '/wallet' || lower === '/mywallet') {
+          if (!telegramId) return { text: 'Could not identify your account.', mood: 'ERROR' };
+          return await handleDFlowWallet(telegramId);
+        }
+
+        // /dflow <query> - Search DFlow markets
+        if (lower.startsWith('/dflow')) {
+          const query = extractQuery(text, '/dflow');
+          return await handleDFlowSearch(query);
+        }
+
+        // /trade <ticker> <YES|NO> <amount> - Place a DFlow trade
+        if (lower.startsWith('/trade')) {
+          if (!telegramId) return { text: 'Could not identify your account.', mood: 'ERROR' };
+          const args = extractQuery(text, '/trade');
+          const match = args.match(/^(\S+)\s+(YES|NO)\s+(\d+(?:\.\d+)?)/i);
+          if (!match) {
+            return {
+              text: `
+🎯 *DFLOW TRADE*
+${'─'.repeat(35)}
+
+Usage: /trade <ticker> <YES|NO> <amount_usdc>
+
+Examples:
+/trade KXFEDCHAIRNOM YES 10
+/trade KXBTC-26DEC31-T150000 NO 5
+
+Find tickers with /dflow <query>
+`,
+              mood: 'EDUCATIONAL',
+            };
+          }
+          const [, ticker, side, amountStr] = match;
+          return await handleDFlowTrade(telegramId, ticker.toUpperCase(), side.toUpperCase() as 'YES' | 'NO', parseFloat(amountStr));
+        }
+
+        // /positions - View your DFlow positions
+        if (lower === '/positions' || lower === '/mypositions') {
+          if (!telegramId) return { text: 'Could not identify your account.', mood: 'ERROR' };
+          return await handleDFlowPositions(telegramId);
+        }
+
+        // ============================================
+        // LEGACY TRADING COMMANDS
+        // ============================================
+
+        // /buy - Legacy trader agent
         if (lower.startsWith('/buy')) {
           const buyQuery = extractQuery(text, '/buy');
           if (!buyQuery) {
@@ -1910,21 +2163,12 @@ Or search for markets first:
         if (lower.startsWith('/volume')) return await handleVolume();
         if (lower.startsWith('/lp')) return await handleLP();
 
-        // Wallet commands
-        if (lower.startsWith('/wallet') || lower.startsWith('/balance')) {
-          const address = extractQuery(text, lower.startsWith('/wallet') ? '/wallet' : '/balance');
+        // /balance <address> - Check any wallet balance
+        if (lower.startsWith('/balance')) {
+          const address = extractQuery(text, '/balance');
           if (!address) {
             return {
-              text: `
-💳 *WALLET CHECK*
-
-Usage: /wallet <solana_address>
-
-Example:
-/wallet 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
-
-Or just paste a Solana address.
-`,
+              text: `💳 *WALLET CHECK*\n\nUsage: /balance <solana_address>\n\nExample:\n/balance 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`,
               mood: 'EDUCATIONAL',
             };
           }
@@ -1973,16 +2217,36 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
       }
 
       default: {
-        // General market query
-        if (text.length > 3) {
+        // Check if this looks like a market query or just random text
+        const response = handleFreeformInput(text);
+        if (response) {
+          return response;
+        }
+
+        // Only search markets if it looks like a legitimate topic
+        if (looksLikeMarketQuery(text)) {
           const markets = await searchMarkets(text);
           if (markets.length > 0) {
             return { text: formatMarkets(markets, `Markets: ${text}`), mood: 'NEUTRAL', data: markets };
           }
         }
 
+        // Default: explain what the bot does
         return {
-          text: `I'm not sure what you're looking for. Try:\n${HELP_TEXT}`,
+          text: `I'm BeRight, your prediction market intelligence agent.
+
+I help you find opportunities and make better forecasts.
+
+Try these:
+• /hot - Trending markets
+• /brief - Morning briefing
+• /arb - Arbitrage opportunities
+• /research <topic> - Deep analysis
+• /predict - Make a prediction
+
+Or ask me about a specific topic like "bitcoin" or "fed rate".
+
+Type /help for all commands.`,
           mood: 'NEUTRAL',
         };
       }
@@ -1997,6 +2261,24 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
     };
   }
 }
+
+// ============================================
+// INITIALIZE ARB MONITOR TELEGRAM SENDER
+// ============================================
+
+// Import the notification delivery service for sending alerts
+import { sendTelegramMessage } from '../services/notificationDelivery';
+
+// Set up the telegram sender for arb monitor alerts
+setTelegramSender(async (chatId: string, message: string) => {
+  const result = await sendTelegramMessage(chatId, message, { parseMode: 'Markdown' });
+  if (!result.success) {
+    console.error(`[ArbMonitor] Failed to send alert to ${chatId}:`, result.error);
+    throw new Error(result.error || 'Failed to send telegram message');
+  }
+});
+
+console.log('[TelegramHandler] Arbitrage monitor telegram sender initialized');
 
 // Export for OpenClaw
 export default telegramHandler;

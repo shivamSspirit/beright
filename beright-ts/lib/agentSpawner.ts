@@ -383,10 +383,16 @@ async function executeTraderTask(
 // ============================================
 
 function extractQuery(text: string): string | null {
-  // Remove command prefix and common keywords
+  // Remove command prefix and common keywords/phrases
   const cleaned = text
     .replace(/^\/\w+\s*/i, '')
     .replace(/^(scan|search|find|check|get|show)\s+/i, '')
+    // Remove common task phrases that aren't user queries
+    .replace(/^for\s+(arbitrage|arb)\s+opportunities?\s*/i, '')
+    .replace(/^(arbitrage|arb)\s+opportunities?\s*/i, '')
+    .replace(/^for\s+news\s*/i, '')
+    .replace(/^news\s+for:?\s*/i, '')
+    .replace(/^for:?\s*/i, '')
     .trim();
   return cleaned || null;
 }

@@ -1,6 +1,15 @@
 /**
  * Arbitrage Skill for BeRight Protocol
  * Cross-platform price comparison and opportunity detection
+ *
+ * V2 UPDATE: Now uses production-grade matching with:
+ * - 85% minimum equivalence threshold
+ * - Named entity extraction
+ * - Date/resolution alignment
+ * - Proper arbitrage math
+ * - Risk scoring
+ *
+ * Set USE_V2_ARBITRAGE=false to use legacy scanner
  */
 
 import { ArbitrageOpportunity, Market, Platform, SkillResponse } from '../types/index';
@@ -14,6 +23,12 @@ import {
   confidenceEmoji,
   timestamp,
 } from './utils';
+
+// Feature flag for V2 system
+const USE_V2_ARBITRAGE = process.env.USE_V2_ARBITRAGE !== 'false';
+
+// Import V2 system
+import { arbitrageV2 } from './arbitrageV2';
 
 /**
  * Match markets between two platforms by similarity
@@ -261,8 +276,24 @@ The spread is your edge - but act fast!
 
 /**
  * Main arbitrage skill function
+ *
+ * Uses V2 production-grade system by default.
+ * Falls back to legacy if V2 fails or is disabled.
  */
 export async function arbitrage(query?: string): Promise<SkillResponse> {
+  // Try V2 system first (production-grade with strict validation)
+  if (USE_V2_ARBITRAGE) {
+    try {
+      console.log('[Arbitrage] Using V2 production-grade scanner');
+      return await arbitrageV2(query);
+    } catch (error) {
+      console.error('[Arbitrage] V2 failed, falling back to legacy:', error);
+      // Fall through to legacy
+    }
+  }
+
+  // Legacy implementation
+  console.log('[Arbitrage] Using legacy scanner');
   try {
     const opportunities = await scanAll(query);
     const text = formatArbReport(opportunities);

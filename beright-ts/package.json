@@ -4,7 +4,9 @@
   "description": "BeRight Protocol - Prediction market intelligence terminal built on OpenClaw",
   "main": "skills/telegramHandler.ts",
   "scripts": {
+    "agent": "ts-node services/agentRunner.ts",
     "dev": "next dev -p 3001",
+    "dev:full": "npx concurrently \"next dev -p 3001\" \"sleep 3 && ts-node skills/telegram.ts\"",
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
@@ -20,6 +22,8 @@
     "heartbeat:once": "ts-node skills/heartbeat.ts once",
     "heartbeat:stats": "ts-node skills/heartbeat.ts stats",
     "telegram": "ts-node skills/telegram.ts",
+    "telegram:status": "ts-node skills/telegram.ts --status",
+    "telegram:unlock": "ts-node skills/telegram.ts --force-unlock",
     "test": "echo \"Running tests...\" && ts-node skills/markets.ts search bitcoin",
     "smart": "ts-node skills/smartBuilder.ts loop",
     "smart:once": "ts-node skills/smartBuilder.ts once",

@@ -117,6 +117,24 @@ export const COMMANDS: Command[] = [
     usage: '/arb [topic]',
     agent: 'ARBITRAGE',
   },
+  {
+    name: '/arb-monitor',
+    description: 'Control 24/7 arbitrage monitor (admin)',
+    usage: '/arb-monitor start|stop|status',
+    agent: 'ARBITRAGE',
+  },
+  {
+    name: '/arb-subscribe',
+    description: 'Subscribe to instant arb alerts',
+    usage: '/arb-subscribe',
+    agent: 'ARBITRAGE',
+  },
+  {
+    name: '/arb-unsubscribe',
+    description: 'Unsubscribe from arb alerts',
+    usage: '/arb-unsubscribe',
+    agent: 'ARBITRAGE',
+  },
 
   // Whale Agent
   {
@@ -218,6 +236,12 @@ export const MVP_COMMANDS: Command[] = [
     agent: 'COMMANDER',
   },
   {
+    name: '/alpha',
+    description: 'Actionable market opportunities',
+    usage: '/alpha',
+    agent: 'COMMANDER',
+  },
+  {
     name: '/predict',
     description: 'Make a prediction',
     usage: '/predict <question> <probability> YES|NO',
@@ -275,12 +299,16 @@ export const MVP_COMMANDS: Command[] = [
 
 // Help text
 export const HELP_TEXT = `
-BeRight - Prediction Market Intelligence
+*BERIGHT* - Prediction Market Intelligence
 
-DAILY ESSENTIALS
-/brief - Morning briefing with alpha
-/hot - Top trending markets
-/me - Your stats & performance
+*QUICK START*
+/hot - Trending markets
+/alpha - Actionable opportunities
+/brief - Morning briefing
+/arb - Arbitrage scanner
+
+*YOUR STATS*
+/me - Your performance
 /leaderboard - Top forecasters
 
 PREDICTIONS
@@ -303,6 +331,13 @@ RESEARCH & ANALYSIS
 /research <topic> - Superforecaster analysis
 /odds <topic> - Compare odds across platforms
 /arb [topic] - Find arbitrage opportunities
+
+ARBITRAGE MONITOR (24/7 Early Detection)
+/arb-subscribe - Get instant arb alerts
+/arb-unsubscribe - Stop arb alerts
+/arb-monitor status - Monitor status
+/arb-monitor start - Start monitor (admin)
+/arb-monitor stop - Stop monitor (admin)
 
 INTELLIGENCE
 /news <topic> - Search news
@@ -327,12 +362,18 @@ AUTO-TRADE RULES
 /dca <market> <$> <hours> - Dollar-cost average
 /autobet - View all active rules
 
-TRADING (DFlow/Solana)
+DFLOW TRADING (One-Tap Trading)
+/wallet - Create or view your trading wallet
+/dflow <query> - Search DFlow markets
+/trade <ticker> YES|NO <usdc> - Place a trade
+/positions - View your positions
+
+LEGACY TRADING
 /buy <ticker> YES|NO <usdc> - Get trade quote
 /scan - Find LP opportunities
 /volume - Builder Code metrics
 /swap <amt> <from> <to> - Token swap quote
-/wallet <address> - Check balance
+/balance <address> - Check any wallet
 
 KALSHI DIRECT
 /kalshi - Kalshi account overview

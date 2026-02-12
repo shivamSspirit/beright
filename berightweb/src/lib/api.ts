@@ -1002,6 +1002,34 @@ export async function getDFlowPositions(mints: string[]): Promise<{
 }
 
 /**
+ * DFlow Candlestick Data
+ */
+export interface DFlowCandleData {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+/**
+ * Get DFlow candlestick (OHLCV) data for a market
+ */
+export async function getDFlowCandlesticks(
+  ticker: string,
+  resolution?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d'
+): Promise<{
+  success: boolean;
+  ticker: string;
+  candles: DFlowCandleData[];
+}> {
+  const params = new URLSearchParams({ action: 'candlesticks', ticker });
+  if (resolution) params.set('resolution', resolution);
+  return apiFetch(`/api/dflow?${params}`);
+}
+
+/**
  * Get DFlow order transaction for trading
  * Returns base64 encoded transaction to sign and submit
  */
@@ -1164,10 +1192,13 @@ export function transformDFlowToPrediction(event: DFlowEvent): Prediction {
   const category = categorizeDFlowMarket(event.title);
   const volume = formatVolume(event.volume || 0);
 
+  // Construct proper DFlow URL instead of using Kalshi URL
+  const dflowUrl = `https://dflow.net/market/${event.ticker}`;
+
   // AI prediction based on market odds
   const { aiPrediction, aiReasoning, aiEvidence } = generateAIPrediction({
     id: event.ticker,
-    platform: 'kalshi',
+    platform: 'dflow',
     title: event.title,
     question: event.title,
     yesPrice: event.yesPrice,
@@ -1178,7 +1209,7 @@ export function transformDFlowToPrediction(event: DFlowEvent): Prediction {
     liquidity: event.liquidity,
     endDate: event.strikeDate ? new Date(event.strikeDate * 1000).toISOString() : null,
     status: event.status as any,
-    url: event.url,
+    url: dflowUrl,
   });
 
   return {
@@ -1194,7 +1225,7 @@ export function transformDFlowToPrediction(event: DFlowEvent): Prediction {
     aiPrediction,
     aiReasoning,
     aiEvidence,
-    url: event.url,
+    url: dflowUrl,
     liquidity: event.liquidity,
     status: event.status as any,
 
@@ -1210,6 +1241,7 @@ export function transformDFlowToPrediction(event: DFlowEvent): Prediction {
       spread: event.spread,
       tokens: event.tokens,
       markets: event.markets,
+      imageUrl: event.imageUrl,
     },
   };
 }

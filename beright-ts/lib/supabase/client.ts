@@ -20,30 +20,57 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+// Flag to check if Supabase is available
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
   console.warn('Supabase credentials not found. Database features disabled.');
+  console.warn('Set SUPABASE_URL and SUPABASE_ANON_KEY in .env to enable database.');
 }
 
 // Create untyped client (types cause issues with current Supabase version)
 // We'll use explicit types in the helper functions instead
-const createSupabaseClient = (key: string) => createClient(
-  supabaseUrl || '',
-  key,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+const createSupabaseClient = (key: string) => {
+  // Only create client if credentials are available
+  if (!supabaseUrl || !key) {
+    return null;
   }
-);
+  return createClient(
+    supabaseUrl,
+    key,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
+};
 
 // Public client (for client-side, respects RLS)
-export const supabase = createSupabaseClient(supabaseAnonKey || '');
+// Returns null if not configured
+const _supabase = createSupabaseClient(supabaseAnonKey || '');
+
+// Create a proxy that throws helpful errors when Supabase is not configured
+export const supabase = _supabase || new Proxy({} as SupabaseClient, {
+  get(target, prop) {
+    if (prop === 'from') {
+      return () => ({
+        select: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        upsert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+      });
+    }
+    return () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+  },
+});
 
 // Admin client (for server-side, bypasses RLS)
-export const supabaseAdmin: SupabaseClient = supabaseServiceKey
+export const supabaseAdmin: SupabaseClient = (supabaseServiceKey
   ? createSupabaseClient(supabaseServiceKey)
-  : supabase;
+  : _supabase) || supabase;
 
 // ============================================
 // DATABASE HELPERS

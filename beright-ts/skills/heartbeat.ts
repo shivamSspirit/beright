@@ -1,6 +1,15 @@
 /**
  * Heartbeat Skill for BeRight Protocol
- * Enhanced autonomous agent loop with:
+ *
+ * UPGRADED TO AGENTIC ARCHITECTURE
+ *
+ * Now integrates with the cognitive loop for truly autonomous operation:
+ * - Cognitive Loop: perceive → deliberate → act → reflect
+ * - Goal-driven behavior with persistent goals
+ * - Episodic memory for learning from past actions
+ * - Multi-agent coordination
+ *
+ * Legacy features (still active):
  * - Arbitrage scanning across 5 platforms
  * - Whale tracking with real SOL prices
  * - Price snapshot recording for real market movers
@@ -13,6 +22,14 @@ import { SkillResponse, ArbitrageOpportunity } from '../types/index';
 import { HEARTBEAT } from '../config/thresholds';
 import { arbitrage } from './arbitrage';
 import { whaleWatch } from './whale';
+// Professional arbitrage monitor for early detection
+import {
+  heartbeatArbScan,
+  arbSubscribers,
+  setTelegramSender as setArbTelegramSender,
+  broadcastOpportunityToSubscribers,
+} from './arbMonitor';
+import { sendTelegramMessage } from '../services/notificationDelivery';
 import { recordSnapshot } from './priceTracker';
 import { decide, DecisionInput } from './decisionEngine';
 import { logHeartbeat } from './onchain';
@@ -26,8 +43,22 @@ import { buildOnce as runBuilderOnce } from './buildLoop';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Cognitive Loop Integration
+import {
+  runCognitiveLoopOnce,
+  getCognitiveStateSummary,
+  getCognitiveMetrics,
+  injectSignal,
+  addSignal,
+  coordinate as coordinateAgents,
+  getAgentsSummary,
+} from '../lib/cognitive';
+
 // Builder runs every 7 minutes
 const BUILDER_INTERVAL = 7 * 60 * 1000;
+
+// Cognitive Loop runs every 2 minutes
+const COGNITIVE_INTERVAL = 2 * 60 * 1000;
 
 interface HeartbeatState {
   lastArbScan: string | null;
@@ -40,6 +71,9 @@ interface HeartbeatState {
   lastAutoRuleCheck: string | null;
   lastPositionRefresh: string | null;
   lastBuilderRun: string | null;
+  lastCognitiveRun: string | null;  // NEW: Cognitive loop timing
+  lastAgentCoordination: string | null;  // NEW: Multi-agent coordination
+  lastProArbScan: string | null;  // Professional arb monitor scan
   totalScans: number;
   totalArbsFound: number;
   totalWhaleAlerts: number;
@@ -48,6 +82,8 @@ interface HeartbeatState {
   totalPriceAlertsTriggered: number;
   totalAutoExecutions: number;
   totalBuilderRuns: number;
+  totalCognitiveCycles: number;  // NEW: Track cognitive cycles
+  totalProArbAlerts: number;  // Professional arb monitor alerts
 }
 
 const STATE_FILE = path.join(process.cwd(), 'memory', 'heartbeat-state.json');
@@ -68,6 +104,9 @@ function loadState(): HeartbeatState {
     lastAutoRuleCheck: null,
     lastPositionRefresh: null,
     lastBuilderRun: null,
+    lastCognitiveRun: null,
+    lastAgentCoordination: null,
+    lastProArbScan: null,
     totalScans: 0,
     totalArbsFound: 0,
     totalWhaleAlerts: 0,
@@ -76,6 +115,8 @@ function loadState(): HeartbeatState {
     totalPriceAlertsTriggered: 0,
     totalAutoExecutions: 0,
     totalBuilderRuns: 0,
+    totalCognitiveCycles: 0,
+    totalProArbAlerts: 0,
   };
   try {
     if (fs.existsSync(STATE_FILE)) {
@@ -90,6 +131,8 @@ function loadState(): HeartbeatState {
         totalDecisions: loaded.totalDecisions ?? 0,
         totalAlertsQueued: loaded.totalAlertsQueued ?? 0,
         totalBuilderRuns: loaded.totalBuilderRuns ?? 0,
+        totalCognitiveCycles: loaded.totalCognitiveCycles ?? 0,
+        totalProArbAlerts: loaded.totalProArbAlerts ?? 0,
       };
     }
   } catch (error) {
@@ -248,6 +291,70 @@ export async function heartbeatOnce(): Promise<SkillResponse[]> {
   const whaleResult = await runWhaleScan(state);
   if (whaleResult.response) alerts.push(whaleResult.response);
 
+  // 3.5. Run PROFESSIONAL ARBITRAGE MONITOR (early detection)
+  // This runs every 30 seconds for early opportunity detection
+  const PRO_ARB_INTERVAL = 30 * 1000; // 30 seconds
+  if (shouldRun(state.lastProArbScan, PRO_ARB_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running professional arbitrage monitor...`);
+
+      // Ensure telegram sender is configured
+      setArbTelegramSender(async (chatId: string, message: string) => {
+        const result = await sendTelegramMessage(chatId, message, { parseMode: 'Markdown' });
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to send alert');
+        }
+      });
+
+      const proArbResult = await heartbeatArbScan();
+
+      state.lastProArbScan = timestamp();
+      saveState(state);
+
+      if (proArbResult.opportunities.length > 0) {
+        console.log(`[${timestamp()}] 🚨 PRO ARB: ${proArbResult.opportunities.length} opportunities detected!`);
+        state.totalProArbAlerts += proArbResult.opportunities.length;
+        saveState(state);
+
+        // AUTOMATICALLY SEND ALERTS TO ALL SUBSCRIBED TELEGRAM USERS
+        for (const opp of proArbResult.opportunities) {
+          try {
+            const sentCount = await broadcastOpportunityToSubscribers(opp);
+            if (sentCount > 0) {
+              console.log(`[${timestamp()}] ✅ Sent arb alert to ${sentCount} subscribers`);
+            }
+          } catch (broadcastErr) {
+            console.warn(`[${timestamp()}] Failed to broadcast opportunity:`, broadcastErr);
+          }
+
+          // Also add to alerts array for heartbeat response
+          alerts.push({
+            text: `
+🚨 *ARBITRAGE OPPORTUNITY*
+${'─'.repeat(35)}
+
+📊 *${opp.currentProfit.toFixed(2)}% PROFIT*
+
+${opp.pair.marketA.title.slice(0, 45)}
+
+• ${opp.pair.marketA.platform} vs ${opp.pair.marketB.platform}
+• Match: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
+• Peak: ${opp.peakProfit.toFixed(2)}%
+
+⚡ ACT FAST - Opportunities close quickly!
+`,
+            mood: 'ALERT',
+            data: opp,
+          });
+        }
+      } else {
+        console.log(`[${timestamp()}] Pro arb scan: ${proArbResult.registrySize} pairs, no opportunities`);
+      }
+    } catch (err) {
+      console.warn('Professional arb monitor failed:', err);
+    }
+  }
+
   // 4. Check and queue notifications (morning briefs, etc.)
   try {
     const notificationCount = await checkAndSendNotifications();
@@ -331,7 +438,75 @@ Reason: ${exec.reason}
     }
   }
 
-  // 8. Run builder (autonomous code generation) - every 30 minutes
+  // 8. Run COGNITIVE LOOP - The heart of the agentic system
+  // This is what makes the system truly autonomous - it perceives,
+  // deliberates, acts, and reflects without waiting for commands.
+  if (shouldRun(state.lastCognitiveRun, COGNITIVE_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running cognitive loop...`);
+
+      // Inject signals from this heartbeat into the cognitive system
+      if (arbResult.arbsFound > 0) {
+        addSignal(
+          'arbitrage_opportunity',
+          'heartbeat',
+          `Found ${arbResult.arbsFound} arbitrage opportunities`,
+          Math.min(1, arbResult.arbsFound * 0.3)
+        );
+      }
+
+      if (whaleResult.alertsFound > 0) {
+        addSignal(
+          'whale_activity',
+          'heartbeat',
+          `Detected ${whaleResult.alertsFound} whale movements`,
+          Math.min(1, whaleResult.alertsFound * 0.2)
+        );
+      }
+
+      // Run the cognitive cycle
+      const cognitiveResult = await runCognitiveLoopOnce();
+
+      state.lastCognitiveRun = timestamp();
+      state.totalCognitiveCycles++;
+      saveState(state);
+
+      if (cognitiveResult.success) {
+        console.log(`[${timestamp()}] Cognitive cycle completed: ${cognitiveResult.summary}`);
+
+        // Check if cognitive loop generated any actionable insights
+        const metrics = getCognitiveMetrics();
+        if (metrics.goalsAchieved > 0) {
+          alerts.push({
+            text: `*COGNITIVE UPDATE*\n${cognitiveResult.summary}\n\nGoals achieved: ${metrics.goalsAchieved}`,
+            mood: 'BULLISH',
+            data: { cognitive: true, metrics },
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Cognitive loop failed:', err);
+    }
+  }
+
+  // 9. Run MULTI-AGENT COORDINATION - every 5 minutes
+  if (shouldRun(state.lastAgentCoordination, 5 * 60 * 1000)) {
+    try {
+      console.log(`[${timestamp()}] Coordinating agents...`);
+
+      const coordination = await coordinateAgents();
+      state.lastAgentCoordination = timestamp();
+      saveState(state);
+
+      if (coordination.conflictsResolved > 0 || coordination.goalsReassigned > 0) {
+        console.log(`[${timestamp()}] Agent coordination: ${coordination.conflictsResolved} conflicts resolved, ${coordination.goalsReassigned} goals reassigned`);
+      }
+    } catch (err) {
+      console.warn('Agent coordination failed:', err);
+    }
+  }
+
+  // 10. Run builder (autonomous code generation) - every 7 minutes
   if (shouldRun(state.lastBuilderRun, BUILDER_INTERVAL)) {
     try {
       console.log(`[${timestamp()}] Running autonomous builder...`);
@@ -343,7 +518,7 @@ Reason: ${exec.reason}
       if (builderResult.mood === 'BULLISH') {
         console.log(`[${timestamp()}] Builder completed tasks successfully`);
         alerts.push({
-          text: `🔧 *BUILDER UPDATE*\n${builderResult.text.slice(0, 500)}`,
+          text: `*BUILDER UPDATE*\n${builderResult.text.slice(0, 500)}`,
           mood: 'BULLISH',
           data: builderResult.data,
         });
@@ -355,7 +530,7 @@ Reason: ${exec.reason}
     }
   }
 
-  // 9. Log heartbeat to chain
+  // 11. Log heartbeat to chain
   const brierScore = getCalibrationStats().overallBrierScore;
   try {
     await logHeartbeat(
@@ -383,11 +558,21 @@ ${'='.repeat(60)}
   Heartbeat interval: ${intervalMs / 1000}s
 ${'='.repeat(60)}
 
+  === AGENTIC ARCHITECTURE ===
+  Cognitive:  Perceive -> Deliberate -> Act -> Reflect
+  Goals:      Persistent goal-driven behavior
+  Memory:     Episodic learning from experiences
+  Agents:     Scout, Analyst, Trader (coordinated)
+
+  === DATA SOURCES ===
   Scanning: Polymarket, Kalshi, Manifold, Limitless, Metaculus
   Prices:   Pyth Hermes, Jupiter V6, DeFi Llama
   Chain:    Solana memo logging enabled
   Alerts:   Push notifications enabled
-  Stats:    ${state.totalScans} scans, ${state.totalArbsFound} arbs, ${state.totalAlertsQueued} alerts
+
+  === STATS ===
+  Scans: ${state.totalScans} | Arbs: ${state.totalArbsFound} | Alerts: ${state.totalAlertsQueued}
+  Pro Arb Alerts: ${state.totalProArbAlerts} | Cognitive Cycles: ${state.totalCognitiveCycles}
 
   Press Ctrl+C to stop
 `);
@@ -458,11 +643,13 @@ if (process.argv[1]?.endsWith('heartbeat.ts')) {
     console.log('Heartbeat Stats:');
     console.log(`  Total scans: ${state.totalScans}`);
     console.log(`  Arbs found: ${state.totalArbsFound}`);
+    console.log(`  Pro arb alerts: ${state.totalProArbAlerts}`);
     console.log(`  Whale alerts: ${state.totalWhaleAlerts}`);
     console.log(`  Decisions logged: ${state.totalDecisions}`);
     console.log(`  Alerts queued: ${state.totalAlertsQueued}`);
     console.log(`  Builder runs: ${state.totalBuilderRuns}`);
     console.log(`  Last arb scan: ${state.lastArbScan || 'never'}`);
+    console.log(`  Last pro arb scan: ${state.lastProArbScan || 'never'}`);
     console.log(`  Last whale scan: ${state.lastWhaleScan || 'never'}`);
     console.log(`  Last notification: ${state.lastNotificationCheck || 'never'}`);
     console.log(`  Last price snapshot: ${state.lastPriceSnapshot || 'never'}`);

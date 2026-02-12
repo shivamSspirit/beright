@@ -42,7 +42,9 @@
   ],
   "ts-node": {
     "compilerOptions": {
-      "module": "CommonJS"
+      "module": "CommonJS",
+      "target": "ES2022",
+      "downlevelIteration": true
     }
   }
 }
