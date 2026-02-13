@@ -112,6 +112,35 @@ export default function ProfilePage() {
   const [linking, setLinking] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'settings'>('stats');
 
+  // Notifications state
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    if (!walletAddress) return;
+    setLoadingNotifications(true);
+    try {
+      const res = await fetch(`/api/notifications?wallet=${walletAddress}&limit=20`);
+      const data = await res.json();
+      setNotifications(data.notifications || []);
+      setNotificationCount(data.notifications?.filter((n: any) => n.status === 'pending').length || 0);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  // Fetch notifications on mount and when wallet changes
+  useEffect(() => {
+    if (walletAddress) {
+      fetchNotifications();
+    }
+  }, [walletAddress]);
+
   // Edit profile state
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -240,7 +269,7 @@ export default function ProfilePage() {
     : 'Anonymous');
 
   const menuItems = [
-    { icon: <Bell size={18} />, label: 'Notifications', desc: 'Manage alerts', badge: 3 },
+    { icon: <Bell size={18} />, label: 'Notifications', desc: 'Manage alerts', badge: notificationCount > 0 ? notificationCount : undefined, action: () => setShowNotifications(true) },
     { icon: <Settings size={18} />, label: 'Privacy', desc: 'Data settings' },
     {
       icon: <Zap size={18} />,
@@ -680,6 +709,63 @@ export default function ProfilePage() {
                 <button onClick={() => setShowTelegramLink(false)} className="modal-cancel">
                   Cancel
                 </button>
+              </div>
+            )}
+
+            {/* Notifications Panel */}
+            {showNotifications && (
+              <div className="notifications-panel">
+                <div className="panel-header">
+                  <div className="panel-title-row">
+                    <Bell size={18} />
+                    <span className="panel-title">Notifications</span>
+                    {notificationCount > 0 && (
+                      <span className="notification-badge">{notificationCount}</span>
+                    )}
+                  </div>
+                  <button onClick={() => setShowNotifications(false)} className="close-btn">×</button>
+                </div>
+
+                <div className="notifications-list">
+                  {loadingNotifications ? (
+                    <div className="loading-state">
+                      <div className="spinner" />
+                      <span>Loading notifications...</span>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="empty-state">
+                      <span className="empty-icon">🔔</span>
+                      <span className="empty-text">No notifications yet</span>
+                      <span className="empty-subtext">You'll see alerts about markets, predictions, and more here</span>
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div key={notif.id} className={`notification-item ${notif.status === 'pending' ? 'unread' : ''}`}>
+                        <div className="notif-icon">
+                          {notif.type === 'prediction_resolved' && '🎯'}
+                          {notif.type === 'market_closing_soon' && '⏰'}
+                          {notif.type === 'leaderboard_change' && '🏆'}
+                          {notif.type === 'weekly_summary' && '📊'}
+                          {notif.type === 'calibration_insight' && '📈'}
+                          {!['prediction_resolved', 'market_closing_soon', 'leaderboard_change', 'weekly_summary', 'calibration_insight'].includes(notif.type) && '🔔'}
+                        </div>
+                        <div className="notif-content">
+                          <span className="notif-title">{notif.title}</span>
+                          <span className="notif-body">{notif.body}</span>
+                          <span className="notif-time">
+                            {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {notifications.length > 0 && (
+                  <button onClick={fetchNotifications} className="refresh-btn">
+                    Refresh
+                  </button>
+                )}
               </div>
             )}
 
@@ -1836,6 +1922,169 @@ export default function ProfilePage() {
 
         .modal-cancel:hover {
           color: #fff;
+        }
+
+        /* Notifications Panel */
+        .notifications-panel {
+          background: rgba(15, 15, 20, 0.98);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          overflow: hidden;
+          margin-bottom: 16px;
+        }
+
+        .panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .panel-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #fff;
+        }
+
+        .panel-title {
+          font-size: 15px;
+          font-weight: 600;
+        }
+
+        .notification-badge {
+          padding: 2px 8px;
+          background: #FF5252;
+          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #fff;
+        }
+
+        .close-btn {
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.05);
+          border: none;
+          border-radius: 8px;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 18px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .notifications-list {
+          max-height: 400px;
+          overflow-y: auto;
+        }
+
+        .loading-state,
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px 20px;
+          gap: 8px;
+        }
+
+        .empty-icon {
+          font-size: 32px;
+          opacity: 0.5;
+        }
+
+        .empty-text {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .empty-subtext {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.4);
+          text-align: center;
+        }
+
+        .notification-item {
+          display: flex;
+          gap: 12px;
+          padding: 14px 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          transition: background 0.2s;
+        }
+
+        .notification-item:hover {
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .notification-item.unread {
+          background: rgba(99, 102, 241, 0.06);
+        }
+
+        .notification-item.unread:hover {
+          background: rgba(99, 102, 241, 0.1);
+        }
+
+        .notif-icon {
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+
+        .notif-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .notif-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: #fff;
+        }
+
+        .notif-body {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.6);
+          line-height: 1.4;
+        }
+
+        .notif-time {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.35);
+        }
+
+        .refresh-btn {
+          width: 100%;
+          padding: 12px;
+          background: transparent;
+          border: none;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          font-size: 13px;
+          font-weight: 500;
+          color: #6366F1;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+          background: rgba(99, 102, 241, 0.1);
         }
 
         /* Menu Section */
