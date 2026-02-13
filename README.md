@@ -343,6 +343,15 @@ for (const market of data.markets) {
 └───────────────┘
 ```
 
+### Agent Status
+
+| Agent | Status | Description |
+|-------|--------|-------------|
+| **Scout Agent** | Fully Working | Fast market scanning, trend detection, opportunity finding |
+| **Analyst Agent** | Fully Working | Deep research, superforecaster analysis, base rates |
+| **Trader Agent** | Partial | Trade execution (trading not enabled in beta) |
+| **Orchestrator** | Partial | Multi-agent coordination (in development) |
+
 ## Why BeRight?
 
 1. **Aggregate** - One query searches 5 platforms. No more tab switching.
