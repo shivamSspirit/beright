@@ -40,7 +40,8 @@ jobs:
             npm install
             cd beright-ts && npm install && npm run build && cd ..
             cp /opt/beright/.env /opt/beright/beright-ts/.env
-            pm2 restart all
+            pm2 delete all || true
+            pm2 start ecosystem.config.js
             pm2 save
             echo "=== PM2 Status ==="
             pm2 status
