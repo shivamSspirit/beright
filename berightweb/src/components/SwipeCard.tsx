@@ -330,50 +330,62 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - Different layout based on auth state */}
           <div className="sc-actions">
-            <button className="sc-btn sc-btn-no" onClick={() => vote('left')}>
-              <span className="sc-btn-icon">✕</span>
-              <div className="sc-btn-content">
-                <span className="sc-btn-label">NO</span>
-                <span className="sc-btn-price">${noPrice.toFixed(2)}</span>
-              </div>
-            </button>
-            <button className="sc-skip-btn" onClick={skip} title="Skip this market">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-              <span>Skip</span>
-            </button>
-            <button className="sc-btn sc-btn-yes" onClick={() => vote('right')}>
-              <span className="sc-btn-icon">✓</span>
-              <div className="sc-btn-content">
-                <span className="sc-btn-label">YES</span>
-                <span className="sc-btn-price">${yesPrice.toFixed(2)}</span>
-              </div>
-            </button>
+            {isAuthenticated ? (
+              <>
+                <button className="sc-btn sc-btn-no" onClick={() => vote('left')}>
+                  <span className="sc-btn-icon">✕</span>
+                  <div className="sc-btn-content">
+                    <span className="sc-btn-label">NO</span>
+                    <span className="sc-btn-price">${noPrice.toFixed(2)}</span>
+                  </div>
+                </button>
+                <button className="sc-skip-btn" onClick={skip} title="Skip this market">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                  <span>Skip</span>
+                </button>
+                <button className="sc-btn sc-btn-yes" onClick={() => vote('right')}>
+                  <span className="sc-btn-icon">✓</span>
+                  <div className="sc-btn-content">
+                    <span className="sc-btn-label">YES</span>
+                    <span className="sc-btn-price">${yesPrice.toFixed(2)}</span>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <button
+                className="sc-connect-cta"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onConnectWallet) onConnectWallet();
+                }}
+                type="button"
+              >
+                <div className="sc-connect-cta-inner">
+                  <div className="sc-connect-cta-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
+                      <circle cx="18" cy="12" r="1" fill="currentColor" />
+                    </svg>
+                  </div>
+                  <div className="sc-connect-cta-text">
+                    <span className="sc-connect-cta-title">Connect Wallet to Predict</span>
+                    <span className="sc-connect-cta-subtitle">Swipe right for YES, left for NO</span>
+                  </div>
+                </div>
+                <div className="sc-connect-cta-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+            )}
           </div>
         </animated.div>
-
-        {/* Connect Wallet Prompt for unauthenticated users */}
-        {!isAuthenticated && (
-          <button
-            className="sc-connect-hint"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onConnectWallet) onConnectWallet();
-            }}
-            type="button"
-          >
-            <span className="sc-connect-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="6" width="20" height="12" rx="2" />
-                <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
-              </svg>
-            </span>
-            <span>Connect Wallet to Predict</span>
-          </button>
-        )}
       </animated.div>
 
       <style jsx global>{`
@@ -828,55 +840,146 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           .sc-text-question { -webkit-line-clamp: 2; }
         }
 
-        /* ═══ Connect Wallet Hint Button ═══ */
-        .sc-connect-hint {
-          position: absolute;
-          bottom: 80px;
-          left: 50%;
-          transform: translateX(-50%);
+        /* ═══ Connect Wallet CTA Button (Integrated in Action Area) ═══ */
+        .sc-connect-cta {
+          flex: 1;
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 12px 20px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
-          border: 1px solid rgba(0, 230, 118, 0.4);
-          border-radius: 24px;
-          font-size: 13px;
-          font-weight: 600;
-          color: #00E676;
-          white-space: nowrap;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 18px;
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.12) 0%, rgba(0, 176, 255, 0.12) 100%);
+          border: 1px solid rgba(0, 230, 118, 0.3);
+          border-radius: 16px;
           cursor: pointer;
-          animation: pulse-hint 2s ease-in-out infinite;
-          z-index: 60;
-          box-shadow: 0 4px 20px rgba(0, 230, 118, 0.25);
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
           font-family: inherit;
+          position: relative;
+          overflow: hidden;
         }
 
-        .sc-connect-hint:hover {
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.3) 0%, rgba(0, 176, 255, 0.3) 100%);
-          border-color: rgba(0, 230, 118, 0.6);
-          box-shadow: 0 6px 28px rgba(0, 230, 118, 0.35);
-          transform: translateX(-50%) scale(1.02);
+        .sc-connect-cta::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.08) 0%, rgba(0, 176, 255, 0.08) 100%);
+          opacity: 0;
+          transition: opacity 0.25s ease;
         }
 
-        .sc-connect-hint:active {
-          transform: translateX(-50%) scale(0.98);
-          box-shadow: 0 2px 12px rgba(0, 230, 118, 0.3);
+        .sc-connect-cta:hover::before {
+          opacity: 1;
         }
 
-        .sc-connect-icon {
+        .sc-connect-cta:hover {
+          border-color: rgba(0, 230, 118, 0.5);
+          box-shadow: 0 4px 24px rgba(0, 230, 118, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .sc-connect-cta:active {
+          transform: translateY(0);
+          box-shadow: 0 2px 12px rgba(0, 230, 118, 0.15);
+        }
+
+        .sc-connect-cta-inner {
           display: flex;
           align-items: center;
+          gap: 14px;
+          position: relative;
+          z-index: 1;
         }
 
-        @keyframes pulse-hint {
-          0%, 100% { opacity: 0.9; transform: translateX(-50%) scale(1); }
-          50% { opacity: 1; transform: translateX(-50%) scale(1.01); }
+        .sc-connect-cta-icon {
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
+          border-radius: 12px;
+          color: #00E676;
+          flex-shrink: 0;
         }
 
-        .sc-connect-hint:hover {
-          animation: none;
+        .sc-connect-cta-text {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+        }
+
+        .sc-connect-cta-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #fff;
+          line-height: 1.2;
+        }
+
+        .sc-connect-cta-subtitle {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.5);
+          line-height: 1.2;
+        }
+
+        .sc-connect-cta-arrow {
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%);
+          border-radius: 10px;
+          color: #000;
+          flex-shrink: 0;
+          position: relative;
+          z-index: 1;
+          transition: transform 0.25s ease;
+        }
+
+        .sc-connect-cta:hover .sc-connect-cta-arrow {
+          transform: translateX(3px);
+        }
+
+        /* Mobile adjustments for connect CTA */
+        @media (max-width: 380px) {
+          .sc-connect-cta {
+            padding: 12px 14px;
+          }
+
+          .sc-connect-cta-icon {
+            width: 40px;
+            height: 40px;
+          }
+
+          .sc-connect-cta-icon svg {
+            width: 20px;
+            height: 20px;
+          }
+
+          .sc-connect-cta-title {
+            font-size: 14px;
+          }
+
+          .sc-connect-cta-subtitle {
+            font-size: 11px;
+          }
+
+          .sc-connect-cta-arrow {
+            width: 32px;
+            height: 32px;
+          }
+
+          .sc-connect-cta-arrow svg {
+            width: 16px;
+            height: 16px;
+          }
+        }
+
+        @media (max-width: 340px) {
+          .sc-connect-cta-subtitle {
+            display: none;
+          }
         }
       `}</style>
     </>
