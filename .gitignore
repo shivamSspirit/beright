@@ -44,3 +44,7 @@ beright-ts/memory/*.json
 *.pem
 *.key
 credentials.json
+
+# Internal docs (not for public repo)
+MVP_REQUIREMENTS.md
+CLAUDE.md
