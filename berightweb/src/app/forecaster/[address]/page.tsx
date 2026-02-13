@@ -126,7 +126,7 @@ export default function ForecasterProfilePage() {
     const fetchForecaster = async () => {
       setLoading(true);
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const API_BASE = ''; // Use relative paths for Next.js rewrites
         const res = await fetch(`${API_BASE}/api/users/${address}`);
 
         if (res.ok) {

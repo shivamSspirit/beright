@@ -56,7 +56,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const fetchOrCreateProfile = async () => {
     setIsLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = ''; // Use relative paths for Next.js rewrites
 
       // Try to get existing profile
       const res = await fetch(`${API_BASE}/api/users/profile`, {
@@ -121,7 +121,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const API_BASE = ''; // Use relative paths for Next.js rewrites
       const res = await fetch(`${API_BASE}/api/users/link-telegram`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

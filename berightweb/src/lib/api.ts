@@ -6,8 +6,9 @@
  * No duplicate API routes - single source of truth
  */
 
-// API base URL - use environment variable in production, empty string (proxy) in development
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+// API base URL - always use relative paths so Next.js rewrites can proxy to backend
+// This avoids CORS issues and mixed content (HTTPS→HTTP) problems
+const API_BASE = '';
 
 // ============ TYPES (synced with beright-ts/types/) ============
 
