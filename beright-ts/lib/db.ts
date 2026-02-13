@@ -244,7 +244,7 @@ export async function updateUserProfile(
     if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
       throw new Error('Username must be 3-30 characters, alphanumeric and underscores only');
     }
-    sanitizedUpdates.username = username || null;
+    sanitizedUpdates.username = username || undefined;
   }
 
   if (updates.email !== undefined) {
@@ -253,7 +253,7 @@ export async function updateUserProfile(
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error('Invalid email format');
     }
-    sanitizedUpdates.email = email || null;
+    sanitizedUpdates.email = email || undefined;
   }
 
   if (updates.avatar_url !== undefined) {
@@ -262,13 +262,13 @@ export async function updateUserProfile(
     if (avatarUrl && !avatarUrl.startsWith('http://') && !avatarUrl.startsWith('https://')) {
       throw new Error('Avatar URL must be a valid HTTP/HTTPS URL');
     }
-    sanitizedUpdates.avatar_url = avatarUrl || null;
+    sanitizedUpdates.avatar_url = avatarUrl || undefined;
   }
 
   if (updates.bio !== undefined) {
     // Bio: max 500 chars, strip any HTML
     const bio = updates.bio.replace(/<[^>]*>/g, '').trim().slice(0, 500);
-    sanitizedUpdates.bio = bio || null;
+    sanitizedUpdates.bio = bio || undefined;
   }
 
   if (updates.twitter_handle !== undefined) {
@@ -277,7 +277,7 @@ export async function updateUserProfile(
     if (handle && !/^[a-zA-Z0-9_]{1,15}$/.test(handle)) {
       throw new Error('Invalid Twitter handle');
     }
-    sanitizedUpdates.twitter_handle = handle || null;
+    sanitizedUpdates.twitter_handle = handle || undefined;
   }
 
   if (updates.discord_handle !== undefined) {
@@ -286,7 +286,7 @@ export async function updateUserProfile(
     if (discord && discord.length > 37) {
       throw new Error('Discord handle too long');
     }
-    sanitizedUpdates.discord_handle = discord || null;
+    sanitizedUpdates.discord_handle = discord || undefined;
   }
 
   if (updates.website_url !== undefined) {
@@ -295,7 +295,7 @@ export async function updateUserProfile(
     if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
       throw new Error('Website must be a valid HTTP/HTTPS URL');
     }
-    sanitizedUpdates.website_url = website || null;
+    sanitizedUpdates.website_url = website || undefined;
   }
 
   // Update the user
