@@ -6,10 +6,24 @@ on:
     paths:
       - 'beright-ts/**'
       - 'package.json'
+      - 'ecosystem.config.js'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - status
+          - logs
+          - restart
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
     environment: EC2_HOST
 
     steps:
@@ -28,3 +42,61 @@ jobs:
             cp /opt/beright/.env /opt/beright/beright-ts/.env
             pm2 restart all
             pm2 save
+            echo "=== PM2 Status ==="
+            pm2 status
+
+  status:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'status'
+    environment: EC2_HOST
+
+    steps:
+      - name: Check EC2 Status
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2IPV4 }}
+          username: ${{ secrets.EC2USER }}
+          key: ${{ secrets.EC2SSHKEY }}
+          script: |
+            echo "=== PM2 Status ==="
+            pm2 status
+            echo ""
+            echo "=== Last 20 lines of colosseum-agent logs ==="
+            pm2 logs colosseum-agent --lines 20 --nostream || tail -20 /opt/beright/logs/colosseum-out.log 2>/dev/null || echo "No colosseum logs found"
+            echo ""
+            echo "=== Last 20 lines of agent-poster logs ==="
+            pm2 logs agent-poster --lines 20 --nostream || tail -20 /opt/beright/logs/poster-out.log 2>/dev/null || echo "No poster logs found"
+
+  logs:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'logs'
+    environment: EC2_HOST
+
+    steps:
+      - name: Get EC2 Logs
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2IPV4 }}
+          username: ${{ secrets.EC2USER }}
+          key: ${{ secrets.EC2SSHKEY }}
+          script: |
+            echo "=== Last 50 lines of all PM2 logs ==="
+            pm2 logs --lines 50 --nostream
+
+  restart:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'restart'
+    environment: EC2_HOST
+
+    steps:
+      - name: Restart EC2 Services
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2IPV4 }}
+          username: ${{ secrets.EC2USER }}
+          key: ${{ secrets.EC2SSHKEY }}
+          script: |
+            cd /opt/beright
+            pm2 restart all
+            pm2 save
+            pm2 status
