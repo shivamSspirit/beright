@@ -3,18 +3,25 @@
  * Monitor large wallet movements on Solana
  */
 
+// Load environment variables FIRST
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 import { SkillResponse, WhaleAlert, KnownWhale, HeliusTransaction } from '../types/index';
 import { WHALE } from '../config/thresholds';
 import { TOKENS } from '../config/platforms';
 import { formatUsd, confidenceEmoji, timestamp } from './utils';
 import { getSolPrice } from './prices';
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Cached SOL price for the current scan cycle
 let cachedSolPrice: number | null = null;
 
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+// Read at runtime, not module load time
+function getHeliusApiKey(): string | undefined {
+  return process.env.HELIUS_API_KEY;
+}
 
 /**
  * Load known whales from memory file
@@ -48,13 +55,14 @@ function saveWhales(whales: KnownWhale[]): void {
  * Get transactions for a wallet using Helius API
  */
 async function getWalletTransactions(address: string, limit = 20): Promise<HeliusTransaction[]> {
-  if (!HELIUS_API_KEY) {
+  const apiKey = getHeliusApiKey();
+  if (!apiKey) {
     console.warn('HELIUS_API_KEY not set');
     return [];
   }
 
   try {
-    const url = `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${HELIUS_API_KEY}&limit=${limit}`;
+    const url = `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${apiKey}&limit=${limit}`;
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -73,10 +81,11 @@ async function getWalletTransactions(address: string, limit = 20): Promise<Heliu
  * Get wallet balance using Helius API
  */
 async function getWalletBalance(address: string): Promise<{ sol: number; usdc: number } | null> {
-  if (!HELIUS_API_KEY) return null;
+  const apiKey = getHeliusApiKey();
+  if (!apiKey) return null;
 
   try {
-    const url = `https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${HELIUS_API_KEY}`;
+    const url = `https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${apiKey}`;
 
     const response = await fetch(url);
     if (!response.ok) return null;

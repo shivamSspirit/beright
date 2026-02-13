@@ -18,6 +18,12 @@
  * - Self-calibration via Brier scores
  */
 
+// CRITICAL: Load environment variables FIRST before any other imports
+// This ensures all modules that read process.env get the correct values
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 import { SkillResponse, ArbitrageOpportunity } from '../types/index';
 import { HEARTBEAT } from '../config/thresholds';
 import { arbitrage } from './arbitrage';

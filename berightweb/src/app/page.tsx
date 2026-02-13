@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import CardStack from '@/components/CardStack';
 import BottomNav from '@/components/BottomNav';
 import MoodPills, { MoodFilter, filterByMood, getMoodCounts } from '@/components/MoodPills';
 import { useMarkets } from '@/hooks/useMarkets';
+
+// ============ CONSTANTS ============
+
+const STORAGE_KEY_VISITED = 'beright_has_visited';
+const STORAGE_KEY_DISMISSED = 'beright_login_dismissed';
 
 // Simple loading state
 function LoadingState() {
@@ -58,11 +64,67 @@ function EmptyFilterState({ mood, onReset }: { mood: MoodFilter; onReset: () => 
 export default function Home() {
   const [selectedMood, setSelectedMood] = useState<MoodFilter>('all');
 
+  // Privy authentication
+  const { ready, authenticated, login } = usePrivy();
+
+  // Track if we've attempted auto-login this session
+  const autoLoginAttempted = useRef(false);
+
   const { predictions, loading, error, refetch } = useMarkets({
     mode: 'dflow',
     limit: 50,
     useMockOnError: true,
   });
+
+  // ============ P3: Auto-open Privy on first visit ============
+  useEffect(() => {
+    // Only run on client
+    if (typeof window === 'undefined') return;
+
+    // Wait for Privy to be ready
+    if (!ready) return;
+
+    // Skip if already authenticated
+    if (authenticated) {
+      // Mark as visited since they successfully logged in
+      try {
+        localStorage.setItem(STORAGE_KEY_VISITED, 'true');
+      } catch {
+        // Ignore storage errors
+      }
+      return;
+    }
+
+    // Only attempt once per session
+    if (autoLoginAttempted.current) return;
+    autoLoginAttempted.current = true;
+
+    // Check if user has previously dismissed login or visited before
+    try {
+      const hasVisited = localStorage.getItem(STORAGE_KEY_VISITED);
+      const hasDismissed = localStorage.getItem(STORAGE_KEY_DISMISSED);
+
+      // If first visit and hasn't dismissed, trigger login modal
+      if (!hasVisited && !hasDismissed) {
+        // Small delay to ensure smooth page load first
+        const timer = setTimeout(() => {
+          // Mark as visited before opening modal
+          localStorage.setItem(STORAGE_KEY_VISITED, 'true');
+
+          // Open Privy login modal
+          login();
+
+          // Track the auto-trigger for analytics
+          console.log('[Analytics] privy_auto_open', { trigger: 'first_visit' });
+        }, 1500); // 1.5s delay for better UX
+
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // localStorage not available (e.g., private browsing)
+      // Skip auto-login in this case
+    }
+  }, [ready, authenticated, login]);
 
   // Filter predictions based on selected mood
   const filteredPredictions = useMemo(() => {

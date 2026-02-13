@@ -10,6 +10,11 @@
  * Processes the notification_queue table and delivers via Telegram Bot API.
  */
 
+// Load environment variables FIRST
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 import { supabase, db } from '../lib/supabase/client';
 
 // Types
@@ -38,9 +43,14 @@ interface DeliveryResult {
   error?: string;
 }
 
-// Configuration
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+// Configuration - read at runtime, not module load time
+function getTelegramBotToken(): string | undefined {
+  return process.env.TELEGRAM_BOT_TOKEN;
+}
+
+function getTelegramApiUrl(): string {
+  return `https://api.telegram.org/bot${getTelegramBotToken()}`;
+}
 
 /**
  * Send a message via Telegram Bot API
@@ -53,12 +63,12 @@ async function sendTelegramMessage(
     disableNotification?: boolean;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  if (!TELEGRAM_BOT_TOKEN) {
+  if (!getTelegramBotToken()) {
     return { success: false, error: 'TELEGRAM_BOT_TOKEN not configured' };
   }
 
   try {
-    const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
+    const response = await fetch(`${getTelegramApiUrl()}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
