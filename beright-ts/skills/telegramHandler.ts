@@ -47,7 +47,7 @@ import { handleAlert, checkAlerts } from './priceAlerts';
 import { handleLimits, handleAutobet, handleStopLoss, handleTakeProfit, handleDCA, checkLimits } from './autoTrade';
 import { logConversation, searchLearnings, handleMemory, getRecentContext } from './memory';
 import { handleWallet as handleDFlowWallet, handleDFlowSearch, handleTrade as handleDFlowTrade, handlePositions as handleDFlowPositions } from './dflowTrade';
-import { handleAgentCommand } from './proactiveAgent';
+import { handleAgentCommand, subscribeToAgent } from './proactiveAgent';
 
 // On-chain + Supabase integration
 import { commitPrediction, calculateBrierScore, interpretBrierScore } from '../lib/onchain';
@@ -119,6 +119,7 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/learn')) return 'COMMANDER';
   if (lower.startsWith('/smartpredict')) return 'COMMANDER';
   if (lower.startsWith('/findmarket')) return 'COMMANDER';
+  if (lower.startsWith('/subscribe-all')) return 'SUBSCRIBE_ALL';
   if (lower.startsWith('/subscribe')) return 'COMMANDER';
   if (lower.startsWith('/unsubscribe')) return 'COMMANDER';
   if (lower.startsWith('/alerts')) return 'COMMANDER';
@@ -2045,6 +2046,42 @@ Or search for markets first:
       case 'PROACTIVE_AGENT': {
         // Handle /agent commands for 24/7 AI agent subscription
         return await handleAgentCommand(text, telegramId || '', username);
+      }
+
+      case 'SUBSCRIBE_ALL': {
+        // Subscribe to ALL notification types at once
+        const results: string[] = [];
+
+        // 1. Subscribe to proactive agent (closing soon, big movers, hot alpha, etc.)
+        const agentResult = subscribeToAgent(telegramId || '', username);
+        results.push('✅ *24/7 AI Agent* - Closing soon, big movers, hot alpha, spreads, new markets, whale signals');
+
+        // 2. Subscribe to arb monitor
+        subscribeToArb(telegramId || '');
+        results.push('✅ *Arbitrage Alerts* - Instant cross-platform opportunities');
+
+        // 3. Subscribe to general notifications (briefs, whale, etc.)
+        handleSubscribe(telegramId || '', username);
+        results.push('✅ *Daily Briefs* - Morning market summaries');
+        results.push('✅ *Whale Alerts* - Large wallet movements');
+
+        return {
+          text: `
+🔔 *SUBSCRIBED TO ALL ALERTS*
+${'─'.repeat(30)}
+
+${results.join('\n')}
+
+You're now receiving ALL BeRight notifications!
+
+*MANAGE SUBSCRIPTIONS:*
+/agent settings - Customize AI agent alerts
+/unsubscribe - Stop daily briefs
+/arb-unsubscribe - Stop arb alerts
+/agent off - Pause AI agent
+`,
+          mood: 'BULLISH' as const,
+        };
       }
 
       case 'WHALE': {

@@ -14,6 +14,8 @@
  *   /arb-unsubscribe     - Unsubscribe from alerts
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { SkillResponse } from '../types/index';
 import {
   startMonitor,
@@ -27,12 +29,48 @@ import {
 } from '../lib/arbitrage/monitor';
 import { DEFAULT_ARBITRAGE_CONFIG } from '../lib/arbitrage/types';
 
+// File path for persisting subscribers
+const MEMORY_DIR = path.join(process.cwd(), 'memory');
+const SUBSCRIBERS_FILE = path.join(MEMORY_DIR, 'arb-subscribers.json');
+
 // Telegram alert sending (will be injected)
 type TelegramAlertSender = (chatId: string, message: string) => Promise<void>;
 let telegramSender: TelegramAlertSender | null = null;
 
-// Subscriber list (chat IDs that want arb alerts)
-const subscribers = new Set<string>();
+/**
+ * Load subscribers from file
+ */
+function loadSubscribers(): Set<string> {
+  try {
+    if (fs.existsSync(SUBSCRIBERS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SUBSCRIBERS_FILE, 'utf-8'));
+      if (Array.isArray(data)) {
+        console.log(`[ArbMonitor] Loaded ${data.length} subscribers from file`);
+        return new Set(data);
+      }
+    }
+  } catch (e) {
+    console.error('[ArbMonitor] Error loading subscribers:', e);
+  }
+  return new Set();
+}
+
+/**
+ * Save subscribers to file
+ */
+function saveSubscribers(subs: Set<string>): void {
+  try {
+    if (!fs.existsSync(MEMORY_DIR)) {
+      fs.mkdirSync(MEMORY_DIR, { recursive: true });
+    }
+    fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(Array.from(subs), null, 2));
+  } catch (e) {
+    console.error('[ArbMonitor] Error saving subscribers:', e);
+  }
+}
+
+// Subscriber list (chat IDs that want arb alerts) - loaded from file
+const subscribers = loadSubscribers();
 
 // Admin list (can start/stop monitor)
 const ADMIN_IDS = process.env.SUPER_ADMIN_TELEGRAM_ID?.split(',') || ['5504043269'];
@@ -175,6 +213,7 @@ Subscribers: ${subscribers.size}
  */
 export function subscribeToArb(chatId: string): SkillResponse {
   subscribers.add(chatId);
+  saveSubscribers(subscribers);
 
   return {
     text: `
@@ -197,6 +236,7 @@ Use /arb-unsubscribe to stop receiving alerts.
  */
 export function unsubscribeFromArb(chatId: string): SkillResponse {
   subscribers.delete(chatId);
+  saveSubscribers(subscribers);
 
   return {
     text: `
