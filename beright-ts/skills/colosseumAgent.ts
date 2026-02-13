@@ -505,6 +505,43 @@ export async function removeProjectVote(projectId: number): Promise<SkillRespons
   }
 }
 
+/**
+ * Update project details including social links
+ * Use PUT /my-project to update your submitted/claimed project
+ */
+export async function updateProject(updates: {
+  name?: string;
+  description?: string;
+  repoLink?: string;
+  twitterHandle?: string;
+  telegramHandle?: string;
+  liveAppLink?: string;
+  presentationLink?: string;
+  problemStatement?: string;
+  technicalApproach?: string;
+  targetAudience?: string;
+  businessModel?: string;
+  competitiveLandscape?: string;
+  futureVision?: string;
+  tags?: string[];
+}): Promise<SkillResponse> {
+  try {
+    const response = await colosseumFetch<any>('/my-project', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+
+    const updatedFields = Object.keys(updates).join(', ');
+    return {
+      text: `## Project Updated Successfully!\n\n**Updated fields:** ${updatedFields}\n\n${JSON.stringify(response, null, 2)}`,
+      mood: 'BULLISH',
+      data: response,
+    };
+  } catch (error) {
+    return { text: `Error updating project: ${error}`, mood: 'ERROR' };
+  }
+}
+
 // ============================================
 // INTELLIGENT ENGAGEMENT
 // ============================================
@@ -850,6 +887,38 @@ export async function handleColosseumCommand(args: string): Promise<SkillRespons
     case 'loop':
       return runEngagementLoop();
 
+    case 'update': {
+      // Parse update fields from args: field=value pairs
+      const updates: Record<string, string> = {};
+      for (const arg of rest) {
+        const [key, ...valueParts] = arg.split('=');
+        if (key && valueParts.length > 0) {
+          updates[key] = valueParts.join('=');
+        }
+      }
+      if (Object.keys(updates).length === 0) {
+        return {
+          text: `## Update Project Usage
+
+\`/colosseum update twitterHandle=@YourHandle\`
+\`/colosseum update telegramHandle=@YourTelegram\`
+\`/colosseum update liveAppLink=https://yourapp.com\`
+
+**Available fields:**
+- twitterHandle - X/Twitter handle
+- telegramHandle - Telegram contact
+- liveAppLink - Live app URL
+- presentationLink - Presentation/demo URL
+- name, description, repoLink
+- problemStatement, technicalApproach
+- targetAudience, businessModel
+- competitiveLandscape, futureVision`,
+          mood: 'EDUCATIONAL',
+        };
+      }
+      return updateProject(updates);
+    }
+
     default:
       return {
         text: `## Colosseum Agent Commands
@@ -870,6 +939,11 @@ export async function handleColosseumCommand(args: string): Promise<SkillRespons
 **Tracking**
 \`/colosseum myposts\` - Your posts
 \`/colosseum mycomments\` - Your comments
+
+**Project Update**
+\`/colosseum update twitterHandle=@handle\` - Update X handle
+\`/colosseum update telegramHandle=@handle\` - Update Telegram
+\`/colosseum update liveAppLink=https://...\` - Update live app URL
 
 **Autonomous**
 \`/colosseum engage\` - Run engagement loop`,
