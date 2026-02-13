@@ -35,6 +35,19 @@ import {
   getMyPosts,
   getMyComments,
 } from './colosseumAgent';
+import { sendTelegramMessage } from '../services/notificationDelivery';
+
+// Admin notification
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TELEGRAM_ID || '5504043269';
+
+async function notifyAdmin(message: string): Promise<void> {
+  try {
+    await sendTelegramMessage(SUPER_ADMIN_ID, message, { parseMode: 'Markdown' });
+    console.log('[AgentPoster] Notified admin via Telegram');
+  } catch (e) {
+    console.error('[AgentPoster] Failed to notify admin:', e);
+  }
+}
 
 // Initialize Anthropic client
 const anthropic = new Anthropic();
@@ -467,6 +480,9 @@ export async function createIntelligentPost(): Promise<SkillResponse> {
       posterState.lastPost = new Date().toISOString();
       posterState.postedTopics.push(postData.title.substring(0, 50));
       saveState(posterState);
+
+      // Notify admin via Telegram
+      await notifyAdmin(`🤖 *BeRight Agent Posted!*\n\n📝 *${postData.title}*\n\n🏷️ Tags: ${postData.tags.join(', ')}\n\n🔗 https://colosseum.com/agent-hackathon/forum`);
     }
 
     return {
