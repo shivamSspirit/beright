@@ -9,9 +9,29 @@
   Autonomous market intelligence that runs 24/7 so you don't have to.
 </p>
 
-<p align="center">
-  <em>Currently in Beta</em>
-</p>
+---
+
+<table>
+<tr>
+<td>
+
+## BETA NOTICE
+
+**Trading is not enabled yet.** The web UI is currently a **showcase of our product vision** and design direction.
+
+**What's fully working right now:**
+- Telegram AI Agent with 50+ commands
+- Multi-platform market aggregation (5 platforms)
+- Arbitrage detection & alerts
+- Whale tracking
+- Superforecaster research
+- 24/7 autonomous scanning
+
+**Try the agent:** [@BeRightBot](https://t.me/BeRightBot) on Telegram
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -32,7 +52,202 @@ BeRight is an autonomous AI agent platform for prediction markets. It aggregates
 | **On-Chain Verification** | Every prediction committed to Solana for verifiable track record |
 | **24/7 Autonomous Loop** | Heartbeat agent scans markets every 5 minutes |
 
-## Quick Start
+---
+
+## Getting the Most Out of BeRight Agent
+
+### Quick Start Commands
+
+Start with these to explore what BeRight can do:
+
+```
+/start          - Welcome & quick intro
+/help           - Full command list
+/brief          - Morning briefing with hot markets & opportunities
+/hot            - Top trending markets right now
+/alpha          - Actionable opportunities
+```
+
+### Subscribe to Alerts (Don't Miss Opportunities!)
+
+```
+/subscribe           - Get daily morning briefs & market alerts
+/arb-subscribe       - Get INSTANT arbitrage alerts (24/7 monitoring)
+/unsubscribe         - Stop all alerts
+/arb-unsubscribe     - Stop arb alerts only
+```
+
+### Make Predictions & Track Performance
+
+```
+/predict <question> <probability> YES|NO   - Make a prediction
+/me                                         - Your stats & performance
+/calibration                                - Your calibration report
+/leaderboard                                - Top forecasters
+/feedback                                   - Personalized improvement tips
+```
+
+### Research & Analysis
+
+```
+/research <topic>    - Deep superforecaster analysis with base rates
+/intelligence <q>    - AI analysis with bias warnings & probability
+/odds <topic>        - Compare odds across all 5 platforms
+/arb [topic]         - Find arbitrage opportunities
+/news <topic>        - Latest news on topic
+/intel <topic>       - Full intel report (news + social sentiment)
+```
+
+### Whale & Market Intelligence
+
+```
+/whale               - Recent whale activity
+/track_whale <addr>  - Track a specific wallet
+/track <market>      - Add market to your watchlist
+```
+
+### Portfolio & Alerts
+
+```
+/portfolio           - View all open positions
+/pnl                 - Profit/loss summary
+/expiring            - Positions expiring soon
+/alert <market> above/below <price>  - Set price alert
+/alert               - List all your active alerts
+```
+
+---
+
+## All Telegram Commands
+
+<details>
+<summary><strong>Click to expand full command list (50+ commands)</strong></summary>
+
+### Core Commands
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message and help |
+| `/help` | Show all available commands |
+| `/brief` | Morning briefing with opportunities |
+| `/hot` | Top trending markets |
+| `/alpha` | Actionable market opportunities |
+
+### Predictions & Performance
+| Command | Description |
+|---------|-------------|
+| `/predict <question> <prob> YES\|NO` | Make a prediction |
+| `/me` | Your stats and performance |
+| `/accuracy` | Your forecasting performance |
+| `/calibration` | Your calibration report |
+| `/leaderboard` | Top forecasters |
+| `/feedback` | Personalized improvement tips |
+
+### AI-Powered Analysis
+| Command | Description |
+|---------|-------------|
+| `/intelligence <question>` | Base rates, bias warnings, recommended probability |
+| `/analyze <question>` | Alias for /intelligence |
+| `/research <topic>` | Deep superforecaster analysis |
+| `/odds <topic>` | Cross-platform odds comparison |
+
+### Arbitrage (24/7 Monitoring)
+| Command | Description |
+|---------|-------------|
+| `/arb [topic]` | Scan for arbitrage opportunities |
+| `/arb-subscribe` | Get instant arb alerts |
+| `/arb-unsubscribe` | Stop arb alerts |
+| `/arb-monitor status` | Check monitor status |
+
+### Intelligence & News
+| Command | Description |
+|---------|-------------|
+| `/news <topic>` | Search news on topic |
+| `/social <topic>` | Social media sentiment |
+| `/intel <topic>` | Full intel report (news + social) |
+| `/whale` | Whale activity alerts |
+| `/track_whale <address>` | Add wallet to whale tracking |
+
+### Portfolio & Tracking
+| Command | Description |
+|---------|-------------|
+| `/portfolio` | View open positions and P&L |
+| `/pnl` | Profit/loss summary |
+| `/expiring` | Positions expiring soon |
+| `/track <market>` | Add market to watchlist |
+
+### Price Alerts
+| Command | Description |
+|---------|-------------|
+| `/alert <market> above/below <price>` | Set price alert |
+| `/alert` | List all active alerts |
+| `/alert delete <id>` | Remove alert |
+
+### Auto-Trade Rules
+| Command | Description |
+|---------|-------------|
+| `/limits daily <$> weekly <$>` | Set budget limits |
+| `/stoploss <market> <percent>` | Auto-sell if down |
+| `/takeprofit <market> <percent>` | Auto-sell if up |
+| `/dca <market> <$> <hours>` | Dollar-cost average |
+| `/autobet` | View all active rules |
+
+### DFlow Trading
+| Command | Description |
+|---------|-------------|
+| `/wallet` | Create or view trading wallet |
+| `/dflow <query>` | Search DFlow markets |
+| `/findmarket <query>` | Find DFlow markets to predict |
+| `/smartpredict <ticker> <prob> YES\|NO` | Predict with auto-resolution |
+| `/trade <ticker> YES\|NO <usdc>` | Place a trade |
+| `/positions` | View your positions |
+
+### Kalshi Direct
+| Command | Description |
+|---------|-------------|
+| `/kalshi` | Kalshi account overview |
+| `/kbalance` | Your Kalshi balance |
+| `/kpositions` | Your Kalshi positions |
+| `/kmarkets [query]` | Browse Kalshi markets |
+| `/kbuy <ticker> <yes\|no> <contracts> [price]` | Buy on Kalshi |
+| `/ksell <ticker> <yes\|no> <contracts> [price]` | Sell on Kalshi |
+
+### Identity & Notifications
+| Command | Description |
+|---------|-------------|
+| `/connect <wallet>` | Link your Solana wallet |
+| `/profile` | View your profile & stats |
+| `/subscribe` | Get morning briefs & alerts |
+| `/unsubscribe` | Stop all alerts |
+
+### Copy Trading
+| Command | Description |
+|---------|-------------|
+| `/follow @user` | Follow a forecaster |
+| `/unfollow @user` | Stop following |
+| `/signals` | View predictions from followed |
+| `/toplists` | Find top forecasters |
+
+### Memory & Learning
+| Command | Description |
+|---------|-------------|
+| `/memory` | View memory stats |
+| `/memory recent` | Recent conversations |
+| `/memory search <topic>` | Search learnings |
+
+### Legacy Trading
+| Command | Description |
+|---------|-------------|
+| `/buy <ticker> YES\|NO <usdc>` | Get trade quote |
+| `/scan` | Find LP opportunities |
+| `/volume` | Builder Code metrics |
+| `/swap <amt> <from> <to>` | Token swap quote |
+| `/balance <address>` | Check any wallet |
+
+</details>
+
+---
+
+## Quick Start (Self-Host)
 
 ```bash
 # Clone and install
@@ -107,15 +322,6 @@ for (const market of data.markets) {
   console.log(`${market.platform}: ${market.title} @ ${market.probability}%`);
 }
 ```
-
-### Telegram Bot Integration
-
-Deploy your own BeRight bot with 30+ commands:
-- `/search <query>` - Search markets
-- `/arb <query>` - Find arbitrage
-- `/research <query>` - Deep analysis
-- `/whale` - Track whales
-- `/brief` - Daily market summary
 
 ## Architecture
 
