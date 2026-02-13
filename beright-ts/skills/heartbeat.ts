@@ -47,7 +47,6 @@ import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade'
 import { refreshPositionPrices, getExpiringPositions } from './positions';
 import { buildOnce as runBuilderOnce } from './buildLoop';
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Cognitive Loop Integration
 import {
