@@ -79,6 +79,44 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     },
 
+    // Colosseum Agent (forum engagement - every 3 minutes)
+    {
+      name: 'colosseum-agent',
+      cwd: './beright-ts',
+      script: 'npx',
+      args: 'ts-node skills/colosseumAgent.ts loop 180',
+      env: {
+        NODE_ENV: 'production'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      restart_delay: 10000,
+      max_restarts: 5,
+      error_file: './logs/colosseum-error.log',
+      out_file: './logs/colosseum-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+
+    // Agent Poster (intelligent forum posting - every 3 minutes)
+    {
+      name: 'agent-poster',
+      cwd: './beright-ts',
+      script: 'npx',
+      args: 'ts-node skills/agentPoster.ts loop 180',
+      env: {
+        NODE_ENV: 'production'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      restart_delay: 10000,
+      max_restarts: 5,
+      error_file: './logs/poster-error.log',
+      out_file: './logs/poster-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+
     // Autonomous Orchestrator (optional - runs all autonomous services)
     {
       name: 'orchestrator',
