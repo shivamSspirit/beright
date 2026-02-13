@@ -307,18 +307,23 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
   }, []);
 
   // Handle trading modal close
-  const handleTradingClose = useCallback(() => {
+  // tradeCompleted: true if user actually made a trade, false if they just closed/skipped
+  const handleTradingClose = useCallback((tradeCompleted: boolean = false) => {
     setShowTrading(false);
 
-    // Record the prediction after trading modal closes
     if (pendingSwipe) {
-      const traded = true; // Could check actual trade status
-      finalizePrediction(
-        pendingSwipe.prediction,
-        tradingSide === 'YES' ? 'yes' : 'no',
-        true,
-        traded
-      );
+      if (tradeCompleted) {
+        // User actually traded - show the result
+        finalizePrediction(
+          pendingSwipe.prediction,
+          tradingSide === 'YES' ? 'yes' : 'no',
+          true,
+          true
+        );
+      } else {
+        // User closed without trading - just move to next card silently
+        setCurrentIndex((prev) => prev + 1);
+      }
     }
 
     setTradingPrediction(null);
@@ -371,6 +376,11 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
     setTradingPrediction(null);
   }, []);
 
+  // Handle skip - just move to next card without any action
+  const handleSkip = useCallback(() => {
+    setCurrentIndex((prev) => prev + 1);
+  }, []);
+
   // Track if we're transitioning between cards for smoother reveal
   const [isTransitioning, setIsTransitioning] = useState(false);
   const lastIndex = useRef(currentIndex);
@@ -418,6 +428,7 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
               key={prediction.id}
               prediction={prediction}
               onSwipe={handleSwipe}
+              onSkip={handleSkip}
               isTop={index === 0 && !showFactCheck && !showTrading && !isTransitioning}
               stackIndex={index}
             />

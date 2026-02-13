@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import CardStack from '@/components/CardStack';
 import BottomNav from '@/components/BottomNav';
@@ -10,7 +10,6 @@ import { useMarkets } from '@/hooks/useMarkets';
 // ============ CONSTANTS ============
 
 const STORAGE_KEY_VISITED = 'beright_has_visited';
-const STORAGE_KEY_DISMISSED = 'beright_login_dismissed';
 
 // Simple loading state
 function LoadingState() {
@@ -65,10 +64,7 @@ export default function Home() {
   const [selectedMood, setSelectedMood] = useState<MoodFilter>('all');
 
   // Privy authentication
-  const { ready, authenticated, login } = usePrivy();
-
-  // Track if we've attempted auto-login this session
-  const autoLoginAttempted = useRef(false);
+  const { ready, authenticated } = usePrivy();
 
   const { predictions, loading, error, refetch } = useMarkets({
     mode: 'dflow',
@@ -77,6 +73,8 @@ export default function Home() {
   });
 
   // ============ P3: Auto-open Privy on first visit ============
+  // Disabled auto-login to prevent "Unknown error" popup and stuck loading issues
+  // Users can manually connect via the connect button or by swiping on a card
   useEffect(() => {
     // Only run on client
     if (typeof window === 'undefined') return;
@@ -84,47 +82,17 @@ export default function Home() {
     // Wait for Privy to be ready
     if (!ready) return;
 
-    // Skip if already authenticated
+    // Skip if already authenticated - just mark as visited
     if (authenticated) {
-      // Mark as visited since they successfully logged in
       try {
         localStorage.setItem(STORAGE_KEY_VISITED, 'true');
       } catch {
         // Ignore storage errors
       }
-      return;
     }
-
-    // Only attempt once per session
-    if (autoLoginAttempted.current) return;
-    autoLoginAttempted.current = true;
-
-    // Check if user has previously dismissed login or visited before
-    try {
-      const hasVisited = localStorage.getItem(STORAGE_KEY_VISITED);
-      const hasDismissed = localStorage.getItem(STORAGE_KEY_DISMISSED);
-
-      // If first visit and hasn't dismissed, trigger login modal
-      if (!hasVisited && !hasDismissed) {
-        // Small delay to ensure smooth page load first
-        const timer = setTimeout(() => {
-          // Mark as visited before opening modal
-          localStorage.setItem(STORAGE_KEY_VISITED, 'true');
-
-          // Open Privy login modal
-          login();
-
-          // Track the auto-trigger for analytics
-          console.log('[Analytics] privy_auto_open', { trigger: 'first_visit' });
-        }, 1500); // 1.5s delay for better UX
-
-        return () => clearTimeout(timer);
-      }
-    } catch {
-      // localStorage not available (e.g., private browsing)
-      // Skip auto-login in this case
-    }
-  }, [ready, authenticated, login]);
+    // Note: Auto-login disabled to prevent Privy modal issues
+    // The connect prompt appears when users try to swipe on a card
+  }, [ready, authenticated]);
 
   // Filter predictions based on selected mood
   const filteredPredictions = useMemo(() => {

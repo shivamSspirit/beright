@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '@/context/UserContext';
 
@@ -17,10 +18,24 @@ export default function ConnectWalletPrompt({
   onClose,
 }: ConnectWalletPromptProps) {
   const { login, isLoading } = useUser();
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleConnect = () => {
-    login();
+  const handleConnect = async () => {
+    if (isConnecting || isLoading) return;
+
+    setIsConnecting(true);
+    try {
+      await login();
+    } catch (error) {
+      // Silently handle login errors - Privy shows its own error UI
+      console.warn('[ConnectWallet] Login error:', error);
+    } finally {
+      // Small delay before resetting to prevent rapid clicks
+      setTimeout(() => setIsConnecting(false), 500);
+    }
   };
+
+  const buttonDisabled = isLoading || isConnecting;
 
   if (variant === 'inline') {
     return (
@@ -35,9 +50,9 @@ export default function ConnectWalletPrompt({
         <button
           className="connect-btn-small"
           onClick={handleConnect}
-          disabled={isLoading}
+          disabled={buttonDisabled}
         >
-          {isLoading ? 'Connecting...' : 'Connect'}
+          {buttonDisabled ? 'Connecting...' : 'Connect'}
         </button>
 
         <style jsx>{`
@@ -105,9 +120,9 @@ export default function ConnectWalletPrompt({
         <button
           className="connect-btn"
           onClick={handleConnect}
-          disabled={isLoading}
+          disabled={buttonDisabled}
         >
-          {isLoading ? (
+          {buttonDisabled ? (
             <span className="loading-spinner" />
           ) : (
             <>
@@ -251,9 +266,9 @@ export default function ConnectWalletPrompt({
         <button
           className="connect-btn-large"
           onClick={handleConnect}
-          disabled={isLoading}
+          disabled={buttonDisabled}
         >
-          {isLoading ? (
+          {buttonDisabled ? (
             <span className="loading-spinner-large" />
           ) : (
             <>

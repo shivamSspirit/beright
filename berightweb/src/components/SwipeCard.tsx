@@ -11,6 +11,7 @@ import ConnectWalletPrompt from './ConnectWalletPrompt';
 interface SwipeCardProps {
   prediction: Prediction;
   onSwipe: (direction: 'left' | 'right', prediction: Prediction) => void;
+  onSkip?: (prediction: Prediction) => void;
   isTop: boolean;
   stackIndex: number;
 }
@@ -111,8 +112,8 @@ function MiniLineChart({ isYes, seed, price }: { isYes: boolean; seed: number; p
   );
 }
 
-export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: SwipeCardProps) {
-  const { isAuthenticated, login } = useUser();
+export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackIndex }: SwipeCardProps) {
+  const { isAuthenticated } = useUser();
   const [pressed, setPressed] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [showConnectPrompt, setShowConnectPrompt] = useState(false);
@@ -201,6 +202,19 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
     api.start({ x: d * -15, scale: 1.03, config: { tension: 600, friction: 20 } });
     setTimeout(() => flyOut(d), 60);
   }, [isTop, api, flyOut, isAuthenticated]);
+
+  const skip = useCallback(() => {
+    if (!isTop || !onSkip) return;
+    if (navigator.vibrate) navigator.vibrate(5);
+    // Animate card flying up/away
+    api.start({
+      y: -window.innerHeight,
+      scale: 0.8,
+      rotate: 0,
+      config: { tension: 250, friction: 28, clamp: true },
+      onRest: () => onSkip(prediction),
+    });
+  }, [isTop, api, onSkip, prediction]);
 
   // Stacked card (not interactive)
   if (stackIndex > 0) {
@@ -327,11 +341,12 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
                 <span className="sc-btn-price">${noPrice.toFixed(2)}</span>
               </div>
             </button>
-            <div className="sc-swipe-indicator">
-              <span className="sc-swipe-arrow">←</span>
-              <span className="sc-swipe-text">swipe</span>
-              <span className="sc-swipe-arrow">→</span>
-            </div>
+            <button className="sc-skip-btn" onClick={skip} title="Skip this market">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+              <span>Skip</span>
+            </button>
             <button className="sc-btn sc-btn-yes" onClick={() => vote('right')}>
               <span className="sc-btn-icon">✓</span>
               <div className="sc-btn-content">
@@ -723,25 +738,48 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
         .sc-btn-yes .sc-btn-price { color: var(--yes); }
         .sc-btn-no .sc-btn-price { color: var(--no); }
 
-        .sc-swipe-indicator {
+        .sc-skip-btn {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           gap: 2px;
           flex-shrink: 0;
-          min-width: 40px;
+          min-width: 48px;
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.2s ease;
         }
 
-        .sc-swipe-arrow {
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.15);
+        .sc-skip-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.15);
         }
 
-        .sc-swipe-text {
-          font-size: 7px;
-          color: rgba(255, 255, 255, 0.12);
-          letter-spacing: 1px;
+        .sc-skip-btn:active {
+          transform: scale(0.95);
+        }
+
+        .sc-skip-btn svg {
+          width: 16px;
+          height: 16px;
+          color: rgba(255, 255, 255, 0.4);
+        }
+
+        .sc-skip-btn span {
+          font-size: 9px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.4);
+          letter-spacing: 0.5px;
           text-transform: uppercase;
+        }
+
+        .sc-skip-btn:hover svg,
+        .sc-skip-btn:hover span {
+          color: rgba(255, 255, 255, 0.6);
         }
 
         /* ═══ Responsive ═══ */

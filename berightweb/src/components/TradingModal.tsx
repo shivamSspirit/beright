@@ -21,7 +21,7 @@ interface TradingPrediction {
 interface TradingModalProps {
   prediction: TradingPrediction;
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (tradeCompleted?: boolean) => void;
 }
 
 interface MemoCommitState {
@@ -503,11 +503,18 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
   }, []);
 
   /**
-   * Close modal (prevent during active trading)
+   * Close modal without completing trade (user cancelled/skipped)
    */
   const handleClose = useCallback(() => {
-    if (!isTrading && !isSubmitting) onClose();
+    if (!isTrading && !isSubmitting) onClose(false);
   }, [isTrading, isSubmitting, onClose]);
+
+  /**
+   * Close modal after successful trade
+   */
+  const handleTradeComplete = useCallback(() => {
+    onClose(true);
+  }, [onClose]);
 
   // ============ RENDER ============
 
@@ -709,7 +716,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 <button
                   className={`tm-action ${!isConnected ? 'connect' : side.toLowerCase()}`}
                   onClick={!isConnected ? connectWallet : handleTrade}
-                  disabled={isTrading || isSubmitting || (!isConnected ? !isReady : !isTokenized)}
+                  disabled={isTrading || isSubmitting || (isConnected && !isTokenized)}
                 >
                   {isSubmitting ? (
                     <span className="tm-action-loading">
@@ -855,7 +862,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 )}
 
                 {(step === 'success' || step === 'error') && (
-                  <button className="tm-action done" onClick={handleClose}>
+                  <button className="tm-action done" onClick={step === 'success' ? handleTradeComplete : handleClose}>
                     {step === 'success' ? 'Done' : 'Close'}
                   </button>
                 )}

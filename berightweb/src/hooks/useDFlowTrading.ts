@@ -64,10 +64,18 @@ export function useDFlowTrading() {
 
   // Connect wallet - opens Privy modal
   const connectWallet = useCallback(async () => {
-    if (!ready) return;
+    if (!ready) {
+      console.warn('[DFlowTrading] Privy not ready yet');
+      return;
+    }
     if (!authenticated) {
-      // This opens the Privy login modal
-      login();
+      try {
+        // This opens the Privy login modal
+        await login();
+      } catch (error) {
+        // Privy handles its own error UI, just log
+        console.warn('[DFlowTrading] Login error:', error);
+      }
     }
   }, [ready, authenticated, login]);
 

@@ -7,9 +7,9 @@ interface PrivyProviderProps {
   children: React.ReactNode;
 }
 
-// Solana wallet connectors
+// Solana wallet connectors - disable auto-connect to prevent stuck loading
 const solanaConnectors = toSolanaWalletConnectors({
-  shouldAutoConnect: true,
+  shouldAutoConnect: false, // Changed: prevent stuck loading on page load
 });
 
 export default function PrivyProvider({ children }: PrivyProviderProps) {

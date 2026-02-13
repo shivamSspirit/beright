@@ -36,7 +36,7 @@ BeRight is an autonomous AI agent platform for prediction markets. It aggregates
 
 ```bash
 # Clone and install
-git clone https://github.com/your-org/beright.git
+git clone https://github.com/shivamSspirit/beright.git
 cd beright && npm install
 
 # Configure environment
@@ -195,6 +195,6 @@ npm test        # Run tests
 
 <p align="center">
   <strong>Built for forecasters who want to be right.</strong><br/>
-  <a href="https://github.com/your-org/beright/issues">Report Bug</a> ·
-  <a href="https://github.com/your-org/beright/issues">Request Feature</a>
+  <a href="https://github.com/shivamSspirit/beright/issues">Report Bug</a> ·
+  <a href="https://github.com/shivamSspirit/beright/issues">Request Feature</a>
 </p>

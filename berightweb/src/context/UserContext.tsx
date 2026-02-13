@@ -30,8 +30,8 @@ interface UserContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => void;
-  logout: () => void;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   walletAddress: string | null;
   linkTelegram: (telegramId: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -41,13 +41,33 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const { ready, authenticated, user: privyUser, login, logout } = usePrivy();
+  const { ready, authenticated, user: privyUser, login: privyLogin, logout: privyLogout } = usePrivy();
   const { wallets } = useWallets();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const primaryWallet = wallets?.[0];
   const walletAddress = primaryWallet?.address || null;
+
+  // Wrapped login function with error handling
+  const login = async () => {
+    try {
+      await privyLogin();
+    } catch (error) {
+      // Silently handle - Privy shows its own error UI
+      console.warn('[UserContext] Login error:', error);
+    }
+  };
+
+  // Wrapped logout function with error handling
+  const logout = async () => {
+    try {
+      await privyLogout();
+      setUser(null);
+    } catch (error) {
+      console.warn('[UserContext] Logout error:', error);
+    }
+  };
 
   // Fetch or create user profile when authenticated
   useEffect(() => {
