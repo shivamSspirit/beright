@@ -2,10 +2,13 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { animated, useSpring, useTransition, config } from '@react-spring/web';
+import { AnimatePresence } from 'framer-motion';
 import SwipeCard from './SwipeCard';
 import AIFactCheckModal from './AIFactCheckModal';
 import TradingModal from './TradingModal';
+import ConnectWalletPrompt from './ConnectWalletPrompt';
 import { Prediction, DFlowData } from '@/lib/types';
+import { useUser } from '@/context/UserContext';
 import confetti from 'canvas-confetti';
 
 // ═══════════════════════════════════════════════════════════
@@ -216,6 +219,7 @@ function CompletionScreen({
 }
 
 export default function CardStack({ predictions, onComplete }: CardStackProps) {
+  const { isAuthenticated } = useUser();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<PredictionResult[]>([]);
   const [showResult, setShowResult] = useState(false);
@@ -232,6 +236,21 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
   const [showTrading, setShowTrading] = useState(false);
   const [tradingPrediction, setTradingPrediction] = useState<Prediction | null>(null);
   const [tradingSide, setTradingSide] = useState<'YES' | 'NO'>('YES');
+
+  // Connect Wallet Prompt state (rendered at CardStack level for proper z-index)
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
+
+  // Close connect prompt when user authenticates
+  useEffect(() => {
+    if (isAuthenticated && showConnectPrompt) {
+      setShowConnectPrompt(false);
+    }
+  }, [isAuthenticated, showConnectPrompt]);
+
+  // Callback to show connect wallet prompt
+  const handleConnectWallet = useCallback(() => {
+    setShowConnectPrompt(true);
+  }, []);
 
   // Reset when predictions change
   useEffect(() => {
@@ -429,6 +448,7 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
               prediction={prediction}
               onSwipe={handleSwipe}
               onSkip={handleSkip}
+              onConnectWallet={handleConnectWallet}
               isTop={index === 0 && !showFactCheck && !showTrading && !isTransitioning}
               stackIndex={index}
             />
@@ -472,6 +492,17 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
           stats={{ correct: 0, total: results.length }}
         />
       )}
+
+      {/* Connect Wallet Prompt - rendered at CardStack level for proper z-index layering */}
+      <AnimatePresence>
+        {showConnectPrompt && (
+          <ConnectWalletPrompt
+            title="Connect to Predict"
+            description="Link your wallet to make predictions and compete on the leaderboard"
+            onClose={() => setShowConnectPrompt(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <style jsx global>{`
         /* ═══════════════════════════════════════════════════════════

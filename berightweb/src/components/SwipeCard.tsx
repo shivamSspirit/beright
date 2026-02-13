@@ -3,15 +3,14 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { animated, useSpring, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { AnimatePresence } from 'framer-motion';
 import { Prediction } from '@/lib/types';
 import { useUser } from '@/context/UserContext';
-import ConnectWalletPrompt from './ConnectWalletPrompt';
 
 interface SwipeCardProps {
   prediction: Prediction;
   onSwipe: (direction: 'left' | 'right', prediction: Prediction) => void;
   onSkip?: (prediction: Prediction) => void;
+  onConnectWallet?: () => void;
   isTop: boolean;
   stackIndex: number;
 }
@@ -112,11 +111,10 @@ function MiniLineChart({ isYes, seed, price }: { isYes: boolean; seed: number; p
   );
 }
 
-export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackIndex }: SwipeCardProps) {
+export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet, isTop, stackIndex }: SwipeCardProps) {
   const { isAuthenticated } = useUser();
   const [pressed, setPressed] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
 
   const mock = useMemo(() => {
     const h = prediction.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -162,8 +160,8 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
     ({ down, movement: [mx, my], velocity: [vx], direction: [dx], first, last }) => {
       // Block swipe for unauthenticated users
       if (!isAuthenticated) {
-        if (first && Math.abs(mx) > 20) {
-          setShowConnectPrompt(true);
+        if (first && Math.abs(mx) > 20 && onConnectWallet) {
+          onConnectWallet();
         }
         return;
       }
@@ -193,7 +191,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
 
     // Block vote for unauthenticated users
     if (!isAuthenticated) {
-      setShowConnectPrompt(true);
+      if (onConnectWallet) onConnectWallet();
       return;
     }
 
@@ -201,7 +199,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
     if (navigator.vibrate) navigator.vibrate(10);
     api.start({ x: d * -15, scale: 1.03, config: { tension: 600, friction: 20 } });
     setTimeout(() => flyOut(d), 60);
-  }, [isTop, api, flyOut, isAuthenticated]);
+  }, [isTop, api, flyOut, isAuthenticated, onConnectWallet]);
 
   const skip = useCallback(() => {
     if (!isTop || !onSkip) return;
@@ -359,28 +357,24 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
 
         {/* Connect Wallet Prompt for unauthenticated users */}
         {!isAuthenticated && (
-          <div className="sc-connect-hint">
+          <button
+            className="sc-connect-hint"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onConnectWallet) onConnectWallet();
+            }}
+            type="button"
+          >
             <span className="sc-connect-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="2" y="6" width="20" height="12" rx="2" />
                 <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
               </svg>
             </span>
-            <span>Connect wallet to predict</span>
-          </div>
+            <span>Connect Wallet to Predict</span>
+          </button>
         )}
       </animated.div>
-
-      {/* Connect Wallet Overlay */}
-      <AnimatePresence>
-        {showConnectPrompt && (
-          <ConnectWalletPrompt
-            title="Connect to Predict"
-            description="Link your wallet to make predictions and compete on the leaderboard"
-            onClose={() => setShowConnectPrompt(false)}
-          />
-        )}
-      </AnimatePresence>
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -834,7 +828,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
           .sc-text-question { -webkit-line-clamp: 2; }
         }
 
-        /* ═══ Connect Wallet Hint ═══ */
+        /* ═══ Connect Wallet Hint Button ═══ */
         .sc-connect-hint {
           position: absolute;
           bottom: 80px;
@@ -843,15 +837,32 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 16px;
-          background: rgba(0, 230, 118, 0.15);
-          border: 1px solid rgba(0, 230, 118, 0.3);
-          border-radius: 20px;
-          font-size: 12px;
+          padding: 12px 20px;
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
+          border: 1px solid rgba(0, 230, 118, 0.4);
+          border-radius: 24px;
+          font-size: 13px;
+          font-weight: 600;
           color: #00E676;
           white-space: nowrap;
+          cursor: pointer;
           animation: pulse-hint 2s ease-in-out infinite;
-          z-index: 40;
+          z-index: 60;
+          box-shadow: 0 4px 20px rgba(0, 230, 118, 0.25);
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+
+        .sc-connect-hint:hover {
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.3) 0%, rgba(0, 176, 255, 0.3) 100%);
+          border-color: rgba(0, 230, 118, 0.6);
+          box-shadow: 0 6px 28px rgba(0, 230, 118, 0.35);
+          transform: translateX(-50%) scale(1.02);
+        }
+
+        .sc-connect-hint:active {
+          transform: translateX(-50%) scale(0.98);
+          box-shadow: 0 2px 12px rgba(0, 230, 118, 0.3);
         }
 
         .sc-connect-icon {
@@ -860,8 +871,12 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, isTop, stackInd
         }
 
         @keyframes pulse-hint {
-          0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(1); }
-          50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
+          0%, 100% { opacity: 0.9; transform: translateX(-50%) scale(1); }
+          50% { opacity: 1; transform: translateX(-50%) scale(1.01); }
+        }
+
+        .sc-connect-hint:hover {
+          animation: none;
         }
       `}</style>
     </>
