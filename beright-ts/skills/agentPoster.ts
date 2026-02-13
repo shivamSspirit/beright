@@ -13,9 +13,13 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Load environment variables BEFORE importing Anthropic
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// State file for persistence
+const STATE_FILE = path.join(__dirname, '../memory/poster-state.json');
 
 import Anthropic from '@anthropic-ai/sdk';
 import { SkillResponse, Mood } from '../types';
@@ -46,15 +50,45 @@ interface PosterState {
   postsToday: number;
   commentsToday: number;
   lastReset: string;
+  commentedPostIds: number[];
+  postedTopics: string[];
 }
 
-let posterState: PosterState = {
-  lastPost: null,
-  lastComment: null,
-  postsToday: 0,
-  commentsToday: 0,
-  lastReset: new Date().toDateString(),
-};
+// Load state from file
+function loadState(): PosterState {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const data = fs.readFileSync(STATE_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Error loading poster state:', e);
+  }
+  return {
+    lastPost: null,
+    lastComment: null,
+    postsToday: 0,
+    commentsToday: 0,
+    lastReset: new Date().toDateString(),
+    commentedPostIds: [],
+    postedTopics: [],
+  };
+}
+
+// Save state to file
+function saveState(state: PosterState): void {
+  try {
+    const dir = path.dirname(STATE_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  } catch (e) {
+    console.error('Error saving poster state:', e);
+  }
+}
+
+let posterState: PosterState = loadState();
 
 // BeRight context for AI
 const BERIGHT_CONTEXT = `
@@ -431,6 +465,8 @@ export async function createIntelligentPost(): Promise<SkillResponse> {
     if (result.mood !== 'ERROR') {
       posterState.postsToday++;
       posterState.lastPost = new Date().toISOString();
+      posterState.postedTopics.push(postData.title.substring(0, 50));
+      saveState(posterState);
     }
 
     return {
@@ -476,7 +512,10 @@ export async function engageWithRelevantPosts(maxComments = 3): Promise<SkillRes
     for (const res of searchResults) {
       const posts = (res.data as any[]) || [];
       for (const p of posts) {
-        if (!seenIds.has(p.id) && p.agentName !== 'BeRight-Agent' && p.type === 'post') {
+        if (!seenIds.has(p.id) &&
+            p.agentName !== 'BeRight-Agent' &&
+            p.type === 'post' &&
+            !posterState.commentedPostIds.includes(p.id)) {
           seenIds.add(p.id);
           allPosts.push(p);
         }
@@ -506,12 +545,16 @@ export async function engageWithRelevantPosts(maxComments = 3): Promise<SkillRes
 
         posterState.commentsToday++;
         posterState.lastComment = new Date().toISOString();
+        posterState.commentedPostIds.push(post.id);
+        saveState(posterState);
         commented++;
 
         // Rate limit delay
         await new Promise(r => setTimeout(r, 2000));
       } catch (e) {
-        // Skip failed comments
+        // Mark as commented even on failure to avoid retry loops
+        posterState.commentedPostIds.push(post.id);
+        saveState(posterState);
       }
     }
 
@@ -583,7 +626,20 @@ export async function runPosterCycle(): Promise<SkillResponse> {
   const results: string[] = [];
   const timestamp = new Date().toISOString();
 
-  console.log(`\n[$${timestamp}] Agent-Poster cycle starting...`);
+  // Reload state at start of each cycle
+  posterState = loadState();
+
+  // Reset daily counters if new day
+  const today = new Date().toDateString();
+  if (posterState.lastReset !== today) {
+    posterState.postsToday = 0;
+    posterState.commentsToday = 0;
+    posterState.lastReset = today;
+    saveState(posterState);
+  }
+
+  console.log(`\n[${timestamp}] Agent-Poster cycle starting...`);
+  console.log(`State: ${posterState.postsToday} posts, ${posterState.commentsToday} comments, ${posterState.commentedPostIds.length} tracked`);
 
   try {
     // 1. Check status
