@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="berightweb/public/logo.jpg" alt="BeRight Logo" width="200" />
+</p>
+
 # BeRight
 
 Prediction market intelligence terminal with autonomous AI agents, built on OpenClaw technology.

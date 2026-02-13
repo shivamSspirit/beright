@@ -32,7 +32,7 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
           theme: 'dark',
           accentColor: '#00E676',
           showWalletLoginFirst: true,
-          logo: 'https://beright.ai/logo.png',
+          logo: '/logo.jpg',
           walletChainType: 'solana-only',
         },
 

@@ -11,11 +11,20 @@ export const metadata: Metadata = {
     title: "BeRight - Human vs AI Predictions",
     description: "Can you beat the AI at forecasting?",
     type: "website",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 1200,
+        alt: "BeRight Logo",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "BeRight - Human vs AI Predictions",
     description: "Can you beat the AI at forecasting?",
+    images: ["/og-image.jpg"],
   },
 };
 
