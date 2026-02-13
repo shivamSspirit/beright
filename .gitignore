@@ -48,3 +48,13 @@ credentials.json
 # Internal docs (not for public repo)
 MVP_REQUIREMENTS.md
 CLAUDE.md
+**/CLAUDE.md
+beright-ts/MVP_PROGRESS.md
+beright-ts/MVP_REFINED.md
+beright-ts/mvptrack.md
+beright-ts/quickmvpswipe.md
+beright-ts/learn.md
+berightweb/bearcog.md
+
+# Local logs
+colosseum-agent.log
