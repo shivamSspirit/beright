@@ -728,6 +728,49 @@ export async function handleColosseumCommand(args: string): Promise<SkillRespons
 }
 
 // ============================================
+// AUTONOMOUS LOOP (runs every N seconds)
+// ============================================
+
+/**
+ * Run continuous engagement loop
+ * @param intervalSeconds - Interval between runs (default: 180 = 3 minutes)
+ */
+export async function runContinuousLoop(intervalSeconds = 180): Promise<void> {
+  console.log(`\n🤖 BeRight Colosseum Agent - Autonomous Mode`);
+  console.log(`   Interval: ${intervalSeconds} seconds (${intervalSeconds / 60} minutes)`);
+  console.log(`   Press Ctrl+C to stop\n`);
+
+  let runCount = 0;
+
+  const runOnce = async () => {
+    runCount++;
+    const timestamp = new Date().toISOString();
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[${timestamp}] Run #${runCount}`);
+    console.log('='.repeat(60));
+
+    try {
+      const result = await runEngagementLoop();
+      console.log(result.text);
+
+      // Log summary
+      const data = result.data as { results: string[] };
+      console.log(`\n✅ Completed: ${data?.results?.length || 0} actions`);
+    } catch (error) {
+      console.error(`❌ Error: ${error}`);
+    }
+
+    console.log(`\n⏰ Next run in ${intervalSeconds} seconds...`);
+  };
+
+  // Run immediately
+  await runOnce();
+
+  // Then run on interval
+  setInterval(runOnce, intervalSeconds * 1000);
+}
+
+// ============================================
 // CLI SUPPORT
 // ============================================
 
@@ -736,6 +779,13 @@ if (require.main === module) {
   const command = args[0] || 'status';
 
   (async () => {
+    // Handle continuous loop
+    if (command === 'loop' || command === 'auto') {
+      const interval = parseInt(args[1]) || 180; // Default 3 minutes
+      await runContinuousLoop(interval);
+      return; // Never exits
+    }
+
     let result: SkillResponse;
 
     switch (command) {
