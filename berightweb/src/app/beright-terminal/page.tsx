@@ -6,54 +6,40 @@ import BottomNav from '@/components/BottomNav';
 import { usePrivy } from '@privy-io/react-auth';
 import { getHotMarkets, getArbitrageOpportunities, getIntel, ApiMarket, ApiArbitrage } from '@/lib/api';
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// BERIGHT TERMINAL v8.1 - With Chat Interface
-// Clean, professional design matching project aesthetics
-// Typography: Bricolage Grotesque (display) + DM Mono (data)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  BERIGHT AI TERMINAL - CYBERPUNK PREDICTION MARKET INTERFACE             ║
+// ║  Aesthetic: Matrix meets Blade Runner trading terminal                   ║
+// ║  Font: Share Tech Mono (terminal) + Orbitron (headers)                   ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
 
-type FilterTab = 'hot' | 'arb' | 'news' | 'picks' | 'chat';
-type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+type ViewMode = 'terminal' | 'markets' | 'agents' | 'intel';
 
-// Chat Message Interface
-interface ChatMessage {
+interface AgentLog {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  agent: 'SCOUT' | 'ANALYST' | 'TRADER' | 'BUILDER' | 'SYSTEM';
+  message: string;
+  timestamp: Date;
+  type: 'info' | 'success' | 'warning' | 'error' | 'data';
+}
+
+interface TerminalLine {
+  id: string;
+  type: 'input' | 'output' | 'system' | 'error' | 'success' | 'data';
   content: string;
   timestamp: Date;
-  isTyping?: boolean;
 }
 
-interface MarketCard {
+interface MarketTick {
   id: string;
-  rank: number;
   title: string;
-  category: string;
+  price: number;
+  change: number;
   platform: string;
-  yesPct: number;
-  noPct: number;
-  volume: number;
-  predictors: number;
-  closesIn: string;
-  url: string;
-  isHot?: boolean;
 }
 
-interface UserPrediction {
-  marketId: string;
-  direction: 'YES' | 'NO';
-  timestamp: Date;
-}
-
-interface NewsItem {
-  title: string;
-  source: string;
-  url?: string;
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// UTILITY FUNCTIONS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
 
 function formatVolume(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
@@ -61,3096 +47,1855 @@ function formatVolume(v: number): string {
   return `$${Math.round(v)}`;
 }
 
-function formatTimeRemaining(endDate: string | null): string {
-  if (!endDate) return 'TBD';
-  const now = new Date();
-  const end = new Date(endDate);
-  const diff = end.getTime() - now.getTime();
-  if (diff < 0) return 'Ended';
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const days = Math.floor(hours / 24);
-  if (days > 30) return `${Math.floor(days / 30)}mo`;
-  if (days > 0) return `${days}d`;
-  if (hours > 0) return `${hours}h`;
-  return '<1h';
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function getCategoryInfo(title: string): { emoji: string; label: string; colorClass: string } {
-  const lower = title.toLowerCase();
-  if (lower.includes('bitcoin') || lower.includes('btc') || lower.includes('eth') || lower.includes('crypto')) {
-    return { emoji: '₿', label: 'Crypto', colorClass: 'crypto' };
-  }
-  if (lower.includes('trump') || lower.includes('biden') || lower.includes('election') || lower.includes('president')) {
-    return { emoji: '🏛', label: 'Politics', colorClass: 'politics' };
-  }
-  if (lower.includes('fed') || lower.includes('rate') || lower.includes('inflation') || lower.includes('gdp')) {
-    return { emoji: '📊', label: 'Economy', colorClass: 'economy' };
-  }
-  if (lower.includes('ai') || lower.includes('openai') || lower.includes('tech') || lower.includes('apple') || lower.includes('google')) {
-    return { emoji: '🤖', label: 'AI/Tech', colorClass: 'tech' };
-  }
-  if (lower.includes('nba') || lower.includes('nfl') || lower.includes('game') || lower.includes('championship')) {
-    return { emoji: '🏆', label: 'Sports', colorClass: 'sports' };
-  }
-  return { emoji: '📈', label: 'Markets', colorClass: 'markets' };
+function generateId(): string {
+  return Math.random().toString(36).substr(2, 9);
 }
 
-function transformToCard(market: ApiMarket, index: number): MarketCard {
-  return {
-    id: market.id || `${market.platform}-${index}`,
-    rank: index + 1,
-    title: market.title,
-    category: getCategoryInfo(market.title).label,
-    platform: market.platform.toUpperCase(),
-    yesPct: Math.round(market.yesPct * 10) / 10,
-    noPct: Math.round(market.noPct * 10) / 10,
-    volume: market.volume,
-    predictors: Math.round(market.volume / 50) + Math.floor(Math.random() * 500),
-    closesIn: formatTimeRemaining(market.endDate),
-    url: market.url,
-    isHot: market.volume > 100000 || index < 3,
+// Agent configurations (matching beright-ts/config/agents.ts)
+const AGENTS_CONFIG = {
+  SCOUT: {
+    color: '#00fff7',    // Cyan
+    model: 'sonnet',
+    specialization: 'Market Scanning',
+    capabilities: ['Arbitrage', 'Hot Markets', 'Volume Spikes'],
+  },
+  ANALYST: {
+    color: '#ff00ff',    // Magenta
+    model: 'opus',
+    specialization: 'Deep Research',
+    capabilities: ['Superforecaster', 'Base Rates', 'Calibration'],
+  },
+  TRADER: {
+    color: '#00ff00',    // Matrix green
+    model: 'sonnet',
+    specialization: 'Trade Execution',
+    capabilities: ['Quotes', 'Positions', 'Whale Tracking'],
+  },
+  BUILDER: {
+    color: '#ffae00',    // Amber
+    model: 'opus',
+    specialization: 'Code Generation',
+    capabilities: ['Frontend', 'Backend', 'Testing'],
+  },
+  SYSTEM: {
+    color: '#666',       // Gray
+    model: 'system',
+    specialization: 'System',
+    capabilities: [],
+  },
+};
+
+// Agent colors for quick lookup
+const AGENT_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(AGENTS_CONFIG).map(([k, v]) => [k, v.color])
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MATRIX RAIN BACKGROUND
+// ═══════════════════════════════════════════════════════════════════════════
+
+function MatrixRain() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const chars = 'BERIGHT01アイウエオカキクケコ¥$%&@#';
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops: number[] = Array(columns).fill(1);
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ff0015';
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    };
+
+    const interval = setInterval(draw, 50);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="matrix-canvas" />;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LIVE MARKET TICKER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function MarketTicker({ markets }: { markets: MarketTick[] }) {
+  return (
+    <div className="ticker-container">
+      <div className="ticker-track">
+        {[...markets, ...markets].map((m, i) => (
+          <div key={`${m.id}-${i}`} className="ticker-item">
+            <span className="ticker-title">{m.title.slice(0, 30)}</span>
+            <span className={`ticker-price ${m.change >= 0 ? 'up' : 'down'}`}>
+              {m.price.toFixed(0)}¢
+            </span>
+            <span className={`ticker-change ${m.change >= 0 ? 'up' : 'down'}`}>
+              {m.change >= 0 ? '▲' : '▼'}{Math.abs(m.change).toFixed(1)}%
+            </span>
+            <span className="ticker-platform">{m.platform}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENT STATUS PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function AgentPanel({ logs, onlineAgents }: { logs: AgentLog[]; onlineAgents: string[] }) {
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  const agentKeys = ['SCOUT', 'ANALYST', 'TRADER', 'BUILDER'] as const;
+
+  return (
+    <div className="agent-panel">
+      <div className="panel-header">
+        <span className="panel-icon">◈</span>
+        <span className="panel-title">AGENT_NETWORK</span>
+        <span className="panel-status online">CONNECTED</span>
+      </div>
+
+      <div className="agent-grid">
+        {agentKeys.map(agent => {
+          const config = AGENTS_CONFIG[agent];
+          const isOnline = onlineAgents.includes(agent);
+          return (
+            <div
+              key={agent}
+              className={`agent-node ${isOnline ? 'online' : 'offline'}`}
+              style={{ '--agent-color': config.color } as React.CSSProperties}
+            >
+              <div className="node-indicator" />
+              <span className="node-name">{agent}</span>
+              <span className="node-spec">{config.specialization}</span>
+              <span className="node-model">{config.model.toUpperCase()}</span>
+              <span className="node-status">{isOnline ? 'ACTIVE' : 'IDLE'}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="agent-logs">
+        <div className="logs-header">
+          <span>▸ ACTIVITY_LOG</span>
+          <span className="log-count">{logs.length}</span>
+        </div>
+        <div className="logs-feed">
+          {logs.slice(-20).map(log => (
+            <div key={log.id} className={`log-entry ${log.type}`}>
+              <span className="log-time">[{formatTime(log.timestamp)}]</span>
+              <span
+                className="log-agent"
+                style={{ color: AGENT_COLORS[log.agent] }}
+              >
+                [{log.agent}]
+              </span>
+              <span className="log-message">{log.message}</span>
+            </div>
+          ))}
+          <div ref={logsEndRef} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TERMINAL INTERFACE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function TerminalInterface({
+  lines,
+  onCommand,
+  isProcessing
+}: {
+  lines: TerminalLine[];
+  onCommand: (cmd: string) => void;
+  isProcessing: boolean;
+}) {
+  const [input, setInput] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    terminalRef.current?.scrollTo({ top: terminalRef.current.scrollHeight, behavior: 'smooth' });
+  }, [lines]);
+
+  const handleSubmit = () => {
+    if (!input.trim() || isProcessing) return;
+    setHistory(prev => [...prev, input]);
+    setHistoryIndex(-1);
+    onCommand(input);
+    setInput('');
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length > 0) {
+        const newIndex = historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
+        setHistoryIndex(newIndex);
+        setInput(history[history.length - 1 - newIndex] || '');
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(history[history.length - 1 - newIndex] || '');
+      } else {
+        setHistoryIndex(-1);
+        setInput('');
+      }
+    }
+  };
+
+  const commands = [
+    { cmd: '/hot', desc: 'Show hot markets' },
+    { cmd: '/arb', desc: 'Find arbitrage' },
+    { cmd: '/scan [topic]', desc: 'Scan markets' },
+    { cmd: '/research [query]', desc: 'Deep analysis' },
+    { cmd: '/whale', desc: 'Track whales' },
+    { cmd: '/intel', desc: 'Latest news' },
+    { cmd: '/status', desc: 'System status' },
+    { cmd: '/clear', desc: 'Clear terminal' },
+  ];
+
+  return (
+    <div className="terminal-interface">
+      <div className="terminal-header">
+        <div className="terminal-controls">
+          <span className="control red" />
+          <span className="control yellow" />
+          <span className="control green" />
+        </div>
+        <span className="terminal-title">BERIGHT://TERMINAL</span>
+        <span className="terminal-version">v1.0.0</span>
+      </div>
+
+      <div className="terminal-body" ref={terminalRef}>
+        {lines.map(line => (
+          <div key={line.id} className={`terminal-line ${line.type}`}>
+            {line.type === 'input' && <span className="prompt">❯</span>}
+            {line.type === 'system' && <span className="prompt sys">◈</span>}
+            {line.type === 'error' && <span className="prompt err">✗</span>}
+            {line.type === 'success' && <span className="prompt ok">✓</span>}
+            {line.type === 'data' && <span className="prompt data">▸</span>}
+            <span className="line-content">{line.content}</span>
+          </div>
+        ))}
+        {isProcessing && (
+          <div className="terminal-line processing">
+            <span className="prompt">◈</span>
+            <span className="processing-text">Processing<span className="blink">_</span></span>
+          </div>
+        )}
+      </div>
+
+      <div className="terminal-input-area">
+        <div className="command-hints">
+          {commands.map(c => (
+            <button
+              key={c.cmd}
+              className="hint-chip"
+              onClick={() => setInput(c.cmd)}
+            >
+              {c.cmd}
+            </button>
+          ))}
+        </div>
+        <div className="input-row">
+          <span className="input-prompt">❯</span>
+          <input
+            ref={inputRef}
+            type="text"
+            className="terminal-input"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter command or ask anything..."
+            disabled={isProcessing}
+            autoFocus
+          />
+          <button
+            className={`send-btn ${input.trim() && !isProcessing ? 'active' : ''}`}
+            onClick={handleSubmit}
+            disabled={!input.trim() || isProcessing}
+          >
+            <span className="send-icon">⏎</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SPARKLINE COMPONENT
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ═══════════════════════════════════════════════════════════════════════════
+// MARKET GRID
+// ═══════════════════════════════════════════════════════════════════════════
 
-interface SparkPoint {
-  value: number;
+function MarketGrid({ markets }: { markets: ApiMarket[] }) {
+  return (
+    <div className="market-grid">
+      <div className="grid-header">
+        <span>MARKET</span>
+        <span>YES</span>
+        <span>NO</span>
+        <span>VOL</span>
+        <span>PLATFORM</span>
+      </div>
+      {markets.map((m, i) => (
+        <motion.div
+          key={m.id || i}
+          className="grid-row"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.03 }}
+        >
+          <span className="cell title">{m.title.slice(0, 40)}{m.title.length > 40 ? '...' : ''}</span>
+          <span className="cell yes">{m.yesPct.toFixed(0)}¢</span>
+          <span className="cell no">{m.noPct.toFixed(0)}¢</span>
+          <span className="cell vol">{formatVolume(m.volume)}</span>
+          <span className="cell platform">{m.platform.toUpperCase()}</span>
+        </motion.div>
+      ))}
+    </div>
+  );
 }
 
-function generateSparkData(currentPrice: number, seed: string): SparkPoint[] {
-  const seedNum = seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-  const points: SparkPoint[] = [];
-  let price = currentPrice * 0.8;
+// ═══════════════════════════════════════════════════════════════════════════
+// ARB OPPORTUNITIES
+// ═══════════════════════════════════════════════════════════════════════════
 
-  for (let i = 0; i < 20; i++) {
-    const volatility = 0.06 + ((seedNum * (i + 1)) % 100) / 1500;
-    const trend = (seedNum % 2 === 0) ? 0.015 : -0.008;
-    const change = (Math.sin(seedNum + i * 0.8) * volatility) + trend;
-    price = Math.max(5, Math.min(95, price * (1 + change)));
-    points.push({ value: price });
+function ArbGrid({ opportunities }: { opportunities: ApiArbitrage[] }) {
+  if (opportunities.length === 0) {
+    return (
+      <div className="no-data">
+        <span className="no-data-icon">⚖</span>
+        <span>No arbitrage opportunities detected</span>
+        <span className="no-data-sub">Minimum spread threshold: 3%</span>
+      </div>
+    );
   }
 
-  if (points.length > 0) {
-    points[points.length - 1].value = currentPrice;
-  }
-
-  return points;
+  return (
+    <div className="arb-grid">
+      {opportunities.map((arb, i) => (
+        <motion.div
+          key={i}
+          className="arb-card"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: i * 0.05 }}
+        >
+          <div className="arb-header">
+            <span className="arb-spread">+{arb.spread.toFixed(1)}%</span>
+            <span className={`arb-conf ${arb.confidence > 0.8 ? 'high' : arb.confidence > 0.5 ? 'med' : 'low'}`}>
+              {(arb.confidence * 100).toFixed(0)}% CONF
+            </span>
+          </div>
+          <h4 className="arb-topic">{arb.topic}</h4>
+          <div className="arb-compare">
+            <div className="arb-side">
+              <span className="arb-platform">{arb.platformA.toUpperCase()}</span>
+              <span className="arb-price">{(arb.priceA * 100).toFixed(0)}¢</span>
+            </div>
+            <span className="arb-vs">VS</span>
+            <div className="arb-side">
+              <span className="arb-platform">{arb.platformB.toUpperCase()}</span>
+              <span className="arb-price">{(arb.priceB * 100).toFixed(0)}¢</span>
+            </div>
+          </div>
+          <p className="arb-strategy">{arb.strategy}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
 }
 
-function Sparkline({ price, marketId }: { price: number; marketId: string }) {
-  const points = useMemo(() => generateSparkData(price, marketId), [price, marketId]);
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════════════════════════
 
-  const values = points.map(p => p.value);
-  const min = Math.min(...values) * 0.92;
-  const max = Math.max(...values) * 1.08;
-  const range = max - min || 1;
+function BootSequence({ onComplete }: { onComplete: () => void }) {
+  const [lines, setLines] = useState<string[]>([]);
+  const bootLines = [
+    '> BERIGHT AI TERMINAL v1.0.0',
+    '> Initializing neural network...',
+    '> Loading prediction models...',
+    '> Connecting to market feeds...',
+    '  ├─ Polymarket... [OK]',
+    '  ├─ Kalshi....... [OK]',
+    '  ├─ DFlow........ [OK]',
+    '  └─ Manifold..... [OK]',
+    '> Spawning AI agents...',
+    '  ├─ SCOUT........ [ONLINE]',
+    '  ├─ ANALYST...... [ONLINE]',
+    '  ├─ TRADER....... [ONLINE]',
+    '  └─ BUILDER...... [ONLINE]',
+    '> Establishing Solana connection...',
+    '> System ready.',
+    '',
+    '╔═══════════════════════════════════════════════════════════╗',
+    '║  BERIGHT AI - PREDICTION MARKET INTELLIGENCE              ║',
+    '║  Type /help for commands or ask anything                  ║',
+    '╚═══════════════════════════════════════════════════════════╝',
+  ];
 
-  const width = 100;
-  const height = 40;
-  const paddingY = 4;
-  const paddingRight = 6;
-  const drawWidth = width - paddingRight;
-
-  const pathData = points.map((p, i) => {
-    const x = (i / (points.length - 1)) * drawWidth;
-    const y = paddingY + (height - paddingY * 2) - ((p.value - min) / range) * (height - paddingY * 2);
-    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-  }).join(' ');
-
-  const areaPath = `${pathData} L ${drawWidth} ${height} L 0 ${height} Z`;
-
-  const firstVal = values[0];
-  const lastVal = values[values.length - 1];
-  const isUp = lastVal >= firstVal;
-  const changePercent = ((lastVal - firstVal) / firstVal * 100).toFixed(1);
-  const lastY = paddingY + (height - paddingY * 2) - ((lastVal - min) / range) * (height - paddingY * 2);
-
-  const gradId = `spark-grad-${marketId.replace(/[^a-zA-Z0-9]/g, '')}`;
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < bootLines.length) {
+        setLines(prev => [...prev, bootLines[i]]);
+        i++;
+      } else {
+        clearInterval(interval);
+        setTimeout(onComplete, 500);
+      }
+    }, 80);
+    return () => clearInterval(interval);
+  }, [onComplete]);
 
   return (
-    <div className="sparkline-container">
-      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={isUp ? 'rgba(0, 230, 118, 0.25)' : 'rgba(255, 23, 68, 0.25)'} />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-        </defs>
-        <path d={areaPath} fill={`url(#${gradId})`} />
-        <path
-          d={pathData}
-          fill="none"
-          stroke={isUp ? 'var(--yes)' : 'var(--no)'}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx={drawWidth} cy={lastY} r="3" fill={isUp ? 'var(--yes)' : 'var(--no)'} className="pulse-dot" />
-        <circle cx={drawWidth} cy={lastY} r="1.5" fill="#fff" opacity="0.8" />
-      </svg>
-      <div className={`spark-change ${isUp ? 'up' : 'down'}`}>
-        <span>{isUp ? '↑' : '↓'}</span>
-        <span>{Math.abs(parseFloat(changePercent))}%</span>
+    <div className="boot-sequence">
+      <div className="boot-content">
+        {lines.map((line, i) => (
+          <motion.div
+            key={i}
+            className="boot-line"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            {line}
+          </motion.div>
+        ))}
+        <span className="boot-cursor">_</span>
       </div>
     </div>
   );
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SKELETON COMPONENTS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-function SkeletonCard({ index }: { index: number }) {
-  return (
-    <div className="skeleton-card" style={{ animationDelay: `${index * 50}ms` }}>
-      <div className="skeleton-header">
-        <div className="skeleton-chip" />
-        <div className="skeleton-chip short" />
-      </div>
-      <div className="skeleton-title" />
-      <div className="skeleton-title short" />
-      <div className="skeleton-prices">
-        <div className="skeleton-price" />
-        <div className="skeleton-price" />
-      </div>
-      <div className="skeleton-bar" />
-      <div className="skeleton-spark" />
-      <div className="skeleton-stats">
-        <div className="skeleton-stat" />
-        <div className="skeleton-stat" />
-        <div className="skeleton-stat" />
-      </div>
-    </div>
-  );
-}
-
-function SkeletonNews() {
-  return (
-    <div className="skeleton-news">
-      <div className="skeleton-news-line" />
-      <div className="skeleton-news-meta" />
-    </div>
-  );
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ERROR STATE
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="error-state">
-      <div className="error-icon">!</div>
-      <p className="error-message">{message}</p>
-      <button className="retry-btn" onClick={onRetry}>
-        Try Again
-      </button>
-    </div>
-  );
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ═══════════════════════════════════════════════════════════════════════════
 
-export default function TerminalPage() {
+export default function BeRightTerminal() {
   usePrivy();
 
-  const [activeTab, setActiveTab] = useState<FilterTab>('hot');
+  const [isBooting, setIsBooting] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('terminal');
 
-  // Data states
-  const [markets, setMarkets] = useState<MarketCard[]>([]);
-  const [marketsState, setMarketsState] = useState<LoadingState>('idle');
+  // Data
+  const [markets, setMarkets] = useState<ApiMarket[]>([]);
   const [arbOpportunities, setArbOpportunities] = useState<ApiArbitrage[]>([]);
-  const [arbState, setArbState] = useState<LoadingState>('idle');
-  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [newsState, setNewsState] = useState<LoadingState>('idle');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // UI state
-  const [onlineCount, setOnlineCount] = useState(2776);
-  const [predCount, setPredCount] = useState(1001);
-  const [userStreak] = useState(7);
-  const [userPredictions, setUserPredictions] = useState<UserPrediction[]>([]);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [selectedMarket, setSelectedMarket] = useState<MarketCard | null>(null);
-  const [predictionDirection, setPredictionDirection] = useState<'YES' | 'NO' | null>(null);
+  // Terminal state
+  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Chat state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'system',
-      content: 'Welcome to BeRight Terminal. Ask me about prediction markets, arbitrage opportunities, or market analysis.',
+  // Agent state
+  const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
+  const [onlineAgents, setOnlineAgents] = useState(['SCOUT', 'ANALYST', 'TRADER', 'BUILDER']);
+
+  // Market ticker data (real data from API)
+  const tickerMarkets = useMemo((): MarketTick[] => {
+    return markets.slice(0, 8).map((m, i) => ({
+      id: m.id || `${i}`,
+      title: m.title,
+      price: m.yesPct,
+      change: 0, // Real change would come from API
+      platform: m.platform,
+    }));
+  }, [markets]);
+
+  // Add agent log
+  const addAgentLog = useCallback((agent: AgentLog['agent'], message: string, type: AgentLog['type'] = 'info') => {
+    setAgentLogs(prev => [...prev.slice(-50), {
+      id: generateId(),
+      agent,
+      message,
       timestamp: new Date(),
-    }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+      type,
+    }]);
+  }, []);
 
-  // ━━━ DATA FETCHING ━━━
+  // Add terminal line
+  const addTerminalLine = useCallback((type: TerminalLine['type'], content: string) => {
+    setTerminalLines(prev => [...prev, {
+      id: generateId(),
+      type,
+      content,
+      timestamp: new Date(),
+    }]);
+  }, []);
 
-  const fetchMarkets = useCallback(async () => {
-    setMarketsState('loading');
+  // Fetch data
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    addAgentLog('SCOUT', 'Initiating market scan...', 'info');
+
     try {
       const [hotData, arbData] = await Promise.all([
-        getHotMarkets(15),
+        getHotMarkets(20),
         getArbitrageOpportunities(),
       ]);
 
       if (hotData.markets?.length > 0) {
-        setMarkets(hotData.markets.map((m, i) => transformToCard(m, i)));
+        setMarkets(hotData.markets);
+        addAgentLog('SCOUT', `Found ${hotData.markets.length} active markets`, 'success');
       }
-      setMarketsState('success');
 
       if (arbData.opportunities?.length > 0) {
         setArbOpportunities(arbData.opportunities);
-        setArbState('success');
+        addAgentLog('ANALYST', `Detected ${arbData.opportunities.length} arbitrage opportunities`, 'success');
       } else {
-        setArbState('success');
+        addAgentLog('ANALYST', 'No arbitrage opportunities above threshold', 'info');
       }
     } catch (error) {
-      console.error('Failed to fetch markets:', error);
-      setMarketsState('error');
-      setArbState('error');
+      addAgentLog('SYSTEM', 'Failed to fetch market data', 'error');
     }
-  }, []);
 
-  const fetchNews = useCallback(async () => {
-    setNewsState('loading');
-    try {
-      const data = await getIntel('prediction markets', 'news');
-      if (data.news?.length > 0) {
-        setNewsItems(data.news.slice(0, 10).map(n => ({
-          title: n.title,
-          source: n.source,
-          url: n.url,
-        })));
+    setIsLoading(false);
+  }, [addAgentLog]);
+
+  // Initial data fetch
+  useEffect(() => {
+    if (!isBooting) {
+      fetchData();
+    }
+  }, [isBooting, fetchData]);
+
+  // Process terminal command
+  const processCommand = useCallback(async (cmd: string) => {
+    addTerminalLine('input', cmd);
+    setIsProcessing(true);
+
+    const command = cmd.toLowerCase().trim();
+
+    // Simulate processing delay
+    await new Promise(r => setTimeout(r, 500 + Math.random() * 500));
+
+    if (command === '/clear' || command === 'clear') {
+      setTerminalLines([]);
+      setIsProcessing(false);
+      return;
+    }
+
+    if (command === '/help' || command === 'help') {
+      addTerminalLine('system', '═══ BERIGHT COMMAND REFERENCE ═══');
+      addTerminalLine('data', '/hot          - Show trending markets');
+      addTerminalLine('data', '/arb          - Find arbitrage opportunities');
+      addTerminalLine('data', '/scan [topic] - Scan markets by topic');
+      addTerminalLine('data', '/research [q] - Deep research analysis');
+      addTerminalLine('data', '/whale        - Track whale wallets');
+      addTerminalLine('data', '/intel        - Latest market intel');
+      addTerminalLine('data', '/status       - System status');
+      addTerminalLine('data', '/agents       - View agent network');
+      addTerminalLine('data', '/clear        - Clear terminal');
+      setIsProcessing(false);
+      return;
+    }
+
+    if (command === '/hot' || command === 'hot') {
+      addAgentLog('SCOUT', 'Fetching hot markets...', 'info');
+      addTerminalLine('system', '═══ HOT MARKETS ═══');
+
+      if (markets.length > 0) {
+        markets.slice(0, 5).forEach((m, i) => {
+          addTerminalLine('data', `${i + 1}. ${m.title}`);
+          addTerminalLine('data', `   YES: ${m.yesPct.toFixed(0)}¢ | VOL: ${formatVolume(m.volume)} | ${m.platform.toUpperCase()}`);
+        });
+        addAgentLog('SCOUT', `Returned ${Math.min(5, markets.length)} hot markets`, 'success');
+      } else {
+        addTerminalLine('error', 'No market data available');
       }
-      setNewsState('success');
-    } catch (error) {
-      console.error('Failed to fetch news:', error);
-      setNewsState('error');
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMarkets();
-  }, [fetchMarkets]);
-
-  useEffect(() => {
-    if (activeTab === 'news' && newsState === 'idle') {
-      fetchNews();
-    }
-  }, [activeTab, newsState, fetchNews]);
-
-  // Live stats simulation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineCount(c => Math.max(2500, c + Math.floor(Math.random() * 21) - 10));
-      setPredCount(c => c + Math.floor(Math.random() * 3) + 1);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // ━━━ HANDLERS ━━━
-
-  const handlePrediction = useCallback((market: MarketCard, direction: 'YES' | 'NO') => {
-    setUserPredictions(prev => [
-      ...prev.filter(p => p.marketId !== market.id),
-      { marketId: market.id, direction, timestamp: new Date() }
-    ]);
-    setSelectedMarket(market);
-    setPredictionDirection(direction);
-    setShowShareModal(true);
-    setPredCount(c => c + 1);
-  }, []);
-
-  const getUserPrediction = useCallback((marketId: string) => {
-    return userPredictions.find(p => p.marketId === marketId);
-  }, [userPredictions]);
-
-  // ━━━ CHAT HANDLERS ━━━
-
-  // Scroll to bottom of chat
-  const scrollToBottom = useCallback(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, []);
-
-  // Auto-scroll when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [chatMessages, scrollToBottom]);
-
-  // Focus input when chat tab is active
-  useEffect(() => {
-    if (activeTab === 'chat' && chatInputRef.current) {
-      chatInputRef.current.focus();
-    }
-  }, [activeTab]);
-
-  // Generate AI response based on user query
-  const generateAIResponse = useCallback(async (query: string): Promise<string> => {
-    const lowerQuery = query.toLowerCase();
-
-    // Check for specific commands/queries
-    if (lowerQuery.includes('hot') || lowerQuery.includes('trending')) {
-      const topMarkets = markets.slice(0, 3);
-      if (topMarkets.length > 0) {
-        return `Here are the hottest markets right now:\n\n${topMarkets.map((m, i) =>
-          `${i + 1}. **${m.title}**\n   YES: ${m.yesPct}% | Volume: ${formatVolume(m.volume)}`
-        ).join('\n\n')}`;
-      }
-      return "I'm currently loading market data. Please try again in a moment.";
+      setIsProcessing(false);
+      return;
     }
 
-    if (lowerQuery.includes('arb') || lowerQuery.includes('arbitrage')) {
+    if (command === '/arb' || command === 'arb') {
+      addAgentLog('ANALYST', 'Scanning for arbitrage...', 'info');
+      addTerminalLine('system', '═══ ARBITRAGE OPPORTUNITIES ═══');
+
       if (arbOpportunities.length > 0) {
-        const topArbs = arbOpportunities.slice(0, 3);
-        return `Found ${arbOpportunities.length} arbitrage opportunities:\n\n${topArbs.map((a, i) =>
-          `${i + 1}. **${a.topic}**\n   Spread: +${a.spread.toFixed(1)}% | ${a.platformA} vs ${a.platformB}`
-        ).join('\n\n')}`;
+        arbOpportunities.slice(0, 3).forEach((a, i) => {
+          addTerminalLine('success', `${i + 1}. +${a.spread.toFixed(1)}% SPREAD`);
+          addTerminalLine('data', `   ${a.topic}`);
+          addTerminalLine('data', `   ${a.platformA.toUpperCase()} ${(a.priceA * 100).toFixed(0)}¢ vs ${a.platformB.toUpperCase()} ${(a.priceB * 100).toFixed(0)}¢`);
+        });
+        addAgentLog('ANALYST', `Found ${arbOpportunities.length} arb opportunities`, 'success');
+      } else {
+        addTerminalLine('data', 'No arbitrage opportunities above 3% threshold');
       }
-      return "No arbitrage opportunities detected at the moment. Minimum spread threshold is 3%.";
+      setIsProcessing(false);
+      return;
     }
 
-    if (lowerQuery.includes('predict') || lowerQuery.includes('my pick')) {
-      if (userPredictions.length > 0) {
-        return `You've made ${userPredictions.length} prediction(s) this session. Keep building your track record!`;
+    if (command === '/status' || command === 'status') {
+      addTerminalLine('system', '═══ SYSTEM STATUS ═══');
+      addTerminalLine('data', `Active Markets:   ${markets.length}`);
+      addTerminalLine('data', `Arb Signals:      ${arbOpportunities.length}`);
+      addTerminalLine('data', `Agents Online:    ${onlineAgents.length}/4`);
+      addTerminalLine('success', 'All systems operational');
+      setIsProcessing(false);
+      return;
+    }
+
+    if (command === '/agents') {
+      setViewMode('agents');
+      addTerminalLine('system', 'Switching to AGENT_NETWORK view...');
+      setIsProcessing(false);
+      return;
+    }
+
+    if (command.startsWith('/scan ') || command.startsWith('scan ')) {
+      const topic = cmd.slice(cmd.indexOf(' ') + 1);
+      addAgentLog('SCOUT', `Scanning for: "${topic}"`, 'info');
+      addTerminalLine('system', `═══ SCANNING: ${topic.toUpperCase()} ═══`);
+
+      const filtered = markets.filter(m =>
+        m.title.toLowerCase().includes(topic.toLowerCase())
+      );
+
+      if (filtered.length > 0) {
+        filtered.slice(0, 5).forEach((m, i) => {
+          addTerminalLine('data', `${i + 1}. ${m.title}`);
+          addTerminalLine('data', `   YES: ${m.yesPct.toFixed(0)}¢ | ${m.platform.toUpperCase()}`);
+        });
+        addAgentLog('SCOUT', `Found ${filtered.length} matching markets`, 'success');
+      } else {
+        addTerminalLine('data', `No markets found matching "${topic}"`);
       }
-      return "You haven't made any predictions yet. Browse the Hot tab and make your first call!";
+      setIsProcessing(false);
+      return;
     }
 
-    if (lowerQuery.includes('help') || lowerQuery.includes('command')) {
-      return `**Available Commands:**\n
-- "hot markets" - Show trending predictions
-- "arbitrage" - Find arbitrage opportunities
-- "my predictions" - View your picks
-- "stats" - Your performance stats
-- "news" - Latest market news
-- Ask any question about prediction markets!`;
-    }
+    // Default: treat as a question
+    addAgentLog('ANALYST', `Processing query: "${cmd}"`, 'info');
+    await new Promise(r => setTimeout(r, 800));
 
-    if (lowerQuery.includes('stat') || lowerQuery.includes('performance')) {
-      return `**Your Stats:**\n
-- Predictions: ${userPredictions.length}
-- Streak: ${userStreak} days
-- Accuracy: 68.5%
-- Rank: Top 15%\n
-Keep predicting to improve your rank!`;
-    }
-
-    if (lowerQuery.includes('news')) {
-      if (newsItems.length > 0) {
-        const topNews = newsItems.slice(0, 3);
-        return `**Latest News:**\n\n${topNews.map((n, i) =>
-          `${i + 1}. ${n.title}\n   Source: ${n.source}`
-        ).join('\n\n')}`;
-      }
-      return "Loading news feed... Try again in a moment.";
-    }
-
-    // Default response for general queries
     const responses = [
-      "That's an interesting question! Based on current market sentiment, I'd suggest checking the Hot tab for trending predictions.",
-      "Great question! Prediction markets are showing high activity today. Would you like me to show you the top opportunities?",
-      "I'm analyzing the markets... The crypto and politics categories are seeing the most volume right now.",
-      "Based on my analysis, there are several interesting opportunities. Try asking about 'hot markets' or 'arbitrage' for specific insights.",
+      `Analyzing "${cmd}"... Based on current market data, I recommend checking the /hot markets for trending opportunities.`,
+      `Interesting query. The prediction markets are showing high activity in crypto and politics categories today.`,
+      `Processing your request. For detailed analysis, try /research ${cmd} for a deep dive.`,
+      `I've scanned the markets for relevant data. Use /scan to find specific topics or /arb for arbitrage.`,
     ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  }, [markets, arbOpportunities, userPredictions, newsItems, userStreak]);
 
-  // Send chat message
-  const handleSendMessage = useCallback(async () => {
-    if (!chatInput.trim() || isChatLoading) return;
+    addTerminalLine('output', responses[Math.floor(Math.random() * responses.length)]);
+    addAgentLog('ANALYST', 'Query processed successfully', 'success');
+    setIsProcessing(false);
+  }, [markets, arbOpportunities, onlineAgents, addTerminalLine, addAgentLog]);
 
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: chatInput.trim(),
-      timestamp: new Date(),
-    };
+  // Boot complete handler
+  const handleBootComplete = useCallback(() => {
+    setIsBooting(false);
+    addTerminalLine('system', 'BeRight AI Terminal initialized. Type /help for commands.');
+  }, [addTerminalLine]);
 
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsChatLoading(true);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
 
-    // Add typing indicator
-    const typingId = `typing-${Date.now()}`;
-    setChatMessages(prev => [...prev, {
-      id: typingId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      isTyping: true,
-    }]);
-
-    // Simulate AI thinking delay
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
-
-    // Generate response
-    const response = await generateAIResponse(userMessage.content);
-
-    // Replace typing indicator with actual response
-    setChatMessages(prev => prev.map(msg =>
-      msg.id === typingId
-        ? { ...msg, content: response, isTyping: false }
-        : msg
-    ));
-
-    setIsChatLoading(false);
-  }, [chatInput, isChatLoading, generateAIResponse]);
-
-  // Handle Enter key
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  }, [handleSendMessage]);
-
-  // Send quick action message directly
-  const handleQuickAction = useCallback(async (query: string) => {
-    if (isChatLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: query,
-      timestamp: new Date(),
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setIsChatLoading(true);
-
-    const typingId = `typing-${Date.now()}`;
-    setChatMessages(prev => [...prev, {
-      id: typingId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      isTyping: true,
-    }]);
-
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
-    const response = await generateAIResponse(query);
-
-    setChatMessages(prev => prev.map(msg =>
-      msg.id === typingId
-        ? { ...msg, content: response, isTyping: false }
-        : msg
-    ));
-
-    setIsChatLoading(false);
-  }, [isChatLoading, generateAIResponse]);
-
-  // Quick action buttons with icons
-  const quickActions = [
-    { icon: '🔥', label: 'Hot Markets', query: 'Show me hot markets', color: 'fire' },
-    { icon: '⚖️', label: 'Arbitrage', query: 'Find arbitrage opportunities', color: 'accent' },
-    { icon: '📊', label: 'My Stats', query: 'Show my stats', color: 'ai' },
-    { icon: '💡', label: 'Commands', query: 'What commands are available?', color: 'yes' },
-  ];
-
-  // Suggested prompts for chat
-  const suggestedPrompts = [
-    'What markets are trending today?',
-    'Any arbitrage opportunities above 5%?',
-    'Analyze Bitcoin prediction markets',
-    'Show me political markets',
-  ];
-
-  // Clear chat handler
-  const handleClearChat = useCallback(() => {
-    setChatMessages([{
-      id: 'welcome',
-      role: 'system',
-      content: 'Welcome to BeRight Terminal. Ask me about prediction markets, arbitrage opportunities, or market analysis.',
-      timestamp: new Date(),
-    }]);
-  }, []);
-
-  // ━━━ RENDER MARKET CARD ━━━
-
-  const renderMarketCard = (market: MarketCard, index: number) => {
-    const userPrediction = getUserPrediction(market.id);
-    const category = getCategoryInfo(market.title);
-    const isUrgent = market.closesIn.includes('h') && !market.closesIn.includes('d');
-
-    // Mock 24h change
-    const seedNum = market.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const change24h = ((seedNum % 20) - 10) * 0.5;
-    const isUp = change24h >= 0;
-
+  if (isBooting) {
     return (
-      <motion.article
-        key={market.id}
-        className="market-card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: index * 0.05 }}
-      >
-        {/* Header */}
-        <header className="card-header">
-          <div className="header-pills">
-            <span className={`category-pill ${category.colorClass}`}>
-              <span className="pill-emoji">{category.emoji}</span>
-              {category.label}
-            </span>
-            <span className="platform-pill">{market.platform}</span>
-          </div>
-          {market.isHot && (
-            <span className="hot-badge">
-              <span className="hot-dot" />
-              HOT
-            </span>
-          )}
-        </header>
-
-        {/* Title */}
-        <h3 className="card-title">{market.title}</h3>
-
-        {/* Price Row */}
-        <div className="price-row">
-          <div className="price-yes">
-            <span className="price-label">YES</span>
-            <span className="price-value">{market.yesPct.toFixed(0)}¢</span>
-          </div>
-          <div className="price-divider" />
-          <div className="price-no">
-            <span className="price-label">NO</span>
-            <span className="price-value">{market.noPct.toFixed(0)}¢</span>
-          </div>
-        </div>
-
-        {/* Probability Bar */}
-        <div className="prob-bar">
-          <div className="prob-fill" style={{ width: `${market.yesPct}%` }} />
-        </div>
-
-        {/* Sparkline */}
-        <div className="spark-row">
-          <Sparkline price={market.yesPct} marketId={market.id} />
-        </div>
-
-        {/* Stats Row */}
-        <div className="stats-row">
-          <div className="stat">
-            <span className="stat-value">{formatVolume(market.volume)}</span>
-            <span className="stat-label">Volume</span>
-          </div>
-          <div className={`stat change ${isUp ? 'up' : 'down'}`}>
-            <span className="stat-value">{isUp ? '+' : ''}{change24h.toFixed(1)}%</span>
-            <span className="stat-label">24h</span>
-          </div>
-          <div className={`stat time ${isUrgent ? 'urgent' : ''}`}>
-            <span className="stat-value">{market.closesIn}</span>
-            <span className="stat-label">Closes</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        {userPrediction ? (
-          <div className="predicted-state">
-            <div className={`predicted-badge ${userPrediction.direction.toLowerCase()}`}>
-              Predicted {userPrediction.direction}
-            </div>
-            <button
-              className="share-btn"
-              onClick={() => {
-                setSelectedMarket(market);
-                setPredictionDirection(userPrediction.direction);
-                setShowShareModal(true);
-              }}
-            >
-              Share
-            </button>
-          </div>
-        ) : (
-          <div className="action-row">
-            <button className="predict-btn yes" onClick={() => handlePrediction(market, 'YES')}>
-              <span className="btn-dir">YES</span>
-              <span className="btn-pct">{market.yesPct.toFixed(0)}¢</span>
-            </button>
-            <button className="predict-btn no" onClick={() => handlePrediction(market, 'NO')}>
-              <span className="btn-dir">NO</span>
-              <span className="btn-pct">{market.noPct.toFixed(0)}¢</span>
-            </button>
-          </div>
-        )}
-      </motion.article>
-    );
-  };
-
-  // ━━━ RENDER ARB CARD ━━━
-
-  const renderArbCard = (arb: ApiArbitrage, index: number) => (
-    <motion.article
-      key={`arb-${index}`}
-      className="arb-card"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-    >
-      <header className="arb-header">
-        <span className="arb-spread">+{Math.round(arb.spread * 10) / 10}%</span>
-        <span className={`arb-confidence ${arb.confidence > 0.8 ? 'high' : arb.confidence > 0.5 ? 'med' : 'low'}`}>
-          {Math.round(arb.confidence * 100)}% conf
-        </span>
-      </header>
-      <h3 className="arb-title">{arb.topic}</h3>
-      <div className="arb-compare">
-        <div className="arb-platform">
-          <span className="platform-name">{arb.platformA.toUpperCase()}</span>
-          <span className="platform-price yes">{(arb.priceA * 100).toFixed(0)}¢</span>
-        </div>
-        <div className="arb-vs">vs</div>
-        <div className="arb-platform">
-          <span className="platform-name">{arb.platformB.toUpperCase()}</span>
-          <span className="platform-price no">{(arb.priceB * 100).toFixed(0)}¢</span>
-        </div>
+      <div className="nexus-page">
+        <MatrixRain />
+        <BootSequence onComplete={handleBootComplete} />
+        <style jsx>{styles}</style>
       </div>
-      <p className="arb-strategy">{arb.strategy}</p>
-    </motion.article>
-  );
-
-  // ━━━ RENDER NEWS ITEM ━━━
-
-  const renderNewsItem = (news: NewsItem, index: number) => (
-    <motion.article
-      key={`news-${index}`}
-      className="news-card"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.04 }}
-    >
-      <h4 className="news-title">{news.title}</h4>
-      <footer className="news-footer">
-        <span className="news-source">{news.source}</span>
-        {news.url && (
-          <a href={news.url} target="_blank" rel="noopener noreferrer" className="news-link">
-            Read →
-          </a>
-        )}
-      </footer>
-    </motion.article>
-  );
-
-  // ━━━ TAB CONTENT ━━━
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'hot':
-        if (marketsState === 'loading') {
-          return (
-            <div className="cards-grid">
-              {[...Array(6)].map((_, i) => <SkeletonCard key={i} index={i} />)}
-            </div>
-          );
-        }
-        if (marketsState === 'error') {
-          return <ErrorState message="Failed to load markets" onRetry={fetchMarkets} />;
-        }
-        if (markets.length === 0) {
-          return (
-            <div className="empty-state">
-              <span className="empty-icon">📊</span>
-              <p className="empty-title">No markets available</p>
-              <p className="empty-desc">Check back soon for new predictions</p>
-            </div>
-          );
-        }
-        return (
-          <div className="cards-grid">
-            {markets.map((m, i) => renderMarketCard(m, i))}
-          </div>
-        );
-
-      case 'arb':
-        if (arbState === 'loading') {
-          return (
-            <div className="cards-grid">
-              {[...Array(4)].map((_, i) => <SkeletonCard key={i} index={i} />)}
-            </div>
-          );
-        }
-        if (arbState === 'error') {
-          return <ErrorState message="Failed to load arbitrage opportunities" onRetry={fetchMarkets} />;
-        }
-        if (arbOpportunities.length === 0) {
-          return (
-            <div className="empty-state arb">
-              <span className="empty-icon">⚖️</span>
-              <p className="empty-title">No arbitrage opportunities</p>
-              <p className="empty-desc">Minimum spread threshold: 3%</p>
-            </div>
-          );
-        }
-        return (
-          <div className="arb-grid">
-            <div className="arb-banner">
-              <span className="banner-count">{arbOpportunities.length}</span> arbitrage signals detected
-            </div>
-            {arbOpportunities.map((arb, i) => renderArbCard(arb, i))}
-          </div>
-        );
-
-      case 'news':
-        if (newsState === 'loading') {
-          return (
-            <div className="news-grid">
-              {[...Array(6)].map((_, i) => <SkeletonNews key={i} />)}
-            </div>
-          );
-        }
-        if (newsState === 'error') {
-          return <ErrorState message="Failed to load news" onRetry={fetchNews} />;
-        }
-        if (newsItems.length === 0) {
-          return (
-            <div className="empty-state">
-              <span className="empty-icon">📰</span>
-              <p className="empty-title">No news available</p>
-              <p className="empty-desc">Monitoring feeds for updates</p>
-            </div>
-          );
-        }
-        return (
-          <div className="news-grid">
-            {newsItems.map((news, i) => renderNewsItem(news, i))}
-          </div>
-        );
-
-      case 'picks':
-        if (userPredictions.length === 0) {
-          return (
-            <div className="empty-state onboarding">
-              <span className="empty-icon">🎯</span>
-              <p className="empty-title">No predictions yet</p>
-              <p className="empty-desc">Make your first prediction to track your picks</p>
-              <button className="cta-btn" onClick={() => setActiveTab('hot')}>
-                Browse Markets
-              </button>
-            </div>
-          );
-        }
-        const userMarkets = markets.filter(m => userPredictions.some(p => p.marketId === m.id));
-        return (
-          <div className="cards-grid">
-            {userMarkets.map((m, i) => renderMarketCard(m, i))}
-          </div>
-        );
-
-      case 'chat':
-        return (
-          <div className="chat-container">
-            {/* Chat Header */}
-            <header className="chat-header">
-              <div className="chat-header-left">
-                <div className="ai-avatar-header">
-                  <div className="avatar-ring" />
-                  <span className="avatar-icon">◈</span>
-                </div>
-                <div className="chat-header-info">
-                  <h3 className="chat-title">BeRight AI</h3>
-                  <div className="chat-status">
-                    <span className="status-dot" />
-                    <span className="status-text">Online</span>
-                  </div>
-                </div>
-              </div>
-              <div className="chat-header-actions">
-                <button
-                  className="header-action-btn"
-                  onClick={handleClearChat}
-                  title="Clear chat"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                  </svg>
-                </button>
-              </div>
-            </header>
-
-            {/* Chat Messages */}
-            <div className="chat-messages" ref={chatContainerRef}>
-              <div className="scroll-shadow-top" />
-
-              {chatMessages.map((msg, index) => (
-                <motion.div
-                  key={msg.id}
-                  className={`chat-message ${msg.role}`}
-                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                >
-                  {msg.role === 'system' ? (
-                    <div className="system-message">
-                      <div className="system-icon">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M12 16v-4M12 8h.01" />
-                        </svg>
-                      </div>
-                      <p className="system-text">{msg.content}</p>
-                    </div>
-                  ) : (
-                    <>
-                      {msg.role === 'assistant' && (
-                        <div className="message-avatar ai">
-                          <div className="avatar-glow" />
-                          <span>◈</span>
-                        </div>
-                      )}
-                      <div className="message-bubble-wrapper">
-                        <div className={`message-bubble ${msg.role}`}>
-                          {msg.isTyping ? (
-                            <div className="typing-indicator">
-                              <div className="typing-content">
-                                <div className="typing-dots">
-                                  <span></span>
-                                  <span></span>
-                                  <span></span>
-                                </div>
-                                <span className="typing-text">Analyzing markets...</span>
-                              </div>
-                              <div className="typing-bar" />
-                            </div>
-                          ) : (
-                            <div className="message-text">
-                              {msg.content.split('\n').map((line, i) => {
-                                // Handle bold text
-                                const parts = line.split(/\*\*(.*?)\*\*/g);
-                                return (
-                                  <p key={i}>
-                                    {parts.map((part, j) =>
-                                      j % 2 === 1 ? <strong key={j}>{part}</strong> : part
-                                    )}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                        {!msg.isTyping && (
-                          <div className="message-meta">
-                            <span className="message-time">
-                              {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {msg.role === 'user' && (
-                              <span className="message-status">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M20 6L9 17l-5-5" />
-                                </svg>
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {msg.role === 'user' && (
-                        <div className="message-avatar user">
-                          <span>U</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              ))}
-
-              <div className="scroll-shadow-bottom" />
-            </div>
-
-            {/* Quick Actions */}
-            {chatMessages.length <= 2 && (
-              <motion.div
-                className="quick-actions"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.2 }}
-              >
-                <p className="quick-actions-label">Quick Actions</p>
-                <div className="quick-actions-grid">
-                  {quickActions.map((action, index) => (
-                    <motion.button
-                      key={action.label}
-                      className={`quick-action-btn ${action.color}`}
-                      onClick={() => handleQuickAction(action.query)}
-                      disabled={isChatLoading}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <span className="action-icon">{action.icon}</span>
-                      <span className="action-label">{action.label}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Suggested Prompts */}
-            {chatMessages.length > 2 && chatMessages.length < 6 && !isChatLoading && (
-              <div className="suggested-prompts">
-                {suggestedPrompts.slice(0, 2).map((prompt, index) => (
-                  <button
-                    key={index}
-                    className="suggested-btn"
-                    onClick={() => handleQuickAction(prompt)}
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Chat Input */}
-            <div className="chat-input-container">
-              <div className="chat-input-wrapper">
-                <div className="input-field-wrapper">
-                  <input
-                    ref={chatInputRef}
-                    type="text"
-                    className="chat-input"
-                    placeholder="Ask about markets, arbitrage, news..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value.slice(0, 500))}
-                    onKeyDown={handleKeyDown}
-                    disabled={isChatLoading}
-                    maxLength={500}
-                  />
-                  <span className="char-counter">{chatInput.length}/500</span>
-                </div>
-                <div className="input-actions">
-                  <button className="voice-btn" title="Voice input (coming soon)" disabled>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                      <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
-                    </svg>
-                  </button>
-                  <button
-                    className={`send-btn ${chatInput.trim() && !isChatLoading ? 'active' : ''}`}
-                    onClick={handleSendMessage}
-                    disabled={!chatInput.trim() || isChatLoading}
-                  >
-                    {isChatLoading ? (
-                      <div className="send-loader" />
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M22 2L11 13" />
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div className="input-footer">
-                <span className="powered-by">
-                  <span className="powered-icon">◈</span>
-                  Powered by BeRight AI
-                </span>
-                <span className="input-hint">Enter to send</span>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  // ━━━ RENDER ━━━
+    );
+  }
 
   return (
-    <div className="terminal-page">
-      {/* Header */}
-      <header className="terminal-header">
-        <div className="header-left">
-          <div className="logo">
-            <span className="logo-icon">◈</span>
-            <span className="logo-text">Terminal</span>
-          </div>
+    <div className="nexus-page">
+      <MatrixRain />
+
+      {/* Scan Lines Overlay */}
+      <div className="scanlines" />
+      <div className="vignette" />
+
+      {/* Status Bar */}
+      <header className="status-bar">
+        <div className="status-left">
+          <span className="nexus-logo">◈ BERIGHT AI</span>
+          <span className="status-divider">│</span>
+          <span className="connection-status">
+            <span className="status-dot online" />
+            CONNECTED
+          </span>
         </div>
-        <div className="header-center">
-          <div className="live-indicator">
-            <span className="live-dot" />
-            <span className="live-text">{onlineCount.toLocaleString()} online</span>
-          </div>
+        <div className="status-center">
+          <MarketTicker markets={tickerMarkets} />
         </div>
-        <div className="header-right">
-          <div className="streak-badge">
-            <span className="streak-fire">🔥</span>
-            <span className="streak-num">{userStreak}</span>
-          </div>
+        <div className="status-right">
+          <span className="stat">
+            <span className="stat-icon">◈</span>
+            <span className="stat-value">{markets.length}</span>
+            <span className="stat-label">MARKETS</span>
+          </span>
+          <span className="stat">
+            <span className="stat-icon">⚡</span>
+            <span className="stat-value">{arbOpportunities.length}</span>
+            <span className="stat-label">ARBS</span>
+          </span>
         </div>
       </header>
 
-      {/* Activity Banner */}
-      <div className="activity-bar">
-        <span className="activity-dot" />
-        <span className="activity-count">{predCount.toLocaleString()}</span>
-        <span className="activity-label">predictions in last hour</span>
-      </div>
-
-      {/* Tabs */}
-      <nav className="tab-nav">
-        {([
-          { id: 'hot' as FilterTab, label: 'Hot', icon: '🔥', count: markets.length },
-          { id: 'arb' as FilterTab, label: 'Arb', icon: '⚖️', count: arbOpportunities.length },
-          { id: 'news' as FilterTab, label: 'News', icon: '📰', count: newsItems.length },
-          { id: 'picks' as FilterTab, label: 'Picks', icon: '🎯', count: userPredictions.length },
-          { id: 'chat' as FilterTab, label: 'Chat', icon: '💬', count: chatMessages.length - 1 },
-        ]).map(tab => (
+      {/* View Toggle */}
+      <nav className="view-toggle">
+        {(['terminal', 'markets', 'agents', 'intel'] as ViewMode[]).map(mode => (
           <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            key={mode}
+            className={`toggle-btn ${viewMode === mode ? 'active' : ''}`}
+            onClick={() => setViewMode(mode)}
           >
-            <span className="tab-icon">{tab.icon}</span>
-            <span className="tab-label">{tab.label}</span>
-            {tab.count > 0 && <span className="tab-count">{tab.count}</span>}
+            {mode === 'terminal' && '▸ TERMINAL'}
+            {mode === 'markets' && '◈ MARKETS'}
+            {mode === 'agents' && '◉ AGENTS'}
+            {mode === 'intel' && '⚡ INTEL'}
           </button>
         ))}
       </nav>
 
-      {/* Main Content */}
-      <main className="terminal-main">
+      {/* Main Content Area */}
+      <main className="nexus-main">
         <AnimatePresence mode="wait">
-          {renderTabContent()}
+          {viewMode === 'terminal' && (
+            <motion.div
+              key="terminal"
+              className="split-view"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="main-panel">
+                <TerminalInterface
+                  lines={terminalLines}
+                  onCommand={processCommand}
+                  isProcessing={isProcessing}
+                />
+              </div>
+              <div className="side-panel">
+                <AgentPanel logs={agentLogs} onlineAgents={onlineAgents} />
+              </div>
+            </motion.div>
+          )}
+
+          {viewMode === 'markets' && (
+            <motion.div
+              key="markets"
+              className="full-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="panel-header-bar">
+                <span className="panel-icon">◈</span>
+                <span className="panel-title">LIVE_MARKETS</span>
+                <span className="panel-count">{markets.length} ACTIVE</span>
+                <button className="refresh-btn" onClick={fetchData} disabled={isLoading}>
+                  {isLoading ? '↻ LOADING...' : '↻ REFRESH'}
+                </button>
+              </div>
+              <MarketGrid markets={markets} />
+            </motion.div>
+          )}
+
+          {viewMode === 'agents' && (
+            <motion.div
+              key="agents"
+              className="full-panel agents-view"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <AgentPanel logs={agentLogs} onlineAgents={onlineAgents} />
+            </motion.div>
+          )}
+
+          {viewMode === 'intel' && (
+            <motion.div
+              key="intel"
+              className="full-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="panel-header-bar">
+                <span className="panel-icon">⚡</span>
+                <span className="panel-title">ARBITRAGE_INTEL</span>
+                <span className="panel-count">{arbOpportunities.length} SIGNALS</span>
+              </div>
+              <ArbGrid opportunities={arbOpportunities} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
-      {/* Stats Footer */}
-      <section className="stats-footer">
-        {userPredictions.length === 0 ? (
-          <div className="stats-onboarding">
-            <span className="stats-icon">📊</span>
-            <span className="stats-text">Make predictions to track your performance</span>
-          </div>
-        ) : (
-          <div className="stats-grid">
-            <div className="stat-block">
-              <span className="stat-val">68.5%</span>
-              <span className="stat-lbl">Accuracy</span>
-            </div>
-            <div className="stat-block">
-              <span className="stat-val">{userPredictions.length}</span>
-              <span className="stat-lbl">Predictions</span>
-            </div>
-            <div className="stat-block">
-              <span className="stat-val">Top 15%</span>
-              <span className="stat-lbl">Rank</span>
-            </div>
-            <div className="stat-block">
-              <span className="stat-val streak">{userStreak}</span>
-              <span className="stat-lbl">Streak</span>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Share Modal */}
-      <AnimatePresence>
-        {showShareModal && selectedMarket && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowShareModal(false)}
-          >
-            <motion.div
-              className="modal-content"
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              onClick={e => e.stopPropagation()}
-            >
-              <header className="modal-header">
-                <span className="modal-logo">◈ BeRight</span>
-                <span className={`modal-prediction ${predictionDirection?.toLowerCase()}`}>
-                  Predicted {predictionDirection}
-                </span>
-              </header>
-              <h3 className="modal-title">{selectedMarket.title}</h3>
-              <div className="modal-stats">
-                <span className="modal-pct">{selectedMarket.yesPct.toFixed(0)}% YES</span>
-                <span className="modal-vol">{formatVolume(selectedMarket.volume)} vol</span>
-              </div>
-              <div className="modal-actions">
-                <button className="modal-btn twitter">Share on X</button>
-                <button className="modal-btn copy">Copy Link</button>
-              </div>
-              <button className="modal-close" onClick={() => setShowShareModal(false)}>×</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <BottomNav />
-
-      <style jsx>{`
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           BERIGHT TERMINAL v8.0 - PROJECT THEME
-           Uses existing CSS variables from globals.css
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-        .terminal-page {
-          min-height: 100dvh;
-          background: var(--bg-void, #000000);
-          color: var(--text-primary, #fff);
-          font-family: var(--font-display, 'Bricolage Grotesque', system-ui, sans-serif);
-          padding-bottom: calc(140px + env(safe-area-inset-bottom));
-        }
-
-        /* ━━━ HEADER ━━━ */
-        .terminal-header {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px 16px;
-          padding-top: max(12px, env(safe-area-inset-top));
-          background: linear-gradient(180deg, var(--bg-deep, #0A0A12) 0%, rgba(10, 10, 18, 0.95) 100%);
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
-        }
-
-        .header-left, .header-right { flex: 1; }
-        .header-center { flex: 2; display: flex; justify-content: center; }
-        .header-right { display: flex; justify-content: flex-end; }
-
-        .logo {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .logo-icon {
-          font-size: 20px;
-          color: var(--accent, #2979FF);
-        }
-
-        .logo-text {
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--text-primary);
-          letter-spacing: -0.02em;
-        }
-
-        .live-indicator {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 14px;
-          background: var(--card-bg, #1A1A2E);
-          border: 1px solid var(--card-border);
-          border-radius: 20px;
-        }
-
-        .live-dot {
-          width: 8px;
-          height: 8px;
-          background: var(--yes, #00E676);
-          border-radius: 50%;
-          animation: pulse 2s ease-in-out infinite;
-          box-shadow: 0 0 8px var(--yes-glow, rgba(0, 230, 118, 0.4));
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.2); }
-        }
-
-        .live-text {
-          font-size: 11px;
-          font-weight: 600;
-          font-family: var(--font-mono, 'DM Mono', monospace);
-          color: var(--text-secondary, rgba(255, 255, 255, 0.7));
-        }
-
-        .streak-badge {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 6px 12px;
-          background: var(--fire, #FF6B35);
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 107, 53, 0.1));
-          border: 1px solid rgba(255, 107, 53, 0.3);
-          border-radius: 8px;
-        }
-
-        .streak-fire { font-size: 14px; }
-        .streak-num {
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--fire);
-          font-family: var(--font-mono);
-        }
-
-        /* ━━━ ACTIVITY BAR ━━━ */
-        .activity-bar {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 10px 16px;
-          background: linear-gradient(90deg,
-            rgba(139, 92, 246, 0.05),
-            rgba(41, 121, 255, 0.05),
-            rgba(139, 92, 246, 0.05)
-          );
-          border-bottom: 1px solid var(--card-border);
-        }
-
-        .activity-dot {
-          width: 6px;
-          height: 6px;
-          background: var(--ai, #8B5CF6);
-          border-radius: 50%;
-          animation: blink 1s ease-in-out infinite;
-        }
-
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-
-        .activity-count {
-          font-family: var(--font-mono);
-          font-size: 12px;
-          font-weight: 700;
-          color: var(--ai);
-        }
-
-        .activity-label {
-          font-size: 11px;
-          color: var(--text-muted, rgba(255, 255, 255, 0.5));
-        }
-
-        /* ━━━ TAB NAV ━━━ */
-        .tab-nav {
-          position: sticky;
-          top: 52px;
-          z-index: 90;
-          display: flex;
-          gap: 8px;
-          padding: 12px 16px;
-          background: var(--bg-void);
-          border-bottom: 1px solid var(--card-border);
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-
-        .tab-nav::-webkit-scrollbar { display: none; }
-
-        .tab-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 10px 16px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 12px;
-          font-family: var(--font-display);
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-
-        .tab-btn:hover {
-          background: var(--bg-elevated, #0D0D1A);
-          border-color: rgba(255, 255, 255, 0.12);
-          color: var(--text-secondary);
-        }
-
-        .tab-btn.active {
-          background: linear-gradient(135deg, rgba(41, 121, 255, 0.15), rgba(41, 121, 255, 0.08));
-          border-color: var(--accent);
-          color: var(--accent);
-        }
-
-        .tab-icon { font-size: 14px; }
-        .tab-label { letter-spacing: -0.01em; }
-
-        .tab-count {
-          padding: 2px 8px;
-          background: rgba(255, 255, 255, 0.08);
-          border-radius: 6px;
-          font-size: 11px;
-          font-weight: 700;
-          font-family: var(--font-mono);
-        }
-
-        .tab-btn.active .tab-count {
-          background: var(--accent);
-          color: #fff;
-        }
-
-        /* ━━━ MAIN CONTENT ━━━ */
-        .terminal-main {
-          padding: 16px;
-          min-height: 400px;
-        }
-
-        .cards-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 16px;
-        }
-
-        .arb-grid, .news-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        /* ━━━ MARKET CARD ━━━ */
-        .terminal-main :global(.market-card) {
-          background: var(--card-bg-gradient, linear-gradient(145deg, #1C1C32, #161628));
-          border: 1px solid var(--card-border);
-          border-radius: var(--card-radius, 24px);
-          padding: 16px;
-          transition: all 0.2s;
-        }
-
-        .terminal-main :global(.market-card:hover) {
-          border-color: rgba(255, 255, 255, 0.12);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
-        }
-
-        .terminal-main :global(.card-header) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 12px;
-        }
-
-        .terminal-main :global(.header-pills) {
-          display: flex;
-          gap: 8px;
-        }
-
-        .terminal-main :global(.category-pill) {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px 10px;
-          border-radius: 8px;
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.02em;
-        }
-
-        .terminal-main :global(.category-pill.crypto) {
-          background: rgba(255, 193, 7, 0.15);
-          color: #FFC107;
-          border: 1px solid rgba(255, 193, 7, 0.25);
-        }
-
-        .terminal-main :global(.category-pill.politics) {
-          background: rgba(139, 92, 246, 0.15);
-          color: var(--ai);
-          border: 1px solid rgba(139, 92, 246, 0.25);
-        }
-
-        .terminal-main :global(.category-pill.economy) {
-          background: var(--yes-subtle, rgba(0, 230, 118, 0.15));
-          color: var(--yes);
-          border: 1px solid rgba(0, 230, 118, 0.25);
-        }
-
-        .terminal-main :global(.category-pill.tech) {
-          background: rgba(41, 121, 255, 0.15);
-          color: var(--accent);
-          border: 1px solid rgba(41, 121, 255, 0.25);
-        }
-
-        .terminal-main :global(.category-pill.sports) {
-          background: rgba(255, 107, 53, 0.15);
-          color: var(--fire);
-          border: 1px solid rgba(255, 107, 53, 0.25);
-        }
-
-        .terminal-main :global(.category-pill.markets) {
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-secondary);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .terminal-main :global(.pill-emoji) {
-          font-size: 12px;
-        }
-
-        .terminal-main :global(.platform-pill) {
-          padding: 4px 8px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 6px;
-          font-size: 10px;
-          font-weight: 700;
-          color: var(--text-muted);
-          font-family: var(--font-mono);
-        }
-
-        .terminal-main :global(.hot-badge) {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px 8px;
-          background: rgba(255, 107, 53, 0.15);
-          border: 1px solid rgba(255, 107, 53, 0.3);
-          border-radius: 6px;
-          font-size: 10px;
-          font-weight: 800;
-          color: var(--fire);
-          text-transform: uppercase;
-        }
-
-        .terminal-main :global(.hot-dot) {
-          width: 6px;
-          height: 6px;
-          background: var(--fire);
-          border-radius: 50%;
-          animation: pulse 1s ease-in-out infinite;
-        }
-
-        .terminal-main :global(.card-title) {
-          font-size: 15px;
-          font-weight: 700;
-          color: var(--text-primary);
-          line-height: 1.4;
-          margin: 0 0 14px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        /* Price Row */
-        .terminal-main :global(.price-row) {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 16px;
-          margin-bottom: 10px;
-        }
-
-        .terminal-main :global(.price-yes),
-        .terminal-main :global(.price-no) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-        }
-
-        .terminal-main :global(.price-label) {
-          font-size: 10px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .terminal-main :global(.price-yes .price-label) { color: var(--yes); }
-        .terminal-main :global(.price-no .price-label) { color: var(--no); }
-
-        .terminal-main :global(.price-value) {
-          font-size: 20px;
-          font-weight: 800;
-          font-family: var(--font-mono);
-          letter-spacing: -0.02em;
-        }
-
-        .terminal-main :global(.price-yes .price-value) { color: var(--yes); }
-        .terminal-main :global(.price-no .price-value) { color: var(--no); }
-
-        .terminal-main :global(.price-divider) {
-          width: 1px;
-          height: 36px;
-          background: var(--card-border);
-        }
-
-        /* Probability Bar */
-        .terminal-main :global(.prob-bar) {
-          height: 6px;
-          background: var(--no-subtle, rgba(255, 23, 68, 0.15));
-          border-radius: 3px;
-          overflow: hidden;
-          margin-bottom: 12px;
-        }
-
-        .terminal-main :global(.prob-fill) {
-          height: 100%;
-          background: var(--yes);
-          border-radius: 3px;
-          transition: width 0.3s ease;
-        }
-
-        /* Sparkline */
-        .terminal-main :global(.spark-row) {
-          height: 48px;
-          margin-bottom: 12px;
-        }
-
-        .terminal-main :global(.sparkline-container) {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          height: 100%;
-        }
-
-        .terminal-main :global(.sparkline-container svg) {
-          flex: 1;
-          height: 100%;
-        }
-
-        .terminal-main :global(.pulse-dot) {
-          animation: dotPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes dotPulse {
-          0%, 100% { opacity: 1; r: 3; }
-          50% { opacity: 0.7; r: 4; }
-        }
-
-        .terminal-main :global(.spark-change) {
-          display: flex;
-          align-items: center;
-          gap: 2px;
-          padding: 4px 8px;
-          border-radius: 6px;
-          font-size: 11px;
-          font-weight: 700;
-          font-family: var(--font-mono);
-        }
-
-        .terminal-main :global(.spark-change.up) {
-          background: var(--yes-subtle);
-          color: var(--yes);
-        }
-
-        .terminal-main :global(.spark-change.down) {
-          background: var(--no-subtle);
-          color: var(--no);
-        }
-
-        /* Stats Row */
-        .terminal-main :global(.stats-row) {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 14px;
-          padding: 10px 12px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 10px;
-        }
-
-        .terminal-main :global(.stat) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-        }
-
-        .terminal-main :global(.stat-value) {
-          font-size: 13px;
-          font-weight: 700;
-          font-family: var(--font-mono);
-          color: var(--text-primary);
-        }
-
-        .terminal-main :global(.stat-label) {
-          font-size: 10px;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-        }
-
-        .terminal-main :global(.stat.change.up .stat-value) { color: var(--yes); }
-        .terminal-main :global(.stat.change.down .stat-value) { color: var(--no); }
-        .terminal-main :global(.stat.time.urgent .stat-value) { color: var(--fire); }
-
-        /* Action Buttons */
-        .terminal-main :global(.action-row) {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-        }
-
-        .terminal-main :global(.predict-btn) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-          padding: 14px 16px;
-          border-radius: 14px;
-          font-family: var(--font-display);
-          cursor: pointer;
-          transition: all 0.2s;
-          border: 1px solid;
-        }
-
-        .terminal-main :global(.predict-btn.yes) {
-          background: var(--yes-subtle);
-          border-color: rgba(0, 230, 118, 0.3);
-          color: var(--yes);
-        }
-
-        .terminal-main :global(.predict-btn.yes:hover) {
-          background: rgba(0, 230, 118, 0.25);
-          border-color: var(--yes);
-          transform: scale(1.02);
-        }
-
-        .terminal-main :global(.predict-btn.no) {
-          background: var(--no-subtle);
-          border-color: rgba(255, 23, 68, 0.3);
-          color: var(--no);
-        }
-
-        .terminal-main :global(.predict-btn.no:hover) {
-          background: rgba(255, 23, 68, 0.25);
-          border-color: var(--no);
-          transform: scale(1.02);
-        }
-
-        .terminal-main :global(.btn-dir) {
-          font-size: 14px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .terminal-main :global(.btn-pct) {
-          font-size: 12px;
-          font-weight: 600;
-          font-family: var(--font-mono);
-          opacity: 0.8;
-        }
-
-        /* Predicted State */
-        .terminal-main :global(.predicted-state) {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .terminal-main :global(.predicted-badge) {
-          flex: 1;
-          padding: 12px 16px;
-          border-radius: 12px;
-          font-size: 13px;
-          font-weight: 700;
-          text-align: center;
-        }
-
-        .terminal-main :global(.predicted-badge.yes) {
-          background: var(--yes-subtle);
-          color: var(--yes);
-          border: 1px solid rgba(0, 230, 118, 0.3);
-        }
-
-        .terminal-main :global(.predicted-badge.no) {
-          background: var(--no-subtle);
-          color: var(--no);
-          border: 1px solid rgba(255, 23, 68, 0.3);
-        }
-
-        .terminal-main :global(.share-btn) {
-          padding: 12px 20px;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 12px;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .terminal-main :global(.share-btn:hover) {
-          background: rgba(255, 255, 255, 0.12);
-          color: var(--text-primary);
-        }
-
-        /* ━━━ ARB CARD ━━━ */
-        .terminal-main :global(.arb-card) {
-          background: var(--card-bg-gradient);
-          border: 1px solid var(--card-border);
-          border-radius: 20px;
-          padding: 16px;
-        }
-
-        .terminal-main :global(.arb-header) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 10px;
-        }
-
-        .terminal-main :global(.arb-spread) {
-          font-size: 18px;
-          font-weight: 800;
-          font-family: var(--font-mono);
-          color: var(--yes);
-        }
-
-        .terminal-main :global(.arb-confidence) {
-          padding: 4px 10px;
-          border-radius: 8px;
-          font-size: 11px;
-          font-weight: 700;
-          font-family: var(--font-mono);
-        }
-
-        .terminal-main :global(.arb-confidence.high) {
-          background: var(--yes-subtle);
-          color: var(--yes);
-        }
-
-        .terminal-main :global(.arb-confidence.med) {
-          background: rgba(255, 193, 7, 0.15);
-          color: #FFC107;
-        }
-
-        .terminal-main :global(.arb-confidence.low) {
-          background: var(--no-subtle);
-          color: var(--no);
-        }
-
-        .terminal-main :global(.arb-title) {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--text-primary);
-          margin: 0 0 14px;
-          line-height: 1.4;
-        }
-
-        .terminal-main :global(.arb-compare) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 12px;
-          margin-bottom: 12px;
-        }
-
-        .terminal-main :global(.arb-platform) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .terminal-main :global(.platform-name) {
-          font-size: 10px;
-          font-weight: 700;
-          color: var(--text-muted);
-          font-family: var(--font-mono);
-        }
-
-        .terminal-main :global(.platform-price) {
-          font-size: 18px;
-          font-weight: 800;
-          font-family: var(--font-mono);
-        }
-
-        .terminal-main :global(.platform-price.yes) { color: var(--yes); }
-        .terminal-main :global(.platform-price.no) { color: var(--no); }
-
-        .terminal-main :global(.arb-vs) {
-          font-size: 12px;
-          font-weight: 700;
-          color: var(--text-muted);
-          text-transform: uppercase;
-        }
-
-        .terminal-main :global(.arb-strategy) {
-          font-size: 12px;
-          color: var(--text-secondary);
-          line-height: 1.5;
-          margin: 0;
-        }
-
-        .arb-banner {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 12px 16px;
-          background: var(--yes-subtle);
-          border: 1px solid rgba(0, 230, 118, 0.25);
-          border-radius: 12px;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--yes);
-        }
-
-        .banner-count {
-          font-weight: 800;
-          font-family: var(--font-mono);
-        }
-
-        /* ━━━ NEWS CARD ━━━ */
-        .terminal-main :global(.news-card) {
-          padding: 14px 16px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 14px;
-          transition: all 0.2s;
-        }
-
-        .terminal-main :global(.news-card:hover) {
-          border-color: rgba(255, 255, 255, 0.12);
-        }
-
-        .terminal-main :global(.news-title) {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--text-primary);
-          margin: 0 0 10px;
-          line-height: 1.4;
-        }
-
-        .terminal-main :global(.news-footer) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .terminal-main :global(.news-source) {
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--text-muted);
-          font-family: var(--font-mono);
-        }
-
-        .terminal-main :global(.news-link) {
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--accent);
-          text-decoration: none;
-          transition: opacity 0.2s;
-        }
-
-        .terminal-main :global(.news-link:hover) {
-          opacity: 0.8;
-        }
-
-        /* ━━━ SKELETON ━━━ */
-        .skeleton-card {
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: var(--card-radius);
-          padding: 16px;
-          animation: skeletonPulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes skeletonPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        .skeleton-header {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 14px;
-        }
-
-        .skeleton-chip {
-          height: 24px;
-          width: 80px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 8px;
-        }
-
-        .skeleton-chip.short { width: 50px; }
-
-        .skeleton-title {
-          height: 18px;
-          width: 100%;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 6px;
-          margin-bottom: 8px;
-        }
-
-        .skeleton-title.short { width: 70%; }
-
-        .skeleton-prices {
-          display: flex;
-          gap: 16px;
-          justify-content: center;
-          margin-bottom: 12px;
-        }
-
-        .skeleton-price {
-          height: 36px;
-          width: 60px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 8px;
-        }
-
-        .skeleton-bar {
-          height: 6px;
-          width: 100%;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 3px;
-          margin-bottom: 12px;
-        }
-
-        .skeleton-spark {
-          height: 48px;
-          width: 100%;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 8px;
-          margin-bottom: 12px;
-        }
-
-        .skeleton-stats {
-          display: flex;
-          gap: 12px;
-          margin-bottom: 14px;
-        }
-
-        .skeleton-stat {
-          flex: 1;
-          height: 40px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 10px;
-        }
-
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-
-        .skeleton-news {
-          padding: 14px 16px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 14px;
-        }
-
-        .skeleton-news-line {
-          height: 16px;
-          width: 90%;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 6px;
-          margin-bottom: 10px;
-        }
-
-        .skeleton-news-meta {
-          height: 12px;
-          width: 120px;
-          background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 6px;
-        }
-
-        /* ━━━ EMPTY & ERROR STATES ━━━ */
-        .empty-state, .error-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 60px 20px;
-          text-align: center;
-        }
-
-        .empty-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-        }
-
-        .empty-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin: 0 0 8px;
-        }
-
-        .empty-desc {
-          font-size: 14px;
-          color: var(--text-muted);
-          margin: 0 0 20px;
-        }
-
-        .cta-btn {
-          padding: 14px 28px;
-          background: var(--accent);
-          border: none;
-          border-radius: 14px;
-          font-size: 14px;
-          font-weight: 700;
-          color: #fff;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .cta-btn:hover {
-          transform: scale(1.02);
-          box-shadow: 0 4px 20px rgba(41, 121, 255, 0.3);
-        }
-
-        .error-icon {
-          width: 56px;
-          height: 56px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 28px;
-          font-weight: 800;
-          color: var(--no);
-          background: var(--no-subtle);
-          border-radius: 50%;
-          margin-bottom: 16px;
-        }
-
-        .error-message {
-          font-size: 14px;
-          color: var(--text-secondary);
-          margin: 0 0 20px;
-        }
-
-        .retry-btn {
-          padding: 12px 24px;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 12px;
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--text-primary);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .retry-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-        }
-
-        /* ━━━ STATS FOOTER ━━━ */
-        .stats-footer {
-          position: fixed;
-          bottom: calc(72px + env(safe-area-inset-bottom));
-          left: 0;
-          right: 0;
-          z-index: 50;
-          padding: 12px 16px;
-          background: linear-gradient(180deg, rgba(10, 10, 18, 0.95) 0%, var(--bg-deep) 100%);
-          backdrop-filter: blur(20px);
-          border-top: 1px solid var(--card-border);
-        }
-
-        .stats-onboarding {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        }
-
-        .stats-icon { font-size: 16px; }
-
-        .stats-text {
-          font-size: 12px;
-          color: var(--text-muted);
-        }
-
-        .stats-grid {
-          display: flex;
-          justify-content: space-around;
-        }
-
-        .stat-block {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-        }
-
-        .stat-val {
-          font-size: 15px;
-          font-weight: 800;
-          font-family: var(--font-mono);
-          color: var(--text-primary);
-        }
-
-        .stat-val.streak {
-          color: var(--fire);
-        }
-
-        .stat-lbl {
-          font-size: 10px;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-        }
-
-        /* ━━━ MODAL ━━━ */
-        .modal-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 200;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(8px);
-        }
-
-        .modal-content {
-          position: relative;
-          width: 100%;
-          max-width: 380px;
-          background: var(--card-bg-gradient);
-          border: 1px solid var(--card-border);
-          border-radius: var(--card-radius);
-          padding: 24px;
-        }
-
-        .modal-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 16px;
-        }
-
-        .modal-logo {
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--accent);
-        }
-
-        .modal-prediction {
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 700;
-        }
-
-        .modal-prediction.yes {
-          background: var(--yes-subtle);
-          color: var(--yes);
-        }
-
-        .modal-prediction.no {
-          background: var(--no-subtle);
-          color: var(--no);
-        }
-
-        .modal-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin: 0 0 12px;
-          line-height: 1.4;
-        }
-
-        .modal-stats {
-          display: flex;
-          gap: 16px;
-          margin-bottom: 20px;
-        }
-
-        .modal-pct {
-          font-size: 14px;
-          font-weight: 700;
-          font-family: var(--font-mono);
-          color: var(--yes);
-        }
-
-        .modal-vol {
-          font-size: 14px;
-          font-weight: 600;
-          font-family: var(--font-mono);
-          color: var(--text-muted);
-        }
-
-        .modal-actions {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-        }
-
-        .modal-btn {
-          padding: 14px 16px;
-          border-radius: 12px;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s;
-          border: 1px solid;
-        }
-
-        .modal-btn.twitter {
-          background: rgba(29, 161, 242, 0.15);
-          border-color: rgba(29, 161, 242, 0.3);
-          color: #1DA1F2;
-        }
-
-        .modal-btn.twitter:hover {
-          background: rgba(29, 161, 242, 0.25);
-        }
-
-        .modal-btn.copy {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.12);
-          color: var(--text-secondary);
-        }
-
-        .modal-btn.copy:hover {
-          background: rgba(255, 255, 255, 0.12);
-          color: var(--text-primary);
-        }
-
-        .modal-close {
-          position: absolute;
-          top: 16px;
-          right: 16px;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.08);
-          border: none;
-          border-radius: 50%;
-          font-size: 18px;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .modal-close:hover {
-          background: rgba(255, 255, 255, 0.12);
-          color: var(--text-primary);
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           CHAT INTERFACE - Premium Trading Terminal Style
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-        .chat-container {
-          display: flex;
-          flex-direction: column;
-          height: calc(100vh - 280px);
-          min-height: 450px;
-          background: linear-gradient(180deg, var(--bg-void) 0%, var(--bg-deep) 100%);
-          border-radius: var(--card-radius);
-          border: 1px solid var(--card-border);
-          overflow: hidden;
-          position: relative;
-        }
-
-        /* Chat Header */
-        .chat-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 14px 18px;
-          background: linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, transparent 100%);
-          border-bottom: 1px solid var(--card-border);
-          backdrop-filter: blur(8px);
-        }
-
-        .chat-header-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .ai-avatar-header {
-          position: relative;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .avatar-ring {
-          position: absolute;
-          inset: 0;
-          border-radius: 12px;
-          background: linear-gradient(135deg, var(--ai) 0%, var(--accent) 100%);
-          animation: ringPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes ringPulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.05); }
-        }
-
-        .avatar-icon {
-          position: relative;
-          z-index: 1;
-          font-size: 18px;
-          color: #fff;
-          text-shadow: 0 0 10px var(--ai);
-        }
-
-        .chat-header-info {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .chat-title {
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin: 0;
-          letter-spacing: -0.01em;
-        }
-
-        .chat-status {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .status-dot {
-          width: 8px;
-          height: 8px;
-          background: var(--yes);
-          border-radius: 50%;
-          animation: statusPulse 2s ease-in-out infinite;
-          box-shadow: 0 0 8px var(--yes);
-        }
-
-        @keyframes statusPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        .status-text {
-          font-size: 11px;
-          font-weight: 500;
-          color: var(--yes);
-          font-family: var(--font-mono);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .chat-header-actions {
-          display: flex;
-          gap: 8px;
-        }
-
-        .header-action-btn {
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--card-border);
-          border-radius: 10px;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .header-action-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: var(--no);
-          color: var(--no);
-        }
-
-        /* Chat Messages */
-        .chat-messages {
-          flex: 1;
-          overflow-y: auto;
-          padding: 20px 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          scroll-behavior: smooth;
-          position: relative;
-        }
-
-        .chat-messages::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .chat-messages::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb {
-          background: rgba(139, 92, 246, 0.3);
-          border-radius: 3px;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-          background: rgba(139, 92, 246, 0.5);
-        }
-
-        .scroll-shadow-top,
-        .scroll-shadow-bottom {
-          position: sticky;
-          left: 0;
-          right: 0;
-          height: 20px;
-          pointer-events: none;
-          z-index: 5;
-        }
-
-        .scroll-shadow-top {
-          top: 0;
-          background: linear-gradient(180deg, var(--bg-void), transparent);
-          margin-bottom: -20px;
-        }
-
-        .scroll-shadow-bottom {
-          bottom: 0;
-          background: linear-gradient(0deg, var(--bg-deep), transparent);
-          margin-top: -20px;
-        }
-
-        /* System Message */
-        .chat-message.system {
-          align-self: center;
-          max-width: 90%;
-        }
-
-        .system-message {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 18px;
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(41, 121, 255, 0.08) 100%);
-          border: 1px solid rgba(139, 92, 246, 0.2);
-          border-radius: 14px;
-        }
-
-        .system-icon {
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(139, 92, 246, 0.2);
-          border-radius: 8px;
-          color: var(--ai);
-          flex-shrink: 0;
-        }
-
-        .system-text {
-          font-size: 13px;
-          color: var(--text-secondary);
-          margin: 0;
-          line-height: 1.5;
-        }
-
-        /* Message Bubbles */
-        .chat-message {
-          display: flex;
-          gap: 10px;
-          max-width: 85%;
-        }
-
-        .chat-message.user {
-          align-self: flex-end;
-          flex-direction: row-reverse;
-        }
-
-        .chat-message.assistant {
-          align-self: flex-start;
-        }
-
-        .message-avatar {
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 12px;
-          flex-shrink: 0;
-          position: relative;
-          font-size: 14px;
-          font-weight: 700;
-        }
-
-        .message-avatar.ai {
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(41, 121, 255, 0.3) 100%);
-          border: 1px solid rgba(139, 92, 246, 0.4);
-          color: var(--ai);
-        }
-
-        .message-avatar.ai .avatar-glow {
-          position: absolute;
-          inset: -2px;
-          background: linear-gradient(135deg, var(--ai), var(--accent));
-          border-radius: 14px;
-          opacity: 0.3;
-          filter: blur(6px);
-          z-index: -1;
-          animation: glowPulse 3s ease-in-out infinite;
-        }
-
-        @keyframes glowPulse {
-          0%, 100% { opacity: 0.2; transform: scale(0.95); }
-          50% { opacity: 0.4; transform: scale(1.05); }
-        }
-
-        .message-avatar.user {
-          background: var(--accent);
-          color: #fff;
-        }
-
-        .message-bubble-wrapper {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .chat-message.user .message-bubble-wrapper {
-          align-items: flex-end;
-        }
-
-        .message-bubble {
-          position: relative;
-          border-radius: 18px;
-          overflow: hidden;
-        }
-
-        .message-bubble.user {
-          background: linear-gradient(135deg, var(--accent) 0%, #1e6eff 100%);
-          box-shadow: 0 4px 16px -4px rgba(41, 121, 255, 0.4);
-          border-bottom-right-radius: 6px;
-        }
-
-        .message-bubble.assistant {
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-bottom-left-radius: 6px;
-          box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.3);
-        }
-
-        .message-bubble.assistant::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          padding: 1px;
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(41, 121, 255, 0.1), transparent);
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none;
-        }
-
-        .message-text {
-          padding: 14px 18px;
-          font-size: 14px;
-          line-height: 1.6;
-        }
-
-        .message-bubble.user .message-text {
-          color: #fff;
-        }
-
-        .message-bubble.assistant .message-text {
-          color: var(--text-primary);
-        }
-
-        .message-text p {
-          margin: 0;
-        }
-
-        .message-text p:not(:last-child) {
-          margin-bottom: 10px;
-        }
-
-        .message-text strong {
-          color: var(--accent);
-          font-weight: 700;
-        }
-
-        .message-bubble.user .message-text strong {
-          color: #fff;
-          text-decoration: underline;
-          text-decoration-thickness: 1px;
-        }
-
-        .message-meta {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 0 4px;
-        }
-
-        .message-time {
-          font-size: 10px;
-          color: var(--text-muted);
-          font-family: var(--font-mono);
-        }
-
-        .message-status {
-          color: var(--yes);
-          display: flex;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          padding: 16px 18px;
-        }
-
-        .typing-content {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .typing-dots {
-          display: flex;
-          gap: 4px;
-        }
-
-        .typing-dots span {
-          width: 8px;
-          height: 8px;
-          background: var(--ai);
-          border-radius: 50%;
-          animation: typingBounce 1.4s infinite ease-in-out;
-        }
-
-        .typing-dots span:nth-child(1) { animation-delay: 0s; }
-        .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
-
-        @keyframes typingBounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(-6px); opacity: 1; }
-        }
-
-        .typing-text {
-          font-size: 12px;
-          color: var(--text-muted);
-          font-style: italic;
-        }
-
-        .typing-bar {
-          height: 3px;
-          background: linear-gradient(90deg, var(--ai), var(--accent), var(--ai));
-          background-size: 200% 100%;
-          border-radius: 2px;
-          animation: typingBar 1.5s linear infinite;
-        }
-
-        @keyframes typingBar {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-
-        /* Quick Actions */
-        .quick-actions {
-          padding: 0 16px 16px;
-        }
-
-        .quick-actions-label {
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          margin: 0 0 10px 4px;
-        }
-
-        .quick-actions-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-        }
-
-        .quick-action-btn {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 14px 16px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 14px;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-          cursor: pointer;
-          transition: all 0.25s;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .quick-action-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          opacity: 0;
-          transition: opacity 0.25s;
-        }
-
-        .quick-action-btn.fire::before {
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, transparent 100%);
-        }
-
-        .quick-action-btn.accent::before {
-          background: linear-gradient(135deg, rgba(41, 121, 255, 0.15) 0%, transparent 100%);
-        }
-
-        .quick-action-btn.ai::before {
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, transparent 100%);
-        }
-
-        .quick-action-btn.yes::before {
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 100%);
-        }
-
-        .quick-action-btn:hover::before {
-          opacity: 1;
-        }
-
-        .quick-action-btn:hover {
-          border-color: rgba(255, 255, 255, 0.15);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4);
-        }
-
-        .quick-action-btn.fire:hover { border-color: var(--fire); color: var(--fire); }
-        .quick-action-btn.accent:hover { border-color: var(--accent); color: var(--accent); }
-        .quick-action-btn.ai:hover { border-color: var(--ai); color: var(--ai); }
-        .quick-action-btn.yes:hover { border-color: var(--yes); color: var(--yes); }
-
-        .quick-action-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          transform: none;
-        }
-
-        .action-icon {
-          font-size: 18px;
-        }
-
-        .action-label {
-          position: relative;
-          z-index: 1;
-        }
-
-        /* Suggested Prompts */
-        .suggested-prompts {
-          display: flex;
-          gap: 8px;
-          padding: 0 16px 12px;
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-
-        .suggested-prompts::-webkit-scrollbar { display: none; }
-
-        .suggested-btn {
-          flex-shrink: 0;
-          padding: 8px 14px;
-          background: rgba(139, 92, 246, 0.1);
-          border: 1px solid rgba(139, 92, 246, 0.2);
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 500;
-          color: var(--ai);
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-
-        .suggested-btn:hover {
-          background: rgba(139, 92, 246, 0.2);
-          border-color: var(--ai);
-        }
-
-        /* Chat Input */
-        .chat-input-container {
-          padding: 16px;
-          background: linear-gradient(180deg, transparent 0%, rgba(13, 13, 26, 0.8) 100%);
-          backdrop-filter: blur(20px);
-          border-top: 1px solid var(--card-border);
-        }
-
-        .chat-input-wrapper {
-          display: flex;
-          gap: 10px;
-          align-items: flex-end;
-        }
-
-        .input-field-wrapper {
-          flex: 1;
-          position: relative;
-        }
-
-        .chat-input {
-          width: 100%;
-          padding: 16px 60px 16px 18px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 16px;
-          font-size: 14px;
-          font-family: var(--font-display);
-          color: var(--text-primary);
-          outline: none;
-          transition: all 0.25s;
-          box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.3);
-        }
-
-        .chat-input::placeholder {
-          color: var(--text-muted);
-        }
-
-        .chat-input:focus {
-          border-color: var(--ai);
-          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15), 0 4px 20px -4px rgba(0, 0, 0, 0.3);
-        }
-
-        .chat-input:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .char-counter {
-          position: absolute;
-          right: 14px;
-          bottom: 14px;
-          font-size: 10px;
-          font-family: var(--font-mono);
-          color: var(--text-ghost);
-          pointer-events: none;
-        }
-
-        .input-actions {
-          display: flex;
-          gap: 8px;
-        }
-
-        .voice-btn {
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 14px;
-          color: var(--text-muted);
-          cursor: not-allowed;
-          opacity: 0.4;
-          transition: all 0.2s;
-        }
-
-        .send-btn {
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
-          border-radius: 14px;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all 0.25s;
-        }
-
-        .send-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .send-btn.active {
-          background: linear-gradient(135deg, var(--ai) 0%, var(--accent) 100%);
-          border-color: transparent;
-          color: #fff;
-          box-shadow: 0 4px 16px -4px rgba(139, 92, 246, 0.5);
-        }
-
-        .send-btn.active:hover {
-          transform: scale(1.05);
-          box-shadow: 0 6px 24px -4px rgba(139, 92, 246, 0.6);
-        }
-
-        .send-loader {
-          width: 18px;
-          height: 18px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-top-color: #fff;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .input-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-top: 10px;
-          padding: 0 4px;
-        }
-
-        .powered-by {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 10px;
-          color: var(--text-ghost);
-          font-family: var(--font-mono);
-        }
-
-        .powered-icon {
-          color: var(--ai);
-          font-size: 12px;
-        }
-
-        .input-hint {
-          font-size: 10px;
-          color: var(--text-ghost);
-          font-family: var(--font-mono);
-        }
-
-        /* ━━━ RESPONSIVE ━━━ */
-        @media (max-width: 359px) {
-          .terminal-header { padding: 10px 12px; }
-          .logo-text { font-size: 14px; }
-          .live-indicator { padding: 4px 10px; }
-          .live-text { font-size: 10px; }
-          .tab-nav { padding: 10px 12px; gap: 6px; }
-          .tab-btn { padding: 8px 12px; font-size: 12px; }
-          .terminal-main { padding: 12px; }
-          .terminal-main :global(.market-card) { padding: 14px; border-radius: 20px; }
-          .terminal-main :global(.card-title) { font-size: 14px; }
-          .terminal-main :global(.price-value) { font-size: 18px; }
-          .stats-footer { padding: 10px 12px; }
-
-          /* Chat mobile small */
-          .chat-container { height: calc(100vh - 250px); min-height: 380px; border-radius: 18px; }
-          .chat-header { padding: 12px 14px; }
-          .ai-avatar-header { width: 34px; height: 34px; }
-          .chat-title { font-size: 13px; }
-          .chat-messages { padding: 14px 12px; gap: 12px; }
-          .message-avatar { width: 30px; height: 30px; font-size: 12px; }
-          .message-bubble { border-radius: 14px; }
-          .message-text { padding: 12px 14px; font-size: 13px; }
-          .quick-actions-grid { gap: 8px; }
-          .quick-action-btn { padding: 12px 14px; font-size: 12px; }
-          .action-icon { font-size: 16px; }
-          .chat-input-container { padding: 12px; }
-          .chat-input { padding: 14px 50px 14px 14px; font-size: 13px; }
-          .send-btn, .voice-btn { width: 44px; height: 44px; }
-          .char-counter { right: 10px; bottom: 12px; }
-        }
-
-        @media (min-width: 480px) {
-          .cards-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          /* Chat mobile large */
-          .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-
-        @media (min-width: 768px) {
-          .terminal-header { padding: 14px 24px; }
-          .tab-nav { padding: 14px 24px; }
-          .terminal-main { padding: 20px 24px; }
-          .cards-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-          }
-
-          /* Chat tablet */
-          .chat-container { height: calc(100vh - 280px); max-width: 700px; margin: 0 auto; }
-          .chat-header { padding: 16px 20px; }
-          .chat-messages { padding: 24px 20px; gap: 18px; }
-          .chat-message { max-width: 75%; }
-          .message-avatar { width: 40px; height: 40px; font-size: 16px; }
-          .message-text { padding: 16px 20px; font-size: 14px; }
-          .quick-actions { padding: 0 20px 20px; }
-          .quick-actions-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
-          .quick-action-btn { flex-direction: column; padding: 16px 12px; text-align: center; }
-          .action-icon { font-size: 22px; }
-          .chat-input-container { padding: 18px 20px; }
-          .chat-input { padding: 18px 70px 18px 20px; font-size: 15px; }
-          .send-btn, .voice-btn { width: 52px; height: 52px; }
-        }
-
-        @media (min-width: 1024px) {
-          .terminal-main {
-            max-width: 1200px;
-            margin: 0 auto;
-          }
-          .cards-grid {
-            grid-template-columns: repeat(3, 1fr);
-          }
-
-          /* Chat desktop */
-          .chat-container { max-width: 800px; height: calc(100vh - 300px); min-height: 500px; }
-          .chat-message { max-width: 65%; }
-          .message-text { font-size: 15px; line-height: 1.7; }
-          .system-message { padding: 14px 24px; }
-        }
-
-        @media (min-width: 1280px) {
-          .cards-grid {
-            grid-template-columns: repeat(4, 1fr);
-          }
-
-          /* Chat wide */
-          .chat-container { max-width: 900px; }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-          .live-dot, .activity-dot, .hot-dot, .terminal-main :global(.pulse-dot),
-          .status-dot, .avatar-ring, .avatar-glow {
-            animation: none;
-          }
-          .skeleton-card, .skeleton-chip, .skeleton-title,
-          .skeleton-price, .skeleton-bar, .skeleton-spark,
-          .skeleton-stat, .skeleton-news-line, .skeleton-news-meta,
-          .typing-dots span, .typing-bar, .send-loader {
-            animation: none;
-          }
-        }
-      `}</style>
+      <style jsx>{styles}</style>
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  /* ═══ VARIABLES ═══ */
+  :root {
+    --nx-bg: #0a0a0f;
+    --nx-bg-panel: #0d0d14;
+    --nx-bg-elevated: #12121a;
+    --nx-border: #1a1a2e;
+    --nx-border-glow: #00fff720;
+
+    --nx-cyan: #00fff7;
+    --nx-magenta: #ff00ff;
+    --nx-green: #00ff00;
+    --nx-amber: #ffae00;
+    --nx-red: #ff0055;
+    --nx-blue: #0088ff;
+
+    --nx-text: #e0e0e0;
+    --nx-text-dim: #666;
+    --nx-text-bright: #fff;
+
+    --nx-font-mono: 'Share Tech Mono', 'Fira Code', monospace;
+    --nx-font-display: 'Orbitron', sans-serif;
+  }
+
+  /* ═══ BASE ═══ */
+  .nexus-page {
+    min-height: 100dvh;
+    background: var(--nx-bg);
+    color: var(--nx-text);
+    font-family: var(--nx-font-mono);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .matrix-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ═══ BOOT SEQUENCE ═══ */
+  .boot-sequence {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+
+  .boot-content {
+    max-width: 700px;
+    width: 100%;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .boot-line {
+    color: var(--nx-green);
+    white-space: pre;
+  }
+
+  .boot-cursor {
+    color: var(--nx-green);
+    animation: blink 0.5s infinite;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* ═══ STATUS BAR ═══ */
+  .status-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: linear-gradient(180deg, var(--nx-bg-panel) 0%, var(--nx-bg) 100%);
+    border-bottom: 1px solid var(--nx-border);
+    backdrop-filter: blur(10px);
+  }
+
+  .status-left, .status-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .status-center {
+    flex: 1;
+    overflow: hidden;
+    margin: 0 16px;
+  }
+
+  .nexus-logo {
+    font-family: var(--nx-font-display);
+    font-weight: 900;
+    font-size: 14px;
+    color: var(--nx-cyan);
+    text-shadow: 0 0 10px var(--nx-cyan);
+    letter-spacing: 1px;
+  }
+
+  .status-divider {
+    color: var(--nx-border);
+  }
+
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--nx-text-dim);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nx-text-dim);
+  }
+
+  .status-dot.online {
+    background: var(--nx-green);
+    box-shadow: 0 0 8px var(--nx-green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 4px 10px;
+    background: var(--nx-bg-elevated);
+    border: 1px solid var(--nx-border);
+    border-radius: 4px;
+  }
+
+  .stat-icon {
+    color: var(--nx-cyan);
+    font-size: 8px;
+  }
+
+  .stat-value {
+    color: var(--nx-text-bright);
+    font-weight: bold;
+  }
+
+  .stat-label {
+    color: var(--nx-text-dim);
+    font-size: 9px;
+  }
+
+  /* ═══ TICKER ═══ */
+  .ticker-container {
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .ticker-track {
+    display: flex;
+    animation: scroll 30s linear infinite;
+    gap: 40px;
+  }
+
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .ticker-title {
+    color: var(--nx-text-dim);
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ticker-price {
+    font-weight: bold;
+  }
+
+  .ticker-price.up { color: var(--nx-green); }
+  .ticker-price.down { color: var(--nx-red); }
+
+  .ticker-change {
+    font-size: 10px;
+  }
+
+  .ticker-change.up { color: var(--nx-green); }
+  .ticker-change.down { color: var(--nx-red); }
+
+  .ticker-platform {
+    color: var(--nx-text-dim);
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--nx-bg-elevated);
+    border-radius: 2px;
+  }
+
+  /* ═══ VIEW TOGGLE ═══ */
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    padding: 6px 12px;
+    background: var(--nx-bg);
+    border-bottom: 1px solid var(--nx-border);
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--nx-bg-panel);
+    border: 1px solid var(--nx-border);
+    border-radius: 4px;
+    font-family: var(--nx-font-mono);
+    font-size: 11px;
+    color: var(--nx-text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .toggle-btn:hover {
+    background: var(--nx-bg-elevated);
+    color: var(--nx-text);
+    border-color: var(--nx-cyan);
+  }
+
+  .toggle-btn.active {
+    background: linear-gradient(180deg, var(--nx-bg-elevated) 0%, var(--nx-bg-panel) 100%);
+    border-color: var(--nx-cyan);
+    color: var(--nx-cyan);
+    text-shadow: 0 0 10px var(--nx-cyan);
+  }
+
+  /* ═══ MAIN CONTENT ═══ */
+  .nexus-main {
+    padding: 8px;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    position: relative;
+    z-index: 10;
+    height: calc(100dvh - 90px);
+    overflow: hidden;
+  }
+
+  .split-view {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 8px;
+    height: 100%;
+  }
+
+  @media (max-width: 900px) {
+    .split-view {
+      grid-template-columns: 1fr;
+    }
+    .side-panel {
+      display: none;
+    }
+  }
+
+  .main-panel, .side-panel, .full-panel {
+    background: var(--nx-bg-panel);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .full-panel {
+    height: 100%;
+  }
+
+  .agents-view {
+    height: 100%;
+  }
+
+  /* ═══ TERMINAL INTERFACE ═══ */
+  .terminal-interface {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--nx-bg-elevated);
+    border-bottom: 1px solid var(--nx-border);
+  }
+
+  .terminal-controls {
+    display: flex;
+    gap: 6px;
+  }
+
+  .control {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--nx-border);
+  }
+
+  .control.red { background: #ff5f57; }
+  .control.yellow { background: #febc2e; }
+  .control.green { background: #28c840; }
+
+  .terminal-title {
+    font-family: var(--nx-font-display);
+    font-size: 12px;
+    color: var(--nx-text-dim);
+    letter-spacing: 2px;
+  }
+
+  .terminal-version {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--nx-text-dim);
+  }
+
+  .terminal-body {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 0;
+  }
+
+  .terminal-line {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .prompt {
+    color: var(--nx-cyan);
+    flex-shrink: 0;
+  }
+
+  .prompt.sys { color: var(--nx-magenta); }
+  .prompt.err { color: var(--nx-red); }
+  .prompt.ok { color: var(--nx-green); }
+  .prompt.data { color: var(--nx-amber); }
+
+  .line-content {
+    flex: 1;
+    word-break: break-word;
+  }
+
+  .terminal-line.input .line-content {
+    color: var(--nx-text-bright);
+  }
+
+  .terminal-line.output .line-content {
+    color: var(--nx-text);
+  }
+
+  .terminal-line.system .line-content {
+    color: var(--nx-magenta);
+  }
+
+  .terminal-line.error .line-content {
+    color: var(--nx-red);
+  }
+
+  .terminal-line.success .line-content {
+    color: var(--nx-green);
+  }
+
+  .terminal-line.data .line-content {
+    color: var(--nx-text-dim);
+  }
+
+  .terminal-line.processing .processing-text {
+    color: var(--nx-magenta);
+  }
+
+  .terminal-input-area {
+    padding: 10px 12px;
+    border-top: 1px solid var(--nx-border);
+    background: var(--nx-bg-elevated);
+  }
+
+  .command-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .hint-chip {
+    padding: 3px 8px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+    border-radius: 4px;
+    font-family: var(--nx-font-mono);
+    font-size: 10px;
+    color: var(--nx-text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .hint-chip:hover {
+    border-color: var(--nx-cyan);
+    color: var(--nx-cyan);
+  }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+
+  .input-row:focus-within {
+    border-color: var(--nx-cyan);
+    box-shadow: 0 0 20px var(--nx-border-glow);
+  }
+
+  .input-prompt {
+    color: var(--nx-cyan);
+    font-size: 16px;
+  }
+
+  .terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--nx-font-mono);
+    font-size: 14px;
+    color: var(--nx-text-bright);
+  }
+
+  .terminal-input::placeholder {
+    color: var(--nx-text-dim);
+  }
+
+  .send-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--nx-bg-elevated);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    color: var(--nx-text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .send-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .send-btn.active {
+    background: var(--nx-cyan);
+    border-color: var(--nx-cyan);
+    color: var(--nx-bg);
+  }
+
+  .send-btn.active:hover {
+    box-shadow: 0 0 15px var(--nx-cyan);
+  }
+
+  .send-icon {
+    font-size: 16px;
+  }
+
+  /* ═══ AGENT PANEL ═══ */
+  .agent-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--nx-bg-elevated);
+    border-bottom: 1px solid var(--nx-border);
+  }
+
+  .panel-icon {
+    color: var(--nx-magenta);
+  }
+
+  .panel-title {
+    font-family: var(--nx-font-display);
+    font-size: 11px;
+    color: var(--nx-text);
+    letter-spacing: 2px;
+  }
+
+  .panel-status {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+  }
+
+  .panel-status.online {
+    color: var(--nx-green);
+    border-color: var(--nx-green);
+  }
+
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid var(--nx-border);
+  }
+
+  .agent-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 6px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .agent-node.online {
+    border-color: var(--agent-color);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--agent-color) 20%, transparent);
+  }
+
+  .node-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nx-text-dim);
+  }
+
+  .agent-node.online .node-indicator {
+    background: var(--agent-color);
+    box-shadow: 0 0 8px var(--agent-color);
+    animation: pulse 2s infinite;
+  }
+
+  .node-name {
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--nx-text);
+    letter-spacing: 1px;
+  }
+
+  .agent-node.online .node-name {
+    color: var(--agent-color);
+  }
+
+  .node-spec {
+    font-size: 8px;
+    color: var(--nx-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .node-model {
+    font-size: 7px;
+    padding: 2px 5px;
+    background: var(--nx-bg-elevated);
+    border: 1px solid var(--nx-border);
+    border-radius: 3px;
+    color: var(--nx-text-dim);
+    margin-top: 2px;
+  }
+
+  .agent-node.online .node-model {
+    border-color: var(--agent-color);
+    color: var(--agent-color);
+  }
+
+  .node-status {
+    font-size: 8px;
+    color: var(--nx-text-dim);
+    margin-top: 2px;
+  }
+
+  .agent-logs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .logs-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--nx-bg-elevated);
+    border-bottom: 1px solid var(--nx-border);
+    font-size: 11px;
+    color: var(--nx-text-dim);
+  }
+
+  .log-count {
+    color: var(--nx-cyan);
+  }
+
+  .logs-feed {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+    opacity: 0.8;
+  }
+
+  .log-entry:last-child {
+    opacity: 1;
+  }
+
+  .log-time {
+    color: var(--nx-text-dim);
+    flex-shrink: 0;
+  }
+
+  .log-agent {
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+
+  .log-message {
+    color: var(--nx-text);
+    word-break: break-word;
+  }
+
+  .log-entry.error .log-message {
+    color: var(--nx-red);
+  }
+
+  .log-entry.success .log-message {
+    color: var(--nx-green);
+  }
+
+  .log-entry.warning .log-message {
+    color: var(--nx-amber);
+  }
+
+  /* ═══ MARKET GRID ═══ */
+  .panel-header-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--nx-bg-elevated);
+    border-bottom: 1px solid var(--nx-border);
+  }
+
+  .panel-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--nx-cyan);
+  }
+
+  .refresh-btn {
+    padding: 6px 12px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+    border-radius: 4px;
+    font-family: var(--nx-font-mono);
+    font-size: 11px;
+    color: var(--nx-text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .refresh-btn:hover:not(:disabled) {
+    border-color: var(--nx-cyan);
+    color: var(--nx-cyan);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .market-grid {
+    overflow-x: auto;
+  }
+
+  .grid-header {
+    display: grid;
+    grid-template-columns: 2fr 70px 70px 90px 90px;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--nx-bg-elevated);
+    border-bottom: 1px solid var(--nx-border);
+    font-size: 10px;
+    color: var(--nx-text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .grid-row {
+    display: grid;
+    grid-template-columns: 2fr 70px 70px 90px 90px;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--nx-border);
+    font-size: 11px;
+    transition: background 0.2s;
+  }
+
+  .grid-row:hover {
+    background: var(--nx-bg-elevated);
+  }
+
+  .cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .cell.title {
+    color: var(--nx-text);
+  }
+
+  .cell.yes {
+    color: var(--nx-green);
+    font-weight: bold;
+  }
+
+  .cell.no {
+    color: var(--nx-red);
+    font-weight: bold;
+  }
+
+  .cell.vol {
+    color: var(--nx-text-dim);
+  }
+
+  .cell.change.up {
+    color: var(--nx-red);
+  }
+
+  .cell.platform {
+    color: var(--nx-text-dim);
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--nx-bg);
+    border-radius: 2px;
+    width: fit-content;
+  }
+
+  /* ═══ ARB GRID ═══ */
+  .arb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .arb-card {
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+  }
+
+  .arb-card:hover {
+    border-color: var(--nx-cyan);
+    box-shadow: 0 0 20px var(--nx-border-glow);
+  }
+
+  .arb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .arb-spread {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--nx-green);
+    text-shadow: 0 0 10px var(--nx-green);
+  }
+
+  .arb-conf {
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--nx-bg-elevated);
+  }
+
+  .arb-conf.high { color: var(--nx-green); border: 1px solid var(--nx-green); }
+  .arb-conf.med { color: var(--nx-amber); border: 1px solid var(--nx-amber); }
+  .arb-conf.low { color: var(--nx-red); border: 1px solid var(--nx-red); }
+
+  .arb-topic {
+    font-size: 14px;
+    color: var(--nx-text);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .arb-compare {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .arb-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    padding: 8px;
+    background: var(--nx-bg-elevated);
+    border-radius: 4px;
+  }
+
+  .arb-platform {
+    font-size: 10px;
+    color: var(--nx-text-dim);
+  }
+
+  .arb-price {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--nx-cyan);
+  }
+
+  .arb-vs {
+    color: var(--nx-text-dim);
+    font-size: 11px;
+  }
+
+  .arb-strategy {
+    font-size: 11px;
+    color: var(--nx-text-dim);
+    line-height: 1.5;
+    padding: 8px;
+    background: var(--nx-bg-elevated);
+    border-radius: 4px;
+    border-left: 2px solid var(--nx-cyan);
+  }
+
+  .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+    color: var(--nx-text-dim);
+    text-align: center;
+  }
+
+  .no-data-icon {
+    font-size: 40px;
+    opacity: 0.3;
+  }
+
+  .no-data-sub {
+    font-size: 12px;
+    opacity: 0.6;
+  }
+
+  /* ═══ SCROLLBAR ═══ */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--nx-bg);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--nx-border);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--nx-text-dim);
+  }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .status-bar {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 12px;
+    }
+
+    .status-center {
+      order: 3;
+      width: 100%;
+      margin: 4px 0 0;
+    }
+
+    .view-toggle {
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 6px 8px;
+    }
+
+    .view-toggle::-webkit-scrollbar {
+      display: none;
+    }
+
+    .toggle-btn {
+      white-space: nowrap;
+      flex: none;
+      padding: 6px 10px;
+      font-size: 10px;
+    }
+
+    .nexus-main {
+      padding: 6px;
+      height: calc(100dvh - 100px);
+    }
+
+    .grid-header,
+    .grid-row {
+      grid-template-columns: 1fr 55px 55px 70px;
+    }
+
+    .grid-header span:nth-child(5),
+    .grid-row .cell:nth-child(5) {
+      display: none;
+    }
+  }
+`;
+
