@@ -6,47 +6,33 @@ import BottomNav from '@/components/BottomNav';
 import { useUser } from '@/context/UserContext';
 import { useUserPredictions, useBackendStatus } from '@/hooks/useMarkets';
 import {
-  TrendingUp, TrendingDown, Target, Flame, Award, Download, Share2,
-  ChevronRight, Lock, Trophy, Zap, Star, Settings, Bell, HelpCircle, LogOut
+  TrendingUp, Target, Flame, Share2, ChevronRight, Lock, Trophy, Zap, Settings, Bell, HelpCircle
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
-// PROFILE PAGE - Gamified User Profile with Stats Dashboard
+// PROFILE PAGE - User Profile with Stats Dashboard
 // ═══════════════════════════════════════════════════════════════
 
-// Achievement definitions
-const achievements = [
-  { id: 'oracle', name: 'Oracle', icon: '🔮', desc: 'Predict 10 in a row', unlocked: true, progress: 100 },
-  { id: 'whale', name: 'Whale', icon: '🐋', desc: 'Make 100+ trades', unlocked: true, progress: 100 },
-  { id: 'contrarian', name: 'Contrarian King', icon: '👑', desc: 'Profit against the crowd', unlocked: true, progress: 100 },
-  { id: 'early', name: 'Early Bird', icon: '🦅', desc: 'First 100 to trade', unlocked: true, progress: 100 },
-  { id: 'streak5', name: 'Hot Streak', icon: '🔥', desc: '5 wins in a row', unlocked: true, progress: 100 },
-  { id: 'streak10', name: 'On Fire', icon: '💥', desc: '10 wins in a row', unlocked: true, progress: 100 },
-  { id: 'diversified', name: 'Diversified', icon: '🎯', desc: 'Trade 5 categories', unlocked: false, progress: 80 },
-  { id: 'diamond', name: 'Diamond Hands', icon: '💎', desc: 'Hold through volatility', unlocked: false, progress: 60 },
-  { id: 'ninja', name: 'Market Ninja', icon: '🥷', desc: 'Perfect entry timing', unlocked: false, progress: 45 },
-  { id: 'legend', name: 'Legend', icon: '⭐', desc: 'Top 10 all-time', unlocked: false, progress: 12 },
-];
+// Achievement definitions - will be computed based on user stats
+interface Achievement {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  unlocked: boolean;
+  progress: number;
+}
 
-// Category performance data
-const categoryData = [
-  { name: 'Politics', accuracy: 91, trades: 34, color: '#818CF8' },
-  { name: 'Economics', accuracy: 82, trades: 28, color: '#00E676' },
-  { name: 'Sports', accuracy: 78, trades: 15, color: '#FF9500' },
-  { name: 'Crypto', accuracy: 67, trades: 12, color: '#FFD700' },
+const getAchievements = (stats: { totalPredictions: number; accuracy: number; winStreak: number }): Achievement[] => [
+  { id: 'first', name: 'First Steps', icon: '🎯', desc: 'Make your first prediction', unlocked: stats.totalPredictions >= 1, progress: Math.min(100, stats.totalPredictions * 100) },
+  { id: 'streak5', name: 'Hot Streak', icon: '🔥', desc: '5 wins in a row', unlocked: stats.winStreak >= 5, progress: Math.min(100, (stats.winStreak / 5) * 100) },
+  { id: 'streak10', name: 'On Fire', icon: '💥', desc: '10 wins in a row', unlocked: stats.winStreak >= 10, progress: Math.min(100, (stats.winStreak / 10) * 100) },
+  { id: 'ten', name: 'Getting Started', icon: '📊', desc: 'Make 10 predictions', unlocked: stats.totalPredictions >= 10, progress: Math.min(100, (stats.totalPredictions / 10) * 100) },
+  { id: 'fifty', name: 'Committed', icon: '🐋', desc: 'Make 50 predictions', unlocked: stats.totalPredictions >= 50, progress: Math.min(100, (stats.totalPredictions / 50) * 100) },
+  { id: 'hundred', name: 'Veteran', icon: '👑', desc: 'Make 100 predictions', unlocked: stats.totalPredictions >= 100, progress: Math.min(100, (stats.totalPredictions / 100) * 100) },
+  { id: 'accurate', name: 'Sharp Eye', icon: '🎯', desc: 'Reach 70% accuracy', unlocked: stats.accuracy >= 70, progress: Math.min(100, (stats.accuracy / 70) * 100) },
+  { id: 'expert', name: 'Expert', icon: '⭐', desc: 'Reach 80% accuracy', unlocked: stats.accuracy >= 80, progress: Math.min(100, (stats.accuracy / 80) * 100) },
 ];
-
-// PnL chart data (simulated)
-const generatePnLData = () => {
-  const data = [];
-  let pnl = 0;
-  for (let i = 0; i < 30; i++) {
-    pnl += Math.random() * 800 - 200;
-    data.push({ day: i, pnl: Math.max(0, pnl) });
-  }
-  data[data.length - 1].pnl = 12847;
-  return data;
-};
 
 // Animated counter hook
 const useAnimatedCounter = (end: number, duration: number = 2000, trigger: boolean = true) => {
@@ -73,48 +59,6 @@ const useAnimatedCounter = (end: number, duration: number = 2000, trigger: boole
   }, [end, duration, trigger]);
 
   return count;
-};
-
-// SVG Sparkline component
-const Sparkline = ({ data, color, height = 60 }: { data: number[], color: string, height?: number }) => {
-  const width = 280;
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-
-  const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((val - min) / range) * (height - 10) - 5;
-    return `${x},${y}`;
-  }).join(' ');
-
-  const areaPath = `M0,${height} L${points} L${width},${height} Z`;
-
-  return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill={`url(#gradient-${color.replace('#', '')})`} />
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle
-        cx={width}
-        cy={height - ((data[data.length - 1] - min) / range) * (height - 10) - 5}
-        r="4"
-        fill={color}
-      />
-    </svg>
-  );
 };
 
 // Progress Ring component
@@ -161,17 +105,12 @@ const ProgressRing = ({ progress, size = 60, strokeWidth = 5, color = '#00E676' 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading, login, logout, walletAddress, linkTelegram } = useUser();
   const { isConnected } = useBackendStatus();
-  const { stats: apiStats } = useUserPredictions();
+  const { stats: apiStats, predictions } = useUserPredictions();
   const [copied, setCopied] = useState(false);
   const [showTelegramLink, setShowTelegramLink] = useState(false);
   const [telegramInput, setTelegramInput] = useState('');
   const [linking, setLinking] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'settings'>('stats');
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'week' | 'month' | 'all'>('month');
-  const [pnlData] = useState(generatePnLData());
-
-  // Animated profit counter
-  const animatedProfit = useAnimatedCounter(12847, 2000, activeTab === 'stats');
 
   const stats = {
     totalPredictions: user?.totalPredictions ?? apiStats?.totalPredictions ?? 0,
@@ -179,22 +118,35 @@ export default function ProfilePage() {
     winStreak: user?.streak ?? apiStats?.streak?.current ?? 0,
   };
 
-  // Extended stats
+  // Animated counter for predictions
+  const animatedPredictions = useAnimatedCounter(stats.totalPredictions, 1500, activeTab === 'stats');
+
+  // Calculate XP based on predictions and accuracy
+  const xp = Math.floor(stats.totalPredictions * 10 + stats.accuracy * 5);
+
+  // Determine league based on XP
+  const getLeague = (xp: number) => {
+    if (xp >= 5000) return { name: 'Diamond', icon: '💠' };
+    if (xp >= 2500) return { name: 'Platinum', icon: '💎' };
+    if (xp >= 1000) return { name: 'Gold', icon: '🥇' };
+    if (xp >= 500) return { name: 'Silver', icon: '🥈' };
+    return { name: 'Bronze', icon: '🥉' };
+  };
+  const league = getLeague(xp);
+
+  // Real stats from API
   const extendedStats = {
-    profit: 12847.50,
-    roi: 34.2,
-    winRate: stats.accuracy || 73,
-    streak: stats.winStreak || 15,
-    totalTrades: stats.totalPredictions || 89,
-    rank: user?.rank || 47,
-    percentile: 8,
-    xp: 847,
-    league: 'Gold',
+    winRate: stats.accuracy,
+    streak: stats.winStreak,
+    totalTrades: stats.totalPredictions,
+    rank: user?.rank || 0,
+    xp,
+    league: league.name,
+    leagueIcon: league.icon,
   };
 
-  // Best/worst trades
-  const bestTrade = { market: 'Fed Rate Hike 2026', profit: 847, pct: '+124%' };
-  const worstTrade = { market: 'BTC Price $100K', loss: 124, pct: '-31%' };
+  // Get achievements based on real stats
+  const achievements = getAchievements(stats);
 
   const handleCopyAddress = async () => {
     if (walletAddress) {
@@ -279,16 +231,17 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Hero Profit Number */}
-          <div className="hero-profit">
-            <span className="hero-plus">+</span>
-            <span className="hero-dollar">$</span>
-            <span className="hero-number">{animatedProfit.toLocaleString()}</span>
+          {/* Hero Stats */}
+          <div className="hero-stats">
+            <span className="hero-number">{animatedPredictions}</span>
+            <span className="hero-label">Predictions</span>
           </div>
-          <div className="hero-subtitle">
-            <Trophy size={14} />
-            <span>Top {extendedStats.percentile}% of all traders</span>
-          </div>
+          {extendedStats.rank > 0 && (
+            <div className="hero-subtitle">
+              <Trophy size={14} />
+              <span>Ranked #{extendedStats.rank}</span>
+            </div>
+          )}
         </div>
 
         {/* Tab Switcher */}
@@ -314,19 +267,11 @@ export default function ProfilePage() {
             {/* Quick Stats Row */}
             <section className="quick-stats">
               <div className="quick-stat">
-                <div className="quick-stat-icon roi">
-                  <TrendingUp size={16} />
-                </div>
-                <div className="quick-stat-value green">+{extendedStats.roi}%</div>
-                <div className="quick-stat-label">ROI</div>
-              </div>
-
-              <div className="quick-stat">
                 <div className="quick-stat-ring">
                   <ProgressRing progress={extendedStats.winRate} size={44} strokeWidth={4} />
-                  <span className="ring-value">{extendedStats.winRate}%</span>
+                  <span className="ring-value">{extendedStats.winRate.toFixed(0)}%</span>
                 </div>
-                <div className="quick-stat-label">Win Rate</div>
+                <div className="quick-stat-label">Accuracy</div>
               </div>
 
               <div className="quick-stat">
@@ -342,7 +287,15 @@ export default function ProfilePage() {
                   <Target size={16} />
                 </div>
                 <div className="quick-stat-value">{extendedStats.totalTrades}</div>
-                <div className="quick-stat-label">Trades</div>
+                <div className="quick-stat-label">Predictions</div>
+              </div>
+
+              <div className="quick-stat">
+                <div className="quick-stat-icon xp">
+                  <Zap size={16} />
+                </div>
+                <div className="quick-stat-value">{extendedStats.xp}</div>
+                <div className="quick-stat-label">XP</div>
               </div>
             </section>
 
@@ -350,172 +303,76 @@ export default function ProfilePage() {
             <section className="league-section">
               <div className="league-header">
                 <div className="league-badge-full">
-                  <span className="league-icon">🥇</span>
+                  <span className="league-icon">{extendedStats.leagueIcon}</span>
                   <span className="league-name">{extendedStats.league} League</span>
                 </div>
-                <div className="league-rank">Rank #{extendedStats.rank}</div>
+                {extendedStats.rank > 0 && (
+                  <div className="league-rank">Rank #{extendedStats.rank}</div>
+                )}
               </div>
               <div className="xp-progress">
                 <div className="xp-text">
                   <span className="xp-current">{extendedStats.xp} XP</span>
-                  <span className="xp-target">1,000 XP to Platinum</span>
+                  <span className="xp-target">
+                    {extendedStats.xp < 500 ? `${500 - extendedStats.xp} XP to Silver` :
+                     extendedStats.xp < 1000 ? `${1000 - extendedStats.xp} XP to Gold` :
+                     extendedStats.xp < 2500 ? `${2500 - extendedStats.xp} XP to Platinum` :
+                     extendedStats.xp < 5000 ? `${5000 - extendedStats.xp} XP to Diamond` : 'Max Level!'}
+                  </span>
                 </div>
                 <div className="xp-bar">
-                  <div className="xp-fill" style={{ width: `${(extendedStats.xp / 1000) * 100}%` }}>
+                  <div className="xp-fill" style={{
+                    width: `${Math.min(100, extendedStats.xp < 500 ? (extendedStats.xp / 500) * 100 :
+                            extendedStats.xp < 1000 ? ((extendedStats.xp - 500) / 500) * 100 :
+                            extendedStats.xp < 2500 ? ((extendedStats.xp - 1000) / 1500) * 100 :
+                            extendedStats.xp < 5000 ? ((extendedStats.xp - 2500) / 2500) * 100 : 100)}%`
+                  }}>
                     <div className="xp-glow" />
                   </div>
                 </div>
               </div>
               <div className="league-tiers">
-                {['🥉', '🥈', '🥇', '💎', '💠'].map((tier, i) => (
-                  <div key={i} className={`tier ${i <= 2 ? 'unlocked' : 'locked'}`}>
-                    {tier}
+                {[
+                  { icon: '🥉', threshold: 0 },
+                  { icon: '🥈', threshold: 500 },
+                  { icon: '🥇', threshold: 1000 },
+                  { icon: '💎', threshold: 2500 },
+                  { icon: '💠', threshold: 5000 },
+                ].map((tier, i) => (
+                  <div key={i} className={`tier ${extendedStats.xp >= tier.threshold ? 'unlocked' : 'locked'}`}>
+                    {tier.icon}
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* Performance Chart */}
-            <section className="chart-section">
-              <div className="chart-header">
-                <h3>PnL Over Time</h3>
-                <div className="chart-range">
-                  {['week', 'month', 'all'].map((range) => (
-                    <button
-                      key={range}
-                      className={`range-btn ${selectedTimeRange === range ? 'active' : ''}`}
-                      onClick={() => setSelectedTimeRange(range as any)}
-                    >
-                      {range === 'week' ? '7D' : range === 'month' ? '30D' : 'All'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="chart-container">
-                <Sparkline data={pnlData.map(d => d.pnl)} color="#00E676" height={80} />
-              </div>
-              <div className="chart-stats">
-                <div className="chart-stat">
-                  <span className="chart-stat-label">Peak</span>
-                  <span className="chart-stat-value green">+$14,230</span>
-                </div>
-                <div className="chart-stat">
-                  <span className="chart-stat-label">Drawdown</span>
-                  <span className="chart-stat-value red">-8.2%</span>
-                </div>
-                <div className="chart-stat">
-                  <span className="chart-stat-label">Avg Trade</span>
-                  <span className="chart-stat-value">+$144</span>
-                </div>
-              </div>
-            </section>
-
-            {/* Category Breakdown */}
-            <section className="category-section">
-              <h3>Category Performance</h3>
-              <div className="category-list">
-                {categoryData.map((cat) => (
-                  <div key={cat.name} className="category-row">
-                    <div className="cat-info">
-                      <span className="cat-name">{cat.name}</span>
-                      <span className="cat-trades">{cat.trades} trades</span>
+            {/* Share Stats Card */}
+            {stats.totalPredictions > 0 && (
+              <section className="share-section">
+                <h3>Share Your Stats</h3>
+                <div className="share-card-preview">
+                  <div className="share-card-inner">
+                    <div className="share-card-logo">BeRight</div>
+                    <div className="share-card-stats-main">
+                      <div className="share-stat-big">{extendedStats.winRate.toFixed(0)}%</div>
+                      <div className="share-stat-label">Accuracy</div>
                     </div>
-                    <div className="cat-bar-container">
-                      <div
-                        className="cat-bar"
-                        style={{ width: `${cat.accuracy}%`, background: cat.color }}
-                      />
+                    <div className="share-card-stats">
+                      <div>{extendedStats.totalTrades} Predictions</div>
+                      <div>🔥 {extendedStats.streak} Streak</div>
+                      <div>{extendedStats.league} League</div>
                     </div>
-                    <span className="cat-pct" style={{ color: cat.color }}>{cat.accuracy}%</span>
+                    <div className="share-card-user">@{displayName}</div>
                   </div>
-                ))}
-              </div>
-              <div className="category-highlight">
-                <Star size={14} />
-                <span>Your strongest category: <strong>Politics</strong></span>
-              </div>
-            </section>
-
-            {/* Best/Worst Trades */}
-            <section className="trades-section">
-              <div className="trade-cards">
-                <div className="trade-card best">
-                  <div className="trade-card-header">
-                    <span className="trade-card-label">Best Trade</span>
-                    <TrendingUp size={16} />
-                  </div>
-                  <div className="trade-card-market">{bestTrade.market}</div>
-                  <div className="trade-card-profit green">+${bestTrade.profit}</div>
-                  <div className="trade-card-pct green">{bestTrade.pct}</div>
                 </div>
-
-                <div className="trade-card worst">
-                  <div className="trade-card-header">
-                    <span className="trade-card-label">Worst Trade</span>
-                    <TrendingDown size={16} />
-                  </div>
-                  <div className="trade-card-market">{worstTrade.market}</div>
-                  <div className="trade-card-profit red">-${worstTrade.loss}</div>
-                  <div className="trade-card-pct red">{worstTrade.pct}</div>
+                <div className="share-buttons">
+                  <button className="share-button share">
+                    <Share2 size={16} />
+                    <span>Share</span>
+                  </button>
                 </div>
-              </div>
-            </section>
-
-            {/* Edge Analysis */}
-            <section className="edge-section">
-              <h3>Your Edge</h3>
-              <div className="edge-content">
-                <div className="edge-strengths">
-                  <div className="edge-title strengths">
-                    <Zap size={14} />
-                    <span>Strengths</span>
-                  </div>
-                  <ul className="edge-list">
-                    <li>Early entry timing</li>
-                    <li>Political market analysis</li>
-                    <li>Contrarian plays</li>
-                  </ul>
-                </div>
-                <div className="edge-improve">
-                  <div className="edge-title improve">
-                    <Target size={14} />
-                    <span>Improve</span>
-                  </div>
-                  <ul className="edge-list">
-                    <li>Crypto timing</li>
-                    <li>Hold duration</li>
-                    <li>Position sizing</li>
-                  </ul>
-                </div>
-              </div>
-            </section>
-
-            {/* Shareable Card Preview */}
-            <section className="share-section">
-              <h3>Share Your Stats</h3>
-              <div className="share-card-preview">
-                <div className="share-card-inner">
-                  <div className="share-card-logo">BeRight</div>
-                  <div className="share-card-profit">+${extendedStats.profit.toLocaleString()}</div>
-                  <div className="share-card-stats">
-                    <div>{extendedStats.winRate}% Win Rate</div>
-                    <div>🔥 {extendedStats.streak} Streak</div>
-                    <div>Top {extendedStats.percentile}%</div>
-                  </div>
-                  <div className="share-card-user">@{displayName} • {extendedStats.league} League</div>
-                </div>
-              </div>
-              <div className="share-buttons">
-                <button className="share-button download">
-                  <Download size={16} />
-                  <span>Download</span>
-                </button>
-                <button className="share-button share">
-                  <Share2 size={16} />
-                  <span>Share</span>
-                </button>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Achievement Grid */}
             <section className="achievements-section">
@@ -848,28 +705,29 @@ export default function ProfilePage() {
           margin-top: 4px;
         }
 
-        /* Hero Profit */
-        .hero-profit {
-          font-family: 'JetBrains Mono', monospace;
-          font-weight: 800;
-          line-height: 1;
+        /* Hero Stats */
+        .hero-stats {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           margin: 16px 0 12px;
         }
 
-        .hero-plus {
-          font-size: 28px;
-          color: #00E676;
-        }
-
-        .hero-dollar {
-          font-size: 28px;
-          color: #00E676;
-        }
-
         .hero-number {
+          font-family: 'JetBrains Mono', monospace;
           font-size: 44px;
+          font-weight: 800;
           color: #00E676;
           text-shadow: 0 0 40px rgba(0, 230, 118, 0.5);
+          line-height: 1;
+        }
+
+        .hero-label {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-top: 4px;
         }
 
         .hero-subtitle {
@@ -962,6 +820,11 @@ export default function ProfilePage() {
         .quick-stat-icon.trades {
           background: rgba(99, 102, 241, 0.15);
           color: #818CF8;
+        }
+
+        .quick-stat-icon.xp {
+          background: rgba(255, 215, 0, 0.15);
+          color: #FFD700;
         }
 
         .quick-stat-ring {
@@ -1410,13 +1273,22 @@ export default function ProfilePage() {
           letter-spacing: 2px;
         }
 
-        .share-card-profit {
-          font-size: 28px;
+        .share-card-stats-main {
+          margin-bottom: 10px;
+        }
+
+        .share-stat-big {
+          font-size: 32px;
           font-weight: 800;
           color: #00E676;
           font-family: 'JetBrains Mono', monospace;
           text-shadow: 0 0 30px rgba(0, 230, 118, 0.4);
-          margin-bottom: 10px;
+        }
+
+        .share-stat-label {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
         }
 
         .share-card-stats {
