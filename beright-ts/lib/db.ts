@@ -12,7 +12,15 @@ export interface User {
   telegram_id: string | null;
   telegram_username: string | null;
   display_name: string | null;
+  username: string | null;
   avatar_url: string | null;
+  // Extended profile fields
+  email: string | null;
+  bio: string | null;
+  twitter_handle: string | null;
+  discord_handle: string | null;
+  website_url: string | null;
+  // Timestamps and settings
   created_at: string;
   updated_at: string;
   settings: UserSettings;
@@ -202,6 +210,124 @@ export async function linkWalletToUser(userId: string, walletAddress: string): P
     .single();
 
   if (error) throw error;
+  return data as User;
+}
+
+/**
+ * Profile update fields
+ */
+export interface ProfileUpdateInput {
+  username?: string;
+  email?: string;
+  avatar_url?: string;
+  bio?: string;
+  twitter_handle?: string;
+  discord_handle?: string;
+  website_url?: string;
+}
+
+/**
+ * Update user profile
+ */
+export async function updateUserProfile(
+  walletAddress: string,
+  updates: ProfileUpdateInput
+): Promise<User> {
+  const db = getSupabase();
+
+  // Sanitize inputs
+  const sanitizedUpdates: ProfileUpdateInput = {};
+
+  if (updates.username !== undefined) {
+    // Username: alphanumeric and underscores only, 3-30 chars
+    const username = updates.username.trim();
+    if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+      throw new Error('Username must be 3-30 characters, alphanumeric and underscores only');
+    }
+    sanitizedUpdates.username = username || null;
+  }
+
+  if (updates.email !== undefined) {
+    // Basic email validation
+    const email = updates.email.trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error('Invalid email format');
+    }
+    sanitizedUpdates.email = email || null;
+  }
+
+  if (updates.avatar_url !== undefined) {
+    // Avatar URL: must be valid URL or empty
+    const avatarUrl = updates.avatar_url.trim();
+    if (avatarUrl && !avatarUrl.startsWith('http://') && !avatarUrl.startsWith('https://')) {
+      throw new Error('Avatar URL must be a valid HTTP/HTTPS URL');
+    }
+    sanitizedUpdates.avatar_url = avatarUrl || null;
+  }
+
+  if (updates.bio !== undefined) {
+    // Bio: max 500 chars, strip any HTML
+    const bio = updates.bio.replace(/<[^>]*>/g, '').trim().slice(0, 500);
+    sanitizedUpdates.bio = bio || null;
+  }
+
+  if (updates.twitter_handle !== undefined) {
+    // Twitter handle: strip @ prefix, alphanumeric only
+    let handle = updates.twitter_handle.trim().replace(/^@/, '');
+    if (handle && !/^[a-zA-Z0-9_]{1,15}$/.test(handle)) {
+      throw new Error('Invalid Twitter handle');
+    }
+    sanitizedUpdates.twitter_handle = handle || null;
+  }
+
+  if (updates.discord_handle !== undefined) {
+    // Discord: username or username#1234 format
+    const discord = updates.discord_handle.trim();
+    if (discord && discord.length > 37) {
+      throw new Error('Discord handle too long');
+    }
+    sanitizedUpdates.discord_handle = discord || null;
+  }
+
+  if (updates.website_url !== undefined) {
+    // Website URL: must be valid URL
+    const website = updates.website_url.trim();
+    if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+      throw new Error('Website must be a valid HTTP/HTTPS URL');
+    }
+    sanitizedUpdates.website_url = website || null;
+  }
+
+  // Update the user
+  const { data, error } = await db
+    .from('users')
+    .update({
+      ...sanitizedUpdates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('wallet_address', walletAddress)
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('User not found');
+
+  return data as User;
+}
+
+/**
+ * Get user by wallet address
+ */
+export async function getUserByWallet(walletAddress: string): Promise<User | null> {
+  const db = getSupabase();
+
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('wallet_address', walletAddress)
+    .single();
+
+  if (error) return null;
   return data as User;
 }
 

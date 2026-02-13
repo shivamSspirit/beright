@@ -11,9 +11,25 @@ CREATE TABLE IF NOT EXISTS users (
   telegram_username TEXT,
   username TEXT,
   avatar_url TEXT,
+  -- Extended profile fields
+  email TEXT,
+  bio TEXT,
+  twitter_handle TEXT,
+  discord_handle TEXT,
+  website_url TEXT,
+  -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ============================================
+-- MIGRATION: Add extended profile columns (run if table exists)
+-- ============================================
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter_handle TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_handle TEXT;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS website_url TEXT;
 
 -- ============================================
 -- PREDICTIONS TABLE

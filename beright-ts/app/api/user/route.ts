@@ -13,6 +13,8 @@ import {
   getUserPredictions,
   getUserAchievements,
   getUserRank,
+  updateUserProfile,
+  ProfileUpdateInput,
 } from '../../../lib/db';
 import { getCalibrationStats, listPending } from '../../../skills/calibration';
 
@@ -48,9 +50,18 @@ export async function GET(request: NextRequest) {
           walletAddress: user.wallet_address,
           telegramId: user.telegram_id,
           telegramUsername: user.telegram_username,
-          displayName: user.display_name,
+          displayName: user.display_name || user.username,
+          username: user.username,
           avatarUrl: user.avatar_url,
+          // Extended profile fields
+          email: user.email,
+          bio: user.bio,
+          twitterHandle: user.twitter_handle,
+          discordHandle: user.discord_handle,
+          websiteUrl: user.website_url,
+          // Timestamps and settings
           createdAt: user.created_at,
+          updatedAt: user.updated_at,
           settings: user.settings,
         },
       };
@@ -175,14 +186,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body: any = await request.json();
-    const { userId, walletAddress, displayName, settings } = body;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Missing userId' },
-        { status: 400 }
-      );
-    }
+    const { userId, walletAddress, username, email, bio, avatarUrl, avatar_url, twitterHandle, twitter_handle, discordHandle, discord_handle, websiteUrl, website_url, settings } = body;
 
     // Check if we have database configured
     const hasDb = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY;
@@ -194,8 +198,48 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Link wallet if provided
-    if (walletAddress) {
+    // Profile update by wallet address (new flow)
+    if (walletAddress && !userId) {
+      const profileUpdates: ProfileUpdateInput = {};
+
+      if (username !== undefined) profileUpdates.username = username;
+      if (email !== undefined) profileUpdates.email = email;
+      if (bio !== undefined) profileUpdates.bio = bio;
+      if (avatarUrl !== undefined || avatar_url !== undefined) profileUpdates.avatar_url = avatarUrl || avatar_url;
+      if (twitterHandle !== undefined || twitter_handle !== undefined) profileUpdates.twitter_handle = twitterHandle || twitter_handle;
+      if (discordHandle !== undefined || discord_handle !== undefined) profileUpdates.discord_handle = discordHandle || discord_handle;
+      if (websiteUrl !== undefined || website_url !== undefined) profileUpdates.website_url = websiteUrl || website_url;
+
+      const user = await updateUserProfile(walletAddress, profileUpdates);
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          walletAddress: user.wallet_address,
+          username: user.username,
+          email: user.email,
+          avatarUrl: user.avatar_url,
+          bio: user.bio,
+          twitterHandle: user.twitter_handle,
+          discordHandle: user.discord_handle,
+          websiteUrl: user.website_url,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at,
+        },
+      });
+    }
+
+    // Legacy flow: require userId
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Missing userId or walletAddress' },
+        { status: 400 }
+      );
+    }
+
+    // Link wallet if provided (legacy)
+    if (walletAddress && userId) {
       const user = await linkWalletToUser(userId, walletAddress);
       return NextResponse.json({
         success: true,

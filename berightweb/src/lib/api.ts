@@ -56,8 +56,12 @@ export interface MarketsResponse {
 export interface LeaderboardEntry {
   rank: number;
   userId?: string;
+  username?: string;
   displayName: string;
   walletAddress?: string;
+  wallet_address?: string; // snake_case from API
+  avatarUrl?: string;
+  avatar_url?: string; // snake_case from API
   telegramUsername?: string;
   brierScore: number;
   accuracy: number;
@@ -78,6 +82,9 @@ export interface LeaderboardResponse {
     predictions: number;
     streak: number;
     onChainCount?: number;
+    avatarUrl?: string;
+    walletAddress?: string;
+    username?: string;
   };
   note?: string;
 }

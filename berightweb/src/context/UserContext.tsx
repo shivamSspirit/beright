@@ -11,6 +11,13 @@ interface UserProfile {
   telegramId: string | null;
   username: string | null;
   avatar: string | null;
+  // Extended profile fields
+  bio: string | null;
+  twitterHandle: string | null;
+  discordHandle: string | null;
+  websiteUrl: string | null;
+  avatarUrl: string | null;
+  // Stats
   totalPredictions: number;
   accuracy: number;
   brierScore: number;
@@ -28,6 +35,7 @@ interface UserContextType {
   walletAddress: string | null;
   linkTelegram: (telegramId: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshUser: () => Promise<void>; // Alias for refreshProfile
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -85,6 +93,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
             ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
             : 'Anonymous',
           avatar: null,
+          bio: null,
+          twitterHandle: null,
+          discordHandle: null,
+          websiteUrl: null,
+          avatarUrl: null,
           totalPredictions: 0,
           accuracy: 0,
           brierScore: 0,
@@ -105,6 +118,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
           ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
           : 'Anonymous',
         avatar: null,
+        bio: null,
+        twitterHandle: null,
+        discordHandle: null,
+        websiteUrl: null,
+        avatarUrl: null,
         totalPredictions: 0,
         accuracy: 0,
         brierScore: 0,
@@ -157,6 +175,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         walletAddress,
         linkTelegram,
         refreshProfile,
+        refreshUser: refreshProfile, // Alias
       }}
     >
       {children}

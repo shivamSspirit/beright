@@ -26,6 +26,8 @@ interface LeaderboardUser {
   rank: number;
   displayName: string;
   avatar: string;
+  avatarUrl: string | null;
+  walletAddress: string | null;
   profit: number;
   accuracy: number;
   streak: number;
@@ -45,19 +47,32 @@ export default function LeaderboardPage() {
   const podiumRef = useRef<HTMLDivElement>(null);
 
   // Transform API data to LeaderboardUser format
-  const leaderboardData: LeaderboardUser[] = (data?.leaderboard || []).map((entry, index) => ({
-    rank: entry.rank || index + 1,
-    displayName: entry.displayName || `User ${index + 1}`,
-    avatar: getAvatar(index),
-    profit: 0, // Not available from API yet
-    accuracy: entry.accuracy || 0,
-    streak: entry.streak || 0,
-    alpha: 0, // Not available from API yet
-    predictions: entry.predictions || 0,
-    xp: Math.floor((entry.accuracy || 0) * 10 + (entry.predictions || 0) * 5),
-    league: entry.accuracy >= 80 ? 'Diamond' : entry.accuracy >= 70 ? 'Platinum' : entry.accuracy >= 60 ? 'Gold' : 'Silver',
-    change: 0, // Not available from API yet
-  }));
+  const leaderboardData: LeaderboardUser[] = (data?.leaderboard || []).map((entry, index) => {
+    // Get display name: username > truncated wallet > "User X"
+    const walletAddr = entry.walletAddress || entry.wallet_address;
+    const username = entry.username || entry.displayName;
+    const displayName = username
+      ? username
+      : walletAddr
+        ? `${walletAddr.slice(0, 6)}...${walletAddr.slice(-4)}`
+        : `User ${index + 1}`;
+
+    return {
+      rank: entry.rank || index + 1,
+      displayName,
+      avatar: getAvatar(index),
+      avatarUrl: entry.avatarUrl || entry.avatar_url || null,
+      walletAddress: walletAddr || null,
+      profit: 0, // Not available from API yet
+      accuracy: entry.accuracy || 0,
+      streak: entry.streak || 0,
+      alpha: 0, // Not available from API yet
+      predictions: entry.predictions || 0,
+      xp: Math.floor((entry.accuracy || 0) * 10 + (entry.predictions || 0) * 5),
+      league: entry.accuracy >= 80 ? 'Diamond' : entry.accuracy >= 70 ? 'Platinum' : entry.accuracy >= 60 ? 'Gold' : 'Silver',
+      change: 0, // Not available from API yet
+    };
+  });
 
   // Get sorted data based on active dimension
   const getSortedData = () => {
@@ -82,6 +97,8 @@ export default function LeaderboardPage() {
     rank: data.userRank || 0,
     displayName: 'You',
     avatar: '🎯',
+    avatarUrl: data.userStats.avatarUrl || null,
+    walletAddress: data.userStats.walletAddress || null,
     profit: 0,
     accuracy: data.userStats.accuracy || 0,
     streak: data.userStats.streak || 0,
@@ -94,6 +111,8 @@ export default function LeaderboardPage() {
     rank: 0,
     displayName: 'You',
     avatar: '🎯',
+    avatarUrl: null,
+    walletAddress: null,
     profit: 0,
     accuracy: 0,
     streak: 0,
@@ -231,7 +250,11 @@ export default function LeaderboardPage() {
               <div className="podium-item second">
                 <div className="podium-rank">2</div>
                 <div className="podium-avatar silver">
-                  <span className="avatar-emoji">{podium[1].avatar}</span>
+                  {podium[1].avatarUrl ? (
+                    <img src={podium[1].avatarUrl} alt="" className="avatar-img" />
+                  ) : (
+                    <span className="avatar-emoji">{podium[1].avatar}</span>
+                  )}
                   <Medal className="rank-icon" size={16} />
                 </div>
                 <span className="podium-name">{podium[1].displayName}</span>
@@ -251,7 +274,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="podium-rank">1</div>
                 <div className="podium-avatar gold">
-                  <span className="avatar-emoji">{podium[0].avatar}</span>
+                  {podium[0].avatarUrl ? (
+                    <img src={podium[0].avatarUrl} alt="" className="avatar-img" />
+                  ) : (
+                    <span className="avatar-emoji">{podium[0].avatar}</span>
+                  )}
                   <div className="glow-ring" />
                 </div>
                 <span className="podium-name">{podium[0].displayName}</span>
@@ -269,7 +296,11 @@ export default function LeaderboardPage() {
               <div className="podium-item third">
                 <div className="podium-rank">3</div>
                 <div className="podium-avatar bronze">
-                  <span className="avatar-emoji">{podium[2].avatar}</span>
+                  {podium[2].avatarUrl ? (
+                    <img src={podium[2].avatarUrl} alt="" className="avatar-img" />
+                  ) : (
+                    <span className="avatar-emoji">{podium[2].avatar}</span>
+                  )}
                   <Award className="rank-icon" size={16} />
                 </div>
                 <span className="podium-name">{podium[2].displayName}</span>
@@ -357,7 +388,11 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
                   <div className="rank-avatar">
-                    {user.avatar}
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="" className="rank-avatar-img" />
+                    ) : (
+                      user.avatar
+                    )}
                   </div>
                   <div className="rank-info">
                     <span className="rank-name">{user.displayName}</span>
@@ -822,6 +857,13 @@ export default function LeaderboardPage() {
           font-size: 38px;
         }
 
+        .avatar-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: inherit;
+        }
+
         .rank-icon {
           position: absolute;
           bottom: -6px;
@@ -1235,6 +1277,13 @@ export default function LeaderboardPage() {
           background: rgba(255, 255, 255, 0.05);
           border-radius: 10px;
           font-size: 18px;
+          overflow: hidden;
+        }
+
+        .rank-avatar-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
 
         .rank-info {

@@ -103,7 +103,7 @@ const ProgressRing = ({ progress, size = 60, strokeWidth = 5, color = '#00E676' 
 };
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, isLoading, login, logout, walletAddress, linkTelegram } = useUser();
+  const { user, isAuthenticated, isLoading, login, logout, walletAddress, linkTelegram, refreshUser } = useUser();
   const { isConnected } = useBackendStatus();
   const { stats: apiStats, predictions } = useUserPredictions();
   const [copied, setCopied] = useState(false);
@@ -111,6 +111,73 @@ export default function ProfilePage() {
   const [telegramInput, setTelegramInput] = useState('');
   const [linking, setLinking] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'settings'>('stats');
+
+  // Edit profile state
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    username: '',
+    email: '',
+    bio: '',
+    twitterHandle: '',
+    discordHandle: '',
+    websiteUrl: '',
+  });
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+
+  // Initialize form with user data
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        username: user.username || '',
+        email: user.email || '',
+        bio: user.bio || '',
+        twitterHandle: user.twitterHandle || '',
+        discordHandle: user.discordHandle || '',
+        websiteUrl: user.websiteUrl || '',
+      });
+    }
+  }, [user]);
+
+  // Handle profile save
+  const handleSaveProfile = async () => {
+    if (!walletAddress) return;
+    setSaving(true);
+    setProfileError(null);
+    setProfileSuccess(false);
+
+    try {
+      const response = await fetch('/api/user', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          username: profileForm.username || undefined,
+          email: profileForm.email || undefined,
+          bio: profileForm.bio || undefined,
+          twitterHandle: profileForm.twitterHandle || undefined,
+          discordHandle: profileForm.discordHandle || undefined,
+          websiteUrl: profileForm.websiteUrl || undefined,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to update profile');
+      }
+
+      setProfileSuccess(true);
+      setEditMode(false);
+      // Refresh user data
+      if (refreshUser) refreshUser();
+      setTimeout(() => setProfileSuccess(false), 3000);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const stats = {
     totalPredictions: user?.totalPredictions ?? apiStats?.totalPredictions ?? 0,
@@ -451,6 +518,139 @@ export default function ProfilePage() {
                 </div>
                 <span className="chevron">›</span>
               </button>
+            )}
+
+            {/* Edit Profile Section */}
+            {isAuthenticated && (
+              <div className="edit-profile-section">
+                <div className="edit-profile-header">
+                  <h3>Profile Information</h3>
+                  {!editMode ? (
+                    <button className="edit-btn" onClick={() => setEditMode(true)}>
+                      Edit
+                    </button>
+                  ) : (
+                    <div className="edit-actions">
+                      <button className="cancel-btn" onClick={() => setEditMode(false)} disabled={saving}>
+                        Cancel
+                      </button>
+                      <button className="save-btn" onClick={handleSaveProfile} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {profileError && (
+                  <div className="profile-error">{profileError}</div>
+                )}
+                {profileSuccess && (
+                  <div className="profile-success">Profile updated successfully!</div>
+                )}
+
+                {editMode ? (
+                  <div className="profile-form">
+                    <div className="form-group">
+                      <label>Username</label>
+                      <input
+                        type="text"
+                        value={profileForm.username}
+                        onChange={(e) => setProfileForm(f => ({ ...f, username: e.target.value }))}
+                        placeholder="your_username"
+                        maxLength={30}
+                      />
+                      <span className="hint">3-30 chars, alphanumeric and underscores</span>
+                    </div>
+                    <div className="form-group">
+                      <label>Email</label>
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm(f => ({ ...f, email: e.target.value }))}
+                        placeholder="you@example.com"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Bio</label>
+                      <textarea
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm(f => ({ ...f, bio: e.target.value }))}
+                        placeholder="Tell us about yourself..."
+                        maxLength={500}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Twitter</label>
+                        <input
+                          type="text"
+                          value={profileForm.twitterHandle}
+                          onChange={(e) => setProfileForm(f => ({ ...f, twitterHandle: e.target.value }))}
+                          placeholder="@handle"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Discord</label>
+                        <input
+                          type="text"
+                          value={profileForm.discordHandle}
+                          onChange={(e) => setProfileForm(f => ({ ...f, discordHandle: e.target.value }))}
+                          placeholder="username#1234"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Website</label>
+                      <input
+                        type="url"
+                        value={profileForm.websiteUrl}
+                        onChange={(e) => setProfileForm(f => ({ ...f, websiteUrl: e.target.value }))}
+                        placeholder="https://yoursite.com"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="profile-display">
+                    {profileForm.username && (
+                      <div className="profile-field">
+                        <span className="field-label">Username</span>
+                        <span className="field-value">@{profileForm.username}</span>
+                      </div>
+                    )}
+                    {profileForm.email && (
+                      <div className="profile-field">
+                        <span className="field-label">Email</span>
+                        <span className="field-value">{profileForm.email}</span>
+                      </div>
+                    )}
+                    {profileForm.bio && (
+                      <div className="profile-field">
+                        <span className="field-label">Bio</span>
+                        <span className="field-value bio">{profileForm.bio}</span>
+                      </div>
+                    )}
+                    {(profileForm.twitterHandle || profileForm.discordHandle) && (
+                      <div className="profile-socials">
+                        {profileForm.twitterHandle && (
+                          <span className="social-tag twitter">@{profileForm.twitterHandle}</span>
+                        )}
+                        {profileForm.discordHandle && (
+                          <span className="social-tag discord">{profileForm.discordHandle}</span>
+                        )}
+                      </div>
+                    )}
+                    {profileForm.websiteUrl && (
+                      <a href={profileForm.websiteUrl} target="_blank" rel="noopener noreferrer" className="website-link">
+                        {profileForm.websiteUrl.replace(/^https?:\/\//, '')}
+                      </a>
+                    )}
+                    {!profileForm.username && !profileForm.email && !profileForm.bio && (
+                      <p className="no-profile">No profile information added yet. Click Edit to add your details.</p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Telegram Link Modal */}
@@ -1762,6 +1962,245 @@ export default function ProfilePage() {
           color: rgba(255, 255, 255, 0.25);
           margin: 0;
           line-height: 1.8;
+        }
+
+        /* Edit Profile Section */
+        .edit-profile-section {
+          padding: 14px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 14px;
+        }
+
+        .edit-profile-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 14px;
+        }
+
+        .edit-profile-header h3 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .edit-btn {
+          padding: 6px 14px;
+          background: rgba(99, 102, 241, 0.15);
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 500;
+          color: #818CF8;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .edit-btn:hover {
+          background: rgba(99, 102, 241, 0.25);
+        }
+
+        .edit-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .cancel-btn {
+          padding: 6px 12px;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.5);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cancel-btn:hover {
+          border-color: rgba(255, 255, 255, 0.2);
+          color: #fff;
+        }
+
+        .save-btn {
+          padding: 6px 14px;
+          background: linear-gradient(135deg, #00E676, #00B0FF);
+          border: none;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #000;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .save-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 230, 118, 0.3);
+        }
+
+        .save-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .profile-error {
+          padding: 10px 12px;
+          background: rgba(255, 82, 82, 0.1);
+          border: 1px solid rgba(255, 82, 82, 0.2);
+          border-radius: 8px;
+          font-size: 12px;
+          color: #FF5252;
+          margin-bottom: 12px;
+        }
+
+        .profile-success {
+          padding: 10px 12px;
+          background: rgba(0, 230, 118, 0.1);
+          border: 1px solid rgba(0, 230, 118, 0.2);
+          border-radius: 8px;
+          font-size: 12px;
+          color: #00E676;
+          margin-bottom: 12px;
+        }
+
+        .profile-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .form-group label {
+          font-size: 11px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+          padding: 10px 12px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          font-size: 13px;
+          color: #fff;
+          outline: none;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+
+        .form-group textarea {
+          resize: vertical;
+          min-height: 70px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+          border-color: rgba(99, 102, 241, 0.5);
+          background: rgba(255, 255, 255, 0.06);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        .form-group .hint {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.35);
+        }
+
+        .form-row {
+          display: flex;
+          gap: 12px;
+        }
+
+        .form-row .form-group {
+          flex: 1;
+        }
+
+        .profile-display {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .profile-field {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .field-label {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.4);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .field-value {
+          font-size: 13px;
+          color: #fff;
+        }
+
+        .field-value.bio {
+          color: rgba(255, 255, 255, 0.7);
+          line-height: 1.5;
+        }
+
+        .profile-socials {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .social-tag {
+          padding: 5px 10px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .social-tag.twitter {
+          background: rgba(29, 161, 242, 0.15);
+          color: #1DA1F2;
+        }
+
+        .social-tag.discord {
+          background: rgba(88, 101, 242, 0.15);
+          color: #5865F2;
+        }
+
+        .website-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: #818CF8;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+
+        .website-link:hover {
+          color: #A5B4FC;
+          text-decoration: underline;
+        }
+
+        .no-profile {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.4);
+          text-align: center;
+          padding: 16px;
+          margin: 0;
         }
 
         /* Responsive */

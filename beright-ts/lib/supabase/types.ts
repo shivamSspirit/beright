@@ -16,6 +16,13 @@ export interface Database {
           telegram_username: string | null;
           username: string | null;
           avatar_url: string | null;
+          // Extended profile fields
+          email: string | null;
+          bio: string | null;
+          twitter_handle: string | null;
+          discord_handle: string | null;
+          website_url: string | null;
+          // Timestamps
           created_at: string;
           updated_at: string;
         };
@@ -26,6 +33,13 @@ export interface Database {
           telegram_username?: string | null;
           username?: string | null;
           avatar_url?: string | null;
+          // Extended profile fields
+          email?: string | null;
+          bio?: string | null;
+          twitter_handle?: string | null;
+          discord_handle?: string | null;
+          website_url?: string | null;
+          // Timestamps
           created_at?: string;
           updated_at?: string;
         };
@@ -36,6 +50,13 @@ export interface Database {
           telegram_username?: string | null;
           username?: string | null;
           avatar_url?: string | null;
+          // Extended profile fields
+          email?: string | null;
+          bio?: string | null;
+          twitter_handle?: string | null;
+          discord_handle?: string | null;
+          website_url?: string | null;
+          // Timestamps
           created_at?: string;
           updated_at?: string;
         };

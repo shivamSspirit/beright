@@ -419,11 +419,11 @@ export interface ArbitrageConfig {
 }
 
 export const DEFAULT_ARBITRAGE_CONFIG: ArbitrageConfig = {
-  // Matching - Balanced thresholds (stricter than old 35%, but not 85%)
-  // We rely on entity matching + date alignment to filter false positives
-  minEquivalenceScore: 0.55,    // 55% overall score required
-  minTitleSimilarity: 0.45,     // 45% title similarity minimum
-  maxDateDriftDays: 14,         // Within 2 weeks
+  // Matching - STRICT thresholds to ensure we only match SAME events
+  // High threshold prevents false positives from different markets
+  minEquivalenceScore: 0.80,    // 80% overall score required (was 55%)
+  minTitleSimilarity: 0.70,     // 70% title similarity minimum (was 45%)
+  maxDateDriftDays: 7,          // Within 1 week (was 2 weeks)
 
   // Profit - Must be profitable AFTER all costs
   minNetProfitPct: 0.02,        // 2% minimum after fees
