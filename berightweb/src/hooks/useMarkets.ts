@@ -22,7 +22,6 @@ import {
   ApiArbitrage,
 } from '../lib/api';
 import { Prediction } from '../lib/types';
-import { mockPredictions, mockLeaderboard, mockUserStats } from '../lib/mockData';
 
 // ============ Backend Status Hook ============
 
@@ -125,13 +124,8 @@ export function useMarkets(options: UseMarketsOptions = {}) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch markets';
       setError(message);
-
-      if (useMockOnError) {
-        console.warn('Using mock data due to error:', message);
-        setPredictions(mockPredictions);
-        setUsingMock(true);
-        setDataSource('mock');
-      }
+      setPredictions([]);
+      setUsingMock(false);
     } finally {
       setLoading(false);
     }
@@ -213,28 +207,8 @@ export function useLeaderboard(options?: UseLeaderboardOptions) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch leaderboard';
       setError(message);
-
-      // Use mock data as fallback
-      setData({
-        count: mockLeaderboard.length,
-        leaderboard: mockLeaderboard.map((entry) => ({
-          rank: entry.rank,
-          displayName: entry.username,
-          brierScore: 0.25 - (entry.accuracy / 400),
-          accuracy: entry.accuracy,
-          predictions: entry.totalPredictions,
-          streak: entry.streak,
-          isCurrentUser: entry.username === 'You',
-        })),
-        userRank: 8,
-        userStats: {
-          brierScore: mockUserStats.brierScore,
-          accuracy: mockUserStats.accuracy,
-          predictions: mockUserStats.resolvedPredictions,
-          streak: mockUserStats.winStreak,
-        },
-      });
-      setUsingMock(true);
+      setData(null);
+      setUsingMock(false);
     } finally {
       setLoading(false);
     }

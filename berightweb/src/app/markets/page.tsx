@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useBackendStatus } from '@/hooks/useMarkets';
 import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData } from '@/lib/api';
-import { mockApiMarkets } from '@/lib/mockData';
 import BottomNav from '@/components/BottomNav';
 import TradingModal from '@/components/TradingModal';
 
@@ -626,7 +625,7 @@ export default function MarketsPage() {
         setHasMore(false);
       }
     } catch {
-      if (!isLoadMore) setMarkets(mockApiMarkets as MarketWithDFlow[]);
+      if (!isLoadMore) setMarkets([]);
       setHasMore(false);
     } finally {
       setLoading(false);

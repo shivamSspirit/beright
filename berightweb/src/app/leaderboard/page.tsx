@@ -22,92 +22,52 @@ const leagues = [
 type RankingDimension = 'profit' | 'accuracy' | 'streak' | 'alpha';
 type TimeFilter = 'today' | 'week' | 'month' | 'all';
 
-interface MockUser {
+interface LeaderboardUser {
   rank: number;
   displayName: string;
   avatar: string;
   profit: number;
   accuracy: number;
   streak: number;
-  alpha: number; // Entry timing score
+  alpha: number;
   predictions: number;
   xp: number;
   league: string;
-  change: number; // Rank change from last period
+  change: number;
 }
-
-// Generate mock leaderboard data
-const generateMockData = (): MockUser[] => {
-  const names = [
-    'CryptoOracle', 'MarketMaven', 'AlphaHunter', 'WhaleCatcher', 'TrendRider',
-    'ProbabilityKing', 'EdgeFinder', 'SharpShooter', 'DataDragon', 'ChartMaster',
-    'QuantumTrader', 'SignalSage', 'RiskRunner', 'OddsOraclePro', 'BetBaron',
-    'FutureSeer', 'MarketMystic', 'PredictorPrime', 'TradeTitan', 'ForecasterX'
-  ];
-
-  return names.map((name, i) => ({
-    rank: i + 1,
-    displayName: name,
-    avatar: getAvatar(i),
-    profit: Math.round((20000 - i * 800 + Math.random() * 500) * 100) / 100,
-    accuracy: Math.round((92 - i * 1.5 + Math.random() * 3) * 10) / 10,
-    streak: Math.max(1, Math.round(25 - i + Math.random() * 5)),
-    alpha: Math.round((95 - i * 2 + Math.random() * 5) * 10) / 10,
-    predictions: Math.round(150 - i * 3 + Math.random() * 20),
-    xp: Math.round(5500 - i * 200 + Math.random() * 100),
-    league: i < 3 ? 'Diamond' : i < 8 ? 'Platinum' : i < 15 ? 'Gold' : 'Silver',
-    change: Math.round(Math.random() * 10 - 3),
-  }));
-};
-
-// Current user mock data
-const currentUser: MockUser = {
-  rank: 47,
-  displayName: 'You',
-  avatar: '🎯',
-  profit: 12847.50,
-  accuracy: 73.2,
-  streak: 15,
-  alpha: 81.5,
-  predictions: 89,
-  xp: 847,
-  league: 'Gold',
-  change: 3,
-};
-
-// Rival user (close competitor)
-const rivalUser: MockUser = {
-  rank: 44,
-  displayName: 'RivalTrader',
-  avatar: '🐺',
-  profit: 13200.00,
-  accuracy: 74.1,
-  streak: 12,
-  alpha: 79.8,
-  predictions: 95,
-  xp: 920,
-  league: 'Gold',
-  change: -1,
-};
 
 export default function LeaderboardPage() {
   const { isConnected } = useBackendStatus();
   const { data, loading, usingMock } = useLeaderboard({ limit: 50 });
-  const [activeTab, setActiveTab] = useState<RankingDimension>('profit');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
+  const [activeTab, setActiveTab] = useState<RankingDimension>('accuracy');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [showNudge, setShowNudge] = useState(true);
-  const [mockData] = useState<MockUser[]>(generateMockData());
   const podiumRef = useRef<HTMLDivElement>(null);
+
+  // Transform API data to LeaderboardUser format
+  const leaderboardData: LeaderboardUser[] = (data?.leaderboard || []).map((entry, index) => ({
+    rank: entry.rank || index + 1,
+    displayName: entry.displayName || `User ${index + 1}`,
+    avatar: getAvatar(index),
+    profit: 0, // Not available from API yet
+    accuracy: entry.accuracy || 0,
+    streak: entry.streak || 0,
+    alpha: 0, // Not available from API yet
+    predictions: entry.predictions || 0,
+    xp: Math.floor((entry.accuracy || 0) * 10 + (entry.predictions || 0) * 5),
+    league: entry.accuracy >= 80 ? 'Diamond' : entry.accuracy >= 70 ? 'Platinum' : entry.accuracy >= 60 ? 'Gold' : 'Silver',
+    change: 0, // Not available from API yet
+  }));
 
   // Get sorted data based on active dimension
   const getSortedData = () => {
-    const sorted = [...mockData].sort((a, b) => {
+    const sorted = [...leaderboardData].sort((a, b) => {
       switch (activeTab) {
-        case 'profit': return b.profit - a.profit;
         case 'accuracy': return b.accuracy - a.accuracy;
         case 'streak': return b.streak - a.streak;
+        case 'profit': return b.profit - a.profit;
         case 'alpha': return b.alpha - a.alpha;
-        default: return b.profit - a.profit;
+        default: return b.accuracy - a.accuracy;
       }
     });
     return sorted.map((user, i) => ({ ...user, rank: i + 1 }));
@@ -117,18 +77,45 @@ export default function LeaderboardPage() {
   const podium = sortedData.slice(0, 3);
   const restOfList = sortedData.slice(3, 20);
 
+  // Current user data from API
+  const currentUser: LeaderboardUser = data?.userStats ? {
+    rank: data.userRank || 0,
+    displayName: 'You',
+    avatar: '🎯',
+    profit: 0,
+    accuracy: data.userStats.accuracy || 0,
+    streak: data.userStats.streak || 0,
+    alpha: 0,
+    predictions: data.userStats.predictions || 0,
+    xp: Math.floor((data.userStats.accuracy || 0) * 10 + (data.userStats.predictions || 0) * 5),
+    league: (data.userStats.accuracy || 0) >= 80 ? 'Diamond' : (data.userStats.accuracy || 0) >= 70 ? 'Platinum' : (data.userStats.accuracy || 0) >= 60 ? 'Gold' : 'Silver',
+    change: 0,
+  } : {
+    rank: 0,
+    displayName: 'You',
+    avatar: '🎯',
+    profit: 0,
+    accuracy: 0,
+    streak: 0,
+    alpha: 0,
+    predictions: 0,
+    xp: 0,
+    league: 'Bronze',
+    change: 0,
+  };
+
   // Calculate proximity to next rank milestone
   const xpToNextRank = 1000 - currentUser.xp;
   const progressToNextRank = (currentUser.xp / 1000) * 100;
 
   // Get metric value based on active tab
-  const getMetricValue = (user: MockUser) => {
+  const getMetricValue = (user: LeaderboardUser) => {
     switch (activeTab) {
-      case 'profit': return `+$${user.profit.toLocaleString()}`;
-      case 'accuracy': return `${user.accuracy}%`;
+      case 'accuracy': return `${user.accuracy.toFixed(1)}%`;
       case 'streak': return `${user.streak}`;
-      case 'alpha': return `${user.alpha}%`;
-      default: return `+$${user.profit.toLocaleString()}`;
+      case 'profit': return user.profit > 0 ? `+$${user.profit.toLocaleString()}` : '-';
+      case 'alpha': return user.alpha > 0 ? `${user.alpha}%` : '-';
+      default: return `${user.accuracy.toFixed(1)}%`;
     }
   };
 
@@ -205,12 +192,12 @@ export default function LeaderboardPage() {
       {/* Main Content */}
       <main className="lb-main">
         {/* Proximity Nudge */}
-        {showNudge && (
+        {showNudge && currentUser.rank > 0 && currentUser.rank <= 50 && (
           <div className="nudge-banner">
             <div className="nudge-content">
               <span className="nudge-icon">🔥</span>
               <span className="nudge-text">
-                You're <strong>2 correct predictions</strong> away from Top 10!
+                You're ranked <strong>#{currentUser.rank}</strong> - keep predicting to climb higher!
               </span>
             </div>
             <button className="nudge-close" onClick={() => setShowNudge(false)}>
@@ -224,6 +211,15 @@ export default function LeaderboardPage() {
           <div className="lb-loading">
             <div className="lb-spinner" />
             <span>Loading rankings...</span>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && leaderboardData.length === 0 && (
+          <div className="lb-empty">
+            <span className="empty-icon">📊</span>
+            <span className="empty-text">No leaderboard data available yet</span>
+            <span className="empty-sub">Make predictions to appear on the leaderboard</span>
           </div>
         )}
 
@@ -309,12 +305,12 @@ export default function LeaderboardPage() {
 
           <div className="your-stats-row">
             <div className="stat-item">
-              <span className="stat-val green">+${currentUser.profit.toLocaleString()}</span>
-              <span className="stat-label">Profit</span>
+              <span className="stat-val">{currentUser.predictions}</span>
+              <span className="stat-label">Predictions</span>
             </div>
             <div className="stat-divider" />
             <div className="stat-item">
-              <span className="stat-val">{currentUser.accuracy}%</span>
+              <span className="stat-val green">{currentUser.accuracy.toFixed(1)}%</span>
               <span className="stat-label">Accuracy</span>
             </div>
             <div className="stat-divider" />
@@ -338,27 +334,6 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          {/* Rival Comparison */}
-          <div className="rival-section">
-            <div className="rival-header">
-              <span className="rival-label">⚔️ vs Your Rival</span>
-              <span className="rival-name">@{rivalUser.displayName}</span>
-            </div>
-            <div className="rival-compare">
-              <div className="rival-stat">
-                <span className="you-val">+${currentUser.profit.toLocaleString()}</span>
-                <span className="compare-label">You</span>
-              </div>
-              <div className="rival-vs">VS</div>
-              <div className="rival-stat">
-                <span className="rival-val">+${rivalUser.profit.toLocaleString()}</span>
-                <span className="compare-label">Rival</span>
-              </div>
-            </div>
-            <div className="rival-gap">
-              You're <span className="gap-amount">${(rivalUser.profit - currentUser.profit).toFixed(0)}</span> behind
-            </div>
-          </div>
         </div>
 
         {/* Rankings List */}
@@ -698,6 +673,32 @@ export default function LeaderboardPage() {
 
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+
+        .lb-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px 20px;
+          gap: 12px;
+          text-align: center;
+        }
+
+        .empty-icon {
+          font-size: 48px;
+          opacity: 0.6;
+        }
+
+        .empty-text {
+          font-size: 16px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .empty-sub {
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.4);
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

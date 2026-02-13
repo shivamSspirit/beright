@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import BottomNav from '@/components/BottomNav';
-import { mockUserStats } from '@/lib/mockData';
 import { useUser } from '@/context/UserContext';
 import { useUserPredictions, useBackendStatus } from '@/hooks/useMarkets';
 import {
@@ -174,11 +173,11 @@ export default function ProfilePage() {
   // Animated profit counter
   const animatedProfit = useAnimatedCounter(12847, 2000, activeTab === 'stats');
 
-  const stats = user ? {
-    totalPredictions: user.totalPredictions,
-    accuracy: user.accuracy,
-    winStreak: user.streak,
-  } : mockUserStats;
+  const stats = {
+    totalPredictions: user?.totalPredictions ?? apiStats?.totalPredictions ?? 0,
+    accuracy: user?.accuracy ?? apiStats?.accuracy ?? 0,
+    winStreak: user?.streak ?? apiStats?.streak?.current ?? 0,
+  };
 
   // Extended stats
   const extendedStats = {
