@@ -19,16 +19,6 @@
 
 **Trading is not enabled yet.** The web UI is currently a **showcase of our product vision** and design direction.
 
-**What's fully working right now:**
-- Telegram AI Agent with 50+ commands
-- Multi-platform market aggregation (5 platforms)
-- Arbitrage detection & alerts
-- Whale tracking
-- Superforecaster research
-- 24/7 autonomous scanning
-
-**Try the agent:** [@BeRightBot](https://t.me/BeRightBot) on Telegram
-
 </td>
 </tr>
 </table>
