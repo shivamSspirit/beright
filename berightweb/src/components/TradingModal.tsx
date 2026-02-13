@@ -5,6 +5,7 @@ import { animated, useSpring } from '@react-spring/web';
 import { DFlowData, DFlowTokens } from '@/lib/types';
 import { useDFlowTrading, TradingStep } from '@/hooks/useDFlowTrading';
 import { createPrediction, PredictionInput } from '@/lib/api';
+import { useWalletBalance, formatBalance } from '@/hooks/useWalletBalance';
 
 // ============ TYPES ============
 
@@ -154,6 +155,11 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     reset,
   } = useDFlowTrading();
 
+  // Wallet balance check
+  const { sol, usdc, isLoading: balanceLoading, hasEnoughForTrade, refetch: refetchBalance } = useWalletBalance(walletAddress);
+  const [showAddFunds, setShowAddFunds] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
   const dflow = prediction.dflow;
   const tokens = dflow?.tokens;
   const isTokenized = tokens?.yesMint && tokens?.noMint && tokens?.isInitialized;
@@ -189,11 +195,22 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
       });
       setCopiedTrade(false);
       setCopiedMemo(false);
+      setCopiedAddress(false);
+      setShowAddFunds(false);
       setIsSubmitting(false);
       memoCommitInProgress.current = false;
       lastTradeSignature.current = null;
     }
   }, [isOpen, reset]);
+
+  // Check if user needs to add funds when connected
+  useEffect(() => {
+    if (isConnected && !balanceLoading && !hasEnoughForTrade) {
+      setShowAddFunds(true);
+    } else if (hasEnoughForTrade) {
+      setShowAddFunds(false);
+    }
+  }, [isConnected, balanceLoading, hasEnoughForTrade]);
 
   // Calculate estimated output
   useEffect(() => {
@@ -460,6 +477,32 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
   }, [memoState.signature]);
 
   /**
+   * Copy wallet address to clipboard
+   */
+  const handleCopyWalletAddress = useCallback(async () => {
+    if (walletAddress && await copyToClipboard(walletAddress)) {
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    }
+  }, [walletAddress]);
+
+  /**
+   * Open Moonpay for buying USDC
+   */
+  const handleBuyWithMoonpay = useCallback(() => {
+    const moonpayUrl = `https://buy.moonpay.com/?apiKey=pk_live_123&currencyCode=usdc_sol&walletAddress=${walletAddress}`;
+    window.open(moonpayUrl, '_blank');
+  }, [walletAddress]);
+
+  /**
+   * Open Jupiter for swapping to USDC
+   */
+  const handleSwapOnJupiter = useCallback(() => {
+    const jupiterUrl = `https://jup.ag/swap/SOL-USDC`;
+    window.open(jupiterUrl, '_blank');
+  }, []);
+
+  /**
    * Close modal (prevent during active trading)
    */
   const handleClose = useCallback(() => {
@@ -499,7 +542,85 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
           {/* Content */}
           <div className="tm-body">
-            {step === 'idle' ? (
+            {/* No Funds Screen */}
+            {showAddFunds && step === 'idle' ? (
+              <div className="tm-no-funds">
+                <div className="tm-no-funds-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                    <path d="M8 14h8" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <h3 className="tm-no-funds-title">No Funds Detected</h3>
+                <p className="tm-no-funds-desc">
+                  Your wallet needs USDC to make predictions.
+                </p>
+
+                {/* Balance Display */}
+                <div className="tm-balance-info">
+                  <div className="tm-balance-row">
+                    <span className="tm-balance-label">SOL Balance</span>
+                    <span className="tm-balance-value">{formatBalance(sol, 4)} SOL</span>
+                  </div>
+                  <div className="tm-balance-row">
+                    <span className="tm-balance-label">USDC Balance</span>
+                    <span className="tm-balance-value">${formatBalance(usdc, 2)}</span>
+                  </div>
+                </div>
+
+                {/* Add Funds Options */}
+                <div className="tm-add-funds-options">
+                  <button className="tm-add-funds-btn moonpay" onClick={handleBuyWithMoonpay}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="4" width="20" height="16" rx="2" />
+                      <path d="M6 12h4M14 12h4" />
+                      <path d="M12 8v8" />
+                    </svg>
+                    Buy with Card
+                    <span className="tm-add-funds-provider">Moonpay</span>
+                  </button>
+
+                  <button className="tm-add-funds-btn jupiter" onClick={handleSwapOnJupiter}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M7 16V4m0 0L3 8m4-4l4 4" />
+                      <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                    Swap on Jupiter
+                    <span className="tm-add-funds-provider">SOL → USDC</span>
+                  </button>
+
+                  <div className="tm-deposit-section">
+                    <span className="tm-deposit-label">Deposit from Exchange</span>
+                    <div className="tm-wallet-address">
+                      <span className="tm-address-text">
+                        {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                      </span>
+                      <button
+                        className={`tm-copy-address-btn ${copiedAddress ? 'copied' : ''}`}
+                        onClick={handleCopyWalletAddress}
+                      >
+                        {copiedAddress ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M5 12l5 5L20 7" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    <span className="tm-deposit-note">Send USDC (Solana) to this address</span>
+                  </div>
+                </div>
+
+                <button className="tm-refresh-balance" onClick={() => refetchBalance()}>
+                  {balanceLoading ? 'Checking...' : 'Refresh Balance'}
+                </button>
+              </div>
+            ) : step === 'idle' ? (
               <>
                 {/* Question - truncated */}
                 <p className="tm-question">{prediction.question}</p>
@@ -1318,6 +1439,233 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
           text-align: center;
         }
 
+        /* No Funds Screen */
+        .tm-no-funds {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 8px 0;
+        }
+
+        .tm-no-funds-icon {
+          width: 64px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
+          border-radius: 50%;
+          margin-bottom: 16px;
+        }
+
+        .tm-no-funds-icon svg {
+          width: 32px;
+          height: 32px;
+          color: #FFC107;
+        }
+
+        .tm-no-funds-title {
+          font-size: 18px;
+          font-weight: 600;
+          color: #fff;
+          margin: 0 0 8px;
+        }
+
+        .tm-no-funds-desc {
+          font-size: 13px;
+          color: rgba(255,255,255,0.6);
+          margin: 0 0 16px;
+          line-height: 1.4;
+        }
+
+        .tm-balance-info {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 10px 12px;
+          background: rgba(255,255,255,0.03);
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.06);
+          margin-bottom: 16px;
+        }
+
+        .tm-balance-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .tm-balance-label {
+          font-size: 12px;
+          color: rgba(255,255,255,0.5);
+        }
+
+        .tm-balance-value {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.9);
+        }
+
+        .tm-add-funds-options {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .tm-add-funds-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: 'Outfit', sans-serif;
+          font-size: 14px;
+          font-weight: 500;
+          color: #fff;
+        }
+
+        .tm-add-funds-btn:hover {
+          background: rgba(255,255,255,0.08);
+          transform: translateY(-1px);
+        }
+
+        .tm-add-funds-btn svg {
+          width: 20px;
+          height: 20px;
+          flex-shrink: 0;
+        }
+
+        .tm-add-funds-btn.moonpay {
+          border-color: rgba(117, 81, 255, 0.3);
+        }
+
+        .tm-add-funds-btn.moonpay:hover {
+          background: rgba(117, 81, 255, 0.1);
+          border-color: rgba(117, 81, 255, 0.5);
+        }
+
+        .tm-add-funds-btn.moonpay svg {
+          color: #7551FF;
+        }
+
+        .tm-add-funds-btn.jupiter {
+          border-color: rgba(20, 241, 149, 0.3);
+        }
+
+        .tm-add-funds-btn.jupiter:hover {
+          background: rgba(20, 241, 149, 0.1);
+          border-color: rgba(20, 241, 149, 0.5);
+        }
+
+        .tm-add-funds-btn.jupiter svg {
+          color: #14F195;
+        }
+
+        .tm-add-funds-provider {
+          margin-left: auto;
+          font-size: 11px;
+          font-weight: 400;
+          color: rgba(255,255,255,0.4);
+        }
+
+        .tm-deposit-section {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 12px 14px;
+          background: rgba(255,255,255,0.02);
+          border: 1px dashed rgba(255,255,255,0.15);
+          border-radius: 12px;
+        }
+
+        .tm-deposit-label {
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.6);
+        }
+
+        .tm-wallet-address {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 10px;
+          background: rgba(0,0,0,0.3);
+          border-radius: 8px;
+        }
+
+        .tm-address-text {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+          color: #fff;
+        }
+
+        .tm-copy-address-btn {
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255,255,255,0.08);
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .tm-copy-address-btn:hover {
+          background: rgba(255,255,255,0.15);
+        }
+
+        .tm-copy-address-btn.copied {
+          background: rgba(0, 230, 118, 0.2);
+        }
+
+        .tm-copy-address-btn svg {
+          width: 14px;
+          height: 14px;
+          color: rgba(255,255,255,0.6);
+        }
+
+        .tm-copy-address-btn.copied svg {
+          color: #00E676;
+        }
+
+        .tm-deposit-note {
+          font-size: 11px;
+          color: rgba(255,255,255,0.4);
+          text-align: center;
+        }
+
+        .tm-refresh-balance {
+          margin-top: 12px;
+          padding: 10px 20px;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 8px;
+          font-family: 'Outfit', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.6);
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .tm-refresh-balance:hover {
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.25);
+          color: #fff;
+        }
+
         /* Mobile adjustments */
         @media (max-width: 380px) {
           .tm-container { padding: 16px; }
@@ -1329,6 +1677,10 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
           .tm-input { font-size: 15px; }
           .tm-quick-btn { padding: 0 8px; font-size: 11px; }
           .tm-action { padding: 11px; font-size: 13px; }
+          .tm-no-funds-icon { width: 56px; height: 56px; }
+          .tm-no-funds-icon svg { width: 28px; height: 28px; }
+          .tm-no-funds-title { font-size: 16px; }
+          .tm-add-funds-btn { padding: 10px 12px; font-size: 13px; }
         }
       `}</style>
     </>

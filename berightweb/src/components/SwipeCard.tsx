@@ -3,7 +3,10 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { animated, useSpring, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
+import { AnimatePresence } from 'framer-motion';
 import { Prediction } from '@/lib/types';
+import { useUser } from '@/context/UserContext';
+import ConnectWalletPrompt from './ConnectWalletPrompt';
 
 interface SwipeCardProps {
   prediction: Prediction;
@@ -109,8 +112,10 @@ function MiniLineChart({ isYes, seed, price }: { isYes: boolean; seed: number; p
 }
 
 export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: SwipeCardProps) {
+  const { isAuthenticated, login } = useUser();
   const [pressed, setPressed] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
 
   const mock = useMemo(() => {
     const h = prediction.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -154,6 +159,14 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
 
   const bind = useDrag(
     ({ down, movement: [mx, my], velocity: [vx], direction: [dx], first, last }) => {
+      // Block swipe for unauthenticated users
+      if (!isAuthenticated) {
+        if (first && Math.abs(mx) > 20) {
+          setShowConnectPrompt(true);
+        }
+        return;
+      }
+
       if (first) setPressed(true);
       if (last) setPressed(false);
       const trigger = vx > 0.3 || Math.abs(mx) > 80;
@@ -176,11 +189,18 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
 
   const vote = useCallback((dir: 'left' | 'right') => {
     if (!isTop) return;
+
+    // Block vote for unauthenticated users
+    if (!isAuthenticated) {
+      setShowConnectPrompt(true);
+      return;
+    }
+
     const d = dir === 'right' ? 1 : -1;
     if (navigator.vibrate) navigator.vibrate(10);
     api.start({ x: d * -15, scale: 1.03, config: { tension: 600, friction: 20 } });
     setTimeout(() => flyOut(d), 60);
-  }, [isTop, api, flyOut]);
+  }, [isTop, api, flyOut, isAuthenticated]);
 
   // Stacked card (not interactive)
   if (stackIndex > 0) {
@@ -321,7 +341,31 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
             </button>
           </div>
         </animated.div>
+
+        {/* Connect Wallet Prompt for unauthenticated users */}
+        {!isAuthenticated && (
+          <div className="sc-connect-hint">
+            <span className="sc-connect-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="6" width="20" height="12" rx="2" />
+                <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
+              </svg>
+            </span>
+            <span>Connect wallet to predict</span>
+          </div>
+        )}
       </animated.div>
+
+      {/* Connect Wallet Overlay */}
+      <AnimatePresence>
+        {showConnectPrompt && (
+          <ConnectWalletPrompt
+            title="Connect to Predict"
+            description="Link your wallet to make predictions and compete on the leaderboard"
+            onClose={() => setShowConnectPrompt(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -750,6 +794,36 @@ export default function SwipeCard({ prediction, onSwipe, isTop, stackIndex }: Sw
           .sc-hero { min-height: 100px; }
           .sc-hero-question { -webkit-line-clamp: 1; }
           .sc-text-question { -webkit-line-clamp: 2; }
+        }
+
+        /* ═══ Connect Wallet Hint ═══ */
+        .sc-connect-hint {
+          position: absolute;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          background: rgba(0, 230, 118, 0.15);
+          border: 1px solid rgba(0, 230, 118, 0.3);
+          border-radius: 20px;
+          font-size: 12px;
+          color: #00E676;
+          white-space: nowrap;
+          animation: pulse-hint 2s ease-in-out infinite;
+          z-index: 40;
+        }
+
+        .sc-connect-icon {
+          display: flex;
+          align-items: center;
+        }
+
+        @keyframes pulse-hint {
+          0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(1); }
+          50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
         }
       `}</style>
     </>

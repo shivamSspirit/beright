@@ -184,7 +184,8 @@ function AgentPanel({ logs, onlineAgents }: { logs: AgentLog[]; onlineAgents: st
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  const agentKeys = ['SCOUT', 'ANALYST', 'TRADER', 'BUILDER'] as const;
+  // Public agents (BUILDER is superadmin only)
+  const agentKeys = ['SCOUT', 'ANALYST', 'TRADER'] as const;
 
   return (
     <div className="agent-panel">
@@ -208,7 +209,7 @@ function AgentPanel({ logs, onlineAgents }: { logs: AgentLog[]; onlineAgents: st
               <span className="node-name">{agent}</span>
               <span className="node-spec">{config.specialization}</span>
               <span className="node-model">{config.model.toUpperCase()}</span>
-              <span className="node-status">{isOnline ? 'ACTIVE' : 'IDLE'}</span>
+              <span className="node-status">{isOnline ? 'ACTIVE' : 'DISABLED'}</span>
             </div>
           );
         })}
@@ -474,8 +475,7 @@ function BootSequence({ onComplete }: { onComplete: () => void }) {
     '> Spawning AI agents...',
     '  ├─ SCOUT........ [ONLINE]',
     '  ├─ ANALYST...... [ONLINE]',
-    '  ├─ TRADER....... [ONLINE]',
-    '  └─ BUILDER...... [ONLINE]',
+    '  └─ TRADER....... [DISABLED]',
     '> Establishing Solana connection...',
     '> System ready.',
     '',
@@ -539,7 +539,8 @@ export default function BeRightTerminal() {
 
   // Agent state
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
-  const [onlineAgents, setOnlineAgents] = useState(['SCOUT', 'ANALYST', 'TRADER', 'BUILDER']);
+  // TRADER disabled for now - only SCOUT and ANALYST active
+  const [onlineAgents, setOnlineAgents] = useState(['SCOUT', 'ANALYST']);
 
   // Market ticker data (real data from API)
   const tickerMarkets = useMemo((): MarketTick[] => {
@@ -679,7 +680,8 @@ export default function BeRightTerminal() {
       addTerminalLine('system', '═══ SYSTEM STATUS ═══');
       addTerminalLine('data', `Active Markets:   ${markets.length}`);
       addTerminalLine('data', `Arb Signals:      ${arbOpportunities.length}`);
-      addTerminalLine('data', `Agents Online:    ${onlineAgents.length}/4`);
+      addTerminalLine('data', `Agents Online:    ${onlineAgents.length}/3`);
+      addTerminalLine('data', `TRADER:           DISABLED`);
       addTerminalLine('success', 'All systems operational');
       setIsProcessing(false);
       return;
@@ -1539,6 +1541,14 @@ const styles = `
     font-size: 8px;
     color: var(--nx-text-dim);
     margin-top: 2px;
+  }
+
+  .agent-node.offline {
+    opacity: 0.5;
+  }
+
+  .agent-node.offline .node-status {
+    color: var(--nx-red);
   }
 
   .agent-logs {

@@ -47,6 +47,7 @@ import { handleAlert, checkAlerts } from './priceAlerts';
 import { handleLimits, handleAutobet, handleStopLoss, handleTakeProfit, handleDCA, checkLimits } from './autoTrade';
 import { logConversation, searchLearnings, handleMemory, getRecentContext } from './memory';
 import { handleWallet as handleDFlowWallet, handleDFlowSearch, handleTrade as handleDFlowTrade, handlePositions as handleDFlowPositions } from './dflowTrade';
+import { handleAgentCommand } from './proactiveAgent';
 
 // On-chain + Supabase integration
 import { commitPrediction, calculateBrierScore, interpretBrierScore } from '../lib/onchain';
@@ -80,6 +81,7 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/arb-subscribe')) return 'ARBITRAGE';
   if (lower.startsWith('/arb-unsubscribe')) return 'ARBITRAGE';
   if (lower.startsWith('/arb')) return 'ARBITRAGE';
+  if (lower.startsWith('/agent')) return 'PROACTIVE_AGENT';
   if (lower.startsWith('/odds')) return 'RESEARCH';
   if (lower.startsWith('/whale')) return 'WHALE';
   if (lower.startsWith('/track_whale')) return 'WHALE';
@@ -2038,6 +2040,11 @@ Or search for markets first:
 
         const result = await spawnAgent(task);
         return result.response;
+      }
+
+      case 'PROACTIVE_AGENT': {
+        // Handle /agent commands for 24/7 AI agent subscription
+        return await handleAgentCommand(text, telegramId || '', username);
       }
 
       case 'WHALE': {

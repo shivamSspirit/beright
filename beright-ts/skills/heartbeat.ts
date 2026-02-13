@@ -46,6 +46,7 @@ import { checkAlerts as checkPriceAlerts, getPendingTriggers, formatTriggeredAle
 import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade';
 import { refreshPositionPrices, getExpiringPositions } from './positions';
 import { buildOnce as runBuilderOnce } from './buildLoop';
+import { runProactiveAgent } from './proactiveAgent';
 import * as fs from 'fs';
 
 // Cognitive Loop Integration
@@ -89,6 +90,8 @@ interface HeartbeatState {
   totalBuilderRuns: number;
   totalCognitiveCycles: number;  // NEW: Track cognitive cycles
   totalProArbAlerts: number;  // Professional arb monitor alerts
+  lastProactiveRun: string | null;  // Proactive agent scan
+  totalProactiveAlerts: number;  // Proactive agent alerts sent
 }
 
 const STATE_FILE = path.join(process.cwd(), 'memory', 'heartbeat-state.json');
@@ -122,6 +125,8 @@ function loadState(): HeartbeatState {
     totalBuilderRuns: 0,
     totalCognitiveCycles: 0,
     totalProArbAlerts: 0,
+    lastProactiveRun: null,
+    totalProactiveAlerts: 0,
   };
   try {
     if (fs.existsSync(STATE_FILE)) {
@@ -535,7 +540,28 @@ Reason: ${exec.reason}
     }
   }
 
-  // 11. Log heartbeat to chain
+  // 11. Run PROACTIVE AGENT - Smart alerts for subscribers
+  // Scans markets for: closing soon, big movers, hot alpha, spread inefficiencies
+  const PROACTIVE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  if (shouldRun(state.lastProactiveRun, PROACTIVE_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running proactive agent...`);
+      const proactiveResult = await runProactiveAgent();
+      state.lastProactiveRun = timestamp();
+      state.totalProactiveAlerts = (state.totalProactiveAlerts || 0) + proactiveResult.alertsSent;
+      saveState(state);
+
+      if (proactiveResult.alertsSent > 0) {
+        console.log(`[${timestamp()}] Proactive agent: ${proactiveResult.alertsGenerated} alerts generated, ${proactiveResult.alertsSent} sent`);
+      } else {
+        console.log(`[${timestamp()}] Proactive agent: scanned ${proactiveResult.marketsScanned} markets, no alerts`);
+      }
+    } catch (err) {
+      console.warn('Proactive agent failed:', err);
+    }
+  }
+
+  // 12. Log heartbeat to chain
   const brierScore = getCalibrationStats().overallBrierScore;
   try {
     await logHeartbeat(
