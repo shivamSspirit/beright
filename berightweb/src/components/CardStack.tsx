@@ -311,13 +311,12 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
     [pendingSwipe]
   );
 
-  // Handle fact-check skip - just record prediction without trading
+  // Handle fact-check skip - just move to next card without recording
   const handleFactCheckSkip = useCallback(() => {
-    if (!pendingSwipe) return;
-
     setShowFactCheck(false);
-    finalizePrediction(pendingSwipe.prediction, pendingSwipe.direction, false, false);
-  }, [pendingSwipe]);
+    setPendingSwipe(null);
+    setCurrentIndex((prev) => prev + 1);
+  }, []);
 
   // Handle fact-check close
   const handleFactCheckClose = useCallback(() => {

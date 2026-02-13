@@ -328,7 +328,7 @@ export default function AIFactCheckModal({
               {/* Actions */}
               <div className="action-buttons">
                 <button className="action-btn skip" onClick={onSkip}>
-                  Skip
+                  Skip Card
                 </button>
                 <button
                   className={`action-btn confirm ${selectedChoice}`}
