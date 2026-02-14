@@ -4,6 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force dynamic rendering (uses request.url)
+export const dynamic = 'force-dynamic';
 import { getLeaderboard, getUserRank } from '../../../lib/db';
 import { getCalibrationStats } from '../../../skills/calibration';
 

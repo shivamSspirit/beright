@@ -4,6 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force dynamic rendering (uses request.url)
+export const dynamic = 'force-dynamic';
 import { generateMorningBrief, formatBriefWeb, formatBriefTelegram, formatBriefText } from '../../../skills/brief';
 
 export async function GET(request: NextRequest) {
