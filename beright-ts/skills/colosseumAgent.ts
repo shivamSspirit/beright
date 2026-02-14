@@ -999,19 +999,28 @@ export async function runContinuousLoop(intervalSeconds = 180): Promise<void> {
 // CLI SUPPORT
 // ============================================
 
+console.log('[ColosseumAgent] Script loaded, checking if main module...');
+
 if (require.main === module) {
+  console.log('[ColosseumAgent] Running as main module');
+  console.log('[ColosseumAgent] Args:', process.argv.slice(2));
+
   const args = process.argv.slice(2);
   const command = args[0] || 'status';
 
   (async () => {
-    // Handle continuous loop
-    if (command === 'loop' || command === 'auto') {
-      const interval = parseInt(args[1]) || 180; // Default 3 minutes
-      await runContinuousLoop(interval);
-      return; // Never exits
-    }
+    try {
+      console.log(`[ColosseumAgent] Starting with command: ${command}`);
 
-    let result: SkillResponse;
+      // Handle continuous loop
+      if (command === 'loop' || command === 'auto') {
+        const interval = parseInt(args[1]) || 180; // Default 3 minutes
+        console.log(`[ColosseumAgent] Starting continuous loop with ${interval}s interval`);
+        await runContinuousLoop(interval);
+        return; // Never exits
+      }
+
+      let result: SkillResponse;
 
     switch (command) {
       case 'status':
@@ -1041,5 +1050,11 @@ if (require.main === module) {
 
     console.log(result.text);
     if (result.mood) console.log(`\nMood: ${result.mood}`);
+    } catch (error) {
+      console.error('[ColosseumAgent] Fatal error:', error);
+      process.exit(1);
+    }
   })();
+} else {
+  console.log('[ColosseumAgent] Loaded as module (not main)');
 }

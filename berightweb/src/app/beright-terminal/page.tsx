@@ -24,7 +24,7 @@ interface AgentLog {
 
 interface TerminalLine {
   id: string;
-  type: 'input' | 'output' | 'system' | 'error' | 'success' | 'data';
+  type: 'input' | 'output' | 'system' | 'error' | 'success' | 'data' | 'link';
   content: string;
   timestamp: Date;
 }
@@ -325,7 +325,19 @@ function TerminalInterface({
             {line.type === 'error' && <span className="prompt err">✗</span>}
             {line.type === 'success' && <span className="prompt ok">✓</span>}
             {line.type === 'data' && <span className="prompt data">▸</span>}
-            <span className="line-content">{line.content}</span>
+            {line.type === 'link' && <span className="prompt link">↗</span>}
+            {line.type === 'link' ? (
+              <a
+                href={line.content.replace('→ Trade: ', '')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="line-content market-link"
+              >
+                {line.content}
+              </a>
+            ) : (
+              <span className="line-content">{line.content}</span>
+            )}
           </div>
         ))}
         {isProcessing && (
@@ -642,18 +654,38 @@ export default function BeRightTerminal() {
     }
 
     if (command === '/hot' || command === 'hot') {
-      addAgentLog('SCOUT', 'Fetching hot markets...', 'info');
-      addTerminalLine('system', '═══ HOT MARKETS ═══');
+      addAgentLog('SCOUT', 'Fetching fresh market data...', 'info');
 
-      if (markets.length > 0) {
-        markets.slice(0, 5).forEach((m, i) => {
-          addTerminalLine('data', `${i + 1}. ${m.title}`);
-          addTerminalLine('data', `   YES: ${m.yesPct.toFixed(0)}¢ | VOL: ${formatVolume(m.volume)} | ${m.platform.toUpperCase()}`);
-        });
-        addAgentLog('SCOUT', `Returned ${Math.min(5, markets.length)} hot markets`, 'success');
-      } else {
-        addTerminalLine('error', 'No market data available');
+      try {
+        const freshData = await getHotMarkets(10);
+        const freshMarkets = freshData.markets || [];
+
+        if (freshMarkets.length > 0) {
+          setMarkets(freshMarkets);
+          addTerminalLine('system', '═══ HOT MARKETS ═══');
+          addTerminalLine('data', 'Top markets by volume. Click to trade.');
+          addTerminalLine('data', '');
+
+          freshMarkets.slice(0, 5).forEach((m, i) => {
+            const priceSignal = m.yesPct >= 70 ? '🟢' : m.yesPct <= 30 ? '🔴' : '🟡';
+            addTerminalLine('data', `${i + 1}. ${m.title}`);
+            addTerminalLine('data', `   ${priceSignal} YES: ${m.yesPct.toFixed(0)}¢ | VOL: ${formatVolume(m.volume)} | ${m.platform.toUpperCase()}`);
+            if (m.url) {
+              addTerminalLine('link', `   → Trade: ${m.url}`);
+            }
+          });
+
+          addTerminalLine('data', '');
+          addTerminalLine('success', 'Tip: Click any link above to trade on that platform');
+          addAgentLog('SCOUT', `Returned ${Math.min(5, freshMarkets.length)} hot markets`, 'success');
+        } else {
+          addTerminalLine('error', 'No market data available. Try again in a moment.');
+        }
+      } catch {
+        addTerminalLine('error', 'Failed to fetch markets. Check connection.');
+        addAgentLog('SCOUT', 'Market fetch failed', 'error');
       }
+
       setIsProcessing(false);
       return;
     }

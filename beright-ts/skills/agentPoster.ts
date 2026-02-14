@@ -938,39 +938,56 @@ export async function handlePosterCommand(args: string): Promise<SkillResponse> 
 // CLI
 // ============================================
 
+console.log('[AgentPoster] Script loaded, checking if main module...');
+
 if (require.main === module) {
+  console.log('[AgentPoster] Running as main module');
+  console.log('[AgentPoster] Args:', process.argv.slice(2));
+  console.log('[AgentPoster] Env check - ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET');
+  console.log('[AgentPoster] Env check - COLOSSEUM_API_KEY:', API_KEY ? 'SET' : 'NOT SET');
+
   const args = process.argv.slice(2);
   const command = args[0] || 'cycle';
 
   (async () => {
-    if (command === 'loop' || command === 'auto') {
-      const interval = parseInt(args[1]) || 180;
-      await runContinuousLoop(interval);
-      return;
+    try {
+      console.log(`[AgentPoster] Starting with command: ${command}`);
+
+      if (command === 'loop' || command === 'auto') {
+        const interval = parseInt(args[1]) || 180;
+        console.log(`[AgentPoster] Starting continuous loop with ${interval}s interval`);
+        await runContinuousLoop(interval);
+        return;
+      }
+
+      let result: SkillResponse;
+
+      switch (command) {
+        case 'post':
+          result = await createIntelligentPost();
+          break;
+        case 'engage':
+          result = await engageWithRelevantPosts(3);
+          break;
+        case 'vote':
+          result = await voteOnRelevantProjects();
+          break;
+        case 'cycle':
+          result = await runPosterCycle();
+          break;
+        case 'status':
+          result = await handlePosterCommand('status');
+          break;
+        default:
+          result = await handlePosterCommand(args.join(' '));
+      }
+
+      console.log(result.text);
+    } catch (error) {
+      console.error('[AgentPoster] Fatal error:', error);
+      process.exit(1);
     }
-
-    let result: SkillResponse;
-
-    switch (command) {
-      case 'post':
-        result = await createIntelligentPost();
-        break;
-      case 'engage':
-        result = await engageWithRelevantPosts(3);
-        break;
-      case 'vote':
-        result = await voteOnRelevantProjects();
-        break;
-      case 'cycle':
-        result = await runPosterCycle();
-        break;
-      case 'status':
-        result = await handlePosterCommand('status');
-        break;
-      default:
-        result = await handlePosterCommand(args.join(' '));
-    }
-
-    console.log(result.text);
   })();
+} else {
+  console.log('[AgentPoster] Loaded as module (not main)');
 }
