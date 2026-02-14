@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { animated, useSpring } from '@react-spring/web';
 import { Prediction } from '@/lib/types';
-import { tavilyGetFacts, TavilyFactsResponse } from '@/lib/api';
+import { tavilyGetFacts, TavilyFactsResponse, RateLimitError } from '@/lib/api';
 
 interface AIFactCheckModalProps {
   prediction: Prediction;
@@ -85,8 +85,15 @@ export default function AIFactCheckModal({
           throw new Error('Failed to fetch facts');
         }
       } catch (err) {
-        console.error('Fact check error:', err);
-        setError('Could not verify facts. You can still proceed with your choice.');
+        console.warn('Fact check error:', err);
+
+        // Handle rate limiting gracefully
+        if (err instanceof RateLimitError) {
+          setError(`AI fact-check is temporarily unavailable (rate limited). You can still proceed with your choice.`);
+        } else {
+          setError('Could not verify facts. You can still proceed with your choice.');
+        }
+
         // Still allow proceeding even if fact check fails
         setFactCheck({
           facts: [],
@@ -94,7 +101,7 @@ export default function AIFactCheckModal({
           confidence: 'low',
           recommendation: 'proceed',
           suggestedDirection: userChoice,
-          reasoning: 'Unable to verify facts at this time.',
+          reasoning: 'Unable to verify facts at this time. Trust your judgment!',
         });
       } finally {
         setLoading(false);

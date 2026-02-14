@@ -180,6 +180,17 @@ export interface WhaleAlert {
 
 // ============ API FETCH WRAPPER ============
 
+// Custom error class for rate limiting
+export class RateLimitError extends Error {
+  retryAfter: number;
+
+  constructor(message: string, retryAfter: number = 60) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfter = retryAfter;
+  }
+}
+
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
@@ -192,13 +203,32 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
       },
     });
 
+    // Handle rate limiting specifically (429 status)
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
+      console.warn(`[API] Rate limited. Retry after ${retryAfter}s`);
+      throw new RateLimitError(`Rate limit exceeded. Try again in ${retryAfter} seconds.`, retryAfter);
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || error.error || `API error: ${response.status}`);
+      const errorMessage = error.message || error.error || `API error: ${response.status}`;
+
+      // Check if error message indicates rate limiting
+      if (errorMessage.toLowerCase().includes('rate limit')) {
+        throw new RateLimitError(errorMessage, 60);
+      }
+
+      throw new Error(errorMessage);
     }
 
     return response.json();
   } catch (error) {
+    // Re-throw RateLimitError as-is
+    if (error instanceof RateLimitError) {
+      throw error;
+    }
+
     if (error instanceof Error && error.message.includes('fetch')) {
       throw new Error('Backend not reachable. Make sure beright-ts is running on port 3001.');
     }
