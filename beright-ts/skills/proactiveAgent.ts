@@ -11,6 +11,7 @@
  * 4. SPREAD ALERT - Market inefficiencies to exploit
  * 5. NEW MARKETS - Fresh opportunities just listed
  * 6. WHALE SIGNAL - Smart money is moving
+ * 7. MORNING BRIEF - Daily summary of markets and opportunities
  */
 
 import * as fs from 'fs';
@@ -20,6 +21,7 @@ import { Market } from '../types/market';
 import { searchMarkets, getHotMarkets } from './markets';
 import { formatPct, formatUsd, timestamp } from './utils';
 import { sendTelegramMessage } from '../services/notificationDelivery';
+import { generateMorningBrief, formatBriefTelegram } from './brief';
 
 const MEMORY_DIR = path.join(process.cwd(), 'memory');
 const AGENT_STATE_FILE = path.join(MEMORY_DIR, 'proactive-agent.json');
@@ -36,6 +38,7 @@ interface AgentState {
   marketsTracked: string[];
   priceSnapshots: Record<string, { price: number; timestamp: string }[]>;
   knownMarkets: string[]; // For new market detection
+  lastBriefSent: Record<string, string>; // telegramId -> date string (YYYY-MM-DD)
 }
 
 interface AgentSubscriber {
@@ -49,6 +52,9 @@ interface AgentSubscriber {
     spreadAlerts: boolean;     // Market inefficiencies
     newMarkets: boolean;       // Newly listed markets
     whaleSignals: boolean;     // Smart money moves
+    morningBrief: boolean;     // Daily morning brief
+    briefHour: number;         // Hour to send brief (0-23, default 8 = 8 AM)
+    timezone: string;          // User timezone (default 'UTC')
     quietHours?: { start: number; end: number }; // e.g., {start: 23, end: 7}
   };
   alertsReceived: number;
@@ -80,6 +86,7 @@ function loadState(): AgentState {
         marketsTracked: data.marketsTracked || [],
         priceSnapshots: data.priceSnapshots || {},
         knownMarkets: data.knownMarkets || [],
+        lastBriefSent: data.lastBriefSent || {},
       };
     }
   } catch (e) {
@@ -92,6 +99,7 @@ function loadState(): AgentState {
     marketsTracked: [],
     priceSnapshots: {},
     knownMarkets: [],
+    lastBriefSent: {},
   };
 }
 
@@ -158,6 +166,9 @@ Use /agent settings to customize alerts.
       spreadAlerts: true,
       newMarkets: true,
       whaleSignals: true,
+      morningBrief: true,
+      briefHour: 8, // 8 AM default
+      timezone: 'UTC',
     },
     alertsReceived: 0,
   };
@@ -171,12 +182,13 @@ ${'─'.repeat(30)}
 Your personal prediction market analyst is now watching:
 
 *ENABLED ALERTS:*
-*CLOSING SOON* - Markets about to close
-*BIG MOVERS* - Price swings >10%
-*HOT ALPHA* - High volume opportunities
-*SPREAD ALERTS* - Market inefficiencies
-*NEW MARKETS* - Fresh opportunities
-*WHALE SIGNALS* - Smart money moves
+⏰ *CLOSING SOON* - Markets about to close
+📈 *BIG MOVERS* - Price swings >10%
+🔥 *HOT ALPHA* - High volume opportunities
+💰 *SPREAD ALERTS* - Market inefficiencies
+🆕 *NEW MARKETS* - Fresh opportunities
+🐋 *WHALE SIGNALS* - Smart money moves
+🌅 *MORNING BRIEF* - Daily summary at 8 AM UTC
 
 I'll proactively send you actionable intelligence.
 
@@ -214,6 +226,7 @@ Use /agent to reactivate anytime.
 
 function formatSubscriberSettings(sub: AgentSubscriber): string {
   const s = sub.settings;
+  const briefTime = s.briefHour !== undefined ? `${s.briefHour}:00 ${s.timezone || 'UTC'}` : '8:00 UTC';
   return `
  ${s.closingSoon ? '✅' : '❌'} Closing Soon
  ${s.bigMovers ? '✅' : '❌'} Big Movers
@@ -221,6 +234,7 @@ function formatSubscriberSettings(sub: AgentSubscriber): string {
  ${s.spreadAlerts ? '✅' : '❌'} Spread Alerts
  ${s.newMarkets ? '✅' : '❌'} New Markets
  ${s.whaleSignals ? '✅' : '❌'} Whale Signals
+ ${s.morningBrief ? '✅' : '❌'} Morning Brief (${briefTime})
 `.trim();
 }
 
@@ -263,7 +277,7 @@ _/agent off to pause | /agent settings to customize_
   };
 }
 
-export function updateAgentSettings(telegramId: string, setting: string, value: boolean): SkillResponse {
+export function updateAgentSettings(telegramId: string, setting: string, value: boolean | number | string): SkillResponse {
   const subs = loadSubscribers();
   const sub = subs[telegramId];
 
@@ -281,6 +295,7 @@ export function updateAgentSettings(telegramId: string, setting: string, value: 
     'spread': 'spreadAlerts',
     'new': 'newMarkets',
     'whale': 'whaleSignals',
+    'brief': 'morningBrief',
   };
 
   const key = settingMap[setting.toLowerCase()];
@@ -302,6 +317,7 @@ export function updateAgentSettings(telegramId: string, setting: string, value: 
 • spread - Market inefficiencies
 • new - New markets
 • whale - Smart money signals
+• brief - Morning brief
 
 Usage: /agent enable closing or /agent disable movers
 `,
@@ -431,29 +447,80 @@ async function detectBigMovers(markets: Market[], state: AgentState): Promise<Pr
 
 async function detectHotAlpha(markets: Market[]): Promise<ProactiveAlert[]> {
   const alerts: ProactiveAlert[] = [];
+  const now = Date.now();
 
-  // Sort by volume (if available) to find hot markets
+  // 1. HIGH VOLUME + UNCERTAIN OUTCOME (hot contested markets)
   const hotMarkets = markets
-    .filter(m => m.volume && m.volume > 10000)
+    .filter(m => m.volume && m.volume > 50000)
     .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-    .slice(0, 5);
+    .slice(0, 10);
 
   for (const market of hotMarkets) {
-    // Look for markets with high volume AND probability near 50% (uncertainty = opportunity)
     const uncertainty = Math.abs(0.5 - (market.yesPrice || 0.5));
 
-    if (uncertainty < 0.15 && (market.volume || 0) > 50000) {
+    if (uncertainty < 0.15) {
       alerts.push({
         type: 'HOT_ALPHA',
         priority: 'MEDIUM',
-        title: '🔥 HOT MARKET',
+        title: '🔥 HOT CONTESTED MARKET',
         market: market.title,
         marketId: market.marketId || undefined,
         message: `High volume (${formatUsd(market.volume || 0)}) with uncertain outcome`,
         actionable: `Currently ${formatPct(market.yesPrice)} YES - market is undecided`,
-        data: { volume: market.volume, probability: market.yesPrice },
+        data: { volume: market.volume, probability: market.yesPrice, type: 'contested' },
       });
     }
+  }
+
+  // 2. EARLY ENTRY OPPORTUNITIES (new markets with low competition)
+  // Look for markets created recently (< 48h) with low volume but interesting probability
+  const earlyEntryMarkets = markets.filter(m => {
+    if (!m.createdAt) return false;
+    const ageHours = (now - new Date(m.createdAt).getTime()) / (1000 * 60 * 60);
+    const isNew = ageHours <= 48;
+    const isLowVolume = (m.volume || 0) < 50000;
+    const hasInterestingOdds = m.yesPrice >= 0.1 && m.yesPrice <= 0.9; // Not too extreme
+    return isNew && isLowVolume && hasInterestingOdds;
+  });
+
+  for (const market of earlyEntryMarkets.slice(0, 3)) {
+    const ageHours = Math.round((now - new Date(market.createdAt!).getTime()) / (1000 * 60 * 60));
+
+    alerts.push({
+      type: 'HOT_ALPHA',
+      priority: 'MEDIUM',
+      title: '🚀 EARLY ENTRY OPPORTUNITY',
+      market: market.title,
+      marketId: market.marketId || undefined,
+      message: `New market (${ageHours}h old) with low volume (${formatUsd(market.volume || 0)})`,
+      actionable: `Get in at ${formatPct(market.yesPrice)} before the crowd!`,
+      data: { volume: market.volume, probability: market.yesPrice, ageHours, type: 'early_entry' },
+    });
+  }
+
+  // 3. EXTREME ODDS SHIFT POTENTIAL (markets near resolution with strong odds)
+  const extremeMarkets = markets.filter(m => {
+    if (!m.endDate) return false;
+    const hoursUntilClose = (new Date(m.endDate).getTime() - now) / (1000 * 60 * 60);
+    const isClosingSoon = hoursUntilClose > 0 && hoursUntilClose <= 72; // Within 3 days
+    const hasExtremeOdds = m.yesPrice <= 0.15 || m.yesPrice >= 0.85;
+    return isClosingSoon && hasExtremeOdds;
+  });
+
+  for (const market of extremeMarkets.slice(0, 2)) {
+    const direction = market.yesPrice >= 0.85 ? 'YES' : 'NO';
+    const odds = market.yesPrice >= 0.85 ? market.yesPrice : (1 - market.yesPrice);
+
+    alerts.push({
+      type: 'HOT_ALPHA',
+      priority: 'LOW',
+      title: '🎲 HIGH CONVICTION MARKET',
+      market: market.title,
+      marketId: market.marketId || undefined,
+      message: `Market heavily favors ${direction} at ${formatPct(odds)}`,
+      actionable: `Closing soon - contrarian bet could 10x if wrong!`,
+      data: { probability: market.yesPrice, direction, type: 'extreme_odds' },
+    });
   }
 
   return alerts;
@@ -462,25 +529,70 @@ async function detectHotAlpha(markets: Market[]): Promise<ProactiveAlert[]> {
 async function detectSpreadInefficiency(markets: Market[]): Promise<ProactiveAlert[]> {
   const alerts: ProactiveAlert[] = [];
 
+  // 1. Detect wide orderbook spreads (good for market making or waiting for better price)
   for (const market of markets) {
-    // Check if YES + NO doesn't equal ~100% (inefficiency)
-    if (market.yesPrice !== undefined) {
-      const yesPrice = market.yesPrice;
-      const noPrice = 1 - market.yesPrice;
-      const spread = Math.abs(1 - (yesPrice + noPrice));
+    if (market.orderbook && market.orderbook.spread > 0) {
+      const spread = market.orderbook.spread;
+      const yesBid = market.orderbook.yesBid;
+      const yesAsk = market.orderbook.yesAsk;
 
-      // If there's a significant spread (>2%), it's an inefficiency
-      if (spread > 0.02) {
+      // Wide spread (>5%) indicates opportunity or illiquidity
+      if (spread >= 0.05 && yesBid > 0 && yesAsk > 0) {
         alerts.push({
           type: 'SPREAD_ALERT',
-          priority: 'HIGH',
-          title: '💰 SPREAD INEFFICIENCY',
+          priority: 'MEDIUM',
+          title: '💰 WIDE SPREAD OPPORTUNITY',
           market: market.title,
           marketId: market.marketId || undefined,
-          message: `YES (${formatPct(yesPrice)}) + NO (${formatPct(noPrice)}) = ${formatPct(yesPrice + noPrice)}`,
-          actionable: `${formatPct(spread)} potential profit from market inefficiency`,
-          data: { yesPrice, noPrice, spread },
+          message: `Bid: ${formatPct(yesBid)} | Ask: ${formatPct(yesAsk)} | Spread: ${formatPct(spread)}`,
+          actionable: `${formatPct(spread)} spread - potential for limit orders or market making`,
+          data: { yesBid, yesAsk, spread, platform: market.platform },
         });
+      }
+    }
+  }
+
+  // 2. Detect cross-platform arbitrage (same market, different prices)
+  // Group markets by similarity to find same market on different platforms
+  const marketsByTitle: Record<string, Market[]> = {};
+  for (const market of markets) {
+    // Normalize title for grouping
+    const key = market.title.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 50);
+    if (!marketsByTitle[key]) marketsByTitle[key] = [];
+    marketsByTitle[key].push(market);
+  }
+
+  // Find arbitrage across platforms
+  for (const [, sameMarkets] of Object.entries(marketsByTitle)) {
+    if (sameMarkets.length < 2) continue;
+
+    // Compare prices across platforms
+    for (let i = 0; i < sameMarkets.length; i++) {
+      for (let j = i + 1; j < sameMarkets.length; j++) {
+        const m1 = sameMarkets[i];
+        const m2 = sameMarkets[j];
+        if (m1.platform === m2.platform) continue;
+
+        const priceDiff = Math.abs(m1.yesPrice - m2.yesPrice);
+        if (priceDiff >= 0.05) { // 5%+ difference
+          const cheaper = m1.yesPrice < m2.yesPrice ? m1 : m2;
+          const expensive = m1.yesPrice < m2.yesPrice ? m2 : m1;
+
+          alerts.push({
+            type: 'SPREAD_ALERT',
+            priority: 'HIGH',
+            title: '🎯 CROSS-PLATFORM ARBITRAGE',
+            market: m1.title,
+            marketId: m1.marketId || undefined,
+            message: `${cheaper.platform}: ${formatPct(cheaper.yesPrice)} vs ${expensive.platform}: ${formatPct(expensive.yesPrice)}`,
+            actionable: `${formatPct(priceDiff)} price difference - buy low, sell high!`,
+            data: {
+              platform1: cheaper.platform, price1: cheaper.yesPrice,
+              platform2: expensive.platform, price2: expensive.yesPrice,
+              spread: priceDiff
+            },
+          });
+        }
       }
     }
   }
@@ -490,14 +602,23 @@ async function detectSpreadInefficiency(markets: Market[]): Promise<ProactiveAle
 
 async function detectNewMarkets(markets: Market[], state: AgentState): Promise<ProactiveAlert[]> {
   const alerts: ProactiveAlert[] = [];
-  const currentIds = markets.map(m => m.marketId).filter(Boolean) as string[];
+  const now = Date.now();
+  const NEW_MARKET_THRESHOLD_HOURS = 24; // Markets created within last 24 hours are "new"
+  const thresholdMs = NEW_MARKET_THRESHOLD_HOURS * 60 * 60 * 1000;
 
-  // Find markets we haven't seen before
-  const newMarketIds = currentIds.filter(id => !state.knownMarkets.includes(id));
+  // Find markets that were ACTUALLY created recently (based on createdAt from API)
+  const newMarkets = markets.filter(m => {
+    if (!m.createdAt || !m.marketId) return false;
+    const createdTime = new Date(m.createdAt).getTime();
+    const ageMs = now - createdTime;
+    return ageMs > 0 && ageMs <= thresholdMs;
+  });
 
-  for (const newId of newMarketIds.slice(0, 3)) { // Max 3 new market alerts
-    const market = markets.find(m => m.marketId === newId);
-    if (!market) continue;
+  // Filter out markets we've already alerted about
+  const unseenNewMarkets = newMarkets.filter(m => !state.knownMarkets.includes(m.marketId!));
+
+  for (const market of unseenNewMarkets.slice(0, 3)) { // Max 3 new market alerts
+    const ageHours = Math.round((now - new Date(market.createdAt!).getTime()) / (1000 * 60 * 60));
 
     alerts.push({
       type: 'NEW_MARKET',
@@ -505,16 +626,78 @@ async function detectNewMarkets(markets: Market[], state: AgentState): Promise<P
       title: '🆕 NEW MARKET',
       market: market.title,
       marketId: market.marketId || undefined,
-      message: `Just listed on ${market.platform}`,
+      message: `Listed ${ageHours < 1 ? 'less than 1 hour' : `${ageHours} hour${ageHours === 1 ? '' : 's'}`} ago on ${market.platform}`,
       actionable: `Starting at ${formatPct(market.yesPrice)} YES - early opportunity`,
-      data: { platform: market.platform, probability: market.yesPrice },
+      data: { platform: market.platform, probability: market.yesPrice, createdAt: market.createdAt },
     });
   }
 
-  // Update known markets (keep last 1000)
-  state.knownMarkets = [...new Set([...state.knownMarkets, ...currentIds])].slice(-1000);
+  // Update known markets with IDs we've alerted about (keep last 1000)
+  const alertedIds = unseenNewMarkets.slice(0, 3).map(m => m.marketId!);
+  state.knownMarkets = [...new Set([...state.knownMarkets, ...alertedIds])].slice(-1000);
 
   return alerts;
+}
+
+// ============================================
+// MORNING BRIEF SCHEDULER
+// ============================================
+
+/**
+ * Check and send morning briefs to subscribers based on their preferred time
+ */
+async function sendMorningBriefs(
+  state: AgentState,
+  subscribers: AgentSubscriber[]
+): Promise<number> {
+  const now = new Date();
+  const currentHourUTC = now.getUTCHours();
+  const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  let briefsSent = 0;
+
+  for (const sub of subscribers) {
+    // Skip if morning brief is disabled
+    if (!sub.settings.morningBrief) continue;
+
+    // Skip if already sent today
+    if (state.lastBriefSent[sub.telegramId] === todayStr) continue;
+
+    // Check if it's the right hour for this subscriber
+    const briefHour = sub.settings.briefHour ?? 8;
+    const timezone = sub.settings.timezone || 'UTC';
+
+    // For simplicity, we'll use UTC. In production, you'd convert timezone properly.
+    // Check if current hour matches the subscriber's preferred hour (with 1 hour window)
+    const isRightHour = currentHourUTC === briefHour || currentHourUTC === (briefHour + 1) % 24;
+
+    if (!isRightHour) continue;
+
+    // Check quiet hours
+    if (isQuietHours(sub)) continue;
+
+    try {
+      console.log(`[${timestamp()}] Sending morning brief to ${sub.telegramId}...`);
+
+      // Generate the brief
+      const briefData = await generateMorningBrief();
+      const briefMessage = formatBriefTelegram(briefData);
+
+      // Send the brief
+      await sendTelegramMessage(sub.telegramId, briefMessage, { parseMode: 'Markdown' });
+
+      // Mark as sent for today
+      state.lastBriefSent[sub.telegramId] = todayStr;
+      sub.alertsReceived++;
+      briefsSent++;
+
+      console.log(`[${timestamp()}] Morning brief sent to ${sub.telegramId}`);
+    } catch (e) {
+      console.error(`Failed to send morning brief to ${sub.telegramId}:`, e);
+    }
+  }
+
+  return briefsSent;
 }
 
 // ============================================
@@ -525,6 +708,7 @@ export async function runProactiveAgent(): Promise<{
   alertsGenerated: number;
   alertsSent: number;
   marketsScanned: number;
+  briefsSent: number;
 }> {
   console.log(`[${timestamp()}] Proactive Agent scanning...`);
 
@@ -534,7 +718,19 @@ export async function runProactiveAgent(): Promise<{
 
   if (subscriberList.length === 0) {
     console.log(`[${timestamp()}] No subscribers - skipping proactive scan`);
-    return { alertsGenerated: 0, alertsSent: 0, marketsScanned: 0 };
+    return { alertsGenerated: 0, alertsSent: 0, marketsScanned: 0, briefsSent: 0 };
+  }
+
+  // Send morning briefs (runs first, independent of market data)
+  let briefsSent = 0;
+  try {
+    briefsSent = await sendMorningBriefs(state, subscriberList);
+    if (briefsSent > 0) {
+      console.log(`[${timestamp()}] Sent ${briefsSent} morning briefs`);
+      saveState(state); // Save updated lastBriefSent
+    }
+  } catch (e) {
+    console.error('Error sending morning briefs:', e);
   }
 
   // Fetch markets from multiple sources
@@ -548,7 +744,7 @@ export async function runProactiveAgent(): Promise<{
 
   if (markets.length === 0) {
     console.log(`[${timestamp()}] No markets found`);
-    return { alertsGenerated: 0, alertsSent: 0, marketsScanned: 0 };
+    return { alertsGenerated: 0, alertsSent: 0, marketsScanned: 0, briefsSent };
   }
 
   state.marketsTracked = markets.map(m => m.marketId).filter(Boolean) as string[];
@@ -632,12 +828,13 @@ export async function runProactiveAgent(): Promise<{
   }
   saveSubscribers(subsMap);
 
-  console.log(`[${timestamp()}] Proactive Agent: ${allAlerts.length} alerts generated, ${alertsSent} sent to ${subscriberList.length} subscribers`);
+  console.log(`[${timestamp()}] Proactive Agent: ${allAlerts.length} alerts generated, ${alertsSent} sent, ${briefsSent} briefs sent to ${subscriberList.length} subscribers`);
 
   return {
     alertsGenerated: allAlerts.length,
     alertsSent,
     marketsScanned: markets.length,
+    briefsSent,
   };
 }
 

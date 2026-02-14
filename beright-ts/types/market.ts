@@ -39,6 +39,7 @@ export interface Market {
   volume24h?: number;  // 24h volume (DFlow)
   liquidity: number;
   endDate: Date | null;
+  createdAt?: Date | null;  // When the market was created on the platform
   status: 'active' | 'resolved' | 'closed';
   url: string;
   // Tokenized market data (Solana SPL tokens) - only for DFlow/Kalshi

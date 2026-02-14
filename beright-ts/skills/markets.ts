@@ -116,6 +116,7 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
         volume: parseFloat(m.volume) || parseFloat(m.volumeNum) || 0,
         liquidity: parseFloat(m.liquidity) || 0,
         endDate: m.end_date ? new Date(m.end_date) : null,
+        createdAt: m.createdAt ? new Date(m.createdAt) : (m.startDate ? new Date(m.startDate) : null),
         status: (m.closed ? 'closed' : 'active') as 'active' | 'closed',
         url: `https://polymarket.com/event/${m.slug || m.id}`,
       };
