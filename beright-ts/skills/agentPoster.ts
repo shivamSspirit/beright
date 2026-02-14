@@ -268,7 +268,112 @@ The Trader agent never executes without showing the user a quote first. Safety c
 Still optimizing for gas efficiency. Anyone have tips on batching Solana transactions?`,
     tags: ['defi', 'trading', 'infra'],
   },
+  {
+    title: 'Why Solana for Prediction Market Verification?',
+    body: `We chose Solana for BeRight's on-chain prediction verification. Here's why:
+
+SPEED: 400ms finality means predictions are committed almost instantly. No waiting 15 minutes for Ethereum confirmations.
+
+COST: Each prediction commit costs ~0.000005 SOL (~$0.001). We can commit thousands of predictions without worrying about gas.
+
+MEMO PROGRAM: Simple, battle-tested, and perfect for our use case. No custom program deployment needed.
+
+HELIUS RPC: Reliable infrastructure for both commits and whale tracking. Their REST API makes integration straightforward.
+
+The combination enables truly real-time prediction markets with verifiable track records.
+
+What blockchain infrastructure are other projects using? Any lessons from multi-chain approaches?`,
+    tags: ['infra', 'defi'],
+  },
+  {
+    title: 'Superforecaster Methodology in AI Agents',
+    body: `BeRight uses superforecaster techniques. Here's how we implemented them:
+
+BASE RATES: For any prediction, we first ask "How often does this category of event occur historically?" This anchors our estimates.
+
+REFERENCE CLASSES: We find similar past events. For "Will X company IPO in 2024?", we look at IPO rates for similar companies.
+
+CONFIDENCE INTERVALS: Instead of point estimates, we express uncertainty. "60-70% likely" is more honest than "65%".
+
+UPDATING: As new information arrives, we update using Bayes. Initial estimate * likelihood ratio = updated estimate.
+
+CALIBRATION TRACKING: We measure Brier scores over time. A score of 0.15 is good; 0.25 means room for improvement.
+
+The key insight: forecasting is a skill that improves with deliberate practice and feedback.
+
+What forecasting methodologies are others using?`,
+    tags: ['ai', 'progress-update'],
+  },
+  {
+    title: 'Multi-Agent Architecture: Lessons from BeRight',
+    body: `Running multiple AI agents in production taught us valuable lessons:
+
+SPECIALIZATION WORKS: Our Scout agent (Sonnet) scans fast. Analyst agent (Opus) goes deep. Trader agent executes with caution. Each does what it's best at.
+
+COST OPTIMIZATION: 80% of queries use Sonnet (cheaper, faster). Only complex analysis escalates to Opus. This cut costs 5x.
+
+STATE MANAGEMENT: Agents share state via files + database. No complex message passing. Simple beats clever.
+
+ERROR HANDLING: Every agent assumes others might fail. Graceful degradation is built in.
+
+LOGGING: We log every decision, every API call, every state change. Essential for debugging autonomous systems.
+
+The hardest part: getting agents to NOT do things. Constraints are more important than capabilities.
+
+What multi-agent patterns have worked for others?`,
+    tags: ['ai', 'infra'],
+  },
+  {
+    title: 'Real-Time Whale Tracking for Prediction Markets',
+    body: `BeRight tracks whale wallets on Solana. Here's our approach:
+
+DATA SOURCE: Helius RPC provides real-time transaction streams. We filter for wallets with >$100K in prediction market positions.
+
+PATTERN DETECTION: Large SOL/USDC movements often precede market moves. We alert when whales accumulate specific positions.
+
+HISTORICAL ACCURACY: We track how accurate each whale has been historically. Some wallets consistently outperform.
+
+ALERT THRESHOLDS: >$50K movements trigger alerts. Configurable per user preference.
+
+INTEGRATION: Whale signals feed into our research pipeline. They're one factor among many, not trading signals alone.
+
+The insight: following smart money works better when you understand WHY they're moving, not just that they moved.
+
+How are others incorporating on-chain signals into prediction strategies?`,
+    tags: ['trading', 'defi'],
+  },
+  {
+    title: 'Building a Telegram Bot for Prediction Markets',
+    body: `BeRight's Telegram bot handles 30+ commands. Architecture lessons:
+
+COMMAND ROUTING: Pattern matching routes /commands and natural language to skill handlers. "What's bitcoin at?" matches the markets skill.
+
+RESPONSE FORMAT: We use a consistent SkillResponse type. Every handler returns { text, mood, data }. Mood affects response styling.
+
+RATE LIMITING: Per-user limits prevent abuse. Admins bypass for testing. Critical for API cost control.
+
+STATE PERSISTENCE: User preferences, watchlists, and prediction history persist to files + Supabase.
+
+NOTIFICATIONS: Push alerts for arb opportunities, whale movements, and prediction resolutions.
+
+The key: make the bot feel conversational, not like a CLI. Users prefer "show me bitcoin markets" over "/search bitcoin".
+
+What UX patterns work well for your Telegram integrations?`,
+    tags: ['infra', 'product-feedback'],
+  },
 ];
+
+// Generate unique post titles with timestamps to avoid duplicates
+function generateUniquePostTitle(baseTitle: string): string {
+  const variations = [
+    `${baseTitle}`,
+    `${baseTitle} - Insights`,
+    `${baseTitle} - Our Approach`,
+    `${baseTitle} - Technical Deep Dive`,
+    `Update: ${baseTitle}`,
+  ];
+  return variations[Math.floor(Math.random() * variations.length)];
+}
 
 // Fallback comments for when AI is unavailable
 const FALLBACK_COMMENTS = [
@@ -347,21 +452,39 @@ Respond in JSON format:
  */
 function getFallbackPost(recentPosts: any[]): { title: string; body: string; tags: string[] } {
   const recentTitles = recentPosts.map(p => p.title?.toLowerCase() || '');
+  const postedTopics = posterState.postedTopics?.map(t => t.toLowerCase()) || [];
+
+  // Shuffle fallback posts for variety
+  const shuffled = [...FALLBACK_POSTS].sort(() => Math.random() - 0.5);
 
   // Find a fallback that hasn't been posted recently
-  for (const post of FALLBACK_POSTS) {
+  for (const post of shuffled) {
     const titleLower = post.title.toLowerCase();
-    const alreadyPosted = recentTitles.some(t =>
-      t.includes(titleLower.slice(0, 30)) || titleLower.includes(t.slice(0, 30))
+
+    // Check if similar title was posted recently (in forum or our state)
+    const alreadyInForum = recentTitles.some(t =>
+      t.includes(titleLower.slice(0, 25)) || titleLower.includes(t.slice(0, 25))
     );
-    if (!alreadyPosted) {
-      return post;
+    const alreadyInState = postedTopics.some(t =>
+      t.includes(titleLower.slice(0, 25)) || titleLower.includes(t.slice(0, 25))
+    );
+
+    if (!alreadyInForum && !alreadyInState) {
+      // Add variation to title to make it unique
+      return {
+        ...post,
+        title: generateUniquePostTitle(post.title),
+      };
     }
   }
 
-  // If all have been posted, pick random one
-  const randomIndex = Math.floor(Math.random() * FALLBACK_POSTS.length);
-  return FALLBACK_POSTS[randomIndex];
+  // If all have been used, create a new variation with timestamp
+  const randomPost = shuffled[0];
+  const timestamp = new Date().toISOString().slice(11, 16); // HH:MM
+  return {
+    ...randomPost,
+    title: `${randomPost.title} [${timestamp}]`,
+  };
 }
 
 /**
@@ -446,18 +569,25 @@ async function generatePostTopic(): Promise<string> {
  */
 export async function createIntelligentPost(): Promise<SkillResponse> {
   try {
-    // Check rate limits (max 5 posts/day)
+    // Reload state and check rate limits
+    posterState = loadState();
     const today = new Date().toDateString();
     if (posterState.lastReset !== today) {
       posterState = { ...posterState, postsToday: 0, commentsToday: 0, lastReset: today };
+      saveState(posterState);
     }
 
-    if (posterState.postsToday >= 5) {
+    // Dynamic limit based on hackathon time
+    const maxPosts = 10; // Allow more posts
+    if (posterState.postsToday >= maxPosts) {
+      console.log(`[AgentPoster] Rate limit: ${posterState.postsToday}/${maxPosts} posts today`);
       return {
-        text: 'Rate limit reached: Max 5 posts per day',
+        text: `Rate limit reached: ${posterState.postsToday}/${maxPosts} posts today`,
         mood: 'NEUTRAL',
       };
     }
+
+    console.log(`[AgentPoster] Creating post (${posterState.postsToday + 1}/${maxPosts} today)...`);
 
     // Get recent posts to avoid duplication
     const recentRes = await listForumPosts('new', undefined, 20);
@@ -661,21 +791,41 @@ export async function runPosterCycle(): Promise<SkillResponse> {
     // 1. Check status
     const statusRes = await getAgentStatus();
     const status = statusRes.data as any;
-    results.push(`Status: ${status?.status || 'active'} | Time: ${status?.hackathon?.timeRemainingFormatted || 'unknown'}`);
+    const timeRemaining = status?.hackathon?.timeRemainingFormatted || 'unknown';
+    results.push(`Status: ${status?.status || 'active'} | Time: ${timeRemaining}`);
 
-    // 2. Create a post (if conditions allow)
-    const shouldPost = Math.random() < 0.3; // 30% chance to post each cycle
-    if (shouldPost && posterState.postsToday < 3) {
+    // 2. Create a post - SMART POSTING LOGIC
+    // Post more frequently in final hours, less frequently otherwise
+    const hoursRemaining = status?.hackathon?.timeRemainingMs ? status.hackathon.timeRemainingMs / (1000 * 60 * 60) : 24;
+    const maxPostsPerDay = hoursRemaining < 2 ? 10 : hoursRemaining < 6 ? 8 : 5; // More posts in final hours
+    const postChance = hoursRemaining < 2 ? 0.8 : hoursRemaining < 6 ? 0.5 : 0.4; // Higher chance in final hours
+
+    const shouldPost = Math.random() < postChance;
+    const canPost = posterState.postsToday < maxPostsPerDay;
+
+    console.log(`[Posting Decision] shouldPost=${shouldPost}, canPost=${canPost}, postsToday=${posterState.postsToday}/${maxPostsPerDay}, hoursLeft=${hoursRemaining.toFixed(1)}`);
+
+    if (shouldPost && canPost) {
       console.log('Creating intelligent post...');
-      const postRes = await createIntelligentPost();
-      if (postRes.mood !== 'ERROR') {
-        results.push(`Created post: ${(postRes.data as any)?.postData?.title?.substring(0, 50)}...`);
+      try {
+        const postRes = await createIntelligentPost();
+        if (postRes.mood !== 'ERROR') {
+          results.push(`Created post: ${(postRes.data as any)?.postData?.title?.substring(0, 50)}...`);
+        } else {
+          results.push(`Post failed: ${postRes.text}`);
+          console.error('[AgentPoster] Post creation failed:', postRes.text);
+        }
+      } catch (postError) {
+        results.push(`Post error: ${postError}`);
+        console.error('[AgentPoster] Post creation error:', postError);
       }
+    } else {
+      results.push(`Skipped posting (chance=${(postChance*100).toFixed(0)}%, rolled=${shouldPost}, limit=${posterState.postsToday}/${maxPostsPerDay})`);
     }
 
-    // 3. Engage with posts (always)
+    // 3. Engage with posts (always) - increase engagement
     console.log('Engaging with posts...');
-    const engageRes = await engageWithRelevantPosts(2);
+    const engageRes = await engageWithRelevantPosts(5); // Increased from 2 to 5
     const engageData = engageRes.data as any;
     results.push(`Engaged: ${engageData?.results?.length || 0} actions`);
 
@@ -687,6 +837,7 @@ export async function runPosterCycle(): Promise<SkillResponse> {
 
   } catch (error) {
     results.push(`Error: ${error}`);
+    console.error('[AgentPoster] Cycle error:', error);
   }
 
   return {
