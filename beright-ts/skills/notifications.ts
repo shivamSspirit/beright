@@ -15,6 +15,7 @@ import { SkillResponse, ArbitrageOpportunity } from '../types/index';
 import { getAllUsers, UserIdentity, updateUserSettings } from '../lib/identity';
 import { formatBriefTelegram, generateMorningBrief } from './brief';
 import { formatUsd, formatPct, timestamp } from './utils';
+import { checkAndRecordAlert, generateAlertKey } from '../lib/alertDedup';
 
 const MEMORY_DIR = path.join(process.cwd(), 'memory');
 const ALERTS_FILE = path.join(MEMORY_DIR, 'alerts.json');
@@ -235,6 +236,7 @@ export async function generateMorningBriefAlerts(): Promise<PendingAlert[]> {
 
 /**
  * Generate arbitrage alerts
+ * NOW WITH DEDUPLICATION - won't spam same arb opportunity
  */
 export function generateArbAlerts(opportunities: ArbitrageOpportunity[]): PendingAlert[] {
   const subscribers = getSubscribersForAlert('arb');
@@ -245,6 +247,13 @@ export function generateArbAlerts(opportunities: ArbitrageOpportunity[]): Pendin
   }
 
   for (const opp of opportunities) {
+    // DEDUPLICATION: Check if we already alerted about this opportunity
+    const alertId = `${opp.platformA}-${opp.platformB}-${opp.topic}`;
+    if (!checkAndRecordAlert('arb', alertId, opp.profitPercent)) {
+      console.log(`[Notifications] Skipping duplicate arb alert: ${opp.topic.slice(0, 40)}...`);
+      continue;
+    }
+
     // Find users whose threshold is met
     const eligibleUsers = subscribers
       .filter(sub => {
@@ -287,6 +296,7 @@ Strategy: ${opp.strategy}
 
 /**
  * Generate whale alerts
+ * NOW WITH DEDUPLICATION - won't spam same whale movement
  */
 export function generateWhaleAlerts(whaleMovements: any[]): PendingAlert[] {
   const subscribers = getSubscribersForAlert('whale');
@@ -297,6 +307,13 @@ export function generateWhaleAlerts(whaleMovements: any[]): PendingAlert[] {
   }
 
   for (const whale of whaleMovements) {
+    // DEDUPLICATION: Check if we already alerted about this whale movement
+    const alertId = `${whale.wallet}-${whale.type || 'move'}`;
+    if (!checkAndRecordAlert('whale', alertId, whale.totalUsd)) {
+      console.log(`[Notifications] Skipping duplicate whale alert: ${whale.wallet.slice(0, 8)}...`);
+      continue;
+    }
+
     // Find users whose threshold is met
     const eligibleUsers = subscribers
       .filter(sub => {

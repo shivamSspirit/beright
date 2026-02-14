@@ -22,6 +22,7 @@ import { searchMarkets, getHotMarkets } from './markets';
 import { formatPct, formatUsd, timestamp } from './utils';
 import { sendTelegramMessage } from '../services/notificationDelivery';
 import { generateMorningBrief, formatBriefTelegram } from './brief';
+import { checkAndRecordAlert } from '../lib/alertDedup';
 
 const MEMORY_DIR = path.join(process.cwd(), 'memory');
 const AGENT_STATE_FILE = path.join(MEMORY_DIR, 'proactive-agent.json');
@@ -459,6 +460,12 @@ async function detectHotAlpha(markets: Market[]): Promise<ProactiveAlert[]> {
     const uncertainty = Math.abs(0.5 - (market.yesPrice || 0.5));
 
     if (uncertainty < 0.15) {
+      // DEDUPLICATION: Check if we already alerted about this hot market
+      const alertId = `contested-${market.marketId || market.title}`;
+      if (!checkAndRecordAlert('HOT_ALPHA', alertId, market.volume)) {
+        continue; // Skip duplicate
+      }
+
       alerts.push({
         type: 'HOT_ALPHA',
         priority: 'MEDIUM',
@@ -484,6 +491,12 @@ async function detectHotAlpha(markets: Market[]): Promise<ProactiveAlert[]> {
   });
 
   for (const market of earlyEntryMarkets.slice(0, 3)) {
+    // DEDUPLICATION: Check if we already alerted about this early entry
+    const alertId = `early-${market.marketId || market.title}`;
+    if (!checkAndRecordAlert('HOT_ALPHA', alertId)) {
+      continue; // Skip duplicate
+    }
+
     const ageHours = Math.round((now - new Date(market.createdAt!).getTime()) / (1000 * 60 * 60));
 
     alerts.push({
@@ -508,6 +521,12 @@ async function detectHotAlpha(markets: Market[]): Promise<ProactiveAlert[]> {
   });
 
   for (const market of extremeMarkets.slice(0, 2)) {
+    // DEDUPLICATION: Check if we already alerted about this extreme odds market
+    const alertId = `extreme-${market.marketId || market.title}`;
+    if (!checkAndRecordAlert('HOT_ALPHA', alertId)) {
+      continue; // Skip duplicate
+    }
+
     const direction = market.yesPrice >= 0.85 ? 'YES' : 'NO';
     const odds = market.yesPrice >= 0.85 ? market.yesPrice : (1 - market.yesPrice);
 
@@ -538,6 +557,12 @@ async function detectSpreadInefficiency(markets: Market[]): Promise<ProactiveAle
 
       // Wide spread (>5%) indicates opportunity or illiquidity
       if (spread >= 0.05 && yesBid > 0 && yesAsk > 0) {
+        // DEDUPLICATION: Check if we already alerted about this spread
+        const alertId = `spread-${market.marketId || market.title}`;
+        if (!checkAndRecordAlert('SPREAD_ALERT', alertId, spread * 100)) {
+          continue; // Skip duplicate
+        }
+
         alerts.push({
           type: 'SPREAD_ALERT',
           priority: 'MEDIUM',
@@ -575,6 +600,12 @@ async function detectSpreadInefficiency(markets: Market[]): Promise<ProactiveAle
 
         const priceDiff = Math.abs(m1.yesPrice - m2.yesPrice);
         if (priceDiff >= 0.05) { // 5%+ difference
+          // DEDUPLICATION: Check if we already alerted about this cross-platform spread
+          const alertId = `xplatform-${m1.platform}-${m2.platform}-${m1.title}`;
+          if (!checkAndRecordAlert('SPREAD_ALERT', alertId, priceDiff * 100)) {
+            continue; // Skip duplicate
+          }
+
           const cheaper = m1.yesPrice < m2.yesPrice ? m1 : m2;
           const expensive = m1.yesPrice < m2.yesPrice ? m2 : m1;
 
