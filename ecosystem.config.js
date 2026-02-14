@@ -84,9 +84,10 @@ module.exports = {
       name: 'colosseum-agent',
       cwd: './beright-ts',
       script: 'npx',
-      args: 'ts-node skills/colosseumAgent.ts loop 180',
+      args: 'ts-node --transpile-only skills/colosseumAgent.ts loop 180',
       env: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        TS_NODE_TRANSPILE_ONLY: 'true'
       },
       instances: 1,
       autorestart: true,
@@ -103,9 +104,10 @@ module.exports = {
       name: 'agent-poster',
       cwd: './beright-ts',
       script: 'npx',
-      args: 'ts-node skills/agentPoster.ts loop 180',
+      args: 'ts-node --transpile-only skills/agentPoster.ts loop 180',
       env: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        TS_NODE_TRANSPILE_ONLY: 'true'
       },
       instances: 1,
       autorestart: true,

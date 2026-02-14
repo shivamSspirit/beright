@@ -1355,6 +1355,23 @@ const styles = `
     color: var(--nx-text-dim);
   }
 
+  .terminal-line.link .line-content,
+  .terminal-line.link .market-link {
+    color: var(--nx-cyan);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .terminal-line.link .market-link:hover {
+    color: var(--nx-green);
+    text-decoration: underline;
+  }
+
+  .prompt.link {
+    color: var(--nx-cyan);
+  }
+
   .terminal-line.processing .processing-text {
     color: var(--nx-magenta);
   }
