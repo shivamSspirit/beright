@@ -220,6 +220,141 @@ function looksLikeMarketQuery(text: string): boolean {
 }
 
 /**
+ * Extract market context from a bot alert message
+ * Parses the market title from various alert formats
+ */
+function extractMarketFromReply(replyText: string): string | null {
+  if (!replyText) return null;
+
+  // Pattern 1: Alert format with market title after separator
+  // "⚡ 📈 TRENDING: 26% in 6hrs\n────────────────────────────\n\nWill Bryson DeChambeau win..."
+  const separatorMatch = replyText.match(/[─━═]{10,}\s*\n+\s*(.+?)(?:\n|$)/);
+  if (separatorMatch && separatorMatch[1]) {
+    const title = separatorMatch[1].trim();
+    if (title.length > 10 && !title.startsWith('→') && !title.startsWith('*')) {
+      return title;
+    }
+  }
+
+  // Pattern 2: Bold market title "*Market Title*"
+  const boldMatch = replyText.match(/\*([^*]{10,})\*/);
+  if (boldMatch && boldMatch[1]) {
+    const title = boldMatch[1].trim();
+    // Skip headers like "CLOSING IN <1 HOUR", "BIG MOVE", etc.
+    if (!title.match(/^(CLOSING|BIG|HOT|NEW|SPREAD|WHALE|TRENDING|ALERT)/i)) {
+      return title;
+    }
+  }
+
+  // Pattern 3: Line after emoji header
+  // "🔥 HOT MARKET\n\nWill something happen..."
+  const emojiHeaderMatch = replyText.match(/[🔥⏰📈📉💰🆕🐋🚨⚡💡🎯🚀]\s*\*?[A-Z\s]+\*?\s*\n+(.+?)(?:\n|$)/);
+  if (emojiHeaderMatch && emojiHeaderMatch[1]) {
+    const title = emojiHeaderMatch[1].replace(/^\*|\*$/g, '').trim();
+    if (title.length > 10) {
+      return title;
+    }
+  }
+
+  // Pattern 4: Market search result format "🟣 POLYMARKET \n   Title Here"
+  const marketResultMatch = replyText.match(/[🟣🟢🔵]\s*\w+\s*\n\s+(.+?)(?:\n|$)/);
+  if (marketResultMatch && marketResultMatch[1]) {
+    return marketResultMatch[1].trim();
+  }
+
+  return null;
+}
+
+/**
+ * Check if user message is asking for context-dependent info
+ * (e.g., "give me link", "more info", "details", etc.)
+ */
+function isContextDependentQuery(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+
+  const contextPatterns = [
+    /^(give|show|get|send)\s+(me\s+)?(the\s+)?(market\s+)?link/i,
+    /^(market\s+)?link\s*(please)?$/i,
+    /^(more\s+)?(info|information|details?)/i,
+    /^(where|how)\s+(can\s+i\s+)?(find|see|view|access|trade|bet)/i,
+    /^(open|show|view)\s+(this|the|that)\s+(market)?/i,
+    /^url\s*(please)?$/i,
+    /^(what|which)\s+(platform|site|exchange)/i,
+    /^(tell|show)\s+me\s+more/i,
+    /^more$/i,
+    /^(buy|sell|trade)\s+(this|it)$/i,
+  ];
+
+  return contextPatterns.some(pattern => pattern.test(lower));
+}
+
+/**
+ * Handle context-aware replies
+ * When user replies to a bot message asking for more info
+ */
+async function handleContextReply(
+  userText: string,
+  replyText: string
+): Promise<SkillResponse | null> {
+  // Only handle context-dependent queries
+  if (!isContextDependentQuery(userText)) {
+    return null;
+  }
+
+  // Extract market title from the replied message
+  const marketTitle = extractMarketFromReply(replyText);
+
+  if (!marketTitle) {
+    return null; // Couldn't extract context, fall through to normal handling
+  }
+
+  console.log(`[Context] Extracted market from reply: "${marketTitle}"`);
+
+  // Search for the specific market
+  const markets = await searchMarkets(marketTitle);
+
+  if (markets.length === 0) {
+    return {
+      text: `I couldn't find that market. Try searching directly:\n\n/research ${marketTitle.slice(0, 50)}`,
+      mood: 'NEUTRAL',
+    };
+  }
+
+  // Find best match
+  const exactMatch = markets.find(m =>
+    m.title.toLowerCase().includes(marketTitle.toLowerCase().slice(0, 30)) ||
+    marketTitle.toLowerCase().includes(m.title.toLowerCase().slice(0, 30))
+  );
+
+  const market = exactMatch || markets[0];
+
+  // Format response with link and details
+  const platformEmoji = {
+    polymarket: '🟣',
+    kalshi: '🟢',
+    manifold: '🔵',
+    metaculus: '🟠',
+    limitless: '⚪',
+  }[market.platform] || '📊';
+
+  return {
+    text: `${platformEmoji} *${market.title}*
+
+📊 *Current Odds*
+YES: ${formatPct(market.yesPrice)} | NO: ${formatPct(1 - market.yesPrice)}
+
+💰 *Volume:* ${formatUsd(market.volume || 0)}
+📈 *Platform:* ${market.platform.charAt(0).toUpperCase() + market.platform.slice(1)}
+
+🔗 *Link:* ${market.url}
+
+_Trade directly on ${market.platform}_`,
+    mood: 'NEUTRAL',
+    data: market,
+  };
+}
+
+/**
  * Handle freeform non-command input
  * Returns response for greetings, meta questions, off-topic
  */
@@ -1789,6 +1924,15 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
   const username = message.from?.username;
 
   try {
+    // CONTEXT-AWARE REPLY HANDLING
+    // If user is replying to a bot message, check for context-dependent queries
+    if (message.reply_to_message?.text && message.reply_to_message.from?.is_bot) {
+      const contextResponse = await handleContextReply(text, message.reply_to_message.text);
+      if (contextResponse) {
+        return contextResponse;
+      }
+    }
+
     // Memory commands
     if (lower.startsWith('/memory') || lower === '/recall') {
       const query = extractQuery(text, '/memory') || extractQuery(text, '/recall') || 'stats';

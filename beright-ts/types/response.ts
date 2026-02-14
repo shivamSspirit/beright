@@ -34,6 +34,17 @@ export interface TelegramMessage {
   };
   text?: string;
   date: number;
+  // Reply context - when user replies to a previous message
+  reply_to_message?: {
+    message_id: number;
+    text?: string;
+    from?: {
+      id: number;
+      username?: string;
+      is_bot?: boolean;
+    };
+    date: number;
+  };
 }
 
 export interface ResearchReport {
