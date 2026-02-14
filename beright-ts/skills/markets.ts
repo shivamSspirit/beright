@@ -70,6 +70,8 @@ function buildKalshiUrl(seriesTicker?: string, eventTicker?: string, marketTicke
 
 /**
  * Fetch markets from Polymarket
+ * NOTE: Polymarket's search parameter is broken - it ignores the query.
+ * We fetch more markets and filter client-side for accurate results.
  */
 async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
   const cacheKey = `poly:${query || ''}:${limit}`;
@@ -78,16 +80,17 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
 
   try {
     const baseUrl = PLATFORMS.polymarket.baseUrl;
-    const url = query
-      ? `${baseUrl}/markets?closed=false&limit=${limit}&search=${encodeURIComponent(query)}`
-      : `${baseUrl}/markets?closed=false&limit=${limit}&order=volume&ascending=false`;
+    // Fetch more markets to allow for client-side filtering
+    // We fetch 200 to have better coverage for searches
+    const fetchLimit = query ? 200 : limit;
+    const url = `${baseUrl}/markets?closed=false&limit=${fetchLimit}&order=volume&ascending=false`;
 
     const response = await fetch(url, { signal: AbortSignal.timeout(PLATFORM_TIMEOUT.polymarket) });
     if (!response.ok) return [];
 
     const data = await response.json() as any[];
 
-    const result = data.map(m => {
+    let markets = data.map(m => {
       let yesPrice = 0;
       let noPrice = 0;
       try {
@@ -121,6 +124,69 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
         url: `https://polymarket.com/event/${m.slug || m.id}`,
       };
     });
+
+    // Client-side filtering since Polymarket's search param is broken
+    if (query) {
+      const queryLower = query.toLowerCase().trim();
+
+      // Build search terms - handle common crypto/market terms
+      const searchTerms: string[] = [];
+
+      // Add the full query
+      if (queryLower.length > 2) searchTerms.push(queryLower);
+
+      // Add individual words (3+ chars)
+      const words = queryLower.split(/\s+/).filter(w => w.length > 2);
+      searchTerms.push(...words);
+
+      // Add common aliases (terms that should match each other)
+      // Avoid short terms that cause false positives (eth, btc, ai)
+      const aliases: Record<string, string[]> = {
+        'bitcoin': ['bitcoin'],
+        'btc': ['bitcoin'],  // Map btc -> bitcoin only
+        'ethereum': ['ethereum'],
+        'eth': ['ethereum'],  // Map eth -> ethereum only
+        'federal reserve': ['federal reserve', 'fomc'],
+        'fed': ['federal reserve', 'fomc', 'rate cut', 'rate hike', 'interest rate'],
+        'election': ['election', 'presidential'],
+        'crypto': ['bitcoin', 'ethereum', 'cryptocurrency'],
+      };
+
+      for (const term of [...searchTerms]) {
+        if (aliases[term]) {
+          searchTerms.push(...aliases[term]);
+        }
+      }
+
+      // Dedupe
+      const uniqueTerms = [...new Set(searchTerms)];
+
+      markets = markets.filter(m => {
+        const titleLower = m.title.toLowerCase();
+        // Match if any search term appears in title (word boundary preferred)
+        return uniqueTerms.some(term => {
+          // For short terms (3-4 chars), require word boundary to avoid false positives
+          if (term.length <= 4) {
+            const regex = new RegExp(`\\b${term}\\b`, 'i');
+            return regex.test(titleLower);
+          }
+          return titleLower.includes(term);
+        });
+      });
+
+      // Sort by relevance (more matching terms = higher rank, longer matches preferred)
+      markets.sort((a, b) => {
+        const aTitle = a.title.toLowerCase();
+        const bTitle = b.title.toLowerCase();
+        const aMatches = uniqueTerms.filter(t => aTitle.includes(t)).length;
+        const bMatches = uniqueTerms.filter(t => bTitle.includes(t)).length;
+        if (bMatches !== aMatches) return bMatches - aMatches;
+        // Tie-breaker: prefer higher volume
+        return (b.volume || 0) - (a.volume || 0);
+      });
+    }
+
+    const result = markets.slice(0, limit);
     setCache(cacheKey, result);
     return result;
   } catch (error) {

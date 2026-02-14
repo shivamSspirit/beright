@@ -30,9 +30,9 @@ export const SYNONYM_GROUPS: string[][] = [
   ['recession', 'economic downturn', 'negative gdp'],
   ['unemployment', 'jobless', 'jobs report', 'labor market'],
 
-  // Crypto
-  ['bitcoin', 'btc', 'bitcoin price'],
-  ['ethereum', 'eth', 'ether'],
+  // Crypto (avoid short terms that cause false positives)
+  ['bitcoin', 'bitcoin price'],
+  ['ethereum', 'ethereum price'],
   ['crypto', 'cryptocurrency', 'digital assets'],
   ['etf', 'exchange traded fund', 'spot etf'],
 
