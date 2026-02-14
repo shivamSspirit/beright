@@ -795,12 +795,38 @@ export async function runProactiveAgent(): Promise<{
   const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
   allAlerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
+  // DEDUPLICATION: Filter out alerts we've already sent recently
+  const ALERT_COOLDOWN_HOURS = 24; // Don't send same alert for 24 hours
+  const now = Date.now();
+  const cooldownMs = ALERT_COOLDOWN_HOURS * 60 * 60 * 1000;
+
+  const freshAlerts = allAlerts.filter(alert => {
+    // Create unique key: type + market title (normalized)
+    const alertKey = `${alert.type}:${alert.market.toLowerCase().slice(0, 50)}`;
+    const lastSent = state.lastAlertsSent[alertKey];
+
+    if (lastSent) {
+      const lastSentTime = new Date(lastSent).getTime();
+      if (now - lastSentTime < cooldownMs) {
+        console.log(`[Dedup] Skipping duplicate alert: ${alertKey} (sent ${Math.round((now - lastSentTime) / 3600000)}h ago)`);
+        return false;
+      }
+    }
+    return true;
+  });
+
+  console.log(`[Proactive] ${allAlerts.length} alerts generated, ${freshAlerts.length} after dedup`);
+
   // Send alerts to subscribers
   let alertsSent = 0;
   const maxAlertsPerCycle = 5; // Don't spam users
 
-  for (const alert of allAlerts.slice(0, maxAlertsPerCycle)) {
+  for (const alert of freshAlerts.slice(0, maxAlertsPerCycle)) {
     const message = formatAlertMessage(alert);
+
+    // Mark this alert as sent
+    const alertKey = `${alert.type}:${alert.market.toLowerCase().slice(0, 50)}`;
+    state.lastAlertsSent[alertKey] = new Date().toISOString();
 
     for (const sub of subscriberList) {
       // Check if subscriber wants this type of alert
@@ -819,6 +845,15 @@ export async function runProactiveAgent(): Promise<{
     }
   }
 
+  // Clean up old entries from lastAlertsSent (older than 48 hours)
+  const cleanupThreshold = 48 * 60 * 60 * 1000;
+  for (const key of Object.keys(state.lastAlertsSent)) {
+    const sentTime = new Date(state.lastAlertsSent[key]).getTime();
+    if (now - sentTime > cleanupThreshold) {
+      delete state.lastAlertsSent[key];
+    }
+  }
+
   // Save updated subscriber stats
   const subsMap = loadSubscribers();
   for (const sub of subscriberList) {
@@ -828,7 +863,10 @@ export async function runProactiveAgent(): Promise<{
   }
   saveSubscribers(subsMap);
 
-  console.log(`[${timestamp()}] Proactive Agent: ${allAlerts.length} alerts generated, ${alertsSent} sent, ${briefsSent} briefs sent to ${subscriberList.length} subscribers`);
+  // Save state with updated lastAlertsSent for deduplication
+  saveState(state);
+
+  console.log(`[${timestamp()}] Proactive Agent: ${allAlerts.length} alerts generated, ${freshAlerts.length} fresh, ${alertsSent} sent, ${briefsSent} briefs sent to ${subscriberList.length} subscribers`);
 
   return {
     alertsGenerated: allAlerts.length,
