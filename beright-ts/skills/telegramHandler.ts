@@ -61,6 +61,37 @@ import { getAgentForCommand, AGENTS } from '../config/agents';
 // Market watcher for auto-resolution
 import { getMarketWatcher } from '../services/marketWatcher';
 
+// ============================================
+// CHAT CONTEXT TRACKING
+// Track last bot message per chat for context-aware replies
+// ============================================
+interface ChatContext {
+  lastBotMessage: string;
+  timestamp: number;
+  markets?: Array<{ title: string; platform: string; url: string }>;
+}
+
+const chatContextCache = new Map<string, ChatContext>();
+const CONTEXT_TTL = 10 * 60 * 1000; // 10 minutes
+
+function setChatContext(chatId: string, botMessage: string, markets?: Array<{ title: string; platform: string; url: string }>) {
+  chatContextCache.set(chatId, {
+    lastBotMessage: botMessage,
+    timestamp: Date.now(),
+    markets,
+  });
+}
+
+function getChatContext(chatId: string): ChatContext | null {
+  const ctx = chatContextCache.get(chatId);
+  if (!ctx) return null;
+  if (Date.now() - ctx.timestamp > CONTEXT_TTL) {
+    chatContextCache.delete(chatId);
+    return null;
+  }
+  return ctx;
+}
+
 /**
  * Route message to appropriate agent
  */
@@ -266,23 +297,170 @@ function extractMarketFromReply(replyText: string): string | null {
 }
 
 /**
+ * Extract multiple markets from HOT MARKETS format
+ * Format: "🔴 Market Title Here\n   5% YES  •  $161.4M..."
+ */
+function extractMarketsFromHotList(text: string): Array<{ title: string; odds: string }> {
+  const markets: Array<{ title: string; odds: string }> = [];
+
+  // Pattern: emoji followed by market title, then odds on next line
+  // "🔴 Judy Shelton as Fed Chair?\n   5% YES"
+  // "🟢 Gov be shut down on Feb 14, 2026?\n   99% YES"
+  const marketPattern = /[🔴🟢🟡⚪]\s+(.+?)\n\s+(\d+%\s*YES)/g;
+
+  let match;
+  while ((match = marketPattern.exec(text)) !== null) {
+    const title = match[1].replace(/\.{3}$/, '').trim(); // Remove trailing ...
+    const odds = match[2];
+    if (title.length > 5) {
+      markets.push({ title, odds });
+    }
+  }
+
+  return markets;
+}
+
+/**
+ * Handle context from chat cache (for follow-up messages without Telegram reply)
+ */
+async function handleChatContextQuery(
+  chatId: string,
+  userText: string
+): Promise<SkillResponse | null> {
+  // Check if this is a context-dependent query
+  if (!isContextDependentQuery(userText)) {
+    return null;
+  }
+
+  // Get cached context for this chat
+  const ctx = getChatContext(chatId);
+  if (!ctx) {
+    return null;
+  }
+
+  console.log(`[Context] Found cached context for chat ${chatId}`);
+
+  // If we have cached markets from /hot, show them with links
+  if (ctx.markets && ctx.markets.length > 0) {
+    const marketList = ctx.markets.slice(0, 5).map((m, i) => {
+      const platformEmoji = {
+        polymarket: '🟣',
+        kalshi: '🟢',
+        manifold: '🔵',
+        metaculus: '🟠',
+        limitless: '⚪',
+      }[m.platform] || '📊';
+      return `${i + 1}. ${platformEmoji} *${m.title}*\n   🔗 ${m.url}`;
+    }).join('\n\n');
+
+    return {
+      text: `Here are the market links:\n\n${marketList}`,
+      mood: 'NEUTRAL',
+    };
+  }
+
+  // Try to extract markets from the HOT MARKETS format
+  const hotMarkets = extractMarketsFromHotList(ctx.lastBotMessage);
+  if (hotMarkets.length > 0) {
+    console.log(`[Context] Found ${hotMarkets.length} markets in HOT MARKETS format`);
+
+    // Search for the first few markets and return links
+    const results: string[] = [];
+    for (const hm of hotMarkets.slice(0, 3)) {
+      const markets = await searchMarkets(hm.title.slice(0, 30));
+      if (markets.length > 0) {
+        const m = markets[0];
+        const platformEmoji = {
+          polymarket: '🟣',
+          kalshi: '🟢',
+          manifold: '🔵',
+          metaculus: '🟠',
+          limitless: '⚪',
+        }[m.platform] || '📊';
+        results.push(`${platformEmoji} *${m.title.slice(0, 50)}*\n   ${formatPct(m.yesPrice)} YES • 🔗 ${m.url}`);
+      }
+    }
+
+    if (results.length > 0) {
+      return {
+        text: `Here are the market links:\n\n${results.join('\n\n')}`,
+        mood: 'NEUTRAL',
+      };
+    }
+  }
+
+  // Try single market extraction
+  const marketTitle = extractMarketFromReply(ctx.lastBotMessage);
+  if (marketTitle) {
+    console.log(`[Context] Extracted single market: "${marketTitle}"`);
+    const markets = await searchMarkets(marketTitle);
+    if (markets.length > 0) {
+      const market = markets[0];
+      const platformEmoji = {
+        polymarket: '🟣',
+        kalshi: '🟢',
+        manifold: '🔵',
+        metaculus: '🟠',
+        limitless: '⚪',
+      }[market.platform] || '📊';
+
+      return {
+        text: `${platformEmoji} *${market.title}*
+
+📊 *Current Odds*
+YES: ${formatPct(market.yesPrice)} | NO: ${formatPct(1 - market.yesPrice)}
+
+💰 *Volume:* ${formatUsd(market.volume || 0)}
+📈 *Platform:* ${market.platform.charAt(0).toUpperCase() + market.platform.slice(1)}
+
+🔗 *Link:* ${market.url}
+
+_Trade directly on ${market.platform}_`,
+        mood: 'NEUTRAL',
+        data: market,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if user message is asking for context-dependent info
- * (e.g., "give me link", "more info", "details", etc.)
+ * Handles many variations: "give me link", "can give market link", "link please", etc.
  */
 function isContextDependentQuery(text: string): boolean {
   const lower = text.toLowerCase().trim();
 
+  // Don't treat commands as context queries
+  if (lower.startsWith('/')) return false;
+
   const contextPatterns = [
-    /^(give|show|get|send)\s+(me\s+)?(the\s+)?(market\s+)?link/i,
-    /^(market\s+)?link\s*(please)?$/i,
+    // Link requests - many variations
+    /\b(give|show|get|send|share)\b.*(link|url)/i,
+    /\b(can|could|would|will)\s+(you\s+)?(give|show|get|send|share).*(link|url)/i,
+    /^(market\s+)?link\s*(please|pls)?$/i,
+    /^url\s*(please|pls)?$/i,
+    /\blink\s*(please|pls)?\s*$/i,
+
+    // Info requests
     /^(more\s+)?(info|information|details?)/i,
-    /^(where|how)\s+(can\s+i\s+)?(find|see|view|access|trade|bet)/i,
-    /^(open|show|view)\s+(this|the|that)\s+(market)?/i,
-    /^url\s*(please)?$/i,
-    /^(what|which)\s+(platform|site|exchange)/i,
-    /^(tell|show)\s+me\s+more/i,
+    /\b(tell|show|give)\s+(me\s+)?more\b/i,
     /^more$/i,
-    /^(buy|sell|trade)\s+(this|it)$/i,
+
+    // Location/access questions
+    /\b(where|how)\b.*(find|see|view|access|trade|bet|buy|sell)/i,
+    /\b(can|could)\s+(i|we)\s+(find|see|view|access|trade|bet|buy|sell)/i,
+
+    // Platform questions
+    /\b(what|which)\s+(platform|site|exchange|market)/i,
+
+    // Trade intent
+    /^(buy|sell|trade)\s+(this|it|that)$/i,
+    /\b(want|wanna)\s+to\s+(buy|sell|trade|bet)/i,
+
+    // Open/view requests
+    /^(open|view)\s+(this|the|that|it)\s*(market)?$/i,
   ];
 
   return contextPatterns.some(pattern => pattern.test(lower));
@@ -1923,14 +2101,25 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
   const telegramId = message.from?.id?.toString();
   const username = message.from?.username;
 
+  const chatId = message.chat.id.toString();
+
   try {
-    // CONTEXT-AWARE REPLY HANDLING
-    // If user is replying to a bot message, check for context-dependent queries
+    // CONTEXT-AWARE HANDLING (Priority 1)
+    // Check for context-dependent queries like "give me link", "can give market link"
+    // Works with both Telegram reply and cached context
+
+    // First try Telegram reply context
     if (message.reply_to_message?.text && message.reply_to_message.from?.is_bot) {
       const contextResponse = await handleContextReply(text, message.reply_to_message.text);
       if (contextResponse) {
         return contextResponse;
       }
+    }
+
+    // Then try cached chat context (for follow-up messages without reply)
+    const cachedContextResponse = await handleChatContextQuery(chatId, text);
+    if (cachedContextResponse) {
+      return cachedContextResponse;
     }
 
     // Memory commands
@@ -1943,8 +2132,39 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
     if (lower === '/start') return handleStart();
     if (lower === '/help') return handleHelp();
     if (lower === '/brief') return await handleBrief();
-    if (lower === '/hot') return await handleHot();
-    if (lower === '/alpha') return await handleAlpha();
+
+    // /hot - save context for follow-up questions
+    if (lower === '/hot') {
+      const response = await handleHot();
+      // Save context with market data for follow-up queries
+      const marketData = response.data as Array<{ title: string; platform: string; url: string }> | undefined;
+      if (marketData) {
+        setChatContext(chatId, response.text, marketData.map(m => ({
+          title: m.title,
+          platform: m.platform,
+          url: m.url,
+        })));
+      } else {
+        setChatContext(chatId, response.text);
+      }
+      return response;
+    }
+
+    // /alpha - save context for follow-up questions
+    if (lower === '/alpha') {
+      const response = await handleAlpha();
+      const marketData = response.data as Array<{ title: string; platform: string; url: string }> | undefined;
+      if (marketData) {
+        setChatContext(chatId, response.text, marketData.map(m => ({
+          title: m.title,
+          platform: m.platform,
+          url: m.url,
+        })));
+      } else {
+        setChatContext(chatId, response.text);
+      }
+      return response;
+    }
     if (lower.startsWith('/predict')) return await handlePredict(text, telegramId, username);
     if (lower === '/me') return await handleMe(telegramId);
     if (lower === '/leaderboard') return await handleLeaderboard(telegramId);
