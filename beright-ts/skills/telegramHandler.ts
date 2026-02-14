@@ -48,6 +48,7 @@ import { handleLimits, handleAutobet, handleStopLoss, handleTakeProfit, handleDC
 import { logConversation, searchLearnings, handleMemory, getRecentContext } from './memory';
 import { handleWallet as handleDFlowWallet, handleDFlowSearch, handleTrade as handleDFlowTrade, handlePositions as handleDFlowPositions } from './dflowTrade';
 import { handleAgentCommand, subscribeToAgent } from './proactiveAgent';
+import { handlePosterCommand } from './agentPoster';
 
 // On-chain + Supabase integration
 import { commitPrediction, calculateBrierScore, interpretBrierScore } from '../lib/onchain';
@@ -82,6 +83,9 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/arb-unsubscribe')) return 'ARBITRAGE';
   if (lower.startsWith('/arb')) return 'ARBITRAGE';
   if (lower.startsWith('/agent')) return 'PROACTIVE_AGENT';
+  if (lower.startsWith('/poster')) return 'COMMANDER';
+  if (lower.startsWith('/colosseum')) return 'COMMANDER';
+  if (lower.startsWith('/forum')) return 'COMMANDER';
   if (lower.startsWith('/odds')) return 'RESEARCH';
   if (lower.startsWith('/whale')) return 'WHALE';
   if (lower.startsWith('/track_whale')) return 'WHALE';
@@ -1855,6 +1859,13 @@ This provides:
     // Calibration feedback - personalized improvement suggestions
     if (lower === '/feedback') {
       return await handleFeedback(telegramId);
+    }
+
+    // Colosseum forum poster commands
+    if (lower.startsWith('/poster') || lower.startsWith('/colosseum') || lower.startsWith('/forum')) {
+      const cmd = lower.startsWith('/poster') ? '/poster' : lower.startsWith('/colosseum') ? '/colosseum' : '/forum';
+      const args = extractQuery(text, cmd);
+      return await handlePosterCommand(args || 'help');
     }
 
     // Recommendations - markets based on user strengths

@@ -36,9 +36,15 @@ import {
   getMyComments,
 } from './colosseumAgent';
 import { sendTelegramMessage } from '../services/notificationDelivery';
+import {
+  getAgentSettings,
+  getAgentCustomSetting,
+  isUrgentMode,
+} from '../config/agentConfig';
 
-// Admin notification
-const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TELEGRAM_ID || '5504043269';
+// Get config from centralized source
+const POSTER_CONFIG = getAgentSettings('poster')!;
+const SUPER_ADMIN_ID = getAgentCustomSetting('poster', 'telegramAdminId', '5504043269');
 
 async function notifyAdmin(message: string): Promise<void> {
   try {
@@ -794,16 +800,23 @@ export async function runPosterCycle(): Promise<SkillResponse> {
     const timeRemaining = status?.hackathon?.timeRemainingFormatted || 'unknown';
     results.push(`Status: ${status?.status || 'active'} | Time: ${timeRemaining}`);
 
-    // 2. Create a post - SMART POSTING LOGIC
-    // Post more frequently in final hours, less frequently otherwise
+    // 2. Create a post - SMART POSTING LOGIC (using centralized config)
     const hoursRemaining = status?.hackathon?.timeRemainingMs ? status.hackathon.timeRemainingMs / (1000 * 60 * 60) : 24;
-    const maxPostsPerDay = hoursRemaining < 2 ? 10 : hoursRemaining < 6 ? 8 : 5; // More posts in final hours
-    const postChance = hoursRemaining < 2 ? 0.8 : hoursRemaining < 6 ? 0.5 : 0.4; // Higher chance in final hours
+    const urgent = isUrgentMode('poster', hoursRemaining);
+
+    // Get limits from config
+    const baseMaxPosts = POSTER_CONFIG.rateLimit.maxPerDay;
+    const basePostChance = getAgentCustomSetting('poster', 'postChance', 0.4);
+    const urgentPostChance = getAgentCustomSetting('poster', 'urgentPostChance', 0.8);
+
+    // Increase limits in urgent mode
+    const maxPostsPerDay = urgent ? baseMaxPosts : Math.floor(baseMaxPosts * 0.5);
+    const postChance = urgent ? urgentPostChance : basePostChance;
 
     const shouldPost = Math.random() < postChance;
     const canPost = posterState.postsToday < maxPostsPerDay;
 
-    console.log(`[Posting Decision] shouldPost=${shouldPost}, canPost=${canPost}, postsToday=${posterState.postsToday}/${maxPostsPerDay}, hoursLeft=${hoursRemaining.toFixed(1)}`);
+    console.log(`[Posting Decision] urgent=${urgent}, shouldPost=${shouldPost}, canPost=${canPost}, postsToday=${posterState.postsToday}/${maxPostsPerDay}, hoursLeft=${hoursRemaining.toFixed(1)}`);
 
     if (shouldPost && canPost) {
       console.log('Creating intelligent post...');
@@ -823,9 +836,10 @@ export async function runPosterCycle(): Promise<SkillResponse> {
       results.push(`Skipped posting (chance=${(postChance*100).toFixed(0)}%, rolled=${shouldPost}, limit=${posterState.postsToday}/${maxPostsPerDay})`);
     }
 
-    // 3. Engage with posts (always) - increase engagement
+    // 3. Engage with posts (always) - using config for max votes
     console.log('Engaging with posts...');
-    const engageRes = await engageWithRelevantPosts(5); // Increased from 2 to 5
+    const maxVotes = getAgentCustomSetting('poster', 'maxVotesPerCycle', 5);
+    const engageRes = await engageWithRelevantPosts(maxVotes);
     const engageData = engageRes.data as any;
     results.push(`Engaged: ${engageData?.results?.length || 0} actions`);
 
@@ -840,6 +854,10 @@ export async function runPosterCycle(): Promise<SkillResponse> {
     console.error('[AgentPoster] Cycle error:', error);
   }
 
+  // Get limits from config for display
+  const maxPosts = POSTER_CONFIG.rateLimit.maxPerDay;
+  const maxComments = getAgentCustomSetting('poster', 'maxCommentsPerDay', 15);
+
   return {
     text: `## Agent-Poster Cycle Complete
 
@@ -848,10 +866,11 @@ export async function runPosterCycle(): Promise<SkillResponse> {
 ${results.map(r => `- ${r}`).join('\n')}
 
 **Stats:**
-- Posts today: ${posterState.postsToday}/5
-- Comments today: ${posterState.commentsToday}/15`,
+- Posts today: ${posterState.postsToday}/${maxPosts}
+- Comments today: ${posterState.commentsToday}/${maxComments}
+- Config: ${POSTER_CONFIG.name} (${POSTER_CONFIG.enabled ? 'enabled' : 'disabled'})`,
     mood: 'BULLISH',
-    data: { results, state: posterState },
+    data: { results, state: posterState, config: POSTER_CONFIG },
   };
 }
 

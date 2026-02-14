@@ -179,7 +179,7 @@ export async function smartPredict(
       direction: direction,
       platform: 'dflow',
       market_id: matchedMarket?.ticker || question.slice(0, 50).replace(/[^a-zA-Z0-9-]/g, '-').toUpperCase(),
-      market_url: matchedMarket ? `https://pond.dflow.net/market/${matchedMarket.ticker}` : undefined,
+      market_url: matchedMarket ? `https://kalshi.com/markets/${(matchedMarket.ticker || '').replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '').replace(/-\d+$/, '').replace(/-[A-Z]{1,3}$/, '').toLowerCase()}` : undefined,
       reasoning: options?.reasoning || 'No reasoning provided',
       confidence: probability > 0.8 || probability < 0.2 ? 'high' : probability > 0.6 || probability < 0.4 ? 'medium' : 'low',
     });

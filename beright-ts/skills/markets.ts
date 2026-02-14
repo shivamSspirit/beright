@@ -43,6 +43,32 @@ function setCache(key: string, data: Market[]): void {
 }
 
 /**
+ * Build Kalshi market URL from available identifiers
+ * Kalshi URLs work with /markets/{series_ticker} (lowercase) which auto-redirects
+ * Examples:
+ *   - KXGOVTSHUTDOWN-26FEB14 → https://kalshi.com/markets/kxgovtshutdown
+ *   - KXFEDCHAIRNOM-29-KW → https://kalshi.com/markets/kxfedchairnom
+ */
+function buildKalshiUrl(seriesTicker?: string, eventTicker?: string, marketTicker?: string): string {
+  // Prefer seriesTicker (from DFlow), then extract from eventTicker or marketTicker
+  let slug = seriesTicker;
+
+  if (!slug && eventTicker) {
+    // Remove numeric suffix from event ticker (e.g., KXFEDCHAIRNOM-29 → KXFEDCHAIRNOM)
+    slug = eventTicker.replace(/-\d+$/, '');
+  }
+
+  if (!slug && marketTicker) {
+    // Remove date suffix (e.g., -26FEB14) and any numeric suffix
+    slug = marketTicker.replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '').replace(/-\d+$/, '');
+  }
+
+  if (!slug) return 'https://kalshi.com';
+
+  return `https://kalshi.com/markets/${slug.toLowerCase()}`;
+}
+
+/**
  * Fetch markets from Polymarket
  */
 async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
@@ -213,7 +239,7 @@ async function fetchDFlow(query?: string, limit = 20): Promise<Market[]> {
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,
           status: (m.status === 'active' ? 'active' : 'closed') as 'active' | 'closed',
-          url: `https://kalshi.com/events/${event.ticker}`,
+          url: buildKalshiUrl(event.seriesTicker, event.ticker, m.ticker),
           // DFlow-specific: SPL token addresses for on-chain trading
           onChain: {
             yesMint: usdcAccount.yesMint || null,
@@ -267,9 +293,7 @@ async function fetchKalshiLegacy(query?: string, limit = 15): Promise<Market[]> 
     }
 
     const result = markets.slice(0, limit).map(m => {
-      // Extract event ticker from market ticker (e.g., KXGOVTSHUTDOWN-26FEB14 -> KXGOVTSHUTDOWN)
       const ticker = m.ticker || m.id || '';
-      const eventTicker = m.event_ticker || ticker.replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '');
       return {
         platform: 'kalshi' as Platform,
         marketId: ticker,
@@ -283,7 +307,7 @@ async function fetchKalshiLegacy(query?: string, limit = 15): Promise<Market[]> 
         liquidity: m.open_interest || 0,
         endDate: m.close_time ? new Date(m.close_time) : null,
         status: (m.status === 'open' ? 'active' : 'closed') as 'active' | 'closed',
-        url: `https://kalshi.com/events/${eventTicker}`,
+        url: buildKalshiUrl(undefined, m.event_ticker, ticker),
       };
     });
     setCache(cacheKey, result);
@@ -396,7 +420,7 @@ async function fetchLimitless(query?: string, limit = 15): Promise<Market[]> {
         liquidity: 0,
         endDate: m.expirationDate ? new Date(m.expirationDate) : null,
         status: (m.expired ? 'closed' : 'active') as 'active' | 'closed',
-        url: `https://limitless.exchange/${m.slug || m.id}`,
+        url: `https://limitless.exchange/markets/${m.slug || m.id}`,
       };
     });
     setCache(cacheKey, result);
@@ -557,7 +581,7 @@ export async function getDFlowHotMarkets(limit = 15): Promise<Market[]> {
         liquidity: event.liquidity || 0,
         endDate: null,
         status: 'active' as const,
-        url: `https://kalshi.com/events/${event.ticker}`,
+        url: buildKalshiUrl(event.seriesTicker, event.ticker, primaryMarket?.ticker),
       } as Market);
     }
 
@@ -652,7 +676,7 @@ export async function getHotTradeableMarkets(limit = 15): Promise<TokenizedMarke
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,
           status: 'active' as const,
-          url: `https://kalshi.com/events/${event.ticker}`,
+          url: buildKalshiUrl(event.seriesTicker, event.ticker, m.ticker),
           onChain: {
             yesMint: usdcAccount.yesMint,
             noMint: usdcAccount.noMint,
