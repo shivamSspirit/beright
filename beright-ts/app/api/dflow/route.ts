@@ -103,7 +103,7 @@ function formatEvent(event: DFlowEvent) {
     })),
 
     // External link
-    url: `https://kalshi.com/markets/${event.ticker}`,
+    url: `https://kalshi.com/events/${event.ticker}`,
   };
 }
 
@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
             rulesPrimary: market.rulesPrimary,
             rulesSecondary: market.rulesSecondary,
             tokens: getMarketTokens(market),
-            url: `https://kalshi.com/markets/${market.ticker}`,
+            url: `https://kalshi.com/events/${market.eventTicker || market.ticker.replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '')}`,
           },
         });
       }

@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
             noPct: m.no_bid,
             volume: m.volume,
             closeTime: m.close_time,
-            url: `https://kalshi.com/markets/${m.ticker}`,
+            url: `https://kalshi.com/events/${m.event_ticker || m.ticker.replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '')}`,
           })),
         });
       }

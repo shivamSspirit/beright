@@ -213,7 +213,7 @@ async function fetchDFlow(query?: string, limit = 20): Promise<Market[]> {
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,
           status: (m.status === 'active' ? 'active' : 'closed') as 'active' | 'closed',
-          url: `https://kalshi.com/markets/${m.ticker}`,
+          url: `https://kalshi.com/events/${event.ticker}`,
           // DFlow-specific: SPL token addresses for on-chain trading
           onChain: {
             yesMint: usdcAccount.yesMint || null,
@@ -266,21 +266,26 @@ async function fetchKalshiLegacy(query?: string, limit = 15): Promise<Market[]> 
       );
     }
 
-    const result = markets.slice(0, limit).map(m => ({
-      platform: 'kalshi' as Platform,
-      marketId: m.ticker || m.id,
-      title: m.title || '',
-      question: m.title || '',
-      yesPrice: (m.yes_bid || m.last_price || 0) / 100,
-      noPrice: (m.no_bid || (100 - (m.last_price || 0))) / 100,
-      yesPct: m.yes_bid || m.last_price || 0,
-      noPct: m.no_bid || (100 - (m.last_price || 0)),
-      volume: m.volume || 0,
-      liquidity: m.open_interest || 0,
-      endDate: m.close_time ? new Date(m.close_time) : null,
-      status: (m.status === 'open' ? 'active' : 'closed') as 'active' | 'closed',
-      url: `https://kalshi.com/markets/${m.ticker}`,
-    }));
+    const result = markets.slice(0, limit).map(m => {
+      // Extract event ticker from market ticker (e.g., KXGOVTSHUTDOWN-26FEB14 -> KXGOVTSHUTDOWN)
+      const ticker = m.ticker || m.id || '';
+      const eventTicker = m.event_ticker || ticker.replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '');
+      return {
+        platform: 'kalshi' as Platform,
+        marketId: ticker,
+        title: m.title || '',
+        question: m.title || '',
+        yesPrice: (m.yes_bid || m.last_price || 0) / 100,
+        noPrice: (m.no_bid || (100 - (m.last_price || 0))) / 100,
+        yesPct: m.yes_bid || m.last_price || 0,
+        noPct: m.no_bid || (100 - (m.last_price || 0)),
+        volume: m.volume || 0,
+        liquidity: m.open_interest || 0,
+        endDate: m.close_time ? new Date(m.close_time) : null,
+        status: (m.status === 'open' ? 'active' : 'closed') as 'active' | 'closed',
+        url: `https://kalshi.com/events/${eventTicker}`,
+      };
+    });
     setCache(cacheKey, result);
     return result;
   } catch (error) {
@@ -552,7 +557,7 @@ export async function getDFlowHotMarkets(limit = 15): Promise<Market[]> {
         liquidity: event.liquidity || 0,
         endDate: null,
         status: 'active' as const,
-        url: `https://kalshi.com/markets/${event.ticker}`,
+        url: `https://kalshi.com/events/${event.ticker}`,
       } as Market);
     }
 
@@ -647,7 +652,7 @@ export async function getHotTradeableMarkets(limit = 15): Promise<TokenizedMarke
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,
           status: 'active' as const,
-          url: `https://kalshi.com/markets/${m.ticker}`,
+          url: `https://kalshi.com/events/${event.ticker}`,
           onChain: {
             yesMint: usdcAccount.yesMint,
             noMint: usdcAccount.noMint,

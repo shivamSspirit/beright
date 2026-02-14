@@ -62,11 +62,23 @@ jobs:
             echo "=== PM2 Status ==="
             pm2 status
             echo ""
-            echo "=== Last 20 lines of colosseum-agent logs ==="
-            pm2 logs colosseum-agent --lines 20 --nostream || tail -20 /opt/beright/logs/colosseum-out.log 2>/dev/null || echo "No colosseum logs found"
+            echo "=== Checking log file locations ==="
+            ls -la /opt/beright/beright-ts/logs/ 2>/dev/null | head -10 || echo "No logs dir"
             echo ""
-            echo "=== Last 20 lines of agent-poster logs ==="
-            pm2 logs agent-poster --lines 20 --nostream || tail -20 /opt/beright/logs/poster-out.log 2>/dev/null || echo "No poster logs found"
+            echo "=== agent-poster stdout ==="
+            cat /opt/beright/beright-ts/logs/poster-out-5.log 2>/dev/null | tail -30 || echo "Empty or not found"
+            echo ""
+            echo "=== agent-poster stderr ==="
+            cat /opt/beright/beright-ts/logs/poster-error-5.log 2>/dev/null | tail -30 || echo "Empty or not found"
+            echo ""
+            echo "=== colosseum-agent stdout ==="
+            cat /opt/beright/beright-ts/logs/colosseum-out-4.log 2>/dev/null | tail -30 || echo "Empty or not found"
+            echo ""
+            echo "=== colosseum-agent stderr ==="
+            cat /opt/beright/beright-ts/logs/colosseum-error-4.log 2>/dev/null | tail -30 || echo "Empty or not found"
+            echo ""
+            echo "=== Quick test: run agentPoster once ==="
+            cd /opt/beright/beright-ts && timeout 30 npx ts-node --transpile-only skills/agentPoster.ts status 2>&1 | head -20 || echo "Test failed or timed out"
 
   logs:
     runs-on: ubuntu-latest
