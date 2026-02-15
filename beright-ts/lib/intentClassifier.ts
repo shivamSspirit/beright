@@ -59,7 +59,8 @@ const INTENT_PATTERNS: IntentPattern[] = [
     intent: 'GREETING',
     agent: 'commander',
     patterns: [
-      /^(hi|hey|hello|gm|gn|yo|sup|good\s*(morning|afternoon|evening))[\s!.,]*$/i,
+      // Match single or repeated greetings: "gm", "gm gm", "hey hey", "hello!", etc.
+      /^(hi|hey|hello|gm|gn|yo|sup|hola|greetings|good\s*(morning|afternoon|evening|day))(\s+(hi|hey|hello|gm|gn|yo|sup))*[\s!.,]*$/i,
     ],
     keywords: [],
     priority: 100,
