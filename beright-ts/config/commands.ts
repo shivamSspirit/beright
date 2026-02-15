@@ -461,3 +461,61 @@ MEMORY & LEARNING
 
 Just ask me anything about prediction markets!
 `;
+
+/**
+ * Get help for a specific command
+ * Extracts command name from queries like "what is intel command for"
+ */
+export function getCommandHelp(query: string): string | null {
+  // Normalize query
+  const normalized = query.toLowerCase().trim();
+
+  // Extract command name from various patterns
+  // "what is intel command for" -> "intel"
+  // "what does /hot do" -> "hot"
+  // "explain the arb command" -> "arb"
+  const patterns = [
+    // "what is/does /command for/do" - with slash
+    /(?:what\s+(?:is|does))\s+(?:the\s+)?\/(\w+)\s*(?:command)?\s*(?:for|do)?/i,
+    // "what is/does command for/do" - without slash
+    /(?:what\s+(?:is|does))\s+(?:the\s+)?(\w+)\s+command\s*(?:for|do)?/i,
+    // "explain the command"
+    /(?:explain|tell\s+me\s+about)\s+(?:the\s+)?\/?([\w-]+)\s*(?:command)?/i,
+    // "command is for what"
+    /\/?([\w-]+)\s+command\s+(?:is\s+)?(?:for|do|does|mean)/i,
+  ];
+
+  let cmdName: string | null = null;
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match && match[1]) {
+      // Remove leading slash if present
+      cmdName = match[1].replace(/^\//, '');
+      break;
+    }
+  }
+
+  if (!cmdName) return null;
+
+  // Find the command in both COMMANDS and MVP_COMMANDS arrays
+  const allCommands = [...COMMANDS, ...MVP_COMMANDS];
+  const cmd = allCommands.find(c =>
+    c.name === `/${cmdName}` ||
+    c.name.toLowerCase() === `/${cmdName.toLowerCase()}`
+  );
+
+  if (!cmd) {
+    return `I don't recognize the command "/${cmdName}". Type /help to see all available commands.`;
+  }
+
+  // Build a helpful response
+  return `*/${cmdName.toUpperCase()}* Command
+
+📝 *What it does:* ${cmd.description}
+
+💡 *Usage:* \`${cmd.usage}\`
+
+🤖 *Handled by:* ${cmd.agent} Agent
+
+Try it now: \`${cmd.usage.replace('<topic>', 'bitcoin').replace('<question>', 'Will BTC hit 100k?').replace('<market>', 'BTC-100K')}\``;
+}

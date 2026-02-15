@@ -73,8 +73,13 @@ const INTENT_PATTERNS: IntentPattern[] = [
     patterns: [
       /^(help|how\s+do\s+i|what\s+can\s+you|commands|menu)[\s?]*$/i,
       /^what\s+(do\s+you\s+do|are\s+you|is\s+this)/i,
+      // Catch questions about commands: "what is X command", "what is X command for", "what does X do"
+      /\b(what\s+is|what\s+does|how\s+does|explain)\b.*(command|\/\w+)\b/i,
+      /\b(command|\/\w+)\b.*(for|do|does|mean|used\s+for)/i,
+      // "what is /intel for", "what does /hot do"
+      /^what\s+(is|does)\s+\/?\w+\s+(for|do)/i,
     ],
-    keywords: ['help', 'how to', 'what can you'],
+    keywords: ['help', 'how to', 'what can you', 'command for', 'commands'],
     priority: 99,
   },
 

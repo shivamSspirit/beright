@@ -4,7 +4,7 @@
  */
 
 import { SkillResponse, TelegramMessage } from '../types/index';
-import { COMMANDS, KEYWORD_TRIGGERS, HELP_TEXT } from '../config/commands';
+import { COMMANDS, KEYWORD_TRIGGERS, HELP_TEXT, getCommandHelp } from '../config/commands';
 import { searchMarkets, formatMarkets, compareOdds, formatComparison, getHotMarkets } from './markets';
 import { arbitrage } from './arbitrage';
 import {
@@ -2660,6 +2660,12 @@ Or just ask about any market topic!`,
           }
 
           case 'HELP': {
+            // Check if asking about a specific command
+            const specificHelp = getCommandHelp(text);
+            if (specificHelp) {
+              return { text: specificHelp, mood: 'EDUCATIONAL' };
+            }
+            // Otherwise show full help
             return { text: HELP_TEXT, mood: 'NEUTRAL' };
           }
 
