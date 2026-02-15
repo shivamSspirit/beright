@@ -445,8 +445,10 @@ IDENTITY
 /profile - View your profile & stats
 
 NOTIFICATIONS
+/subscribe-all - Subscribe to ALL alerts (recommended)
 /subscribe - Get morning briefs & alerts
 /unsubscribe - Stop all alerts
+/agent - 24/7 AI agent (big movers, closing soon, etc)
 
 COPY TRADING
 /follow @user - Follow a forecaster
