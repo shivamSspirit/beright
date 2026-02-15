@@ -185,18 +185,75 @@ export const COMMANDS: Command[] = [
   },
 ];
 
-// Keyword triggers for routing
+// Keyword triggers for routing (expanded from 10 to 60+)
 export const KEYWORD_TRIGGERS: Record<string, string> = {
+  // ARBITRAGE (price discrepancies)
   arbitrage: 'ARBITRAGE',
+  arb: 'ARBITRAGE',
   spread: 'ARBITRAGE',
+  mispriced: 'ARBITRAGE',
+  mispricing: 'ARBITRAGE',
+  'price difference': 'ARBITRAGE',
+  discrepancy: 'ARBITRAGE',
+  inefficiency: 'ARBITRAGE',
+  'free money': 'ARBITRAGE',
+
+  // WHALE (smart money tracking)
   whale: 'WHALE',
+  whales: 'WHALE',
   'smart money': 'WHALE',
+  'big players': 'WHALE',
+  'large positions': 'WHALE',
+  institutional: 'WHALE',
+  'big bets': 'WHALE',
+  "who's buying": 'WHALE',
+
+  // RESEARCH (analysis)
   analyze: 'RESEARCH',
+  analysis: 'RESEARCH',
   research: 'RESEARCH',
+  'deep dive': 'RESEARCH',
+  investigate: 'RESEARCH',
   'what do you think': 'RESEARCH',
+  'your take': 'RESEARCH',
+  probability: 'RESEARCH',
+  likelihood: 'RESEARCH',
+  forecast: 'RESEARCH',
+  'base rate': 'RESEARCH',
+  calibration: 'RESEARCH',
+
+  // INTEL (news & social)
   news: 'INTEL',
+  headlines: 'INTEL',
   twitter: 'INTEL',
   reddit: 'INTEL',
+  social: 'INTEL',
+  sentiment: 'INTEL',
+  "what's happening": 'INTEL',
+  latest: 'INTEL',
+  updates: 'INTEL',
+
+  // SCOUT (hot markets, trending)
+  hot: 'COMMANDER',
+  trending: 'COMMANDER',
+  popular: 'COMMANDER',
+  buzz: 'COMMANDER',
+  hype: 'COMMANDER',
+  volume: 'COMMANDER',
+  moving: 'COMMANDER',
+  momentum: 'COMMANDER',
+  'top markets': 'COMMANDER',
+  movers: 'COMMANDER',
+  "what's hot": 'COMMANDER',
+
+  // EXECUTOR (trading)
+  buy: 'EXECUTOR',
+  sell: 'EXECUTOR',
+  trade: 'EXECUTOR',
+  swap: 'EXECUTOR',
+  quote: 'EXECUTOR',
+  'price check': 'EXECUTOR',
+  execute: 'EXECUTOR',
 };
 
 // Intelligence & Feedback Commands (Phase 1 Automation)

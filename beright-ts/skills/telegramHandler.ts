@@ -58,6 +58,9 @@ import { db } from '../lib/supabase/client';
 import { spawnAgent, AgentTask } from '../lib/agentSpawner';
 import { getAgentForCommand, AGENTS } from '../config/agents';
 
+// Smart Intent Classifier
+import { classifyIntent, getIntentSuggestions, IntentResult } from '../lib/intentClassifier';
+
 // Market watcher for auto-resolution
 import { getMarketWatcher } from '../services/marketWatcher';
 
@@ -2636,38 +2639,188 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
       }
 
       default: {
-        // Check if this looks like a market query or just random text
-        const response = handleFreeformInput(text);
-        if (response) {
-          return response;
-        }
+        // Smart Intent Classification
+        const intentResult = classifyIntent(text);
+        console.log(`[Intent] "${text}" → ${intentResult.intent} (${Math.round(intentResult.confidence * 100)}%) - ${intentResult.reasoning}`);
 
-        // Only search markets if it looks like a legitimate topic
-        if (looksLikeMarketQuery(text)) {
-          const markets = await searchMarkets(text);
-          if (markets.length > 0) {
-            return { text: formatMarkets(markets, `Markets: ${text}`), mood: 'NEUTRAL', data: markets };
+        // Route based on detected intent
+        switch (intentResult.intent) {
+          case 'GREETING': {
+            return {
+              text: `Hey! I'm BeRight, your prediction market intelligence agent.
+
+What would you like to explore?
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /brief - Morning briefing
+
+Or just ask about any market topic!`,
+              mood: 'NEUTRAL',
+            };
           }
-        }
 
-        // Default: explain what the bot does
-        return {
-          text: `I'm BeRight, your prediction market intelligence agent.
+          case 'HELP': {
+            return { text: HELP_TEXT, mood: 'NEUTRAL' };
+          }
 
-I help you find opportunities and make better forecasts.
+          case 'EDUCATIONAL': {
+            // Educational query - provide learning content
+            const query = intentResult.extractedQuery || text;
+            const researchResult = await research(query);
+            return researchResult;
+          }
+
+          case 'HOT_TRENDING': {
+            // User wants to see what's trending
+            const hotMarkets = await getHotMarkets();
+            if (hotMarkets.length > 0) {
+              return { text: formatMarkets(hotMarkets, '🔥 Hot Markets'), mood: 'BULLISH', data: hotMarkets };
+            }
+            return { text: 'No hot markets found right now. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
+          }
+
+          case 'ARBITRAGE': {
+            // User wants arbitrage opportunities
+            const query = intentResult.extractedQuery || '';
+            const arbResult = await arbitrage(query || 'top');
+            return arbResult;
+          }
+
+          case 'WHALE_TRACKING': {
+            // User wants whale activity
+            const whaleResult = await whaleWatch();
+            return whaleResult;
+          }
+
+          case 'NEWS_INTEL': {
+            // User wants news/intel
+            const query = intentResult.extractedQuery || '';
+            if (query) {
+              const intelResult = await intelReport(query);
+              return intelResult;
+            }
+            return { text: 'What topic would you like intel on? Try: /intel <topic>', mood: 'NEUTRAL' };
+          }
+
+          case 'RESEARCH': {
+            // User wants deep analysis
+            const query = intentResult.extractedQuery || '';
+            if (query) {
+              const researchResult = await research(query);
+              return researchResult;
+            }
+            return { text: 'What would you like me to research? Try: /research <topic>', mood: 'NEUTRAL' };
+          }
+
+          case 'ODDS_COMPARE': {
+            // User wants to compare odds
+            const query = intentResult.extractedQuery || '';
+            if (query) {
+              const comparison = await compareOdds(query);
+              return { text: formatComparison(comparison), mood: 'NEUTRAL', data: comparison };
+            }
+            return { text: 'What market would you like to compare odds for? Try: /odds <topic>', mood: 'NEUTRAL' };
+          }
+
+          case 'TRADE_QUOTE': {
+            // User wants a trade quote
+            return {
+              text: `For trading, use these commands:
+• /buy <ticker> YES|NO <amount> - Get quote
+• /trade <ticker> YES|NO <amount> - Place trade
+• /swap <amount> <from> <to> - Token swap
+
+Example: /buy TRUMP-2024 YES 50`,
+              mood: 'NEUTRAL',
+            };
+          }
+
+          case 'PORTFOLIO': {
+            // User wants portfolio info
+            if (!telegramId) {
+              return { text: 'Could not identify your account', mood: 'ERROR' };
+            }
+            const portfolioResult = await handlePortfolioCmd(telegramId);
+            return portfolioResult;
+          }
+
+          case 'ALERTS': {
+            // User wants alerts info
+            return {
+              text: `Price Alerts:
+• /alert <market> above/below <price> - Set alert
+• /alert - View all alerts
+• /subscribe - Get morning briefs
+
+Example: /alert bitcoin above 95`,
+              mood: 'NEUTRAL',
+            };
+          }
+
+          case 'PREDICTION': {
+            // User wants to make a prediction
+            return {
+              text: `To make a prediction:
+/predict <question> <probability> YES|NO
+
+Example: /predict "Will Bitcoin hit 100k by March?" 65 YES
+
+Your predictions are tracked for calibration scoring.`,
+              mood: 'NEUTRAL',
+            };
+          }
+
+          case 'CALIBRATION': {
+            // User wants calibration stats
+            const calResult = await calibration();
+            return calResult;
+          }
+
+          case 'MARKET_SEARCH': {
+            // User is searching for markets
+            const query = intentResult.extractedQuery || text;
+            const markets = await searchMarkets(query);
+            if (markets.length > 0) {
+              return { text: formatMarkets(markets, `Markets: ${query}`), mood: 'NEUTRAL', data: markets };
+            }
+            // No markets found, provide suggestions
+            const suggestions = getIntentSuggestions('MARKET_SEARCH');
+            return {
+              text: `No markets found for "${query}".
+
+Try these instead:
+${suggestions.map(s => `• ${s}`).join('\n')}
+
+Or ask about a broader topic like "bitcoin", "elections", or "fed".`,
+              mood: 'NEUTRAL',
+            };
+          }
+
+          case 'UNKNOWN':
+          default: {
+            // Try to be helpful even with unknown intent
+            // First check if it looks like a market query
+            const query = intentResult.extractedQuery || text;
+            if (query.length > 2) {
+              const markets = await searchMarkets(query);
+              if (markets.length > 0) {
+                return { text: formatMarkets(markets, `Markets: ${query}`), mood: 'NEUTRAL', data: markets };
+              }
+            }
+
+            // Provide contextual help
+            const suggestions = getIntentSuggestions('UNKNOWN');
+            return {
+              text: `I'm not sure what you're looking for. I'm BeRight, your prediction market intelligence agent.
 
 Try these:
-• /hot - Trending markets
-• /brief - Morning briefing
-• /arb - Arbitrage opportunities
-• /research <topic> - Deep analysis
-• /predict - Make a prediction
+${suggestions.map(s => `• ${s}`).join('\n')}
 
-Or ask me about a specific topic like "bitcoin" or "fed rate".
-
-Type /help for all commands.`,
-          mood: 'NEUTRAL',
-        };
+Or ask me about a specific topic like "bitcoin" or "fed rate".`,
+              mood: 'NEUTRAL',
+            };
+          }
+        }
       }
     }
 
