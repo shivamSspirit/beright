@@ -167,7 +167,7 @@ function generateInsight(data: Partial<WeeklySummaryData>): string {
 export async function generateWeeklySummary(userId: string): Promise<WeeklySummaryData | null> {
   try {
     // Get user info
-    const user = await db.users.get(userId);
+    const user = await db.users.getById(userId);
     if (!user) return null;
 
     // Get this week's predictions

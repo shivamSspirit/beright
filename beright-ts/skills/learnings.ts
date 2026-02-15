@@ -436,4 +436,5 @@ if (require.main === module) {
   }).catch(console.error);
 }
 
+export type { LearningPattern };
 export { analyzePrediction, identifyPatterns };

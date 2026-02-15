@@ -330,7 +330,7 @@ export function getAgentRateLimit(agentId: string): AgentOperationalConfig['rate
  * List all enabled agents
  */
 export function listEnabledAgents(): string[] {
-  return Object.keys(AGENT_CONFIG).filter(id => AGENT_CONFIG[id].enabled);
+  return Object.keys(AGENT_CONFIG).filter(id => AGENT_CONFIG[id]?.enabled);
 }
 
 /**

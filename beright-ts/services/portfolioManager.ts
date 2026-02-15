@@ -14,7 +14,7 @@
 
 import { EventEmitter } from 'events';
 import { db } from '../lib/supabase/client';
-import { getMarketDetails, DFlowMarket } from '../lib/dflow/api';
+import { getMarket, DFlowMarket } from '../lib/dflow/api';
 import { interpretBrierScore } from '../lib/onchain/memo';
 
 // Types
@@ -195,11 +195,12 @@ export class PortfolioManager extends EventEmitter {
 
       if (pred.market_id) {
         try {
-          const market = await getMarketDetails(pred.market_id);
-          if (market) {
+          const result = await getMarket(pred.market_id);
+          if (result.success && result.data) {
+            const market = result.data;
             currentPrice = parseFloat(market.yesBid || String(pred.predicted_probability));
             marketVolume = market.volume || 0;
-            marketStatus = market.status === 'resolved' ? 'resolved' : 'active';
+            marketStatus = (market.status === 'determined' || market.status === 'finalized') ? 'resolved' : 'active';
             if (market.closeTime) {
               expiresAt = new Date(market.closeTime);
             }
@@ -727,4 +728,5 @@ if (require.main === module) {
   }
 }
 
-export { Position, CategoryExposure, PortfolioSummary, ExitRecommendation, PORTFOLIO_CONFIG };
+export type { Position, CategoryExposure, PortfolioSummary, ExitRecommendation };
+export { PORTFOLIO_CONFIG };

@@ -62,6 +62,10 @@ export const GET = withMiddleware(
       const operational = operationalConfigs[id];
       const definition = AGENTS[id];
 
+      if (!operational) {
+        return null;
+      }
+
       return {
         id,
         name: operational.name,
@@ -75,7 +79,7 @@ export const GET = withMiddleware(
         model: definition?.model || null,
         capabilities: definition?.capabilities || [],
       };
-    });
+    }).filter(Boolean);
 
     return NextResponse.json({
       success: true,

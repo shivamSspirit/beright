@@ -744,4 +744,5 @@ if (require.main === module) {
   }
 }
 
-export { CalibrationReport, CategoryCalibration, CalibrationBucket, CALIBRATION_CONFIG };
+export type { CalibrationReport, CategoryCalibration, CalibrationBucket };
+export { CALIBRATION_CONFIG };

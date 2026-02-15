@@ -506,7 +506,7 @@ export class AutonomousReporting extends EventEmitter {
     return {
       timestamp: new Date().toISOString(),
       userId: this.userId,
-      agentStatus: orchestratorState?.mode || 'stopped',
+      agentStatus: (orchestratorState?.mode === 'idle' ? 'paused' : orchestratorState?.mode) || 'stopped',
       uptimeHours,
       todayPredictions: orchestratorState?.stats.predictionsToday || 0,
       todayResolved: 0, // Would need to track
@@ -741,4 +741,5 @@ if (require.main === module) {
   }
 }
 
-export { DailyReport, WeeklyReport, MonthlyReport, RealtimeDashboard, REPORTING_CONFIG };
+export type { DailyReport, WeeklyReport, MonthlyReport, RealtimeDashboard };
+export { REPORTING_CONFIG };

@@ -86,7 +86,7 @@ async function enrichWithMarketData(
       const result = await getMarket(ticker);
       if (result.success && result.data) {
         marketData.set(ticker, {
-          closeTime: result.data.closeTime,
+          closeTime: result.data.closeTime ? new Date(result.data.closeTime).toISOString() : undefined,
           title: result.data.title,
           yesPrice: result.data.yesBid ? parseFloat(result.data.yesBid) : undefined,
         });

@@ -11,10 +11,19 @@
  */
 
 import { EventEmitter } from 'events';
-import { searchEvents, getHotMarkets, calculateBaseRate, DFlowMarket } from '../lib/dflow/api';
+import { getHotMarkets, calculateBaseRate } from '../lib/dflow/api';
 import { getIntelligence } from '../skills/intelligence';
 
 // Types
+interface HotMarket {
+  ticker: string;
+  title: string;
+  yesPrice: number;
+  noPrice: number;
+  volume: number;
+  closeTime?: string;
+}
+
 interface OpportunityScore {
   ticker: string;
   title: string;
@@ -86,9 +95,9 @@ function categorizeMarket(title: string): string {
 /**
  * Calculate opportunity score for a market
  */
-async function scoreOpportunity(market: DFlowMarket): Promise<OpportunityScore | null> {
+async function scoreOpportunity(market: HotMarket): Promise<OpportunityScore | null> {
   try {
-    const currentPrice = parseFloat(market.yesBid || '0.5');
+    const currentPrice = market.yesPrice || 0.5;
     const category = categorizeMarket(market.title);
 
     // Skip if below minimum volume
@@ -189,7 +198,7 @@ async function scoreOpportunity(market: DFlowMarket): Promise<OpportunityScore |
       category,
       currentPrice,
       volume: market.volume || 0,
-      closeTime: market.closeTime,
+      closeTime: market.closeTime ? new Date(market.closeTime).toISOString() : undefined,
 
       baseRateDivergence: divergence,
       confidence,
@@ -413,4 +422,5 @@ if (require.main === module) {
   }
 }
 
-export { OpportunityScore, ScanResult, SCAN_CONFIG, categorizeMarket, scoreOpportunity };
+export type { OpportunityScore, ScanResult };
+export { SCAN_CONFIG, categorizeMarket, scoreOpportunity };

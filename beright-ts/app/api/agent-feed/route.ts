@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
 
           // Also send any new decisions
           const recent = getRecentDecisions(1);
-          if (recent.length > 0) {
-            const latest = recent[recent.length - 1];
+          const latest = recent[recent.length - 1];
+          if (latest) {
             const event = {
               type: latest.memo.t,
               action: latest.memo.action,

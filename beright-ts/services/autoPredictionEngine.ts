@@ -344,7 +344,7 @@ export class AutoPredictionEngine extends EventEmitter {
         }
       );
 
-      if (result.success && result.prediction) {
+      if (result.prediction) {
         record.success = true;
         record.predictionId = result.prediction.id;
 
@@ -363,7 +363,7 @@ export class AutoPredictionEngine extends EventEmitter {
           adjustedProbability,
         });
       } else {
-        record.error = result.error || 'Unknown error';
+        record.error = 'Prediction creation failed';
         console.log(`[AutoPredict] Failed to predict: ${record.error}`);
       }
     } catch (err) {
@@ -604,4 +604,5 @@ if (require.main === module) {
   }
 }
 
-export { ENGINE_CONFIG, PredictionRecord, EngineState, EngineStats };
+export type { PredictionRecord, EngineState, EngineStats };
+export { ENGINE_CONFIG };

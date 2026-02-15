@@ -14,7 +14,7 @@
 
 import { MarketWatcher, getMarketWatcher } from './marketWatcher';
 import { supabase } from '../lib/supabase/client';
-import { processNotificationQueue } from './notificationDelivery';
+import { processNotificationQueue as processNotifications } from './notificationDelivery';
 import { checkAndQueueAlerts } from './marketAlerts';
 import { generateAllWeeklySummaries } from './weeklySummary';
 
@@ -158,7 +158,7 @@ async function start(): Promise<void> {
 
   // Start notification processor
   notificationInterval = setInterval(async () => {
-    const result = await processNotificationQueue({ limit: CONFIG.maxConcurrentNotifications });
+    const result = await processNotifications({ limit: CONFIG.maxConcurrentNotifications });
     if (result.processed > 0) {
       console.log(`[Automation] Processed ${result.succeeded}/${result.processed} notifications`);
     }
