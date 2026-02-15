@@ -152,11 +152,19 @@ function inferOutcomes(market: Market): string[] {
 function categorizeMarket(title: string): MarketCategory {
   const lower = title.toLowerCase();
 
-  // Politics patterns
+  // Politics & Geopolitics patterns
   const politicsPatterns = [
+    // US Politics
     /trump|biden|election|president|congress|senate|house|vote|poll/i,
     /democrat|republican|gop|dnc|rnc|governor|mayor|primary/i,
     /impeach|indict|convicted|resign|cabinet|secretary/i,
+    // Geopolitics - regime, government, international relations
+    /regime\s*(change|fall|collapse)|government\s*(fall|collapse|overthrow)/i,
+    /revolution|coup|civil\s*war|uprising|protest|sanction/i,
+    /iran|russia|china|ukraine|taiwan|israel|gaza|north\s*korea/i,
+    /nato|un\b|united\s*nations|eu\b|european\s*union/i,
+    /war\b|invasion|conflict|treaty|diplomatic|foreign\s*policy/i,
+    /ayatollah|khamenei|supreme\s*leader|dictator|authoritarian/i,
   ];
   if (politicsPatterns.some(p => p.test(lower))) return 'politics';
 
@@ -175,11 +183,27 @@ function categorizeMarket(title: string): MarketCategory {
   ];
   if (cryptoPatterns.some(p => p.test(lower))) return 'crypto';
 
-  // Sports patterns
+  // Sports patterns - comprehensive detection including European football
   const sportsPatterns = [
+    // American sports
     /super\s*bowl|nfl|nba|mlb|nhl|world\s*series|playoffs/i,
     /championship|finals|tournament|olympics|world\s*cup/i,
-    /win\s+the|beat|defeat|score|game|match|vs\b/i,
+    // European football leagues
+    /laliga|la\s*liga|serie\s*a|bundesliga|ligue\s*1|premier\s*league|eredivisie/i,
+    /champions\s*league|europa\s*league|conference\s*league|uefa/i,
+    // Spanish football teams
+    /real\s*madrid|barcelona|atletico|sevilla|valencia|villarreal|athletic\s*bilbao/i,
+    /rayo\s*vallecano|real\s*sociedad|real\s*betis|getafe|osasuna|celta|mallorca/i,
+    /girona|alaves|las\s*palmas|cadiz|almeria|granada|leganes|espanyol/i,
+    // English football teams
+    /manchester\s*(united|city)|liverpool|chelsea|arsenal|tottenham|spurs/i,
+    /newcastle|west\s*ham|aston\s*villa|brighton|crystal\s*palace|everton|fulham/i,
+    // Other major European clubs
+    /bayern\s*munich|borussia\s*dortmund|psg|paris\s*saint|juventus|inter\s*milan/i,
+    /ac\s*milan|napoli|roma|lazio|ajax|porto|benfica/i,
+    // General football/soccer terms
+    /football|soccer|goal|striker|midfielder|goalkeeper|premier|league\s*match/i,
+    /win\s+on\s+\d{4}-\d{2}-\d{2}|match\s+\d{4}/i, // "win on 2026-02-07" pattern
   ];
   if (sportsPatterns.some(p => p.test(lower))) return 'sports';
 
@@ -378,32 +402,42 @@ function extractEntities(title: string): ExtractedEntities {
 
 /**
  * Quick rejection filters - these must pass before expensive comparisons
- * NOTE: We're lenient here - detailed validation happens in equivalence scoring
+ * STRICT MATCHING: Categories must match or be truly related (not just "other")
  */
 export function passesHardFilters(
   metaA: MarketMetadata,
   metaB: MarketMetadata,
   config: ArbitrageConfig = DEFAULT_ARBITRAGE_CONFIG
 ): { passes: boolean; reason?: string } {
-  // Allow cross-category if they're related (e.g., politics + economics)
+  // STRICT category matching - only truly related topics can cross-match
+  // Sports and politics are NEVER related and should NEVER match
   const relatedCategories: Record<MarketCategory, MarketCategory[]> = {
-    politics: ['economics', 'other'],
-    economics: ['politics', 'crypto', 'other'],
-    crypto: ['economics', 'tech', 'other'],
-    tech: ['crypto', 'science', 'other'],
-    sports: ['entertainment', 'other'],
-    entertainment: ['sports', 'other'],
-    science: ['tech', 'other'],
-    other: ['politics', 'economics', 'crypto', 'tech', 'sports', 'entertainment', 'science'],
+    politics: ['economics'], // Politics and economics often overlap (Fed policy, trade)
+    economics: ['politics', 'crypto'], // Crypto is economics-adjacent
+    crypto: ['economics', 'tech'], // Crypto overlaps with both
+    tech: ['crypto', 'science'], // Tech overlaps with science
+    sports: [], // Sports should ONLY match sports - no cross-category
+    entertainment: [], // Entertainment should ONLY match entertainment
+    science: ['tech'], // Science overlaps with tech
+    other: [], // "Other" should NOT be a wildcard - require same category
   };
 
-  // Strict category check only if neither is 'other'
-  if (metaA.category !== metaB.category &&
-      metaA.category !== 'other' && metaB.category !== 'other') {
-    const related = relatedCategories[metaA.category] || [];
-    if (!related.includes(metaB.category)) {
-      return { passes: false, reason: `Category mismatch: ${metaA.category} vs ${metaB.category}` };
+  // Categories must either match exactly OR be in the related list
+  if (metaA.category !== metaB.category) {
+    const relatedA = relatedCategories[metaA.category] || [];
+    const relatedB = relatedCategories[metaB.category] || [];
+
+    // Neither direction allows this cross-category match
+    if (!relatedA.includes(metaB.category) && !relatedB.includes(metaA.category)) {
+      return { passes: false, reason: `Category mismatch: ${metaA.category} vs ${metaB.category} (not related)` };
     }
+  }
+
+  // Extra strict: if one is "other" and the other is a specific category, reject
+  // This prevents random uncategorized markets from matching with specific ones
+  if ((metaA.category === 'other' && metaB.category !== 'other') ||
+      (metaA.category !== 'other' && metaB.category === 'other')) {
+    return { passes: false, reason: `Category mismatch: ${metaA.category} vs ${metaB.category} (one is uncategorized)` };
   }
 
   // Must be same outcome type
@@ -667,6 +701,21 @@ export function calculateEquivalence(
   // Check for critical failures
   if (entityComparison.conflicting.length > 0 && entityComparison.matching.length === 0) {
     disqualifiers.push('No matching entities and conflicting entities detected');
+  }
+
+  // STRICT: Require at least SOME entity overlap OR very high title similarity
+  // This prevents matching completely unrelated markets with similar wording
+  const hasEntityOverlap = entityComparison.matching.length > 0;
+  const hasHighTitleSimilarity = titleSimilarity >= 0.75;
+
+  if (!hasEntityOverlap && !hasHighTitleSimilarity) {
+    // No matching entities and low title similarity = likely different markets
+    disqualifiers.push('No entity overlap and insufficient title similarity');
+  }
+
+  // Additional: If title similarity is very low, always reject
+  if (titleSimilarity < 0.30) {
+    disqualifiers.push(`Title similarity too low: ${(titleSimilarity * 100).toFixed(0)}%`);
   }
 
   // Calculate overall score

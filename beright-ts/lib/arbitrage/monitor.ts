@@ -158,11 +158,11 @@ export async function refreshRegistry(
 
         if (marketsA.length === 0 || marketsB.length === 0) continue;
 
-        // Use lower threshold for registry (we'll validate on each scan)
+        // Use moderate threshold for registry (hard filters will reject unrelated markets)
         const pairs = matchMarkets(marketsA, marketsB, {
           ...config,
-          minEquivalenceScore: 0.30, // Lower threshold for registry
-          minTitleSimilarity: 0.20,
+          minEquivalenceScore: 0.50, // Moderate threshold for registry candidates
+          minTitleSimilarity: 0.35,  // Require some title overlap
         });
 
         for (const pair of pairs) {

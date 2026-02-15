@@ -45,9 +45,9 @@ export async function arbitrageV2(query?: string): Promise<SkillResponse> {
       platforms: ['polymarket', 'kalshi', 'manifold'],
       arbConfig: {
         ...DEFAULT_ARBITRAGE_CONFIG,
-        // LENIENT thresholds - show more, let confidence grade guide user
-        minEquivalenceScore: 0.35, // Same as legacy - 35%
-        minTitleSimilarity: 0.25,  // 25% title similarity
+        // STRICT thresholds - only show high-confidence matches
+        minEquivalenceScore: 0.70, // Require 70% market equivalence
+        minTitleSimilarity: 0.50,  // 50% title similarity
         minNetProfitPct: 0.02,     // 2% minimum after fees
         minGrossProfitPct: 0.03,   // 3% minimum gross
         maxDateDriftDays: 60,      // 60 days tolerance

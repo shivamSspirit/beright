@@ -109,8 +109,11 @@ async function broadcastAlert(message: string): Promise<void> {
 export async function startArbMonitor(intervalMs = 60000): Promise<SkillResponse> {
   const config = {
     ...DEFAULT_ARBITRAGE_CONFIG,
-    minEquivalenceScore: 0.35,
-    minTitleSimilarity: 0.25,
+    // STRICT: Require high confidence matches only
+    // 70% equivalence = markets must be genuinely about the same topic
+    // 50% title similarity = titles must share significant overlap
+    minEquivalenceScore: 0.70,
+    minTitleSimilarity: 0.50,
     minNetProfitPct: 0.02,
   };
 

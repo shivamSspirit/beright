@@ -40,8 +40,9 @@ export const GET = withMiddleware(
       platforms: ['polymarket', 'kalshi', 'manifold'],
       arbConfig: {
         ...DEFAULT_ARBITRAGE_CONFIG,
-        minEquivalenceScore: 0.35,
-        minTitleSimilarity: 0.25,
+        // STRICT: Require high confidence market matches
+        minEquivalenceScore: 0.70,
+        minTitleSimilarity: 0.50,
         minNetProfitPct: minSpread,
         maxDateDriftDays: 60,
       },
