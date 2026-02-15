@@ -43,29 +43,77 @@ function setCache(key: string, data: Market[]): void {
 }
 
 /**
- * Build Kalshi market URL from available identifiers
- * Kalshi URLs work with /markets/{series_ticker} (lowercase) which auto-redirects
- * Examples:
- *   - KXGOVTSHUTDOWN-26FEB14 → https://kalshi.com/markets/kxgovtshutdown
- *   - KXFEDCHAIRNOM-29-KW → https://kalshi.com/markets/kxfedchairnom
+ * Slugify a string for URL use
+ * Converts "PGA Tour Championship" → "pga-tour-championship"
  */
-function buildKalshiUrl(seriesTicker?: string, eventTicker?: string, marketTicker?: string): string {
-  // Prefer seriesTicker (from DFlow), then extract from eventTicker or marketTicker
-  let slug = seriesTicker;
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')  // Remove special chars
+    .replace(/\s+/g, '-')       // Replace spaces with dashes
+    .replace(/-+/g, '-')        // Collapse multiple dashes
+    .replace(/^-|-$/g, '');     // Remove leading/trailing dashes
+}
 
-  if (!slug && eventTicker) {
-    // Remove numeric suffix from event ticker (e.g., KXFEDCHAIRNOM-29 → KXFEDCHAIRNOM)
-    slug = eventTicker.replace(/-\d+$/, '');
+/**
+ * Build Kalshi market URL from available identifiers
+ * Full format: https://kalshi.com/markets/{series_ticker}/{event_slug}/{market_ticker}
+ * Example: https://kalshi.com/markets/kxpgatour/pga-tour/kxpgatour-atpbp26
+ */
+function buildKalshiUrl(
+  seriesTicker?: string,
+  eventTicker?: string,
+  marketTicker?: string,
+  eventTitle?: string
+): string {
+  // Get series ticker (first part of URL)
+  let series = seriesTicker;
+  if (!series && eventTicker) {
+    // Extract from event ticker (e.g., KXFEDCHAIRNOM-29 → KXFEDCHAIRNOM)
+    series = eventTicker.replace(/-\d+.*$/, '');
+  }
+  if (!series && marketTicker) {
+    // Extract from market ticker (e.g., KXPGATOUR-ATPBP26 → KXPGATOUR)
+    series = marketTicker.split('-')[0];
+  }
+  if (!series) return 'https://kalshi.com';
+
+  // Get market ticker (last part of URL)
+  const market = marketTicker || eventTicker || '';
+
+  // Create event slug from title if available
+  // If we have a good title, slugify it for the middle segment
+  let eventSlug = '';
+  if (eventTitle) {
+    // Remove common suffixes like "by Feb 28" or "in 2026"
+    let cleanTitle = eventTitle
+      .replace(/\s*(by|in|on|before|after)\s+\w+\s*\d+.*$/i, '')
+      .replace(/\s*\?\s*$/, '')
+      .trim();
+
+    // If title is too long, use a shorter version
+    if (cleanTitle.length > 50) {
+      cleanTitle = cleanTitle.slice(0, 50).replace(/-+$/, '');
+    }
+    eventSlug = slugify(cleanTitle);
   }
 
-  if (!slug && marketTicker) {
-    // Remove date suffix (e.g., -26FEB14) and any numeric suffix
-    slug = marketTicker.replace(/-\d{1,2}[A-Z]{3}\d{2}$/, '').replace(/-\d+$/, '');
+  // Build URL with available parts
+  // Full format: /markets/{series}/{event-slug}/{market-ticker}
+  // Fallback: /markets/{series} (Kalshi will redirect)
+  const seriesLower = series.toLowerCase();
+  const marketLower = market.toLowerCase();
+
+  if (eventSlug && marketLower) {
+    return `https://kalshi.com/markets/${seriesLower}/${eventSlug}/${marketLower}`;
+  } else if (marketLower) {
+    // Without event slug, use series/market format
+    return `https://kalshi.com/markets/${seriesLower}/${marketLower}`;
+  } else {
+    // Minimal fallback - Kalshi will redirect
+    return `https://kalshi.com/markets/${seriesLower}`;
   }
-
-  if (!slug) return 'https://kalshi.com';
-
-  return `https://kalshi.com/markets/${slug.toLowerCase()}`;
 }
 
 /**
@@ -107,6 +155,12 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
         noPrice = parseFloat(m.no_price) || 0;
       }
 
+      // Build Polymarket URL: https://polymarket.com/event/{event-slug}/{market-slug}
+      // For simple binary markets, event slug and market slug are often the same
+      const marketSlug = m.slug || m.id;
+      const eventSlug = (m.events && m.events[0]?.slug) || marketSlug;
+      const polyUrl = `https://polymarket.com/event/${eventSlug}/${marketSlug}`;
+
       return {
         platform: 'polymarket' as Platform,
         marketId: m.id || m.condition_id,
@@ -121,7 +175,7 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
         endDate: m.end_date ? new Date(m.end_date) : null,
         createdAt: m.createdAt ? new Date(m.createdAt) : (m.startDate ? new Date(m.startDate) : null),
         status: (m.closed ? 'closed' : 'active') as 'active' | 'closed',
-        url: `https://polymarket.com/event/${m.slug || m.id}`,
+        url: polyUrl,
       };
     });
 
@@ -306,7 +360,7 @@ async function fetchDFlow(query?: string, limit = 20): Promise<Market[]> {
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,
           status: (m.status === 'active' ? 'active' : 'closed') as 'active' | 'closed',
-          url: buildKalshiUrl(event.seriesTicker, event.ticker, m.ticker),
+          url: buildKalshiUrl(event.seriesTicker, event.ticker, m.ticker, event.title),
           // DFlow-specific: SPL token addresses for on-chain trading
           onChain: {
             yesMint: usdcAccount.yesMint || null,
@@ -374,7 +428,7 @@ async function fetchKalshiLegacy(query?: string, limit = 15): Promise<Market[]> 
         liquidity: m.open_interest || 0,
         endDate: m.close_time ? new Date(m.close_time) : null,
         status: (m.status === 'open' ? 'active' : 'closed') as 'active' | 'closed',
-        url: buildKalshiUrl(undefined, m.event_ticker, ticker),
+        url: buildKalshiUrl(undefined, m.event_ticker, ticker, m.title),
       };
     });
     setCache(cacheKey, result);
@@ -648,7 +702,7 @@ export async function getDFlowHotMarkets(limit = 15): Promise<Market[]> {
         liquidity: event.liquidity || 0,
         endDate: null,
         status: 'active' as const,
-        url: buildKalshiUrl(event.seriesTicker, event.ticker, primaryMarket?.ticker),
+        url: buildKalshiUrl(event.seriesTicker, event.ticker, primaryMarket?.ticker, event.title),
       } as Market);
     }
 
@@ -743,7 +797,7 @@ export async function getHotTradeableMarkets(limit = 15): Promise<TokenizedMarke
           liquidity: m.openInterest || event.liquidity || 0,
           endDate: m.expirationTime ? new Date(m.expirationTime * 1000) : null,
           status: 'active' as const,
-          url: buildKalshiUrl(event.seriesTicker, event.ticker, m.ticker),
+          url: buildKalshiUrl(event.seriesTicker, event.ticker, m.ticker, event.title),
           onChain: {
             yesMint: usdcAccount.yesMint,
             noMint: usdcAccount.noMint,
