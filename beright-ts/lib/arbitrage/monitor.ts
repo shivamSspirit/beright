@@ -474,10 +474,42 @@ export function getHistoricalOpportunities(): TrackedOpportunity[] {
 // ============================================
 
 /**
+ * Build market URL based on platform and market ID
+ */
+function buildMarketUrl(platform: Platform, marketId: string): string {
+  switch (platform.toLowerCase()) {
+    case 'polymarket':
+      // Polymarket uses slug/condition ID in URL
+      return `https://polymarket.com/event/${marketId}`;
+
+    case 'kalshi':
+    case 'dflow':
+      // Kalshi URLs use series ticker (lowercase)
+      // Remove numeric/date suffixes: KXTRUMP-26FEB14 → kxtrump
+      const slug = marketId
+        .replace(/-\d{1,2}[A-Z]{3}\d{2}$/i, '') // Remove date suffix (-26FEB14)
+        .replace(/-\d+$/i, '')                   // Remove numeric suffix (-29)
+        .replace(/-[A-Z]{1,3}$/i, '')           // Remove short suffix (-KW)
+        .toLowerCase();
+      return `https://kalshi.com/markets/${slug}`;
+
+    case 'manifold':
+      return `https://manifold.markets/${marketId}`;
+
+    default:
+      return '#';
+  }
+}
+
+/**
  * Format opportunity for telegram alert
  */
 export function formatOpportunityAlert(opp: TrackedOpportunity): string {
   const age = Math.round((Date.now() - opp.firstSeen.getTime()) / 1000);
+
+  // Build URLs for both markets
+  const urlA = buildMarketUrl(opp.pair.marketA.platform, opp.pair.marketA.marketId);
+  const urlB = buildMarketUrl(opp.pair.marketB.platform, opp.pair.marketB.marketId);
 
   return `
 🚨 *ARBITRAGE ALERT*
@@ -486,18 +518,22 @@ ${opp.pair.marketA.title.slice(0, 50)}
 
 📊 *PROFIT: ${opp.currentProfit.toFixed(2)}%*
 
-Platform A: ${opp.pair.marketA.platform}
-Platform B: ${opp.pair.marketB.platform}
+*Platform A:* ${opp.pair.marketA.platform}
+[View Market →](${urlA})
+
+*Platform B:* ${opp.pair.marketB.platform}
+[View Market →](${urlB})
 
 Match confidence: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
 First seen: ${age}s ago
 Peak profit: ${opp.peakProfit.toFixed(2)}%
 
 ⚡ ACT FAST - Opportunities close quickly!
-
-/trade ${opp.pair.marketA.platform} ${opp.pair.marketA.marketId}
 `;
 }
+
+// Export for use in arbMonitor.ts
+export { buildMarketUrl };
 
 // ============================================
 // CLI / INTEGRATION

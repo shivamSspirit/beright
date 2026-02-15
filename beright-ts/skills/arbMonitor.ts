@@ -26,6 +26,7 @@ import {
   formatOpportunityAlert,
   refreshRegistry,
   getRegistry,
+  buildMarketUrl,
 } from '../lib/arbitrage/monitor';
 import { DEFAULT_ARBITRAGE_CONFIG } from '../lib/arbitrage/types';
 import { checkAndRecordAlert } from '../lib/alertDedup';
@@ -189,8 +190,11 @@ Subscribers: ${subscribers.size}
     text += '\n*ACTIVE OPPORTUNITIES:*\n';
     for (const opp of status.activeOpportunities) {
       const age = Math.round((Date.now() - opp.firstSeen.getTime()) / 1000);
+      const urlA = buildMarketUrl(opp.pair.marketA.platform, opp.pair.marketA.marketId);
+      const urlB = buildMarketUrl(opp.pair.marketB.platform, opp.pair.marketB.marketId);
       text += `\n• ${opp.pair.marketA.title.slice(0, 35)}`;
       text += `\n  Profit: ${opp.currentProfit.toFixed(2)}% | Age: ${age}s`;
+      text += `\n  [${opp.pair.marketA.platform}](${urlA}) vs [${opp.pair.marketB.platform}](${urlB})`;
     }
   }
 
@@ -270,13 +274,20 @@ Scan time: ${result.scanTime}ms
 
     for (const opp of result.opportunities) {
       const age = Math.round((Date.now() - opp.firstSeen.getTime()) / 1000);
+
+      // Build market URLs
+      const urlA = buildMarketUrl(opp.pair.marketA.platform, opp.pair.marketA.marketId);
+      const urlB = buildMarketUrl(opp.pair.marketB.platform, opp.pair.marketB.marketId);
+
       text += `
 ━━━━━━━━━━━━━━━━━━━━━━━
 📊 *${opp.currentProfit.toFixed(2)}% PROFIT*
 
 ${opp.pair.marketA.title.slice(0, 45)}
 
-• ${opp.pair.marketA.platform} vs ${opp.pair.marketB.platform}
+*${opp.pair.marketA.platform}:* [View →](${urlA})
+*${opp.pair.marketB.platform}:* [View →](${urlB})
+
 • Match confidence: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
 • First seen: ${age}s ago
 • Peak profit: ${opp.peakProfit.toFixed(2)}%
@@ -430,6 +441,29 @@ export async function broadcastOpportunityToSubscribers(opp: {
   }
 
   const age = Math.round((Date.now() - opp.firstSeen.getTime()) / 1000);
+
+  // Build market URLs for direct access
+  // Note: We need to extract market IDs from the opportunity
+  // The opp structure here doesn't have marketId, but we can use the title for basic URL building
+  const platformALower = opp.pair.marketA.platform.toLowerCase();
+  const platformBLower = opp.pair.marketB.platform.toLowerCase();
+
+  // Build URLs (using title-based slug as fallback when marketId not available)
+  let urlA = '#';
+  let urlB = '#';
+
+  if (platformALower === 'polymarket') {
+    urlA = 'https://polymarket.com/markets';
+  } else if (platformALower === 'kalshi' || platformALower === 'dflow') {
+    urlA = 'https://kalshi.com/browse';
+  }
+
+  if (platformBLower === 'polymarket') {
+    urlB = 'https://polymarket.com/markets';
+  } else if (platformBLower === 'kalshi' || platformBLower === 'dflow') {
+    urlB = 'https://kalshi.com/browse';
+  }
+
   const message = `
 🚨 *ARBITRAGE ALERT*
 
@@ -437,8 +471,11 @@ ${opp.pair.marketA.title.slice(0, 50)}
 
 📊 *PROFIT: ${opp.currentProfit.toFixed(2)}%*
 
-Platform A: ${opp.pair.marketA.platform}
-Platform B: ${opp.pair.marketB.platform}
+*${opp.pair.marketA.platform}:*
+[Open Platform →](${urlA})
+
+*${opp.pair.marketB.platform}:*
+[Open Platform →](${urlB})
 
 Match confidence: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
 First seen: ${age}s ago
