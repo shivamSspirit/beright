@@ -36,11 +36,13 @@ interface MarketRegistryEntry {
     platform: Platform;
     marketId: string;
     title: string;
+    url: string;  // Direct link to market
   };
   marketB: {
     platform: Platform;
     marketId: string;
     title: string;
+    url: string;  // Direct link to market
   };
   equivalenceScore: number;
   lastUpdated: Date;
@@ -169,11 +171,13 @@ export async function refreshRegistry(
               platform: pair.marketA.platform,
               marketId: pair.marketA.marketId || '',
               title: pair.marketA.title,
+              url: pair.marketA.url || '',
             },
             marketB: {
               platform: pair.marketB.platform,
               marketId: pair.marketB.marketId || '',
               title: pair.marketB.title,
+              url: pair.marketB.url || '',
             },
             equivalenceScore: pair.equivalence.overallScore,
             lastUpdated: new Date(),
@@ -474,42 +478,15 @@ export function getHistoricalOpportunities(): TrackedOpportunity[] {
 // ============================================
 
 /**
- * Build market URL based on platform and market ID
- */
-function buildMarketUrl(platform: Platform, marketId: string): string {
-  switch (platform.toLowerCase()) {
-    case 'polymarket':
-      // Polymarket uses slug/condition ID in URL
-      return `https://polymarket.com/event/${marketId}`;
-
-    case 'kalshi':
-    case 'dflow':
-      // Kalshi URLs use series ticker (lowercase)
-      // Remove numeric/date suffixes: KXTRUMP-26FEB14 → kxtrump
-      const slug = marketId
-        .replace(/-\d{1,2}[A-Z]{3}\d{2}$/i, '') // Remove date suffix (-26FEB14)
-        .replace(/-\d+$/i, '')                   // Remove numeric suffix (-29)
-        .replace(/-[A-Z]{1,3}$/i, '')           // Remove short suffix (-KW)
-        .toLowerCase();
-      return `https://kalshi.com/markets/${slug}`;
-
-    case 'manifold':
-      return `https://manifold.markets/${marketId}`;
-
-    default:
-      return '#';
-  }
-}
-
-/**
  * Format opportunity for telegram alert
+ * Uses the URL directly from the market data (set when fetching from platforms)
  */
 export function formatOpportunityAlert(opp: TrackedOpportunity): string {
   const age = Math.round((Date.now() - opp.firstSeen.getTime()) / 1000);
 
-  // Build URLs for both markets
-  const urlA = buildMarketUrl(opp.pair.marketA.platform, opp.pair.marketA.marketId);
-  const urlB = buildMarketUrl(opp.pair.marketB.platform, opp.pair.marketB.marketId);
+  // Use URLs directly from market data (already correct from fetch)
+  const urlA = opp.pair.marketA.url || '#';
+  const urlB = opp.pair.marketB.url || '#';
 
   return `
 🚨 *ARBITRAGE ALERT*
@@ -518,10 +495,10 @@ ${opp.pair.marketA.title.slice(0, 50)}
 
 📊 *PROFIT: ${opp.currentProfit.toFixed(2)}%*
 
-*Platform A:* ${opp.pair.marketA.platform}
+*${opp.pair.marketA.platform}:*
 [View Market →](${urlA})
 
-*Platform B:* ${opp.pair.marketB.platform}
+*${opp.pair.marketB.platform}:*
 [View Market →](${urlB})
 
 Match confidence: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
@@ -531,9 +508,6 @@ Peak profit: ${opp.peakProfit.toFixed(2)}%
 ⚡ ACT FAST - Opportunities close quickly!
 `;
 }
-
-// Export for use in arbMonitor.ts
-export { buildMarketUrl };
 
 // ============================================
 // CLI / INTEGRATION

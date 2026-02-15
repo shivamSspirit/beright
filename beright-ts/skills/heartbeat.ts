@@ -338,6 +338,9 @@ export async function heartbeatOnce(): Promise<SkillResponse[]> {
           }
 
           // Also add to alerts array for heartbeat response
+          const urlA = opp.pair.marketA.url || '#';
+          const urlB = opp.pair.marketB.url || '#';
+
           alerts.push({
             text: `
 🚨 *ARBITRAGE OPPORTUNITY*
@@ -347,7 +350,9 @@ ${'─'.repeat(35)}
 
 ${opp.pair.marketA.title.slice(0, 45)}
 
-• ${opp.pair.marketA.platform} vs ${opp.pair.marketB.platform}
+*${opp.pair.marketA.platform}:* [View →](${urlA})
+*${opp.pair.marketB.platform}:* [View →](${urlB})
+
 • Match: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
 • Peak: ${opp.peakProfit.toFixed(2)}%
 
