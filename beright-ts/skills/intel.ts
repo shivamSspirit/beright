@@ -379,7 +379,9 @@ HEADLINES:
   for (const article of result.articles.slice(0, 10)) {
     const tierInfo = getSourceTier(article.source);
     const tierBadge = tierInfo ? `[T${tierInfo.tier}]` : '[T5]';
-    output += `\n${tierBadge} [${article.source.toUpperCase()}] ${article.title.slice(0, 55)}...\n`;
+    const link = article.link || '#';
+    const title = article.title.slice(0, 50);
+    output += `\n${tierBadge} [${article.source.toUpperCase()}] [${title}...](${link})\n`;
   }
 
   output += `
@@ -500,14 +502,18 @@ ${'─'.repeat(40)}
 `;
 
     // Combine RSS and Tavily results, prioritizing Tavily
+    // Use proper markdown links for Telegram
     if (tavilyNews && tavilyNews.headlines.length > 0) {
       for (const headline of tavilyNews.headlines.slice(0, 5)) {
-        const domain = new URL(headline.url).hostname.replace('www.', '');
-        output += `• [${domain.toUpperCase()}] ${headline.title.slice(0, 55)}...\n`;
+        const domain = new URL(headline.url).hostname.replace('www.', '').toUpperCase();
+        const title = headline.title.slice(0, 50);
+        output += `• [${domain}] [${title}...](${headline.url})\n`;
       }
     } else {
       for (const article of news.articles.slice(0, 5)) {
-        output += `• [${article.source.toUpperCase()}] ${article.title.slice(0, 55)}...\n`;
+        const link = article.link || '#';
+        const title = article.title.slice(0, 50);
+        output += `• [${article.source.toUpperCase()}] [${title}...](${link})\n`;
       }
     }
 
@@ -582,11 +588,12 @@ ${'─'.repeat(40)}
 `;
 
     for (const r of result.results.slice(0, 10)) {
-      const domain = new URL(r.url).hostname.replace('www.', '');
+      const domain = new URL(r.url).hostname.replace('www.', '').toUpperCase();
       const date = r.publishedDate ? ` (${r.publishedDate.slice(0, 10)})` : '';
-      output += `\n[${domain.toUpperCase()}]${date}\n`;
-      output += `${r.title}\n`;
-      output += `${r.content.slice(0, 150)}...\n`;
+      const title = r.title.slice(0, 50);
+      output += `\n[${domain}]${date}\n`;
+      output += `[${title}...](${r.url})\n`;
+      output += `${r.content.slice(0, 120)}...\n`;
     }
 
     return {
@@ -637,9 +644,10 @@ ${'─'.repeat(40)}
 `;
 
     for (const r of result.results.slice(0, 8)) {
-      const domain = new URL(r.url).hostname.replace('www.', '');
-      output += `\n[${domain.toUpperCase()}] ${r.title}\n`;
-      output += `${r.content.slice(0, 120)}...\n`;
+      const domain = new URL(r.url).hostname.replace('www.', '').toUpperCase();
+      const title = r.title.slice(0, 50);
+      output += `\n[${domain}] [${title}...](${r.url})\n`;
+      output += `${r.content.slice(0, 100)}...\n`;
     }
 
     return {
