@@ -26,6 +26,89 @@ import {
   TavilySearchResponse,
 } from '../lib/tavily';
 
+// ============================================
+// EDUCATIONAL/CONCEPT QUERY DETECTION
+// ============================================
+
+/**
+ * Detect if query is educational/conceptual vs market-specific
+ * Educational: "what is arbitrage", "prediction markets", "how forecasting works"
+ * Market-specific: "bitcoin 100k", "trump election", "fed rate decision"
+ */
+function isEducationalQuery(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+
+  // Explicit educational patterns
+  const educationalPatterns = [
+    /^what (is|are|does)/i,
+    /^how (do|does|to|can)/i,
+    /^explain/i,
+    /^define/i,
+    /^meaning of/i,
+    /^tell me about/i,
+    /^learn about/i,
+    /^understand/i,
+    /^introduction to/i,
+    /^guide to/i,
+    /^basics of/i,
+    /^overview of/i,
+  ];
+
+  for (const pattern of educationalPatterns) {
+    if (pattern.test(lowerQuery)) return true;
+  }
+
+  // Conceptual topics (not events/markets)
+  const conceptualTopics = [
+    'prediction market',
+    'prediction markets',
+    'forecasting',
+    'superforecaster',
+    'superforecasting',
+    'arbitrage',
+    'market making',
+    'odds',
+    'probability',
+    'calibration',
+    'brier score',
+    'base rate',
+    'base rates',
+    'bayesian',
+    'trading strategy',
+    'trading strategies',
+    'polymarket',
+    'kalshi',
+    'manifold',
+    'metaculus',
+    'wisdom of crowds',
+  ];
+
+  for (const topic of conceptualTopics) {
+    if (lowerQuery === topic || lowerQuery === `${topic}s`) {
+      return true;
+    }
+  }
+
+  // Check if query lacks specific event markers
+  const eventMarkers = [
+    /\b(will|won't|would|could)\b/i,  // Future predictions
+    /\b(202\d|next|this)\b/i,          // Year/time references
+    /\b(election|price|win|lose|pass|fail|launch|release)\b/i,  // Event words
+    /\b(bitcoin|btc|eth|trump|biden|fed|congress|senate)\b/i,   // Specific entities
+    /\b(above|below|reach|hit)\b/i,    // Price targets
+    /\$\d+/,                           // Dollar amounts
+  ];
+
+  const hasEventMarker = eventMarkers.some(pattern => pattern.test(lowerQuery));
+
+  // Short generic queries without event markers are likely educational
+  if (!hasEventMarker && lowerQuery.split(' ').length <= 3) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Search Reddit for sentiment (inline to avoid circular dependency)
  */
@@ -411,6 +494,8 @@ function convertTavilyNews(tavilyNews: {
 /**
  * Deep research using Tavily's research endpoint
  * Provides comprehensive analysis with multi-step research
+ *
+ * Now detects educational queries and formats appropriately
  */
 export async function deepResearch(query: string): Promise<SkillResponse> {
   if (!isTavilyConfigured()) {
@@ -422,15 +507,83 @@ export async function deepResearch(query: string): Promise<SkillResponse> {
 
   try {
     console.log(`Deep researching: ${query}`);
-    console.log('  This may take a moment...');
+
+    // Detect if this is an educational/conceptual query
+    const isEducational = isEducationalQuery(query);
+    console.log(`  Query type: ${isEducational ? 'EDUCATIONAL' : 'MARKET-SPECIFIC'}`);
+
+    // For educational queries, only do web research (skip market search)
+    // For market queries, include market data
+    const researchPromise = tavilyResearch(query);
+    const marketsPromise = isEducational ? Promise.resolve([]) : searchMarkets(query);
+    const factsPromise = getFactsForPrediction(query);
 
     const [researchResult, markets, facts] = await Promise.all([
-      tavilyResearch(query),
-      searchMarkets(query),
-      getFactsForPrediction(query),
+      researchPromise,
+      marketsPromise,
+      factsPromise,
     ]);
 
-    let output = `
+    // Check if Tavily returned meaningful content
+    const hasReport = researchResult.report && researchResult.report.trim().length > 50;
+
+    let output = '';
+
+    if (isEducational) {
+      // EDUCATIONAL FORMAT - Focus on explaining the concept
+      output = `
+${'='.repeat(60)}
+📚 LEARN: ${query.toUpperCase()}
+${'='.repeat(60)}
+
+Generated: ${timestamp().slice(0, 19)}
+Type: Educational Overview
+
+`;
+
+      if (hasReport) {
+        output += `📖 OVERVIEW
+${'─'.repeat(50)}
+
+${researchResult.report}
+
+`;
+      }
+
+      // Add key facts as educational points
+      if (facts.facts.length > 0) {
+        output += `
+💡 KEY POINTS
+${'─'.repeat(50)}
+`;
+        for (const fact of facts.facts.slice(0, 7)) {
+          output += `• ${fact}\n`;
+        }
+      }
+
+      // Add sources for further reading
+      if (researchResult.sources.length > 0) {
+        output += `
+📚 LEARN MORE
+${'─'.repeat(50)}
+`;
+        for (const source of researchResult.sources.slice(0, 5)) {
+          output += `• ${source.title}\n  ${source.url}\n\n`;
+        }
+      }
+
+      output += `
+💬 RELATED COMMANDS
+${'─'.repeat(50)}
+• /hot - See trending prediction markets
+• /arb - Find arbitrage opportunities
+• /brief - Get today's market briefing
+• /research <specific topic> - Research a specific market
+`;
+
+    } else {
+      // MARKET-SPECIFIC FORMAT - Include odds and trading context
+      output = `
 ${'='.repeat(60)}
 🔬 DEEP RESEARCH: ${query.toUpperCase()}
 ${'='.repeat(60)}
@@ -439,50 +592,61 @@ Generated: ${timestamp().slice(0, 19)}
 Research time: ${(researchResult.responseTime / 1000).toFixed(1)}s
 Powered by: Tavily AI Research
 
-📋 RESEARCH REPORT
+`;
+
+      if (hasReport) {
+        output += `📋 RESEARCH REPORT
 ${'─'.repeat(50)}
 
 ${researchResult.report}
 
 `;
+      } else {
+        output += `📋 RESEARCH REPORT
+${'─'.repeat(50)}
 
-    // Add market data if available
-    if (markets.length > 0) {
-      output += `
+No detailed report available. See facts and market data below.
+
+`;
+      }
+
+      // Add market data if available
+      if (markets.length > 0) {
+        output += `
 📈 CURRENT MARKET ODDS
 ${'─'.repeat(50)}
 `;
-      for (const m of markets.slice(0, 5)) {
-        const platform = m.platform.charAt(0).toUpperCase() + m.platform.slice(1);
-        const yes = formatPct(m.yesPrice);
-        const vol = m.volume > 0 ? formatUsd(m.volume) : 'N/A';
-        output += `${platform.padEnd(15)} YES: ${yes.padEnd(10)} Vol: ${vol}\n`;
+        for (const m of markets.slice(0, 5)) {
+          const platform = m.platform.charAt(0).toUpperCase() + m.platform.slice(1);
+          const yes = formatPct(m.yesPrice);
+          const vol = m.volume > 0 ? formatUsd(m.volume) : 'N/A';
+          output += `${platform.padEnd(15)} YES: ${yes.padEnd(10)} Vol: ${vol}\n`;
+        }
       }
-    }
 
-    // Add verified facts
-    if (facts.facts.length > 0) {
-      output += `
+      // Add verified facts
+      if (facts.facts.length > 0) {
+        output += `
 ✅ VERIFIED FACTS (${facts.confidence} confidence)
 ${'─'.repeat(50)}
 `;
-      for (const fact of facts.facts.slice(0, 5)) {
-        output += `• ${fact}\n`;
+        for (const fact of facts.facts.slice(0, 5)) {
+          output += `• ${fact}\n`;
+        }
       }
-    }
 
-    // Add sources
-    if (researchResult.sources.length > 0) {
-      output += `
+      // Add sources
+      if (researchResult.sources.length > 0) {
+        output += `
 📚 SOURCES
 ${'─'.repeat(50)}
 `;
-      for (const source of researchResult.sources.slice(0, 5)) {
-        output += `• ${source.title}\n  ${source.url}\n`;
+        for (const source of researchResult.sources.slice(0, 5)) {
+          output += `• ${source.title}\n  ${source.url}\n`;
+        }
       }
-    }
 
-    output += `
+      output += `
 💡 METHODOLOGY
 ${'─'.repeat(50)}
 This report uses multi-step AI research:
@@ -493,13 +657,15 @@ This report uses multi-step AI research:
 
 Always verify critical information independently.
 `;
+    }
 
     return {
       text: output,
       mood: 'EDUCATIONAL',
-      data: { research: researchResult, markets, facts },
+      data: { research: researchResult, markets, facts, isEducational },
     };
   } catch (error) {
+    console.error('Deep research error:', error);
     return {
       text: `Deep research failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       mood: 'ERROR',
