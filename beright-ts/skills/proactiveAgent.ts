@@ -330,7 +330,7 @@ Usage: /agent enable closing or /agent disable movers
 // ALERT DETECTION LOGIC
 // ============================================
 
-async function detectClosingSoon(markets: Market[], state: AgentState): Promise<ProactiveAlert[]> {
+async function detectClosingSoon(markets: Market[]): Promise<ProactiveAlert[]> {
   const alerts: ProactiveAlert[] = [];
   const now = Date.now();
 
@@ -340,14 +340,13 @@ async function detectClosingSoon(markets: Market[], state: AgentState): Promise<
     const closeTime = new Date(market.endDate).getTime();
     const hoursUntilClose = (closeTime - now) / (1000 * 60 * 60);
 
-    // Skip if already alerted for this market today
-    const alertKey = `closing_${market.marketId}`;
-    if (state.lastAlertsSent[alertKey]) {
-      const lastAlert = new Date(state.lastAlertsSent[alertKey]).getTime();
-      if (now - lastAlert < 12 * 60 * 60 * 1000) continue; // 12hr cooldown
-    }
-
     if (hoursUntilClose > 0 && hoursUntilClose <= 1) {
+      // CENTRALIZED DEDUP: Check if we already alerted about this closing market
+      const alertId = `closing-1h-${market.marketId || market.title}`;
+      if (!checkAndRecordAlert('CLOSING_SOON', alertId)) {
+        continue;
+      }
+
       alerts.push({
         type: 'CLOSING_SOON',
         priority: 'HIGH',
@@ -358,8 +357,13 @@ async function detectClosingSoon(markets: Market[], state: AgentState): Promise<
         actionable: `Current: ${formatPct(market.yesPrice)} YES`,
         data: { hoursUntilClose, probability: market.yesPrice },
       });
-      state.lastAlertsSent[alertKey] = new Date().toISOString();
     } else if (hoursUntilClose > 1 && hoursUntilClose <= 6) {
+      // CENTRALIZED DEDUP: Check if we already alerted about this closing market
+      const alertId = `closing-6h-${market.marketId || market.title}`;
+      if (!checkAndRecordAlert('CLOSING_SOON', alertId)) {
+        continue;
+      }
+
       alerts.push({
         type: 'CLOSING_SOON',
         priority: 'MEDIUM',
@@ -370,7 +374,6 @@ async function detectClosingSoon(markets: Market[], state: AgentState): Promise<
         actionable: `Current: ${formatPct(market.yesPrice)} YES`,
         data: { hoursUntilClose, probability: market.yesPrice },
       });
-      state.lastAlertsSent[alertKey] = new Date().toISOString();
     }
   }
 
@@ -410,11 +413,13 @@ async function detectBigMovers(markets: Market[], state: AgentState): Promise<Pr
     const change1h = oneHourAgo ? Math.abs(currentPrice - oneHourAgo.price) * 100 : 0;
     const change6h = sixHoursAgo ? Math.abs(currentPrice - sixHoursAgo.price) * 100 : 0;
 
-    const alertKey = `mover_${market.marketId}`;
-    const lastAlert = state.lastAlertsSent[alertKey];
-    const cooldown = lastAlert ? Date.now() - new Date(lastAlert).getTime() > 2 * 60 * 60 * 1000 : true;
+    if (change1h >= 10) {
+      // CENTRALIZED DEDUP: Check if we already alerted about this mover
+      const alertId = `mover-1h-${market.marketId}`;
+      if (!checkAndRecordAlert('BIG_MOVER', alertId, change1h)) {
+        continue;
+      }
 
-    if (change1h >= 10 && cooldown) {
       const direction = currentPrice > oneHourAgo.price ? '📈' : '📉';
       alerts.push({
         type: 'BIG_MOVER',
@@ -426,8 +431,13 @@ async function detectBigMovers(markets: Market[], state: AgentState): Promise<Pr
         actionable: currentPrice > oneHourAgo.price ? 'Momentum is BULLISH' : 'Momentum is BEARISH',
         data: { change1h, change6h, currentPrice },
       });
-      state.lastAlertsSent[alertKey] = now;
-    } else if (change6h >= 15 && cooldown) {
+    } else if (change6h >= 15) {
+      // CENTRALIZED DEDUP: Check if we already alerted about this mover
+      const alertId = `mover-6h-${market.marketId}`;
+      if (!checkAndRecordAlert('BIG_MOVER', alertId, change6h)) {
+        continue;
+      }
+
       const direction = currentPrice > sixHoursAgo.price ? '📈' : '📉';
       alerts.push({
         type: 'BIG_MOVER',
@@ -439,7 +449,6 @@ async function detectBigMovers(markets: Market[], state: AgentState): Promise<Pr
         actionable: 'Sustained trend - may continue',
         data: { change1h, change6h, currentPrice },
       });
-      state.lastAlertsSent[alertKey] = now;
     }
   }
 
@@ -782,10 +791,11 @@ export async function runProactiveAgent(): Promise<{
   state.lastScan = new Date().toISOString();
 
   // Run all detection algorithms
+  // NOTE: All detectors now use CENTRALIZED alertDedup.ts for deduplication
   const allAlerts: ProactiveAlert[] = [];
 
   try {
-    const closingAlerts = await detectClosingSoon(markets, state);
+    const closingAlerts = await detectClosingSoon(markets);
     allAlerts.push(...closingAlerts);
   } catch (e) {
     console.error('Error detecting closing soon:', e);
@@ -819,45 +829,23 @@ export async function runProactiveAgent(): Promise<{
     console.error('Error detecting new markets:', e);
   }
 
-  // Save state before sending
+  // Save state (for price snapshots, known markets, etc.)
   saveState(state);
 
   // Sort by priority
   const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
   allAlerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
-  // DEDUPLICATION: Filter out alerts we've already sent recently
-  const ALERT_COOLDOWN_HOURS = 24; // Don't send same alert for 24 hours
-  const now = Date.now();
-  const cooldownMs = ALERT_COOLDOWN_HOURS * 60 * 60 * 1000;
-
-  const freshAlerts = allAlerts.filter(alert => {
-    // Create unique key: type + market title (normalized)
-    const alertKey = `${alert.type}:${alert.market.toLowerCase().slice(0, 50)}`;
-    const lastSent = state.lastAlertsSent[alertKey];
-
-    if (lastSent) {
-      const lastSentTime = new Date(lastSent).getTime();
-      if (now - lastSentTime < cooldownMs) {
-        console.log(`[Dedup] Skipping duplicate alert: ${alertKey} (sent ${Math.round((now - lastSentTime) / 3600000)}h ago)`);
-        return false;
-      }
-    }
-    return true;
-  });
-
-  console.log(`[Proactive] ${allAlerts.length} alerts generated, ${freshAlerts.length} after dedup`);
+  // NOTE: Deduplication now happens in each detector via centralized alertDedup.ts
+  // All alerts here are already fresh (passed dedup check)
+  console.log(`[Proactive] ${allAlerts.length} fresh alerts (dedup already applied)`);
 
   // Send alerts to subscribers
   let alertsSent = 0;
   const maxAlertsPerCycle = 5; // Don't spam users
 
-  for (const alert of freshAlerts.slice(0, maxAlertsPerCycle)) {
+  for (const alert of allAlerts.slice(0, maxAlertsPerCycle)) {
     const message = formatAlertMessage(alert);
-
-    // Mark this alert as sent
-    const alertKey = `${alert.type}:${alert.market.toLowerCase().slice(0, 50)}`;
-    state.lastAlertsSent[alertKey] = new Date().toISOString();
 
     for (const sub of subscriberList) {
       // Check if subscriber wants this type of alert
@@ -876,15 +864,6 @@ export async function runProactiveAgent(): Promise<{
     }
   }
 
-  // Clean up old entries from lastAlertsSent (older than 48 hours)
-  const cleanupThreshold = 48 * 60 * 60 * 1000;
-  for (const key of Object.keys(state.lastAlertsSent)) {
-    const sentTime = new Date(state.lastAlertsSent[key]).getTime();
-    if (now - sentTime > cleanupThreshold) {
-      delete state.lastAlertsSent[key];
-    }
-  }
-
   // Save updated subscriber stats
   const subsMap = loadSubscribers();
   for (const sub of subscriberList) {
@@ -894,10 +873,10 @@ export async function runProactiveAgent(): Promise<{
   }
   saveSubscribers(subsMap);
 
-  // Save state with updated lastAlertsSent for deduplication
+  // Save state
   saveState(state);
 
-  console.log(`[${timestamp()}] Proactive Agent: ${allAlerts.length} alerts generated, ${freshAlerts.length} fresh, ${alertsSent} sent, ${briefsSent} briefs sent to ${subscriberList.length} subscribers`);
+  console.log(`[${timestamp()}] Proactive Agent: ${allAlerts.length} alerts generated, ${alertsSent} sent, ${briefsSent} briefs sent to ${subscriberList.length} subscribers`);
 
   return {
     alertsGenerated: allAlerts.length,

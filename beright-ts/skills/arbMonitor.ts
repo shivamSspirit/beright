@@ -28,6 +28,7 @@ import {
   getRegistry,
 } from '../lib/arbitrage/monitor';
 import { DEFAULT_ARBITRAGE_CONFIG } from '../lib/arbitrage/types';
+import { checkAndRecordAlert } from '../lib/alertDedup';
 
 // File path for persisting subscribers
 const MEMORY_DIR = path.join(process.cwd(), 'memory');
@@ -36,85 +37,6 @@ const SUBSCRIBERS_FILE = path.join(MEMORY_DIR, 'arb-subscribers.json');
 // Telegram alert sending (will be injected)
 type TelegramAlertSender = (chatId: string, message: string) => Promise<void>;
 let telegramSender: TelegramAlertSender | null = null;
-
-// ============================================
-// DEDUPLICATION: Prevent repeated alerts for same opportunity
-// ============================================
-interface SentAlert {
-  key: string;
-  sentAt: number;
-  profit: number;
-}
-
-// Cache of recently sent alerts - key -> timestamp
-const sentAlertsCache = new Map<string, SentAlert>();
-
-// Don't re-alert same opportunity for 30 minutes
-const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
-
-// Only re-alert if profit increased significantly (5% higher)
-const PROFIT_CHANGE_THRESHOLD = 5;
-
-/**
- * Generate unique key for an opportunity
- */
-function getOpportunityKey(opp: {
-  pair: {
-    marketA: { platform: string; title: string };
-    marketB: { platform: string; title: string };
-  };
-}): string {
-  // Normalize: sort platforms alphabetically to handle A-B vs B-A
-  const platforms = [opp.pair.marketA.platform, opp.pair.marketB.platform].sort();
-  const titleNormalized = opp.pair.marketA.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .slice(0, 50);
-  return `${platforms[0]}-${platforms[1]}-${titleNormalized}`;
-}
-
-/**
- * Check if we should send alert (deduplication)
- */
-function shouldSendAlert(key: string, currentProfit: number): boolean {
-  const existing = sentAlertsCache.get(key);
-  if (!existing) return true;
-
-  const elapsed = Date.now() - existing.sentAt;
-
-  // Cooldown not expired - check if profit increased significantly
-  if (elapsed < ALERT_COOLDOWN_MS) {
-    const profitIncrease = currentProfit - existing.profit;
-    if (profitIncrease >= PROFIT_CHANGE_THRESHOLD) {
-      console.log(`[ArbMonitor] Re-alerting: profit jumped ${profitIncrease.toFixed(2)}%`);
-      return true;
-    }
-    return false;
-  }
-
-  // Cooldown expired, ok to send
-  return true;
-}
-
-/**
- * Record that we sent an alert
- */
-function recordSentAlert(key: string, profit: number): void {
-  sentAlertsCache.set(key, {
-    key,
-    sentAt: Date.now(),
-    profit,
-  });
-
-  // Cleanup old entries (older than 2 hours)
-  const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
-  const entries = Array.from(sentAlertsCache.entries());
-  for (const [k, v] of entries) {
-    if (v.sentAt < twoHoursAgo) {
-      sentAlertsCache.delete(k);
-    }
-  }
-}
 
 /**
  * Load subscribers from file
@@ -475,8 +397,7 @@ export async function handleArbMonitorCommand(
  * Broadcast an opportunity alert to all subscribers
  * Called by heartbeat when opportunities are detected
  *
- * DEDUPLICATION: Will skip if same opportunity was alerted in last 30 minutes
- * unless profit increased by 5%+ (significant move worth re-alerting)
+ * DEDUPLICATION: Uses centralized alertDedup.ts - shares state with all alert sources
  */
 export async function broadcastOpportunityToSubscribers(opp: {
   pair: {
@@ -493,10 +414,12 @@ export async function broadcastOpportunityToSubscribers(opp: {
     return 0;
   }
 
-  // DEDUPLICATION CHECK
-  const oppKey = getOpportunityKey(opp);
-  if (!shouldSendAlert(oppKey, opp.currentProfit)) {
-    console.log(`[ArbMonitor] Skipping duplicate alert for: ${oppKey.slice(0, 50)}...`);
+  // CENTRALIZED DEDUPLICATION - shares state with notifications.ts and proactiveAgent.ts
+  const platforms = [opp.pair.marketA.platform, opp.pair.marketB.platform].sort();
+  const alertId = `${platforms[0]}-${platforms[1]}-${opp.pair.marketA.title}`;
+
+  if (!checkAndRecordAlert('arb', alertId, opp.currentProfit)) {
+    console.log(`[ArbMonitor] Skipping duplicate (centralized dedup): ${opp.pair.marketA.title.slice(0, 40)}...`);
     return 0;
   }
 
@@ -533,9 +456,6 @@ Peak profit: ${opp.peakProfit.toFixed(2)}%
       console.error(`[ArbMonitor] Failed to send alert to ${chatId}:`, err);
     }
   }
-
-  // Record that we sent this alert (for deduplication)
-  recordSentAlert(oppKey, opp.currentProfit);
 
   console.log(`[ArbMonitor] Broadcast alert to ${sentCount}/${subscriberList.length} subscribers`);
   return sentCount;
