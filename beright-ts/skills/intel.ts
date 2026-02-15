@@ -463,88 +463,118 @@ export async function socialSearch(query: string): Promise<SkillResponse> {
 /**
  * Full intel report (news + social)
  * Uses Tavily when available for enhanced accuracy
+ * ENHANCED: Shows affected markets and trading signals
  */
 export async function intelReport(query: string): Promise<SkillResponse> {
   try {
     const useTavily = isTavilyConfigured();
 
-    const [news, reddit, tavilyNews] = await Promise.all([
+    // Fetch news, social, AND related markets in parallel
+    const [news, reddit, tavilyNews, markets] = await Promise.all([
       searchNews(query),
       searchReddit(query),
       useTavily ? getNewsContext(query) : Promise.resolve(null),
+      searchMarketsForIntel(query),
     ]);
 
     const sentiment = tavilyNews ? tavilyNews.sentiment : analyzeNewsSentiment(news.articles);
 
-    let output = `
-🔍 INTEL REPORT: ${query.toUpperCase()}
-${'='.repeat(50)}
-Generated: ${timestamp().slice(0, 19)}
-${useTavily ? '🔎 Enhanced with Tavily AI Search' : ''}
-
-📰 NEWS SUMMARY
-Articles: ${news.articleCount}${tavilyNews ? ` + ${tavilyNews.headlines.length} web results` : ''}
-Sentiment: ${sentiment.toUpperCase()}
+    let output = `🔍 *INTEL REPORT: ${query.toUpperCase()}*
+${'━'.repeat(40)}
 `;
 
-    // Show AI summary if available
+    // Show AI summary first (most actionable)
     if (tavilyNews?.summary) {
-      output += `
-📝 AI SUMMARY
-${'─'.repeat(40)}
-${tavilyNews.summary}
-`;
+      output += `\n📝 *KEY INSIGHT*\n${tavilyNews.summary}\n`;
     }
 
-    output += `
-📰 HEADLINES
-${'─'.repeat(40)}
-`;
+    // AFFECTED MARKETS - THE KEY ADDITION
+    if (markets.length > 0) {
+      output += `\n📊 *AFFECTED MARKETS*\n${'─'.repeat(35)}\n`;
 
-    // Combine RSS and Tavily results, prioritizing Tavily
-    // Use proper markdown links for Telegram
-    if (tavilyNews && tavilyNews.headlines.length > 0) {
-      for (const headline of tavilyNews.headlines.slice(0, 5)) {
-        const domain = new URL(headline.url).hostname.replace('www.', '').toUpperCase();
-        const title = headline.title.slice(0, 50);
-        output += `• [${domain}] [${title}...](${headline.url})\n`;
+      // Determine impact direction based on sentiment
+      const impactEmoji = sentiment === 'bullish' ? '📈' : sentiment === 'bearish' ? '📉' : '⚖️';
+      const impactText = sentiment === 'bullish' ? 'likely UP' : sentiment === 'bearish' ? 'likely DOWN' : 'uncertain';
+
+      for (const m of markets.slice(0, 3)) {
+        const pricePct = (m.yesPrice * 100).toFixed(0);
+        const shortTitle = m.title.length > 35 ? m.title.slice(0, 35) + '...' : m.title;
+
+        output += `\n${impactEmoji} *${shortTitle}*\n`;
+        output += `   Current: ${pricePct}% YES @ ${m.platform}\n`;
+        output += `   Impact: ${impactText}\n`;
+        if (m.url) {
+          output += `   [Trade](${m.url})\n`;
+        }
       }
-    } else {
-      for (const article of news.articles.slice(0, 5)) {
-        const link = article.link || '#';
-        const title = article.title.slice(0, 50);
-        output += `• [${article.source.toUpperCase()}] [${title}...](${link})\n`;
+
+      // Trading signal based on sentiment
+      if (sentiment !== 'neutral' && markets.length > 0) {
+        const topMarket = markets[0];
+        const action = sentiment === 'bullish' ? 'BUY YES' : 'BUY NO';
+        const currentPrice = sentiment === 'bullish' ? topMarket.yesPrice : topMarket.noPrice;
+        const cost = (currentPrice * 100).toFixed(0);
+
+        output += `\n💰 *TRADE SIGNAL*\n`;
+        output += `${action} on "${topMarket.title.slice(0, 30)}..."\n`;
+        output += `Entry: ${cost}¢ | Sentiment: ${sentiment.toUpperCase()}\n`;
       }
     }
 
-    output += `
-📱 SOCIAL PULSE
-Reddit posts: ${reddit.postCount}
-Comments: ${reddit.totalComments}
-Engagement: ${reddit.engagementLevel}
-`;
+    // Headlines (compact)
+    output += `\n📰 *TOP HEADLINES*\n${'─'.repeat(35)}\n`;
 
+    const headlines = tavilyNews?.headlines.slice(0, 3) ||
+      news.articles.slice(0, 3).map(a => ({ title: a.title, url: a.link || '#' }));
+
+    for (const h of headlines) {
+      const title = h.title.length > 45 ? h.title.slice(0, 45) + '...' : h.title;
+      output += `• [${title}](${h.url})\n`;
+    }
+
+    // Social pulse (compact)
+    output += `\n📱 *SOCIAL*: ${reddit.engagementLevel} engagement`;
     if (reddit.topSubreddits.length > 0) {
-      output += `Subreddits: ${reddit.topSubreddits.map(([s]) => `r/${s}`).join(', ')}\n`;
+      output += ` (${reddit.topSubreddits.slice(0, 2).map(([s]) => `r/${s}`).join(', ')})`;
     }
+    output += '\n';
 
-    output += `
-💡 INTEL ASSESSMENT
-News sentiment is ${sentiment}.
-${reddit.engagementLevel === 'HIGH' ? 'High social engagement suggests active interest.' : 'Social engagement is moderate.'}
-Use this as ONE input in your analysis.
-`;
+    // Final assessment
+    output += `\n${'━'.repeat(40)}\n`;
+    const sentimentEmoji = sentiment === 'bullish' ? '🟢' : sentiment === 'bearish' ? '🔴' : '🟡';
+    output += `${sentimentEmoji} *Overall Sentiment: ${sentiment.toUpperCase()}*\n`;
+    output += `\n💡 /research ${query} - Deep analysis`;
 
     return {
       text: output,
       mood: sentiment === 'bullish' ? 'BULLISH' : sentiment === 'bearish' ? 'BEARISH' : 'NEUTRAL',
-      data: { news, reddit, sentiment, tavilyNews },
+      data: { news, reddit, sentiment, tavilyNews, markets },
     };
   } catch (error) {
     return {
       text: `Intel report failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       mood: 'ERROR',
     };
+  }
+}
+
+/**
+ * Search markets related to an intel query
+ */
+async function searchMarketsForIntel(query: string): Promise<Array<{ title: string; yesPrice: number; noPrice: number; platform: string; url: string }>> {
+  try {
+    // Import dynamically to avoid circular deps
+    const { searchMarkets } = await import('./markets');
+    const markets = await searchMarkets(query);
+    return markets.slice(0, 5).map(m => ({
+      title: m.title,
+      yesPrice: m.yesPrice,
+      noPrice: m.noPrice,
+      platform: m.platform,
+      url: m.url,
+    }));
+  } catch {
+    return [];
   }
 }
 

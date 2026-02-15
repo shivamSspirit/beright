@@ -278,7 +278,7 @@ export function formatTrendingMarkets(markets: Market[]): string {
   // Cluster related markets to avoid clutter
   const clusters = clusterRelatedMarkets(markets);
 
-  let output = `🔥 *HOT MARKETS*\n${'─'.repeat(32)}\n`;
+  let output = `🔥 *HOT MOVERS*\n${'━'.repeat(40)}\n`;
 
   // Show top 6 clusters (after deduplication)
   const topClusters = clusters.slice(0, 6);
@@ -286,40 +286,64 @@ export function formatTrendingMarkets(markets: Market[]): string {
   for (let i = 0; i < topClusters.length; i++) {
     const cluster = topClusters[i];
     const m = cluster.primaryMarket;
-    const signal = priceSignal(m.yesPrice);
-    const volBadge = volumeSignal(cluster.totalVolume);
-    const dateStr = fmtDate(m.endDate);
     const ticker = m.marketId || '';
     const category = detectCategory(m.title);
     const catEmoji = CATEGORY_EMOJIS[category] || '';
+    const dateStr = fmtDate(m.endDate);
 
     // Shorten title - extract the key question
     const shortTitle = shortenTitle(m.title);
 
-    output += `\n${signal} *${shortTitle}*\n`;
+    // Determine momentum signal based on price position
+    const pricePct = m.yesPrice * 100;
 
-    // Stats line: price, volume, date, category
-    output += `   ${fmtPct(m.yesPrice)} YES  •  $${fmtVol(cluster.totalVolume)} ${volBadge}`;
+    // Direction indicator
+    let momentumIcon = '📊';
+    let momentumText = '';
+    if (pricePct > 65) {
+      momentumIcon = '📈';
+      momentumText = ' ⬆️ BULLISH';
+    } else if (pricePct < 35) {
+      momentumIcon = '📉';
+      momentumText = ' ⬇️ BEARISH';
+    } else {
+      momentumIcon = '⚖️';
+      momentumText = ' CONTESTED';
+    }
+
+    // Volume signal (hot indicator)
+    let volSignal = '';
+    if (cluster.totalVolume > 1000000) volSignal = '🔥🔥🔥';
+    else if (cluster.totalVolume > 100000) volSignal = '🔥🔥';
+    else if (cluster.totalVolume > 10000) volSignal = '🔥';
+
+    output += `\n${momentumIcon} *${shortTitle}*\n`;
+
+    // Stats line with momentum
+    output += `   ${pricePct.toFixed(0)}% YES${momentumText}\n`;
+    output += `   Vol: $${fmtVol(cluster.totalVolume)} ${volSignal}`;
     if (dateStr) output += `  •  ${dateStr}`;
     output += `  ${catEmoji}\n`;
 
-    // Trade command - THE KEY ACTION
-    if (ticker) {
-      const direction = m.yesPrice >= 0.5 ? 'YES' : 'NO';
-      output += `   \`/trade ${ticker} ${direction} 10\`\n`;
+    // Platform link (clickable)
+    if (m.url) {
+      output += `   🔗 [Trade on ${m.platform}](${m.url})\n`;
     }
 
-    // Related markets hint
-    if (cluster.relatedMarkets.length > 0) {
-      output += `   _${cluster.relatedMarkets.length} related markets_\n`;
+    // Edge calculation - show potential profit
+    if (ticker) {
+      const betSide = pricePct > 50 ? 'YES' : 'NO';
+      const cost = pricePct > 50 ? pricePct : (100 - pricePct);
+      const profit = 100 - cost;
+      output += `   💰 ${betSide} @ ${cost.toFixed(0)}¢ → Win ${profit.toFixed(0)}¢ per $1\n`;
     }
   }
 
-  output += `\n${'─'.repeat(32)}\n`;
-  output += `💡 *Actions:*\n`;
-  output += `• Copy a \`/trade\` command above\n`;
-  output += `• \`/info <ticker>\` for details\n`;
-  output += `• \`/odds <topic>\` compare platforms`;
+  output += `\n${'━'.repeat(40)}\n`;
+  output += `💡 *Quick Actions:*\n`;
+  output += `• /arb - Find cross-platform arbitrage\n`;
+  output += `• /closing - Markets expiring soon\n`;
+  output += `• /research <topic> - Deep analysis`;
 
   return output;
 }

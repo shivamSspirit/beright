@@ -352,24 +352,78 @@ Official Sources: ${officialCount > 0 ? `✅ ${officialCount} verified` : '⚠�
   output += `Market summary: ${analysis.marketSummary || 'Insufficient data'}\n`;
   output += `Confidence level: ${analysis.confidence.toUpperCase()}\n`;
 
-  // Learning Moment with Source Tier Education
+  // EDGE ANALYSIS - Where is the alpha?
+  if (markets.length > 0) {
+    output += '\n💰 EDGE ANALYSIS\n';
+    output += '-'.repeat(40) + '\n';
+
+    // Check for cross-platform spread
+    const platforms = [...new Set(markets.map(m => m.platform))];
+    if (platforms.length > 1) {
+      const prices = markets.map(m => m.yesPrice);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const spread = (maxPrice - minPrice) * 100;
+
+      if (spread >= 3) {
+        const cheapest = markets.find(m => m.yesPrice === minPrice)!;
+        const expensive = markets.find(m => m.yesPrice === maxPrice)!;
+
+        output += `🚨 SPREAD DETECTED: ${spread.toFixed(1)}%\n`;
+        output += `├─ Buy YES @ ${cheapest.platform}: ${(minPrice * 100).toFixed(0)}¢\n`;
+        output += `├─ Sell YES @ ${expensive.platform}: ${(maxPrice * 100).toFixed(0)}¢\n`;
+        output += `└─ Potential profit: ${spread.toFixed(1)}% per dollar\n\n`;
+      }
+    }
+
+    // Best entry point
+    const topMarket = markets[0];
+    const pricePct = topMarket.yesPrice * 100;
+
+    // Recommend based on consensus and sentiment
+    const sentimentBullish = analysis.newsSentiment === 'bullish';
+    const sentimentBearish = analysis.newsSentiment === 'bearish';
+
+    if (sentimentBullish && pricePct < 60) {
+      output += `📈 BULLISH SIGNAL: News positive but market at ${pricePct.toFixed(0)}%\n`;
+      output += `├─ Consider: BUY YES @ ${pricePct.toFixed(0)}¢\n`;
+      output += `├─ Fair value estimate: 65-75%\n`;
+      output += `└─ Upside: ${(70 - pricePct).toFixed(0)}¢ per dollar\n`;
+    } else if (sentimentBearish && pricePct > 40) {
+      output += `📉 BEARISH SIGNAL: News negative but market at ${pricePct.toFixed(0)}%\n`;
+      output += `├─ Consider: BUY NO @ ${(100 - pricePct).toFixed(0)}¢\n`;
+      output += `├─ Fair value estimate: 25-35% YES\n`;
+      output += `└─ Upside: ${(pricePct - 30).toFixed(0)}¢ per dollar\n`;
+    } else if (pricePct > 80) {
+      output += `⚠️ HIGH CONVICTION: Market very bullish (${pricePct.toFixed(0)}% YES)\n`;
+      output += `├─ Low risk/low reward on YES\n`;
+      output += `└─ Contrarian NO @ ${(100 - pricePct).toFixed(0)}¢ if you disagree\n`;
+    } else if (pricePct < 20) {
+      output += `⚠️ LOW CONVICTION: Market very bearish (${pricePct.toFixed(0)}% YES)\n`;
+      output += `├─ Low risk/low reward on NO\n`;
+      output += `└─ Contrarian YES @ ${pricePct.toFixed(0)}¢ if you disagree\n`;
+    } else {
+      output += `⚖️ CONTESTED: Market uncertain (${pricePct.toFixed(0)}% YES)\n`;
+      output += `├─ Wait for clearer signal\n`;
+      output += `└─ Or small position to track\n`;
+    }
+
+    // Trade links
+    output += '\n🔗 TRADE LINKS\n';
+    for (const m of markets.slice(0, 3)) {
+      if (m.url) {
+        output += `• ${m.platform}: ${m.url}\n`;
+      }
+    }
+  }
+
+  // Compact forecasting wisdom
   output += `
-💡 FORECASTING WISDOM
------------------------------------------
-SOURCE HIERARCHY (Most → Least Reliable):
-T1 🏛️ Official (Fed, SEC, Gov) — 100% authentic
-T2 📡 Wire Services (Reuters, AP) — 95% reliable
-T3 📰 Major News (Bloomberg, WSJ) — 90% reliable
-T4 📑 Specialized (CoinDesk, Politico) — 85% reliable
-T5 📱 Social/Aggregated (Reddit, Google News) — 70% reliable
-
-GOOD FORECASTERS:
-• Prioritize T1-T2 sources for facts
-• Use T3-T4 for analysis and context
-• Treat T5 as early signals, not truth
-• Cross-verify before high-confidence calls
-
-Always ask: "What's my source quality?"
+${'━'.repeat(40)}
+💡 *Quick Actions:*
+• /arb ${query} - Check arbitrage
+• /intel ${query} - Latest news
+• /closing - Expiring markets
 `;
 
   return output;

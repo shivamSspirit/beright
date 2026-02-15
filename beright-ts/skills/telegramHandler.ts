@@ -702,6 +702,135 @@ async function handleAlpha(): Promise<SkillResponse> {
 }
 
 /**
+ * Handle /closing command - Markets expiring soon with alpha
+ * Shows markets closing within 24h that may have arbitrage or mispricing
+ */
+async function handleClosing(): Promise<SkillResponse> {
+  try {
+    // Fetch markets from multiple platforms
+    const markets = await searchMarkets('');
+
+    // Filter to markets closing within 24 hours
+    const now = new Date();
+    const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const closingMarkets = markets.filter(m => {
+      if (!m.endDate) return false;
+      const endDate = new Date(m.endDate);
+      return endDate > now && endDate <= in24Hours;
+    });
+
+    // Sort by closing time (soonest first)
+    closingMarkets.sort((a, b) => {
+      const aEnd = new Date(a.endDate!).getTime();
+      const bEnd = new Date(b.endDate!).getTime();
+      return aEnd - bEnd;
+    });
+
+    if (closingMarkets.length === 0) {
+      return {
+        text: `⏰ *CLOSING SOON*
+${'━'.repeat(40)}
+
+No markets closing in the next 24 hours.
+
+💡 Try:
+• /hot - See trending markets
+• /arb - Find arbitrage opportunities
+• /brief - Morning briefing`,
+        mood: 'NEUTRAL',
+      };
+    }
+
+    let output = `⏰ *CLOSING SOON ALPHA*
+${'━'.repeat(40)}
+Markets expiring in <24 hours - act fast!
+
+`;
+
+    // Group by time remaining
+    const within1h: typeof closingMarkets = [];
+    const within6h: typeof closingMarkets = [];
+    const within24h: typeof closingMarkets = [];
+
+    for (const m of closingMarkets) {
+      const hoursLeft = (new Date(m.endDate!).getTime() - now.getTime()) / (1000 * 60 * 60);
+      if (hoursLeft <= 1) within1h.push(m);
+      else if (hoursLeft <= 6) within6h.push(m);
+      else within24h.push(m);
+    }
+
+    // Format urgent markets (< 1 hour)
+    if (within1h.length > 0) {
+      output += `🚨 *CLOSING IN <1 HOUR* (URGENT)\n`;
+      for (const m of within1h.slice(0, 3)) {
+        const minsLeft = Math.round((new Date(m.endDate!).getTime() - now.getTime()) / (1000 * 60));
+        const pricePct = (m.yesPrice * 100).toFixed(0);
+        const shortTitle = m.title.length > 35 ? m.title.slice(0, 35) + '...' : m.title;
+
+        output += `\n⏱️ *${minsLeft} mins left*\n`;
+        output += `   ${shortTitle}\n`;
+        output += `   ${pricePct}% YES @ ${m.platform}\n`;
+        if (m.url) output += `   [Trade Now](${m.url})\n`;
+
+        // Show edge
+        const cost = m.yesPrice > 0.5 ? m.yesPrice * 100 : (1 - m.yesPrice) * 100;
+        const profit = 100 - cost;
+        const side = m.yesPrice > 0.5 ? 'YES' : 'NO';
+        output += `   💰 ${side} @ ${cost.toFixed(0)}¢ → Win ${profit.toFixed(0)}¢/dollar\n`;
+      }
+      output += '\n';
+    }
+
+    // Format markets closing today (< 6 hours)
+    if (within6h.length > 0) {
+      output += `⚡ *CLOSING IN <6 HOURS*\n`;
+      for (const m of within6h.slice(0, 3)) {
+        const hoursLeft = Math.round((new Date(m.endDate!).getTime() - now.getTime()) / (1000 * 60 * 60));
+        const pricePct = (m.yesPrice * 100).toFixed(0);
+        const shortTitle = m.title.length > 35 ? m.title.slice(0, 35) + '...' : m.title;
+
+        output += `\n⏱️ *${hoursLeft}h left*\n`;
+        output += `   ${shortTitle}\n`;
+        output += `   ${pricePct}% YES @ ${m.platform}\n`;
+        if (m.url) output += `   [Trade](${m.url})\n`;
+      }
+      output += '\n';
+    }
+
+    // Format markets closing within 24h
+    if (within24h.length > 0) {
+      output += `📅 *CLOSING TODAY* (${within24h.length} markets)\n`;
+      for (const m of within24h.slice(0, 3)) {
+        const hoursLeft = Math.round((new Date(m.endDate!).getTime() - now.getTime()) / (1000 * 60 * 60));
+        const pricePct = (m.yesPrice * 100).toFixed(0);
+        const shortTitle = m.title.length > 30 ? m.title.slice(0, 30) + '...' : m.title;
+        output += `   • ${shortTitle} (${pricePct}% YES, ${hoursLeft}h)\n`;
+      }
+    }
+
+    output += `\n${'━'.repeat(40)}\n`;
+    output += `💡 *Tips:*\n`;
+    output += `• Check /arb for cross-platform price diff\n`;
+    output += `• High conviction plays (>80% or <20%) often resolve as expected\n`;
+    output += `• Compare with /odds <topic> before trading`;
+
+    return {
+      text: output,
+      mood: 'ALERT',
+      data: closingMarkets,
+    };
+
+  } catch (error) {
+    console.error('Error in handleClosing:', error);
+    return {
+      text: `⏰ Error fetching closing markets. Try again later.`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
  * Handle /predict command
  *
  * WIRED TO: Supabase (primary) + Solana Memo (verification)
@@ -1382,38 +1511,115 @@ To execute: /execute ${ticker} ${direction} ${amount}
  */
 async function handleScan(): Promise<SkillResponse> {
   try {
-    const opportunities = await scanLPOpportunities();
+    // Scan for cross-platform price spreads (real trading opportunities)
+    const markets = await searchMarkets('');
 
-    if (opportunities.length === 0) {
+    // Group markets by similar topics
+    const marketsByTopic = new Map<string, typeof markets>();
+
+    for (const m of markets) {
+      // Create a simple topic key from title
+      const key = m.title
+        .toLowerCase()
+        .replace(/will\s+/gi, '')
+        .replace(/\?/g, '')
+        .slice(0, 30)
+        .trim();
+
+      if (!marketsByTopic.has(key)) {
+        marketsByTopic.set(key, []);
+      }
+      marketsByTopic.get(key)!.push(m);
+    }
+
+    // Find spreads between platforms
+    const spreads: Array<{
+      topic: string;
+      platformA: string;
+      platformB: string;
+      priceA: number;
+      priceB: number;
+      spread: number;
+      urlA: string;
+      urlB: string;
+    }> = [];
+
+    for (const [topic, groupedMarkets] of marketsByTopic.entries()) {
+      if (groupedMarkets.length < 2) continue;
+
+      // Find markets from different platforms
+      const platforms = [...new Set(groupedMarkets.map(m => m.platform))];
+      if (platforms.length < 2) continue;
+
+      // Compare prices across platforms
+      for (let i = 0; i < groupedMarkets.length; i++) {
+        for (let j = i + 1; j < groupedMarkets.length; j++) {
+          const a = groupedMarkets[i];
+          const b = groupedMarkets[j];
+          if (a.platform === b.platform) continue;
+
+          const spread = Math.abs(a.yesPrice - b.yesPrice) * 100;
+          if (spread >= 3) {
+            spreads.push({
+              topic: a.title.slice(0, 40),
+              platformA: a.platform,
+              platformB: b.platform,
+              priceA: a.yesPrice * 100,
+              priceB: b.yesPrice * 100,
+              spread,
+              urlA: a.url,
+              urlB: b.url,
+            });
+          }
+        }
+      }
+    }
+
+    // Sort by spread size
+    spreads.sort((a, b) => b.spread - a.spread);
+
+    if (spreads.length === 0) {
       return {
-        text: `
-🔍 *LP SCAN*
+        text: `📊 *SPREAD SCANNER*
+${'━'.repeat(40)}
 
-No opportunities found with >0.5% spread.
+No significant cross-platform spreads found (>3%).
 
-Try /hot to see trending markets instead.
-`,
+Markets are efficiently priced right now.
+
+💡 Try:
+• /arb - Full arbitrage analysis
+• /hot - Trending markets
+• /closing - Expiring markets`,
         mood: 'NEUTRAL',
       };
     }
 
-    let text = `
-🔍 *LP OPPORTUNITIES* (Top ${Math.min(5, opportunities.length)})
-${'─'.repeat(35)}
+    let text = `📊 *SPREAD OPPORTUNITIES*
+${'━'.repeat(40)}
+Found ${spreads.length} cross-platform spreads >3%
 
 `;
 
-    for (const opp of opportunities.slice(0, 5)) {
-      text += `📊 *${opp.market}*\n`;
-      text += `   ${opp.title.slice(0, 35)}...\n`;
-      text += `   Spread: ${(opp.spread * 100).toFixed(2)}%\n`;
-      text += `   Est APY: ${opp.estimatedApy.toFixed(0)}%\n`;
-      text += `   Vol 24h: ${formatUsd(opp.volume24h)}\n\n`;
+    for (const s of spreads.slice(0, 5)) {
+      const cheaper = s.priceA < s.priceB ? s.platformA : s.platformB;
+      const expensive = s.priceA > s.priceB ? s.platformA : s.platformB;
+      const lowPrice = Math.min(s.priceA, s.priceB);
+      const highPrice = Math.max(s.priceA, s.priceB);
+      const cheaperUrl = s.priceA < s.priceB ? s.urlA : s.urlB;
+      const expensiveUrl = s.priceA > s.priceB ? s.urlA : s.urlB;
+
+      text += `🚨 *${s.spread.toFixed(1)}% SPREAD*\n`;
+      text += `   "${s.topic}..."\n`;
+      text += `   ├─ [${cheaper.toUpperCase()}](${cheaperUrl}): ${lowPrice.toFixed(0)}¢ YES\n`;
+      text += `   └─ [${expensive.toUpperCase()}](${expensiveUrl}): ${highPrice.toFixed(0)}¢ YES\n`;
+      text += `   💰 Buy @ ${cheaper}, Sell @ ${expensive}\n\n`;
     }
 
-    text += `\n/buy <ticker> YES|NO <amount> to trade`;
+    text += `${'━'.repeat(40)}\n`;
+    text += `💡 /arb for full arbitrage analysis`;
 
-    return { text, mood: 'BULLISH', data: opportunities };
+    return { text, mood: 'ALERT', data: spreads };
   } catch (error) {
     return {
       text: `❌ Scan failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -2135,6 +2341,7 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
     if (lower === '/start') return handleStart();
     if (lower === '/help') return handleHelp();
     if (lower === '/brief') return await handleBrief();
+    if (lower === '/closing' || lower === '/expiring') return await handleClosing();
 
     // /hot - save context for follow-up questions
     if (lower === '/hot') {

@@ -271,46 +271,53 @@ async function fetchAllMarkets(
 
 /**
  * Format scan result for display
+ * ENHANCED: More actionable, cleaner output
  */
 export function formatScanResult(result: ScanResult): string {
   const lines: string[] = [];
 
-  lines.push('═'.repeat(50));
-  lines.push('ARBITRAGE SCANNER RESULTS');
-  lines.push('═'.repeat(50));
-  lines.push('');
+  // Compact header
+  lines.push('🎯 ARBITRAGE SCANNER');
+  lines.push('━'.repeat(45));
 
-  // Stats
-  lines.push(`Scan time: ${result.duration}ms`);
-  lines.push(`Markets scanned: ${result.totalMarkets}`);
-  for (const [platform, count] of Object.entries(result.marketsScanned)) {
-    lines.push(`  ${platform}: ${count}`);
-  }
-  lines.push(`Pairs evaluated: ${result.pairsEvaluated}`);
-  lines.push(`Pairs validated: ${result.pairsValidated} (${result.avgEquivalenceScore > 0 ? (result.avgEquivalenceScore * 100).toFixed(1) : 0}% avg equivalence)`);
+  // Compact stats
+  const platforms = Object.entries(result.marketsScanned)
+    .map(([p, c]) => `${p}: ${c}`)
+    .join(' | ');
+  lines.push(`📊 Scanned ${result.totalMarkets} markets (${platforms})`);
+  lines.push(`🔍 Found ${result.pairsValidated} matching pairs`);
   lines.push('');
 
   // Opportunities
   if (result.opportunities.length === 0) {
-    lines.push('─'.repeat(50));
-    lines.push('NO ARBITRAGE OPPORTUNITIES FOUND');
-    lines.push('─'.repeat(50));
+    lines.push('━'.repeat(45));
+    lines.push('❌ NO PROFITABLE ARBITRAGE RIGHT NOW');
+    lines.push('━'.repeat(45));
     lines.push('');
-    lines.push('This is expected. True arbitrage opportunities are rare');
-    lines.push('and get captured quickly by automated systems.');
+    lines.push('Markets are efficiently priced at the moment.');
     lines.push('');
+    lines.push('💡 Try:');
+    lines.push('• /arb bitcoin - Search specific topic');
+    lines.push('• /arb-subscribe - Get instant alerts when arbs appear');
+    lines.push('• /hot - See trending markets');
     if (result.filteredCount > 0) {
-      lines.push(`(${result.filteredCount} low-confidence opportunities were filtered out)`);
+      lines.push('');
+      lines.push(`(${result.filteredCount} low-confidence matches filtered)`);
     }
   } else {
-    lines.push('─'.repeat(50));
-    lines.push(`FOUND ${result.opportunities.length} OPPORTUNITIES`);
-    lines.push('─'.repeat(50));
+    // Calculate total potential profit
+    const bestProfit = Math.max(...result.opportunities.map(o => o.netProfitPct * 100));
+
+    lines.push('━'.repeat(45));
+    lines.push(`🚨 FOUND ${result.opportunities.length} OPPORTUNITIES (up to ${bestProfit.toFixed(1)}% profit)`);
+    lines.push('━'.repeat(45));
     lines.push('');
 
     for (let i = 0; i < result.opportunities.length; i++) {
       const opp = result.opportunities[i];
       lines.push(formatOpportunity(opp, i + 1));
+      lines.push('');
+      lines.push('─'.repeat(45));
       lines.push('');
     }
   }
@@ -342,6 +349,7 @@ export function formatScanResult(result: ScanResult): string {
 
 /**
  * Format a single opportunity for display
+ * ENHANCED: Includes links, profit calculation, clear execution steps
  */
 export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: number): string {
   const lines: string[] = [];
@@ -354,60 +362,71 @@ export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: num
     F: '🔴',
   };
 
-  lines.push(`#${index} | Grade ${opp.confidence.grade} ${confidenceEmoji[opp.confidence.grade]} | ${(opp.netProfitPct * 100).toFixed(2)}% net profit`);
-  lines.push('');
-
-  // Market titles
   const marketA = opp.pair.marketA;
   const marketB = opp.pair.marketB;
-
-  lines.push(`Market A (${marketA.platform}): ${marketA.title.slice(0, 50)}`);
-  lines.push(`Market B (${marketB.platform}): ${marketB.title.slice(0, 50)}`);
-  lines.push('');
-
-  // Strategy
-  lines.push(`Strategy: ${opp.strategy.description}`);
-  lines.push('');
-
-  // Prices
   const leg1 = opp.strategy.legs[0];
   const leg2 = opp.strategy.legs[1];
-  lines.push(`Leg 1: ${leg1.action} ${leg1.side} @ ${leg1.platform} at ${(leg1.targetPrice * 100).toFixed(1)}%`);
-  lines.push(`Leg 2: ${leg2.action} ${leg2.side} @ ${leg2.platform} at ${(leg2.targetPrice * 100).toFixed(1)}%`);
+  const netProfitPct = opp.netProfitPct * 100;
+
+  // Calculate dollar profits for common position sizes
+  const profit100 = (100 * opp.netProfitPct).toFixed(2);
+  const profit500 = (500 * opp.netProfitPct).toFixed(2);
+  const profit1000 = (1000 * opp.netProfitPct).toFixed(2);
+
+  // Header with profit highlight
+  lines.push(`🚨 ARB #${index} | ${netProfitPct.toFixed(1)}% PROFIT | Grade ${opp.confidence.grade} ${confidenceEmoji[opp.confidence.grade]}`);
+  lines.push('━'.repeat(45));
   lines.push('');
 
-  // Economics
-  lines.push(`Gross profit: ${(opp.grossProfitPct * 100).toFixed(2)}%`);
-  lines.push(`Total costs: ${(opp.totalCosts.costAsPctOfCapital * 100).toFixed(2)}%`);
-  lines.push(`Net profit: ${(opp.netProfitPct * 100).toFixed(2)}%`);
+  // Market title (shortened, same for both if equivalent)
+  const title = marketA.title.length > 45 ? marketA.title.slice(0, 45) + '...' : marketA.title;
+  lines.push(`📊 "${title}"`);
   lines.push('');
 
-  // Execution
-  lines.push(`Recommended size: $${opp.execution.recommendedSize.toFixed(0)}`);
-  lines.push(`Max size: $${opp.execution.maxSize.toFixed(0)}`);
+  // Price comparison with links
+  lines.push('💰 PRICES:');
+  const priceA = (marketA.yesPrice * 100).toFixed(0);
+  const priceB = (marketB.yesPrice * 100).toFixed(0);
+  lines.push(`├─ ${marketA.platform.toUpperCase()}: ${priceA}¢ YES`);
+  if (marketA.url) {
+    lines.push(`│  [${marketA.url}]`);
+  }
+  lines.push(`├─ ${marketB.platform.toUpperCase()}: ${priceB}¢ YES`);
+  if (marketB.url) {
+    lines.push(`│  [${marketB.url}]`);
+  }
   lines.push('');
 
-  // Risk
-  lines.push(`Risk score: ${opp.risk.overallRiskScore}/100`);
+  // Clear execution steps
+  lines.push('📋 EXECUTION STEPS:');
+  lines.push(`Step 1: ${leg1.action.toUpperCase()} ${leg1.side} @ ${leg1.platform} at ${(leg1.targetPrice * 100).toFixed(0)}¢`);
+  lines.push(`Step 2: ${leg2.action.toUpperCase()} ${leg2.side} @ ${leg2.platform} at ${(leg2.targetPrice * 100).toFixed(0)}¢`);
+  lines.push('');
+
+  // Profit calculation
+  lines.push('💵 PROFIT CALCULATOR:');
+  lines.push(`├─ $100 position → $${profit100} profit`);
+  lines.push(`├─ $500 position → $${profit500} profit`);
+  lines.push(`└─ $1000 position → $${profit1000} profit`);
+  lines.push('');
+
+  // Recommended size
+  lines.push(`📏 Recommended: $${opp.execution.recommendedSize.toFixed(0)} (max: $${opp.execution.maxSize.toFixed(0)})`);
+  lines.push('');
+
+  // Risk & confidence (compact)
+  const riskLevel = opp.risk.overallRiskScore < 30 ? '🟢 Low' : opp.risk.overallRiskScore < 60 ? '🟡 Medium' : '🔴 High';
+  lines.push(`⚠️ Risk: ${riskLevel} | Match: ${(opp.pair.equivalence.overallScore * 100).toFixed(0)}%`);
+
+  // Top warning if any
   if (opp.risk.flags.length > 0) {
-    for (const flag of opp.risk.flags.slice(0, 3)) {
-      const emoji = flag.severity === 'CRITICAL' ? '🔴' : flag.severity === 'WARNING' ? '🟡' : 'ℹ️';
-      lines.push(`  ${emoji} ${flag.message}`);
-    }
+    const topFlag = opp.risk.flags[0];
+    lines.push(`   └─ ${topFlag.message}`);
   }
   lines.push('');
 
-  // Confidence
-  lines.push(`Confidence: ${opp.confidence.score}% - ${opp.confidence.recommendation}`);
-  lines.push('');
-
-  // Equivalence
-  lines.push(`Match confidence: ${(opp.pair.equivalence.overallScore * 100).toFixed(0)}%`);
-  if (opp.pair.equivalence.warnings.length > 0) {
-    for (const warning of opp.pair.equivalence.warnings.slice(0, 2)) {
-      lines.push(`  ⚠️ ${warning}`);
-    }
-  }
+  // Urgency
+  lines.push('⏰ Execute within 5-10 mins (prices move fast!)');
 
   return lines.join('\n');
 }
