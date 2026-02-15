@@ -2504,7 +2504,18 @@ You're now receiving ALL BeRight notifications!
         if (lower.startsWith('/intel')) {
           const query = extractQuery(text, '/intel');
           if (!query) return { text: 'Usage: /intel <topic>', mood: 'NEUTRAL' };
-          return await intelReport(query);
+          console.log(`[TelegramHandler] /intel called with query: "${query}"`);
+          try {
+            const result = await intelReport(query);
+            console.log(`[TelegramHandler] /intel result received, text length: ${result.text?.length || 0}`);
+            return result;
+          } catch (err) {
+            console.error('[TelegramHandler] /intel error:', err);
+            return {
+              text: `Intel report failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+              mood: 'ERROR',
+            };
+          }
         }
         break;
       }
