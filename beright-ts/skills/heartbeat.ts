@@ -26,6 +26,13 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 import { SkillResponse, ArbitrageOpportunity } from '../types/index';
 import { HEARTBEAT } from '../config/thresholds';
+import {
+  HeartbeatState,
+  loadState,
+  saveState,
+  shouldRun,
+  INTERVALS,
+} from '../lib/orchestrator';
 import { arbitrage } from './arbitrage';
 import { whaleWatch } from './whale';
 // Professional arbitrage monitor for early detection
@@ -47,7 +54,19 @@ import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade'
 import { refreshPositionPrices, getExpiringPositions } from './positions';
 import { buildOnce as runBuilderOnce } from './buildLoop';
 import { runProactiveAgent } from './proactiveAgent';
-import * as fs from 'fs';
+
+// Signal Intelligence Engine
+import { runAllDetectors } from '../lib/signals/index';
+import { routeAlerts as routeSignalAlerts, setAlertRouterSender } from '../lib/alertRouter';
+
+// Momentum Score Engine
+import { runMomentumUpdate } from '../lib/momentum';
+
+// Social Listener
+import { runSocialIngestion } from '../lib/social';
+
+// Synthesis Agent
+import { synthesizeReport, formatSynthesisForTelegram } from '../lib/synthesis';
 
 // Cognitive Loop Integration
 import {
@@ -60,120 +79,13 @@ import {
   getAgentsSummary,
 } from '../lib/cognitive';
 
-// Builder runs every 7 minutes
-const BUILDER_INTERVAL = 7 * 60 * 1000;
-
-// Cognitive Loop runs every 2 minutes
-const COGNITIVE_INTERVAL = 2 * 60 * 1000;
-
-interface HeartbeatState {
-  lastArbScan: string | null;
-  lastWhaleScan: string | null;
-  lastResolutionCheck: string | null;
-  lastMorningBrief: string | null;
-  lastPriceSnapshot: string | null;
-  lastNotificationCheck: string | null;
-  lastPriceAlertCheck: string | null;
-  lastAutoRuleCheck: string | null;
-  lastPositionRefresh: string | null;
-  lastBuilderRun: string | null;
-  lastCognitiveRun: string | null;  // NEW: Cognitive loop timing
-  lastAgentCoordination: string | null;  // NEW: Multi-agent coordination
-  lastProArbScan: string | null;  // Professional arb monitor scan
-  totalScans: number;
-  totalArbsFound: number;
-  totalWhaleAlerts: number;
-  totalDecisions: number;
-  totalAlertsQueued: number;
-  totalPriceAlertsTriggered: number;
-  totalAutoExecutions: number;
-  totalBuilderRuns: number;
-  totalCognitiveCycles: number;  // NEW: Track cognitive cycles
-  totalProArbAlerts: number;  // Professional arb monitor alerts
-  lastProactiveRun: string | null;  // Proactive agent scan
-  totalProactiveAlerts: number;  // Proactive agent alerts sent
-}
-
-const STATE_FILE = path.join(process.cwd(), 'memory', 'heartbeat-state.json');
-const PRICE_SNAPSHOT_INTERVAL = 5 * 60 * 1000; // every 5 minutes
-
-/**
- * Load heartbeat state
- */
-function loadState(): HeartbeatState {
-  const defaults: HeartbeatState = {
-    lastArbScan: null,
-    lastWhaleScan: null,
-    lastResolutionCheck: null,
-    lastMorningBrief: null,
-    lastPriceSnapshot: null,
-    lastNotificationCheck: null,
-    lastPriceAlertCheck: null,
-    lastAutoRuleCheck: null,
-    lastPositionRefresh: null,
-    lastBuilderRun: null,
-    lastCognitiveRun: null,
-    lastAgentCoordination: null,
-    lastProArbScan: null,
-    totalScans: 0,
-    totalArbsFound: 0,
-    totalWhaleAlerts: 0,
-    totalDecisions: 0,
-    totalAlertsQueued: 0,
-    totalPriceAlertsTriggered: 0,
-    totalAutoExecutions: 0,
-    totalBuilderRuns: 0,
-    totalCognitiveCycles: 0,
-    totalProArbAlerts: 0,
-    lastProactiveRun: null,
-    totalProactiveAlerts: 0,
-  };
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      const loaded = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
-      return {
-        ...defaults,
-        ...loaded,
-        // Ensure counters are always numbers (fix legacy null/undefined)
-        totalScans: loaded.totalScans ?? 0,
-        totalArbsFound: loaded.totalArbsFound ?? 0,
-        totalWhaleAlerts: loaded.totalWhaleAlerts ?? 0,
-        totalDecisions: loaded.totalDecisions ?? 0,
-        totalAlertsQueued: loaded.totalAlertsQueued ?? 0,
-        totalBuilderRuns: loaded.totalBuilderRuns ?? 0,
-        totalCognitiveCycles: loaded.totalCognitiveCycles ?? 0,
-        totalProArbAlerts: loaded.totalProArbAlerts ?? 0,
-      };
-    }
-  } catch (error) {
-    console.error('Could not load heartbeat state:', error);
-  }
-  return defaults;
-}
-
-/**
- * Save heartbeat state
- */
-function saveState(state: HeartbeatState): void {
-  try {
-    const dir = path.dirname(STATE_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-  } catch (error) {
-    console.error('Could not save heartbeat state:', error);
-  }
-}
-
-/**
- * Check if interval has passed since last run
- */
-function shouldRun(lastRun: string | null, intervalMs: number): boolean {
-  if (!lastRun) return true;
-  const elapsed = Date.now() - new Date(lastRun).getTime();
-  return elapsed >= intervalMs;
-}
+// Interval constants — now defined in lib/orchestrator.ts, accessed via INTERVALS
+const BUILDER_INTERVAL   = INTERVALS.builder;
+const COGNITIVE_INTERVAL = INTERVALS.cognitive;
+const PRICE_SNAPSHOT_INTERVAL = INTERVALS.priceSnapshot;
+const MOMENTUM_INTERVAL  = INTERVALS.momentum;
+const SOCIAL_INTERVAL    = INTERVALS.social;
+const SYNTHESIS_INTERVAL = INTERVALS.synthesis;
 
 /**
  * Record price snapshots for real market movers
@@ -566,7 +478,129 @@ Reason: ${exec.reason}
     }
   }
 
-  // 12. Log heartbeat to chain
+  // 11.5 Run SOCIAL INGESTION — fetch Twitter/Reddit mentions
+  // Run BEFORE signal pipeline so fresh data is available for social_mention detector
+  if (shouldRun(state.lastSocialRun, SOCIAL_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running social ingestion...`);
+      const socialResult = await runSocialIngestion();
+      state.lastSocialRun = timestamp();
+      state.totalSocialMentions = (state.totalSocialMentions || 0) + socialResult.mentionsSaved;
+      saveState(state);
+
+      if (socialResult.mentionsSaved > 0) {
+        console.log(`[${timestamp()}] Social: ${socialResult.mentionsFetched} fetched, ${socialResult.mentionsSaved} saved, ${socialResult.marketsUpdated} markets`);
+
+        // Inject into cognitive loop
+        addSignal(
+          'social_ingestion' as any,
+          'social_listener',
+          `Ingested ${socialResult.mentionsSaved} social mentions`,
+          Math.min(1, socialResult.mentionsSaved / 30)
+        );
+      }
+    } catch (err) {
+      console.warn('[Social] Ingestion failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // 12. Run SIGNAL INTELLIGENCE PIPELINE — the proactive alert engine
+  // Every 5 minutes: run all 12 detectors (including social), evaluate with Groq Scout, push alerts
+  const SIGNAL_INTERVAL = 5 * 60 * 1000;
+  if (shouldRun(state.lastSignalRun, SIGNAL_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running signal intelligence pipeline...`);
+
+      // Wire up Telegram sender for alert routing
+      setAlertRouterSender(async (chatId: string, message: string) => {
+        const result = await sendTelegramMessage(chatId, message, { parseMode: 'Markdown' });
+        if (!result.success) throw new Error(result.error || 'Send failed');
+      });
+
+      const signalResults = await runAllDetectors();
+      state.lastSignalRun = timestamp();
+      saveState(state);
+
+      if (signalResults.length > 0) {
+        const alertCount = await routeSignalAlerts(signalResults);
+        state.totalSignalAlerts += alertCount;
+        saveState(state);
+
+        console.log(`[${timestamp()}] Signal intelligence: ${signalResults.length} signals, ${alertCount} alerts sent`);
+
+        // Inject top signals into cognitive loop for awareness
+        for (const sig of signalResults.filter(s => s.action === 'ALERT').slice(0, 3)) {
+          addSignal(sig.type as any, 'signal_engine', sig.marketTitle, sig.strength);
+        }
+      } else {
+        console.log(`[${timestamp()}] Signal intelligence: no actionable signals`);
+      }
+    } catch (err) {
+      console.warn('[Signal Pipeline] Failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // 13. Run MOMENTUM SCORE UPDATE — rank markets by activity
+  // Every 5 minutes: calculate momentum scores for all active markets
+  if (shouldRun(state.lastMomentumRun, MOMENTUM_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running momentum score update...`);
+      const momentumUpdated = await runMomentumUpdate();
+      state.lastMomentumRun = timestamp();
+      state.totalMomentumUpdates = (state.totalMomentumUpdates || 0) + momentumUpdated;
+      saveState(state);
+
+      if (momentumUpdated > 0) {
+        console.log(`[${timestamp()}] Momentum: updated ${momentumUpdated} market scores`);
+
+        // Inject momentum signal into cognitive loop
+        addSignal(
+          'momentum_update' as any,
+          'momentum_engine',
+          `Updated ${momentumUpdated} market momentum scores`,
+          Math.min(1, momentumUpdated / 50)
+        );
+      }
+    } catch (err) {
+      console.warn('[Momentum] Update failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // 13.5 Run SYNTHESIS AGENT — market intelligence report
+  // Every 6 hours: synthesize signals into cohesive narrative
+  if (shouldRun(state.lastSynthesisRun, SYNTHESIS_INTERVAL)) {
+    try {
+      console.log(`[${timestamp()}] Running synthesis agent...`);
+      const report = await synthesizeReport();
+      state.lastSynthesisRun = timestamp();
+
+      if (report) {
+        state.totalSynthesisReports = (state.totalSynthesisReports || 0) + 1;
+        saveState(state);
+
+        console.log(`[${timestamp()}] Synthesis: "${report.headline.slice(0, 60)}" (${report.signalsProcessed} signals)`);
+
+        // Inject into cognitive loop
+        addSignal(
+          'synthesis_report' as any,
+          'synthesis_agent',
+          report.headline,
+          0.8
+        );
+
+        // Add formatted report to alerts
+        alerts.push({
+          text: formatSynthesisForTelegram(report),
+          mood: 'BULLISH',
+          data: report,
+        });
+      }
+    } catch (err) {
+      console.warn('[Synthesis] Report failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // 14. Log heartbeat to chain
   const brierScore = getCalibrationStats().overallBrierScore;
   try {
     await logHeartbeat(
@@ -684,12 +718,20 @@ if (process.argv[1]?.endsWith('heartbeat.ts')) {
     console.log(`  Decisions logged: ${state.totalDecisions}`);
     console.log(`  Alerts queued: ${state.totalAlertsQueued}`);
     console.log(`  Builder runs: ${state.totalBuilderRuns}`);
+    console.log(`  Signal alerts: ${state.totalSignalAlerts || 0}`);
+    console.log(`  Momentum updates: ${state.totalMomentumUpdates || 0}`);
+    console.log(`  Social mentions: ${state.totalSocialMentions || 0}`);
+    console.log(`  Synthesis reports: ${state.totalSynthesisReports || 0}`);
     console.log(`  Last arb scan: ${state.lastArbScan || 'never'}`);
     console.log(`  Last pro arb scan: ${state.lastProArbScan || 'never'}`);
     console.log(`  Last whale scan: ${state.lastWhaleScan || 'never'}`);
     console.log(`  Last notification: ${state.lastNotificationCheck || 'never'}`);
     console.log(`  Last price snapshot: ${state.lastPriceSnapshot || 'never'}`);
     console.log(`  Last builder run: ${state.lastBuilderRun || 'never'}`);
+    console.log(`  Last signal run: ${state.lastSignalRun || 'never'}`);
+    console.log(`  Last momentum run: ${state.lastMomentumRun || 'never'}`);
+    console.log(`  Last social run: ${state.lastSocialRun || 'never'}`);
+    console.log(`  Last synthesis run: ${state.lastSynthesisRun || 'never'}`);
   } else {
     console.log('Usage:');
     console.log('  ts-node heartbeat.ts once           - Run single check');

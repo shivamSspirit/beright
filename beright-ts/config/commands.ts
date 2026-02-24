@@ -456,6 +456,24 @@ COPY TRADING
 /signals - View predictions from followed
 /toplists - Find top forecasters
 
+ON-CHAIN VAULT
+/my-vault - View your BeRight vault balance & status
+
+SIGNAL CHANNELS (Vault v0)
+/channels - Browse top forecaster channels
+/subscribe-channel <slug> - Subscribe to a channel
+/unsubscribe-channel <slug> - Unsubscribe from a channel
+/my-channels - Your subscriptions
+/create-channel <name> - Create your own channel
+/channel - View your channel stats
+/signal YES|NO "<market>" <prob> <conf> <reasoning> - Broadcast a signal
+
+SIGNAL INTELLIGENCE FEED
+/feed - View recent market signals
+/watch-on - Enable proactive signal alerts
+/watch-off - Disable signal alerts
+/watch-status - Check alert subscription
+
 MEMORY & LEARNING
 /memory - View memory stats
 /memory recent - Recent conversations

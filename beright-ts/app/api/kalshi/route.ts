@@ -176,16 +176,23 @@ export async function GET(request: NextRequest) {
  *   - ticker: market ticker
  *   - side: 'yes' | 'no'
  *   - contracts: number of contracts
- *   - price: price in cents (optional, for limit orders)
+ *   - price: price in cents (1-99) - REQUIRED (market orders deprecated Feb 2026)
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, ticker, side, contracts, price } = body;
 
-    if (!action || !ticker || !side || !contracts) {
+    if (!action || !ticker || !side || !contracts || !price) {
       return NextResponse.json(
-        { error: 'Missing required fields: action, ticker, side, contracts' },
+        { error: 'Missing required fields: action, ticker, side, contracts, price' },
+        { status: 400 }
+      );
+    }
+
+    if (price < 1 || price > 99) {
+      return NextResponse.json(
+        { error: 'price must be between 1 and 99 cents' },
         { status: 400 }
       );
     }

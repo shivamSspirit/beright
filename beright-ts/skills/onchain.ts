@@ -14,6 +14,7 @@ import {
 import { getConnection } from './rpc';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 // Solana Memo Program ID
 const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
@@ -24,7 +25,7 @@ const LOCAL_LOG_FILE = path.join(process.cwd(), 'memory', 'decisions.json');
 export type DecisionType = 'DECISION' | 'PREDICTION' | 'RESOLUTION' | 'HEARTBEAT' | 'ARBITRAGE';
 
 export interface DecisionMemo {
-  v: number;                // version
+  v: number | 2;            // version (1 = legacy, 2 = signed commitment)
   t: DecisionType;          // type
   q: string;                // question/topic (truncated)
   consensus?: number;       // consensus probability
@@ -247,6 +248,137 @@ export function getOnChainCount(): number {
   } catch {
     return 0;
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// SIGNED COMMITMENT SYSTEM (Phase 2 upgrade)
+// Verifiable pre-resolution prediction commits.
+// Anyone can verify: hash(commitment) → find on Solana → check timestamp.
+// ─────────────────────────────────────────────────────────────
+
+export interface SignedCommitment {
+  v: 2;
+  type: 'SIGNED_PREDICTION';
+  questionHash: string;    // SHA256 of the question
+  question: string;        // plaintext question (for display)
+  direction: 'YES' | 'NO';
+  probability: number;     // 0-1
+  domain: string;          // politics, crypto, sports, macro, general
+  timestamp: number;       // unix seconds
+  forecasterHash: string;  // SHA256 of telegramId (privacy-preserving)
+  commitHash: string;      // SHA256 of the full commitment (canonical proof)
+}
+
+export interface CommitResult {
+  commitment: SignedCommitment;
+  commitHash: string;
+  txSignature: string | null;
+  onChain: boolean;
+  verifyUrl: string | null;
+}
+
+/**
+ * Create a verifiable signed prediction commitment.
+ *
+ * The commitment is hashed with SHA256 and written to Solana memo program.
+ * The timestamp PROVES the prediction was made BEFORE resolution.
+ *
+ * Verification:
+ *   1. Reconstruct commitment object from stored fields
+ *   2. SHA256 → should match commitHash
+ *   3. Find commitHash in Solana memo transactions
+ *   4. Solana block timestamp ≤ market resolution timestamp → valid
+ */
+export async function commitPredictionSigned(opts: {
+  telegramId: number;
+  question: string;
+  direction: 'YES' | 'NO';
+  probability: number;
+  domain: string;
+}): Promise<CommitResult> {
+  const { telegramId, question, direction, probability, domain } = opts;
+
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // Hash question for compact on-chain storage
+  const questionHash = crypto.createHash('sha256').update(question.toLowerCase().trim()).digest('hex').slice(0, 16);
+
+  // Hash forecaster ID for privacy (someone can claim it by revealing their telegramId)
+  const forecasterHash = crypto.createHash('sha256').update(String(telegramId)).digest('hex').slice(0, 16);
+
+  // Build canonical commitment
+  const commitBody = `${questionHash}:${direction}:${probability.toFixed(4)}:${timestamp}:${forecasterHash}`;
+  const commitHash = crypto.createHash('sha256').update(commitBody).digest('hex').slice(0, 32);
+
+  const commitment: SignedCommitment = {
+    v: 2,
+    type: 'SIGNED_PREDICTION',
+    questionHash,
+    question: question.slice(0, 100),
+    direction,
+    probability,
+    domain,
+    timestamp,
+    forecasterHash,
+    commitHash,
+  };
+
+  // Write to Solana memo: just the hash (compact, costs ~0.000005 SOL)
+  const memoPayload: DecisionMemo = {
+    v: 2,
+    t: 'PREDICTION',
+    q: commitHash,     // the commitment hash IS the memo
+    action: `COMMIT_${direction}`,
+    conf: Math.round(probability * 100),
+    ts: timestamp,
+  };
+
+  const result = await logDecision(memoPayload);
+
+  const verifyUrl = result.txSignature
+    ? `https://solscan.io/tx/${result.txSignature}`
+    : null;
+
+  return {
+    commitment,
+    commitHash,
+    txSignature: result.txSignature,
+    onChain: result.onChain,
+    verifyUrl,
+  };
+}
+
+/**
+ * Verify a commitment: reconstructs hash from stored fields
+ * Returns true if the commitHash matches (commitment was not tampered with)
+ */
+export function verifyCommitment(commitment: SignedCommitment): boolean {
+  const commitBody = `${commitment.questionHash}:${commitment.direction}:${commitment.probability.toFixed(4)}:${commitment.timestamp}:${commitment.forecasterHash}`;
+  const expectedHash = crypto.createHash('sha256').update(commitBody).digest('hex').slice(0, 32);
+  return expectedHash === commitment.commitHash;
+}
+
+/**
+ * Format a commit result for Telegram display
+ */
+export function formatCommitResult(result: CommitResult): string {
+  const { commitment, verifyUrl, onChain } = result;
+
+  let text = `*Prediction Committed*\n\n`;
+  text += `${commitment.question.slice(0, 70)}\n\n`;
+  text += `Direction: *${commitment.direction}* at ${(commitment.probability * 100).toFixed(0)}%\n`;
+  text += `Domain: ${commitment.domain}\n`;
+  text += `Hash: \`${commitment.commitHash.slice(0, 16)}...\`\n\n`;
+
+  if (onChain && verifyUrl) {
+    text += `✅ *On-chain timestamp proof*\n`;
+    text += `[View on Solscan](${verifyUrl})\n\n`;
+    text += `_This proves you made this prediction before resolution._`;
+  } else {
+    text += `⚠️ _Commitment saved locally (no wallet configured for on-chain proof)_`;
+  }
+
+  return text;
 }
 
 // CLI interface

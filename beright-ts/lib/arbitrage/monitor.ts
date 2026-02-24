@@ -80,6 +80,7 @@ interface TrackedOpportunity {
     profit: number;
   }>;
   alertSent: boolean;
+  priceVerifiedAt?: Date;  // When prices were last verified before alert
 }
 
 // Active opportunities
@@ -113,6 +114,66 @@ const monitorState: MonitorState = {
 // Alert callback
 type AlertCallback = (opportunity: TrackedOpportunity) => Promise<void>;
 let alertCallback: AlertCallback | null = null;
+
+// ============================================
+// REAL-TIME PRICE VERIFICATION
+// ============================================
+
+/**
+ * Verify that an opportunity is still valid with fresh prices
+ * This prevents sending alerts for stale/closed opportunities
+ */
+async function verifyOpportunityStillValid(
+  entry: MarketRegistryEntry,
+  expectedProfit: number
+): Promise<{ isValid: boolean; currentProfit: number; reason?: string }> {
+  try {
+    // Fetch fresh prices
+    const prices = await fetchPairPrices(entry);
+
+    if (!prices) {
+      return {
+        isValid: false,
+        currentProfit: 0,
+        reason: 'Could not fetch current prices'
+      };
+    }
+
+    const { priceA, priceB } = prices;
+    const { hasArbitrage, profit } = calculateProfit(priceA, priceB);
+
+    if (!hasArbitrage) {
+      return {
+        isValid: false,
+        currentProfit: 0,
+        reason: 'Arbitrage opportunity has closed'
+      };
+    }
+
+    // Check if profit has degraded significantly (>50% reduction)
+    if (profit < expectedProfit * 0.5) {
+      return {
+        isValid: false,
+        currentProfit: profit,
+        reason: `Profit degraded from ${expectedProfit.toFixed(2)}% to ${profit.toFixed(2)}%`
+      };
+    }
+
+    // Opportunity still valid
+    return {
+      isValid: true,
+      currentProfit: profit
+    };
+
+  } catch (error) {
+    console.error('[Verify] Price verification failed:', error);
+    return {
+      isValid: false,
+      currentProfit: 0,
+      reason: 'Verification error'
+    };
+  }
+}
 
 // ============================================
 // REGISTRY MANAGEMENT
@@ -356,11 +417,33 @@ export async function scanForOpportunities(
         profit,
       });
 
-      // Send alert if not already sent
+      // Send alert if not already sent - WITH VERIFICATION
       if (!tracked.alertSent && alertCallback) {
-        await alertCallback(tracked);
-        tracked.alertSent = true;
-        monitorState.alertsSent++;
+        // Verify opportunity is still valid before alerting
+        console.log(`[Monitor] Verifying opportunity before alert: ${entry.marketA.title.slice(0, 30)}`);
+
+        const verification = await verifyOpportunityStillValid(entry, profit);
+
+        if (verification.isValid) {
+          // Update with verified current profit
+          tracked.currentProfit = verification.currentProfit;
+          tracked.priceVerifiedAt = new Date();
+
+          await alertCallback(tracked);
+          tracked.alertSent = true;
+          monitorState.alertsSent++;
+
+          console.log(`[Monitor] ✅ Alert sent (verified profit: ${verification.currentProfit.toFixed(2)}%)`);
+        } else {
+          console.log(`[Monitor] ⚠️ Alert BLOCKED - ${verification.reason}`);
+
+          // Mark as closed if opportunity no longer valid
+          if (verification.currentProfit === 0) {
+            tracked.status = 'closed';
+            activeOpportunities.delete(pairId);
+            historicalOpportunities.unshift(tracked);
+          }
+        }
       }
 
       newOpportunities.push(tracked);
@@ -480,20 +563,25 @@ export function getHistoricalOpportunities(): TrackedOpportunity[] {
 /**
  * Format opportunity for telegram alert
  * Uses the URL directly from the market data (set when fetching from platforms)
+ * UPDATED: Honest warnings about execution risks
  */
 export function formatOpportunityAlert(opp: TrackedOpportunity): string {
   const age = Math.round((Date.now() - opp.firstSeen.getTime()) / 1000);
+  const verifiedAge = opp.priceVerifiedAt
+    ? Math.round((Date.now() - opp.priceVerifiedAt.getTime()) / 1000)
+    : age;
 
   // Use URLs directly from market data (already correct from fetch)
   const urlA = opp.pair.marketA.url || '#';
   const urlB = opp.pair.marketB.url || '#';
 
   return `
-🚨 *ARBITRAGE ALERT*
+🚨 *ARBITRAGE OPPORTUNITY DETECTED*
 
 ${opp.pair.marketA.title.slice(0, 50)}
 
-📊 *PROFIT: ${opp.currentProfit.toFixed(2)}%*
+📊 *POTENTIAL PROFIT: ${opp.currentProfit.toFixed(2)}%*
+${opp.priceVerifiedAt ? `✅ Prices verified ${verifiedAge}s ago` : '⚠️ Prices not yet verified'}
 
 *${opp.pair.marketA.platform}:*
 [View Market →](${urlA})
@@ -502,10 +590,18 @@ ${opp.pair.marketA.title.slice(0, 50)}
 [View Market →](${urlB})
 
 Match confidence: ${(opp.pair.equivalenceScore * 100).toFixed(0)}%
-First seen: ${age}s ago
-Peak profit: ${opp.peakProfit.toFixed(2)}%
+First detected: ${age}s ago
 
-⚡ ACT FAST - Opportunities close quickly!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ *BEFORE YOU TRADE:*
+
+🏃 *SPEED*: Others see this alert too
+📉 *PRICES MOVE*: Verify on platforms first
+💸 *SLIPPAGE*: Use limit orders, not market
+🎯 *START SMALL*: Test with $50-100 first
+
+✅ This is a *potential* opportunity, not a guarantee.
+Profit depends on execution speed and price stability.
 `;
 }
 

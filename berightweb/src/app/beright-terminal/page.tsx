@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BottomNav from '@/components/BottomNav';
 import { usePrivy } from '@privy-io/react-auth';
-import { getHotMarkets, getArbitrageOpportunities, getIntel, ApiMarket, ApiArbitrage } from '@/lib/api';
+import { getHotMarkets, getArbitrageOpportunities, getIntel, sendToGateway, GatewayResponse, ApiMarket, ApiArbitrage } from '@/lib/api';
+import { useSignalStream, LiveSignal } from '@/hooks/useSignalStream';
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  BERIGHT AI TERMINAL - CYBERPUNK PREDICTION MARKET INTERFACE             ║
@@ -12,7 +13,7 @@ import { getHotMarkets, getArbitrageOpportunities, getIntel, ApiMarket, ApiArbit
 // ║  Font: Share Tech Mono (terminal) + Orbitron (headers)                   ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
-type ViewMode = 'terminal' | 'markets' | 'agents' | 'intel';
+type ViewMode = 'terminal' | 'markets' | 'agents' | 'intel' | 'signals';
 
 interface AgentLog {
   id: string;
@@ -295,14 +296,18 @@ function TerminalInterface({
   };
 
   const commands = [
-    { cmd: '/hot', desc: 'Show hot markets' },
-    { cmd: '/arb', desc: 'Find arbitrage' },
-    { cmd: '/scan [topic]', desc: 'Scan markets' },
-    { cmd: '/research [query]', desc: 'Deep analysis' },
-    { cmd: '/whale', desc: 'Track whales' },
-    { cmd: '/intel', desc: 'Latest news' },
-    { cmd: '/status', desc: 'System status' },
-    { cmd: '/clear', desc: 'Clear terminal' },
+    { cmd: '/help', desc: 'All commands' },
+    { cmd: '/hot', desc: 'Hot markets' },
+    { cmd: '/alpha', desc: 'Alpha plays' },
+    { cmd: '/arb', desc: 'Arbitrage' },
+    { cmd: '/research', desc: 'Research' },
+    { cmd: '/intelligence', desc: 'AI analysis' },
+    { cmd: '/whale', desc: 'Whales' },
+    { cmd: '/intel', desc: 'News' },
+    { cmd: '/brief', desc: 'Briefing' },
+    { cmd: '/me', desc: 'My stats' },
+    { cmd: '/predict', desc: 'Predict' },
+    { cmd: '/signals', desc: 'Signals' },
   ];
 
   return (
@@ -470,6 +475,137 @@ function ArbGrid({ opportunities }: { opportunities: ApiArbitrage[] }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SIGNAL TYPE META (action colors / labels)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SIGNAL_ACTION_COLOR: Record<string, string> = {
+  ALERT: '#ff0055',
+  WATCH: '#00fff7',
+  SKIP:  '#444',
+};
+
+const SIGNAL_TYPE_LABEL: Record<string, string> = {
+  volume_surge:        'VOL SURGE',
+  odds_shift:          'ODDS SHIFT',
+  arb_opportunity:     'ARB',
+  resolution_imminent: 'RESOLVING',
+  new_market:          'NEW MKT',
+  smart_money:         'SMART $',
+  narrative_emergence: 'NARRATIVE',
+  cross_market:        'CROSS-MKT',
+  insider_pattern:     'INSIDER',
+  consensus_flip:      'FLIP',
+  whale_entry:         'WHALE',
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIGNALS FEED PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function SignalsFeed({ signals, connected, alertCount, clearAlerts }: {
+  signals: LiveSignal[];
+  connected: boolean;
+  alertCount: number;
+  clearAlerts: () => void;
+}) {
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  if (signals.length === 0) {
+    return (
+      <div className="signals-panel">
+        <div className="panel-header-bar">
+          <span className="panel-icon">⚡</span>
+          <span className="panel-title">SIGNAL_INTELLIGENCE</span>
+          <span className={`signal-conn-badge ${connected ? 'live' : 'offline'}`}>
+            {connected ? '● LIVE' : '○ OFFLINE'}
+          </span>
+        </div>
+        <div className="no-data">
+          <span className="no-data-icon">⚡</span>
+          <span>{connected ? 'Awaiting first signal...' : 'Connecting to signal feed...'}</span>
+          <span className="no-data-sub">Signals are emitted every ~5 minutes from market detectors</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="signals-panel">
+      <div className="panel-header-bar">
+        <span className="panel-icon">⚡</span>
+        <span className="panel-title">SIGNAL_INTELLIGENCE</span>
+        <span className={`signal-conn-badge ${connected ? 'live' : 'offline'}`}>
+          {connected ? '● LIVE' : '○ OFFLINE'}
+        </span>
+        <span className="panel-count">{signals.length} SIGNALS</span>
+        {alertCount > 0 && (
+          <button className="clear-alerts-btn" onClick={clearAlerts}>
+            ✗ CLEAR {alertCount}
+          </button>
+        )}
+      </div>
+
+      <div className="signals-feed" ref={feedRef}>
+        {signals.map((sig, i) => (
+          <motion.div
+            key={sig.id}
+            className={`signal-row ${sig.action.toLowerCase()}`}
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i < 5 ? i * 0.04 : 0 }}
+          >
+            {/* Action badge */}
+            <div
+              className="sig-action"
+              style={{ color: SIGNAL_ACTION_COLOR[sig.action], borderColor: SIGNAL_ACTION_COLOR[sig.action] }}
+            >
+              {sig.action}
+            </div>
+
+            {/* Type tag */}
+            <div className="sig-type">
+              {SIGNAL_TYPE_LABEL[sig.signalType] || sig.signalType.toUpperCase()}
+            </div>
+
+            {/* Main info */}
+            <div className="sig-body">
+              <div className="sig-title">{sig.marketTitle}</div>
+              {sig.alertText && <div className="sig-alert">{sig.alertText}</div>}
+              {sig.reasoning && <div className="sig-reason">{sig.reasoning}</div>}
+            </div>
+
+            {/* Right stats */}
+            <div className="sig-stats">
+              <div className="sig-platform">{sig.platform.toUpperCase()}</div>
+              <div className="sig-confidence">
+                <span className="sig-conf-label">CONF</span>
+                <span className="sig-conf-value">{Math.round(sig.confidence * 100)}%</span>
+              </div>
+              <div className="sig-strength-bar">
+                <div
+                  className="sig-strength-fill"
+                  style={{
+                    width: `${Math.round(sig.strength * 100)}%`,
+                    background: sig.strength > 0.7
+                      ? SIGNAL_ACTION_COLOR.ALERT
+                      : sig.strength > 0.4
+                        ? SIGNAL_ACTION_COLOR.WATCH
+                        : '#444',
+                  }}
+                />
+              </div>
+              <div className="sig-time">
+                {new Date(sig.createdAt).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BOOT SEQUENCE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -489,6 +625,12 @@ function BootSequence({ onComplete }: { onComplete: () => void }) {
     '  ├─ ANALYST...... [ONLINE]',
     '  └─ TRADER....... [DISABLED]',
     '> Establishing Solana connection...',
+    '> Connecting signal intelligence feed...',
+    '  ├─ Volume Surge detector... [ARMED]',
+    '  ├─ Odds Shift detector..... [ARMED]',
+    '  ├─ Arb Opportunity......... [ARMED]',
+    '  ├─ Smart Money tracker..... [ARMED]',
+    '  └─ 7 more detectors........ [ARMED]',
     '> System ready.',
     '',
     '╔═══════════════════════════════════════════════════════════╗',
@@ -540,6 +682,9 @@ export default function BeRightTerminal() {
   const [isBooting, setIsBooting] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('terminal');
 
+  // Signal intelligence stream (SSE)
+  const { signals, connected: signalsConnected, alertCount, clearAlerts } = useSignalStream();
+
   // Data
   const [markets, setMarkets] = useState<ApiMarket[]>([]);
   const [arbOpportunities, setArbOpportunities] = useState<ApiArbitrage[]>([]);
@@ -548,6 +693,9 @@ export default function BeRightTerminal() {
   // Terminal state
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Gateway session for context persistence
+  const [gatewaySessionId, setGatewaySessionId] = useState<string | null>(null);
 
   // Agent state
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
@@ -622,99 +770,16 @@ export default function BeRightTerminal() {
     }
   }, [isBooting, fetchData]);
 
-  // Process terminal command
+  // Process terminal command through unified gateway
   const processCommand = useCallback(async (cmd: string) => {
     addTerminalLine('input', cmd);
     setIsProcessing(true);
 
     const command = cmd.toLowerCase().trim();
 
-    // Simulate processing delay
-    await new Promise(r => setTimeout(r, 500 + Math.random() * 500));
-
+    // LOCAL COMMANDS (don't need gateway)
     if (command === '/clear' || command === 'clear') {
       setTerminalLines([]);
-      setIsProcessing(false);
-      return;
-    }
-
-    if (command === '/help' || command === 'help') {
-      addTerminalLine('system', '═══ BERIGHT COMMAND REFERENCE ═══');
-      addTerminalLine('data', '/hot          - Show trending markets');
-      addTerminalLine('data', '/arb          - Find arbitrage opportunities');
-      addTerminalLine('data', '/scan [topic] - Scan markets by topic');
-      addTerminalLine('data', '/research [q] - Deep research analysis');
-      addTerminalLine('data', '/whale        - Track whale wallets');
-      addTerminalLine('data', '/intel        - Latest market intel');
-      addTerminalLine('data', '/status       - System status');
-      addTerminalLine('data', '/agents       - View agent network');
-      addTerminalLine('data', '/clear        - Clear terminal');
-      setIsProcessing(false);
-      return;
-    }
-
-    if (command === '/hot' || command === 'hot') {
-      addAgentLog('SCOUT', 'Fetching fresh market data...', 'info');
-
-      try {
-        const freshData = await getHotMarkets(10);
-        const freshMarkets = freshData.markets || [];
-
-        if (freshMarkets.length > 0) {
-          setMarkets(freshMarkets);
-          addTerminalLine('system', '═══ HOT MARKETS ═══');
-          addTerminalLine('data', 'Top markets by volume. Click to trade.');
-          addTerminalLine('data', '');
-
-          freshMarkets.slice(0, 5).forEach((m, i) => {
-            const priceSignal = m.yesPct >= 70 ? '🟢' : m.yesPct <= 30 ? '🔴' : '🟡';
-            addTerminalLine('data', `${i + 1}. ${m.title}`);
-            addTerminalLine('data', `   ${priceSignal} YES: ${m.yesPct.toFixed(0)}¢ | VOL: ${formatVolume(m.volume)} | ${m.platform.toUpperCase()}`);
-            if (m.url) {
-              addTerminalLine('link', `   → Trade: ${m.url}`);
-            }
-          });
-
-          addTerminalLine('data', '');
-          addTerminalLine('success', 'Tip: Click any link above to trade on that platform');
-          addAgentLog('SCOUT', `Returned ${Math.min(5, freshMarkets.length)} hot markets`, 'success');
-        } else {
-          addTerminalLine('error', 'No market data available. Try again in a moment.');
-        }
-      } catch {
-        addTerminalLine('error', 'Failed to fetch markets. Check connection.');
-        addAgentLog('SCOUT', 'Market fetch failed', 'error');
-      }
-
-      setIsProcessing(false);
-      return;
-    }
-
-    if (command === '/arb' || command === 'arb') {
-      addAgentLog('ANALYST', 'Scanning for arbitrage...', 'info');
-      addTerminalLine('system', '═══ ARBITRAGE OPPORTUNITIES ═══');
-
-      if (arbOpportunities.length > 0) {
-        arbOpportunities.slice(0, 3).forEach((a, i) => {
-          addTerminalLine('success', `${i + 1}. +${a.spread.toFixed(1)}% SPREAD`);
-          addTerminalLine('data', `   ${a.topic}`);
-          addTerminalLine('data', `   ${a.platformA.toUpperCase()} ${(a.priceA * 100).toFixed(0)}¢ vs ${a.platformB.toUpperCase()} ${(a.priceB * 100).toFixed(0)}¢`);
-        });
-        addAgentLog('ANALYST', `Found ${arbOpportunities.length} arb opportunities`, 'success');
-      } else {
-        addTerminalLine('data', 'No arbitrage opportunities above 3% threshold');
-      }
-      setIsProcessing(false);
-      return;
-    }
-
-    if (command === '/status' || command === 'status') {
-      addTerminalLine('system', '═══ SYSTEM STATUS ═══');
-      addTerminalLine('data', `Active Markets:   ${markets.length}`);
-      addTerminalLine('data', `Arb Signals:      ${arbOpportunities.length}`);
-      addTerminalLine('data', `Agents Online:    ${onlineAgents.length}/3`);
-      addTerminalLine('data', `TRADER:           DISABLED`);
-      addTerminalLine('success', 'All systems operational');
       setIsProcessing(false);
       return;
     }
@@ -726,43 +791,106 @@ export default function BeRightTerminal() {
       return;
     }
 
-    if (command.startsWith('/scan ') || command.startsWith('scan ')) {
-      const topic = cmd.slice(cmd.indexOf(' ') + 1);
-      addAgentLog('SCOUT', `Scanning for: "${topic}"`, 'info');
-      addTerminalLine('system', `═══ SCANNING: ${topic.toUpperCase()} ═══`);
-
-      const filtered = markets.filter(m =>
-        m.title.toLowerCase().includes(topic.toLowerCase())
-      );
-
-      if (filtered.length > 0) {
-        filtered.slice(0, 5).forEach((m, i) => {
-          addTerminalLine('data', `${i + 1}. ${m.title}`);
-          addTerminalLine('data', `   YES: ${m.yesPct.toFixed(0)}¢ | ${m.platform.toUpperCase()}`);
-        });
-        addAgentLog('SCOUT', `Found ${filtered.length} matching markets`, 'success');
-      } else {
-        addTerminalLine('data', `No markets found matching "${topic}"`);
-      }
+    if (command === '/signals') {
+      setViewMode('signals');
+      clearAlerts();
+      addTerminalLine('system', 'Switching to SIGNAL_INTELLIGENCE feed...');
+      addTerminalLine('data', `${signals.length} signals loaded | ${signalsConnected ? 'LIVE feed active' : 'Connecting...'}`);
       setIsProcessing(false);
       return;
     }
 
-    // Default: treat as a question
-    addAgentLog('ANALYST', `Processing query: "${cmd}"`, 'info');
-    await new Promise(r => setTimeout(r, 800));
+    if (command === '/markets') {
+      setViewMode('markets');
+      addTerminalLine('system', 'Switching to MARKETS view...');
+      setIsProcessing(false);
+      return;
+    }
 
-    const responses = [
-      `Analyzing "${cmd}"... Based on current market data, I recommend checking the /hot markets for trending opportunities.`,
-      `Interesting query. The prediction markets are showing high activity in crypto and politics categories today.`,
-      `Processing your request. For detailed analysis, try /research ${cmd} for a deep dive.`,
-      `I've scanned the markets for relevant data. Use /scan to find specific topics or /arb for arbitrage.`,
-    ];
+    // Determine which agent will handle this (for UI feedback)
+    const getAgentForCommand = (text: string): 'SCOUT' | 'ANALYST' | 'TRADER' | 'SYSTEM' => {
+      const lower = text.toLowerCase();
+      if (lower.startsWith('/hot') || lower.startsWith('/scan') || lower.startsWith('/alpha')) return 'SCOUT';
+      if (lower.startsWith('/research') || lower.startsWith('/odds') || lower.startsWith('/intelligence') || lower.startsWith('/analyze')) return 'ANALYST';
+      if (lower.startsWith('/arb')) return 'ANALYST';
+      if (lower.startsWith('/whale') || lower.startsWith('/track')) return 'SCOUT';
+      if (lower.startsWith('/trade') || lower.startsWith('/buy') || lower.startsWith('/sell') || lower.startsWith('/kalshi') || lower.startsWith('/dflow')) return 'TRADER';
+      return 'ANALYST';
+    };
 
-    addTerminalLine('output', responses[Math.floor(Math.random() * responses.length)]);
-    addAgentLog('ANALYST', 'Query processed successfully', 'success');
+    const agent = getAgentForCommand(cmd);
+    addAgentLog(agent, `Processing: ${cmd.slice(0, 50)}${cmd.length > 50 ? '...' : ''}`, 'info');
+
+    try {
+      // SEND TO UNIFIED GATEWAY
+      // This routes through the same handler as Telegram with full agent/skill system
+      const response: GatewayResponse = await sendToGateway(cmd, {
+        sessionId: gatewaySessionId || undefined,
+      });
+
+      // Save session ID for context persistence
+      if (response.sessionId && response.sessionId !== gatewaySessionId) {
+        setGatewaySessionId(response.sessionId);
+      }
+
+      if (response.success) {
+        // Parse the response and display it line by line
+        const lines = response.text.split('\n');
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          // Detect line types based on content
+          if (trimmed.startsWith('═') || trimmed.startsWith('─') || trimmed.startsWith('━')) {
+            addTerminalLine('system', trimmed);
+          } else if (trimmed.startsWith('✅') || trimmed.startsWith('✓') || trimmed.includes('SUCCESS')) {
+            addTerminalLine('success', trimmed);
+          } else if (trimmed.startsWith('❌') || trimmed.startsWith('✗') || trimmed.includes('ERROR') || trimmed.includes('Failed')) {
+            addTerminalLine('error', trimmed);
+          } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.includes(': http')) {
+            // Extract URL and make it a link
+            const urlMatch = trimmed.match(/(https?:\/\/[^\s]+)/);
+            if (urlMatch) {
+              addTerminalLine('link', `→ ${urlMatch[1]}`);
+            } else {
+              addTerminalLine('data', trimmed);
+            }
+          } else if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*') || /^\d+\./.test(trimmed)) {
+            addTerminalLine('data', trimmed);
+          } else if (trimmed.startsWith('/')) {
+            addTerminalLine('data', trimmed);
+          } else {
+            addTerminalLine('output', trimmed);
+          }
+        }
+
+        // Update local state if we got market data
+        if (response.data) {
+          // If response contains markets array, update local state
+          if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].title) {
+            setMarkets(response.data);
+          }
+          // If response contains arbitrage opportunities
+          if (response.data.opportunities) {
+            setArbOpportunities(response.data.opportunities);
+          }
+        }
+
+        addAgentLog(agent, `Response received (${response.mood || 'NEUTRAL'})`, 'success');
+      } else {
+        addTerminalLine('error', response.error || 'Gateway request failed');
+        addAgentLog(agent, 'Gateway error', 'error');
+      }
+    } catch (error) {
+      console.error('[Terminal] Gateway error:', error);
+      addTerminalLine('error', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addTerminalLine('data', 'Tip: Make sure beright-ts backend is running on port 3001');
+      addAgentLog(agent, 'Request failed', 'error');
+    }
+
     setIsProcessing(false);
-  }, [markets, arbOpportunities, onlineAgents, addTerminalLine, addAgentLog]);
+  }, [gatewaySessionId, signals, signalsConnected, clearAlerts, addTerminalLine, addAgentLog]);
 
   // Boot complete handler
   const handleBootComplete = useCallback(() => {
@@ -816,21 +944,39 @@ export default function BeRightTerminal() {
             <span className="stat-value">{arbOpportunities.length}</span>
             <span className="stat-label">ARBS</span>
           </span>
+          <span className={`stat ${signalsConnected ? 'signal-live' : ''}`}>
+            <span className="stat-icon" style={{ color: signalsConnected ? '#ff0055' : undefined }}>◉</span>
+            <span className="stat-value" style={{ color: alertCount > 0 ? '#ff0055' : undefined }}>
+              {alertCount > 0 ? alertCount : signals.length}
+            </span>
+            <span className="stat-label">{alertCount > 0 ? 'ALERTS' : 'SIGNALS'}</span>
+          </span>
         </div>
       </header>
 
       {/* View Toggle */}
       <nav className="view-toggle">
-        {(['terminal', 'markets', 'agents', 'intel'] as ViewMode[]).map(mode => (
+        {(['terminal', 'markets', 'agents', 'intel', 'signals'] as ViewMode[]).map(mode => (
           <button
             key={mode}
             className={`toggle-btn ${viewMode === mode ? 'active' : ''}`}
-            onClick={() => setViewMode(mode)}
+            onClick={() => {
+              setViewMode(mode);
+              if (mode === 'signals') clearAlerts();
+            }}
           >
             {mode === 'terminal' && '▸ TERMINAL'}
             {mode === 'markets' && '◈ MARKETS'}
             {mode === 'agents' && '◉ AGENTS'}
             {mode === 'intel' && '⚡ INTEL'}
+            {mode === 'signals' && (
+              <span className="signals-nav-label">
+                ◉ SIGNALS
+                {alertCount > 0 && (
+                  <span className="signals-alert-badge">{alertCount}</span>
+                )}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -905,6 +1051,23 @@ export default function BeRightTerminal() {
                 <span className="panel-count">{arbOpportunities.length} SIGNALS</span>
               </div>
               <ArbGrid opportunities={arbOpportunities} />
+            </motion.div>
+          )}
+
+          {viewMode === 'signals' && (
+            <motion.div
+              key="signals"
+              className="full-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <SignalsFeed
+                signals={signals}
+                connected={signalsConnected}
+                alertCount={alertCount}
+                clearAlerts={clearAlerts}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1908,6 +2071,224 @@ const styles = `
 
   ::-webkit-scrollbar-thumb:hover {
     background: var(--nx-text-dim);
+  }
+
+  /* ═══ SIGNALS NAV BADGE ═══ */
+  .signals-nav-label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .signals-alert-badge {
+    position: absolute;
+    top: -8px;
+    right: -12px;
+    min-width: 16px;
+    height: 16px;
+    background: #ff0055;
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    animation: pulse 1s infinite;
+    line-height: 1;
+  }
+
+  .stat.signal-live {
+    border-color: #ff005540;
+  }
+
+  /* ═══ SIGNALS FEED ═══ */
+  .signals-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .signal-conn-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+  }
+
+  .signal-conn-badge.live {
+    color: #ff0055;
+    border-color: #ff005540;
+    text-shadow: 0 0 8px #ff0055;
+    animation: pulse 2s infinite;
+  }
+
+  .signal-conn-badge.offline {
+    color: var(--nx-text-dim);
+  }
+
+  .clear-alerts-btn {
+    margin-left: auto;
+    padding: 4px 10px;
+    background: var(--nx-bg);
+    border: 1px solid #ff005540;
+    border-radius: 4px;
+    font-family: var(--nx-font-mono);
+    font-size: 10px;
+    color: #ff0055;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .clear-alerts-btn:hover {
+    background: #ff005515;
+    border-color: #ff0055;
+  }
+
+  .signals-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .signal-row {
+    display: grid;
+    grid-template-columns: 60px 90px 1fr 120px;
+    gap: 10px;
+    align-items: start;
+    padding: 10px 12px;
+    background: var(--nx-bg);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .signal-row:hover {
+    background: var(--nx-bg-elevated);
+    border-color: var(--nx-border-glow);
+  }
+
+  .signal-row.alert {
+    border-left: 3px solid #ff0055;
+  }
+
+  .signal-row.watch {
+    border-left: 3px solid #00fff7;
+  }
+
+  .sig-action {
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    border: 1px solid;
+    text-align: center;
+    align-self: start;
+    margin-top: 2px;
+    background: rgba(0,0,0,0.3);
+  }
+
+  .sig-type {
+    font-size: 9px;
+    color: var(--nx-amber);
+    letter-spacing: 0.5px;
+    padding: 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-self: start;
+  }
+
+  .sig-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .sig-title {
+    font-size: 12px;
+    color: var(--nx-text-bright);
+    line-height: 1.3;
+  }
+
+  .sig-alert {
+    font-size: 11px;
+    color: var(--nx-amber);
+    font-style: italic;
+  }
+
+  .sig-reason {
+    font-size: 10px;
+    color: var(--nx-text-dim);
+    line-height: 1.4;
+  }
+
+  .sig-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+
+  .sig-platform {
+    font-size: 9px;
+    color: var(--nx-text-dim);
+    padding: 2px 6px;
+    background: var(--nx-bg-elevated);
+    border-radius: 2px;
+  }
+
+  .sig-confidence {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sig-conf-label {
+    font-size: 8px;
+    color: var(--nx-text-dim);
+  }
+
+  .sig-conf-value {
+    font-size: 11px;
+    color: var(--nx-cyan);
+    font-weight: bold;
+  }
+
+  .sig-strength-bar {
+    width: 60px;
+    height: 3px;
+    background: var(--nx-border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .sig-strength-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .sig-time {
+    font-size: 9px;
+    color: var(--nx-text-dim);
+  }
+
+  @media (max-width: 768px) {
+    .signal-row {
+      grid-template-columns: 50px 80px 1fr;
+    }
+    .sig-stats {
+      display: none;
+    }
   }
 
   /* ═══ RESPONSIVE ═══ */

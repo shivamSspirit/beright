@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets, useSignTransaction } from '@privy-io/react-auth/solana';
 import { Connection, VersionedTransaction } from '@solana/web3.js';
@@ -55,8 +55,24 @@ export function useDFlowTrading() {
     txUrl: null,
   });
 
-  // Get the first connected Solana wallet
-  const solanaWallet = solanaWallets[0];
+  // Prioritize external wallets (Phantom, Backpack, Solflare) over embedded wallets
+  // External wallets typically have names like 'Phantom', 'Backpack', 'Solflare'
+  // Embedded wallets created by Privy have name 'Privy' or similar
+  const solanaWallet = useMemo(() => {
+    if (!solanaWallets || solanaWallets.length === 0) return null;
+
+    // Find external wallet first (not privy embedded)
+    // Check by wallet name - external wallets have names like 'Phantom', 'Backpack'
+    const externalWallet = solanaWallets.find((w) => {
+      const name = (w as { name?: string }).name?.toLowerCase() || '';
+      const walletClient = (w as { walletClientType?: string }).walletClientType?.toLowerCase() || '';
+      // Exclude privy embedded wallets
+      return !name.includes('privy') && walletClient !== 'privy';
+    });
+
+    // If external wallet found, use it; otherwise fall back to first wallet (embedded)
+    return externalWallet || solanaWallets[0];
+  }, [solanaWallets]);
 
   // Connection status
   const isReady = ready && walletsReady;
@@ -229,7 +245,7 @@ export function useDFlowTrading() {
 
   return {
     ...state,
-    walletAddress: solanaWallet?.address,
+    walletAddress: solanaWallet?.address || null,
     isConnected,
     isReady,
     authenticated,

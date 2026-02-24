@@ -38,6 +38,12 @@ export interface SecretsConfig {
   // Anthropic
   anthropicApiKey?: string;
 
+  // Groq (primary LLM - free)
+  groqApiKey?: string;
+
+  // Tavily (social search)
+  tavilyApiKey?: string;
+
   // Upstash Redis
   upstashRedisUrl?: string;
   upstashRedisToken?: string;
@@ -105,6 +111,12 @@ class SecretsManager {
 
     // Anthropic
     this.config.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+
+    // Groq
+    this.config.groqApiKey = process.env.GROQ_API_KEY;
+
+    // Tavily
+    this.config.tavilyApiKey = process.env.TAVILY_API_KEY;
 
     // Upstash Redis
     this.config.upstashRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -201,6 +213,22 @@ class SecretsManager {
   }
 
   /**
+   * Get Groq API key
+   */
+  getGroqApiKey(): string | undefined {
+    this.ensureInitialized();
+    return this.config.groqApiKey;
+  }
+
+  /**
+   * Get Tavily API key
+   */
+  getTavilyApiKey(): string | undefined {
+    this.ensureInitialized();
+    return this.config.tavilyApiKey;
+  }
+
+  /**
    * Get Upstash Redis credentials
    */
   getUpstashCredentials(): { url: string; token: string } | null {
@@ -260,6 +288,8 @@ class SecretsManager {
       supabase: !!(this.config.supabaseUrl && this.config.supabaseAnonKey),
       telegram: !!this.config.telegramBotToken,
       anthropic: !!this.config.anthropicApiKey,
+      groq: !!this.config.groqApiKey,
+      tavily: !!this.config.tavilyApiKey,
       upstash: !!(this.config.upstashRedisUrl && this.config.upstashRedisToken),
     };
   }

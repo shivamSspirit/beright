@@ -1,14 +1,16 @@
 /**
  * Decision Engine for BeRight Protocol
- * Multi-signal scoring engine that aggregates market consensus,
- * arbitrage spreads, news sentiment, whale signals, and calibration
- * to produce EXECUTE / WATCH / SKIP decisions
+ * Agentic signal evaluation: gathers raw signals and asks Claude Scout
+ * to reason about them and produce EXECUTE / WATCH / SKIP decisions.
+ *
+ * Detection (fast, deterministic) → LLM Reasoning → Action
  */
 
 import { ArbitrageOpportunity } from '../types/index';
 import { ConsensusResult, getConsensus } from './consensus';
 import { getCalibrationStats } from './calibration';
 import { logArbitrage } from './onchain';
+import { llmChat } from '../lib/llm';
 
 export interface DecisionInput {
   topic: string;
@@ -189,10 +191,9 @@ function applyBrierAdjustment(confidence: number): { adjusted: number; brierScor
 }
 
 /**
- * Run the decision engine on a set of inputs
+ * Fallback: score signals with static math when LLM is unavailable
  */
 export function evaluate(input: DecisionInput): DecisionOutput {
-  // Score each signal
   const signals: SignalScore[] = [
     scoreConsensus(input.consensus),
     scoreArbitrage(input.arbitrage),
@@ -201,13 +202,9 @@ export function evaluate(input: DecisionInput): DecisionOutput {
     scoreSocial(input.socialSentiment),
   ];
 
-  // Weighted sum → 0-100 confidence
   const rawConfidence = signals.reduce((sum, s) => sum + s.score * s.weight, 0) * 100;
+  const { adjusted } = applyBrierAdjustment(rawConfidence);
 
-  // Apply Brier self-tuning
-  const { adjusted, brierScore } = applyBrierAdjustment(rawConfidence);
-
-  // Determine action
   let action: 'EXECUTE' | 'WATCH' | 'SKIP';
   if (adjusted >= EXECUTE_THRESHOLD && input.arbitrage && input.arbitrage.spread > 0.03) {
     action = 'EXECUTE';
@@ -217,13 +214,10 @@ export function evaluate(input: DecisionInput): DecisionOutput {
     action = 'SKIP';
   }
 
-  // Build reasoning string
-  const topSignals = signals
+  const reasoning = signals
     .filter(s => s.score > 0.3)
     .sort((a, b) => (b.score * b.weight) - (a.score * a.weight))
-    .slice(0, 3);
-
-  const reasoning = topSignals
+    .slice(0, 3)
     .map(s => `${s.name}: ${s.detail}`)
     .join('; ');
 
@@ -238,7 +232,44 @@ export function evaluate(input: DecisionInput): DecisionOutput {
 }
 
 /**
- * Full decision pipeline: fetch consensus → score → decide → log on-chain
+ * Build a structured context string for LLM reasoning from raw signals
+ */
+function buildSignalContext(input: DecisionInput): string {
+  const lines: string[] = [`Topic: ${input.topic}`, ''];
+
+  if (input.arbitrage) {
+    lines.push(`ARBITRAGE SIGNAL:`);
+    lines.push(`  Spread: ${(input.arbitrage.spread * 100).toFixed(2)}%`);
+    lines.push(`  Platform A: ${input.arbitrage.platformA} @ ${(input.arbitrage.priceAYes * 100).toFixed(0)}¢`);
+    lines.push(`  Platform B: ${input.arbitrage.platformB} @ ${(input.arbitrage.priceBYes * 100).toFixed(0)}¢`);
+    lines.push(`  Volume A: $${input.arbitrage.volumeA.toFixed(0)} | Volume B: $${input.arbitrage.volumeB.toFixed(0)}`);
+    lines.push(`  Match confidence: ${(input.arbitrage.matchConfidence * 100).toFixed(0)}%`);
+    lines.push('');
+  }
+
+  if (input.consensus) {
+    lines.push(`MARKET CONSENSUS:`);
+    lines.push(`  Platforms: ${input.consensus.sourceCount}`);
+    lines.push(`  Agreement: ${(input.consensus.agreementScore * 100).toFixed(0)}%`);
+    lines.push(`  Spread: ${(input.consensus.spread * 100).toFixed(1)}pp`);
+    lines.push('');
+  }
+
+  if (input.newsSentiment) lines.push(`NEWS SENTIMENT: ${input.newsSentiment.toUpperCase()}`);
+  if (input.whaleSignal) lines.push(`WHALE SIGNAL: ${input.whaleSignal.toUpperCase()}`);
+  if (input.socialSentiment) lines.push(`SOCIAL: ${input.socialSentiment.toUpperCase()}`);
+
+  const stats = getCalibrationStats();
+  if (stats.overallBrierScore > 0) {
+    lines.push(`\nCALIBRATION: Brier score ${stats.overallBrierScore.toFixed(3)} (${stats.overallBrierScore < 0.15 ? 'superforecaster' : stats.overallBrierScore < 0.20 ? 'above average' : 'needs improvement'})`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Agentic decision: ask Claude Scout to reason about the signals.
+ * Falls back to static evaluate() if Groq is not configured.
  */
 export async function decide(input: DecisionInput): Promise<DecisionOutput> {
   // Fetch consensus if not provided
@@ -246,9 +277,83 @@ export async function decide(input: DecisionInput): Promise<DecisionOutput> {
     input.consensus = await getConsensus(input.topic);
   }
 
+  // Agentic path: LLM reasons about the signals
+  try {
+    const signalContext = buildSignalContext(input);
+
+    const response = await llmChat({
+      system: `You are Scout, a prediction market signal analyst. Given raw signal data, you produce a decision.
+
+Respond ONLY with valid JSON matching this exact schema:
+{
+  "action": "EXECUTE" | "WATCH" | "SKIP",
+  "confidence": <0-100 integer>,
+  "reasoning": "<1-2 sentence explanation referencing specific signal values>"
+}
+
+Rules:
+- EXECUTE: Clear opportunity with sufficient spread AND liquidity AND low risk
+- WATCH: Interesting but needs more confirmation or thin liquidity
+- SKIP: Too risky, insufficient data, or spread not worth execution costs
+- Be specific in reasoning — cite actual numbers from the signals`,
+      user: `Evaluate these signals and decide:\n\n${signalContext}`,
+      maxTokens: 512,
+      temperature: 0.2,
+      quality: 'smart',
+    });
+
+    const text = response.text;
+    if (response.provider === 'none') throw new Error('No LLM provider');
+
+      // Parse LLM JSON response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as {
+          action: 'EXECUTE' | 'WATCH' | 'SKIP';
+          confidence: number;
+          reasoning: string;
+        };
+
+        if (parsed.action && parsed.confidence !== undefined && parsed.reasoning) {
+          // Still run static signals for the breakdown display
+          const signals: SignalScore[] = [
+            scoreConsensus(input.consensus),
+            scoreArbitrage(input.arbitrage),
+            scoreNews(input.newsSentiment),
+            scoreWhale(input.whaleSignal),
+            scoreSocial(input.socialSentiment),
+          ];
+
+          const decision: DecisionOutput = {
+            action: parsed.action,
+            confidence: parsed.confidence,
+            reasoning: `[LLM] ${parsed.reasoning}`,
+            signals,
+            adjustedConfidence: parsed.confidence,
+            timestamp: new Date().toISOString(),
+          };
+
+          // Log to chain
+          if (input.arbitrage) {
+            logArbitrage(
+              input.topic,
+              input.arbitrage.spread,
+              decision.action,
+              decision.adjustedConfidence,
+              undefined,
+            ).catch(err => console.warn('On-chain log failed:', err));
+          }
+
+          return decision;
+        }
+      }
+  } catch (err) {
+    console.warn('[DecisionEngine] LLM call failed, using static fallback:', err);
+  }
+
+  // Fallback: static math
   const decision = evaluate(input);
 
-  // Log to chain (async, don't block on it)
   if (input.arbitrage) {
     logArbitrage(
       input.topic,

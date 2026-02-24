@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target":        "es2022",
+    "module":        "commonjs",
+    "lib":           ["es2022"],
+    "declaration":   true,
+    "strict":        true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "moduleResolution": "node",
+    "baseUrl":       ".",
+    "outDir":        "dist",
+    "sourceMap":     true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck":  true,
+    "resolveJsonModule": true
+  },
+  "include": ["app/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist", "target"]
+}

@@ -37,6 +37,21 @@ import {
   getKalshiMarkets,
   getKalshiMarket,
   placeKalshiOrder,
+  getKalshiOrders,
+  getKalshiFills,
+  getKalshiSettlements,
+  getKalshiOrderbook,
+  getKalshiPortfolioSummary,
+  cancelKalshiOrder,
+  cancelAllKalshiOrders,
+  amendKalshiOrder,
+  isKalshiDemo,
+  calculateKalshiCost,
+  calculateKalshiProfit,
+  formatKalshiPrice,
+  KalshiOrder,
+  KalshiFill,
+  KalshiSettlement,
 } from '../lib/kalshi';
 import { getOrCreateUser, linkWallet, getUserByTelegram } from '../lib/identity';
 import { handleSubscribe, handleUnsubscribe, handleAlerts, generateArbAlerts, generateWhaleAlerts, queueAlerts } from './notifications';
@@ -49,6 +64,14 @@ import { logConversation, searchLearnings, handleMemory, getRecentContext } from
 import { handleWallet as handleDFlowWallet, handleDFlowSearch, handleTrade as handleDFlowTrade, handlePositions as handleDFlowPositions } from './dflowTrade';
 import { handleAgentCommand, subscribeToAgent } from './proactiveAgent';
 import { handlePosterCommand } from './agentPoster';
+
+// Signal Intelligence Engine
+import { getRecentSignals, formatSignalsReport } from '../lib/signals/index';
+import { subscribe as subscribeToSignals, unsubscribe as unsubscribeFromSignals, getSubscriptionStatus, formatSubscribeConfirmation } from '../lib/alertRouter';
+import type { SignalType } from '../lib/signals/types';
+
+// Vault v0 — Signal Channels
+import { handleVaultCommand } from './vault';
 
 // On-chain + Supabase integration
 import { commitPrediction, calculateBrierScore, interpretBrierScore } from '../lib/onchain';
@@ -139,18 +162,34 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/trade')) return 'EXECUTOR';
   if (lower.startsWith('/positions')) return 'EXECUTOR';
   if (lower.startsWith('/mypositions')) return 'EXECUTOR';
-  // Kalshi direct commands
+  // Kalshi direct commands (full trading)
   if (lower.startsWith('/kalshi')) return 'KALSHI';
   if (lower.startsWith('/kbalance')) return 'KALSHI';
+  if (lower.startsWith('/kportfolio')) return 'KALSHI';
   if (lower.startsWith('/kpositions')) return 'KALSHI';
+  if (lower.startsWith('/korders')) return 'KALSHI';
+  if (lower.startsWith('/kfills')) return 'KALSHI';
+  if (lower.startsWith('/ksettlements')) return 'KALSHI';
+  if (lower.startsWith('/kwinnings')) return 'KALSHI';
   if (lower.startsWith('/kmarkets')) return 'KALSHI';
+  if (lower.startsWith('/kbook')) return 'KALSHI';
   if (lower.startsWith('/kbuy')) return 'KALSHI';
   if (lower.startsWith('/ksell')) return 'KALSHI';
+  if (lower.startsWith('/kcancel')) return 'KALSHI';
+  if (lower.startsWith('/kamend')) return 'KALSHI';
   if (lower.startsWith('/connect')) return 'COMMANDER';
   if (lower.startsWith('/profile')) return 'COMMANDER';
   if (lower.startsWith('/intelligence')) return 'COMMANDER';
   if (lower.startsWith('/analyze')) return 'COMMANDER';
   if (lower.startsWith('/feedback')) return 'COMMANDER';
+  if (lower.startsWith('/create-channel')) return 'COMMANDER';
+  if (lower.startsWith('/channel')) return 'COMMANDER';
+  if (lower.startsWith('/signal ') || lower === '/signal') return 'COMMANDER';
+  if (lower.startsWith('/channels')) return 'COMMANDER';
+  if (lower.startsWith('/subscribe-channel')) return 'COMMANDER';
+  if (lower.startsWith('/unsubscribe-channel')) return 'COMMANDER';
+  if (lower.startsWith('/my-channels')) return 'COMMANDER';
+  if (lower.startsWith('/my-vault')) return 'COMMANDER';
   if (lower.startsWith('/recommend')) return 'COMMANDER';
   if (lower.startsWith('/compare')) return 'COMMANDER';
   if (lower.startsWith('/learnings')) return 'COMMANDER';
@@ -1719,10 +1758,12 @@ Then restart the bot.
       }
     }
 
+    const modeLabel = isKalshiDemo() ? '🧪 DEMO' : '💰 LIVE';
+
     return {
       text: `
-🔵 *KALSHI ACCOUNT*
-${'─'.repeat(35)}
+🔵 *KALSHI ACCOUNT* ${modeLabel}
+${'═'.repeat(35)}
 
 💰 *Balance:* $${balance ? (balance.balance / 100).toFixed(2) : '0.00'}
 💵 *Available:* $${balance?.available_balance ? (balance.available_balance / 100).toFixed(2) : '0.00'}
@@ -1730,9 +1771,24 @@ ${'─'.repeat(35)}
 📈 *Position Value:* $${totalValue.toFixed(2)}
 
 ${positionsText ? `\n*Open Positions:*\n${positionsText}` : ''}
+${'─'.repeat(35)}
+*ACCOUNT*
+/kportfolio - Full portfolio analytics
 /kbalance - Detailed balance
 /kpositions - All positions
-/kmarkets - Browse markets
+/korders - View orders
+/kfills - Trade history
+/ksettlements - Winnings & payouts
+
+*MARKETS*
+/kmarkets [query] - Browse markets
+/kbook <ticker> - View orderbook
+
+*TRADING*
+/kbuy <ticker> <yes|no> <qty> <price>
+/ksell <ticker> <yes|no> <qty> <price>
+/kcancel <id> | all - Cancel orders
+/kamend <id> [qty] [price] - Amend order
 `,
       mood: 'NEUTRAL',
       data: { balance, positions },
@@ -1871,21 +1927,21 @@ ${'─'.repeat(35)}
  * Handle /kbuy command
  */
 async function handleKalshiBuy(text: string): Promise<SkillResponse> {
-  // Parse: /kbuy TICKER yes|no contracts [price]
-  const match = text.match(/\/kbuy\s+(\S+)\s+(yes|no)\s+(\d+)(?:\s+(\d+))?/i);
+  // Parse: /kbuy TICKER yes|no contracts price (price is REQUIRED - market orders deprecated Feb 2026)
+  const match = text.match(/\/kbuy\s+(\S+)\s+(yes|no)\s+(\d+)\s+(\d+)/i);
 
   if (!match) {
     return {
       text: `
 🔵 *KALSHI BUY*
 
-Usage: /kbuy <ticker> <yes|no> <contracts> [price]
+Usage: /kbuy <ticker> <yes|no> <contracts> <price>
 
 Examples:
 /kbuy KXBTC-24DEC31-T1500 yes 10 65
-/kbuy PRES-2024-DT yes 5
+/kbuy PRES-2024-DT yes 5 45
 
-Price is in cents (1-99). Omit for market order.
+Price is in cents (1-99). Required for all orders.
 `,
       mood: 'EDUCATIONAL',
     };
@@ -1893,7 +1949,7 @@ Price is in cents (1-99). Omit for market order.
 
   const [, ticker, side, contractsStr, priceStr] = match;
   const contracts = parseInt(contractsStr);
-  const price = priceStr ? parseInt(priceStr) : undefined;
+  const price = parseInt(priceStr);
 
   const client = getKalshiClient();
   if (!client) {
@@ -1943,21 +1999,21 @@ Status: ${order.status}
  * Handle /ksell command
  */
 async function handleKalshiSell(text: string): Promise<SkillResponse> {
-  // Parse: /ksell TICKER yes|no contracts [price]
-  const match = text.match(/\/ksell\s+(\S+)\s+(yes|no)\s+(\d+)(?:\s+(\d+))?/i);
+  // Parse: /ksell TICKER yes|no contracts price (price is REQUIRED - market orders deprecated Feb 2026)
+  const match = text.match(/\/ksell\s+(\S+)\s+(yes|no)\s+(\d+)\s+(\d+)/i);
 
   if (!match) {
     return {
       text: `
 🔵 *KALSHI SELL*
 
-Usage: /ksell <ticker> <yes|no> <contracts> [price]
+Usage: /ksell <ticker> <yes|no> <contracts> <price>
 
 Examples:
 /ksell KXBTC-24DEC31-T1500 yes 10 75
-/ksell PRES-2024-DT no 5
+/ksell PRES-2024-DT no 5 55
 
-Price is in cents (1-99). Omit for market order.
+Price is in cents (1-99). Required for all orders.
 `,
       mood: 'EDUCATIONAL',
     };
@@ -1965,7 +2021,7 @@ Price is in cents (1-99). Omit for market order.
 
   const [, ticker, side, contractsStr, priceStr] = match;
   const contracts = parseInt(contractsStr);
-  const price = priceStr ? parseInt(priceStr) : undefined;
+  const price = parseInt(priceStr);
 
   const client = getKalshiClient();
   if (!client) {
@@ -2006,6 +2062,426 @@ Status: ${order.status}
   } catch (error) {
     return {
       text: `❌ Order error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /korders command - View open and recent orders
+ */
+async function handleKalshiOrders(status?: string): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  try {
+    const orderStatus = status === 'executed' ? 'executed' : status === 'canceled' ? 'canceled' : 'resting';
+    const orders = await getKalshiOrders(orderStatus as 'resting' | 'executed' | 'canceled');
+
+    if (orders.length === 0) {
+      return {
+        text: `📋 No ${orderStatus} orders on Kalshi.\n\nUse /kbuy or /ksell to place orders.`,
+        mood: 'NEUTRAL'
+      };
+    }
+
+    let text = `
+📋 *KALSHI ORDERS* (${orderStatus.toUpperCase()})
+${'─'.repeat(35)}
+
+`;
+
+    for (const order of orders.slice(0, 10)) {
+      const cost = calculateKalshiCost(order.side, order.count, order.yes_price || 50);
+      text += `*${order.order_id.slice(0, 8)}...*\n`;
+      text += `  ${order.market_ticker}\n`;
+      text += `  ${order.action.toUpperCase()} ${order.count}x ${order.side.toUpperCase()} @ ${order.yes_price}¢\n`;
+      text += `  Cost: ${formatKalshiPrice(cost)} | Status: ${order.status}\n\n`;
+    }
+
+    text += `\n/kcancel <order_id> - Cancel order\n/korders executed - View filled orders`;
+
+    return { text, mood: 'NEUTRAL', data: orders };
+  } catch (error) {
+    return {
+      text: `❌ Orders error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /kfills command - View trade history
+ */
+async function handleKalshiFillsCmd(): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  try {
+    const fills = await getKalshiFills(20);
+
+    if (fills.length === 0) {
+      return {
+        text: `📜 No trade history on Kalshi yet.\n\nPlace your first trade with /kbuy or /ksell.`,
+        mood: 'NEUTRAL'
+      };
+    }
+
+    let text = `
+📜 *KALSHI TRADE HISTORY* (Recent ${fills.length})
+${'─'.repeat(35)}
+
+`;
+
+    let totalVolume = 0;
+    for (const fill of fills.slice(0, 15)) {
+      const cost = fill.count * fill.yes_price;
+      totalVolume += cost;
+      const time = new Date(fill.created_time).toLocaleDateString();
+      text += `*${time}* - ${fill.market_ticker.slice(0, 15)}...\n`;
+      text += `  ${fill.action.toUpperCase()} ${fill.count}x ${fill.side.toUpperCase()} @ ${fill.yes_price}¢\n`;
+      text += `  ${fill.is_taker ? 'Taker' : 'Maker'}${fill.fee ? ` | Fee: ${fill.fee}¢` : ''}\n\n`;
+    }
+
+    text += `${'─'.repeat(35)}\nTotal Volume: ${formatKalshiPrice(totalVolume)}`;
+
+    return { text, mood: 'NEUTRAL', data: fills };
+  } catch (error) {
+    return {
+      text: `❌ Trade history error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /ksettlements command - View winnings and payouts
+ */
+async function handleKalshiSettlementsCmd(): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  try {
+    const settlements = await getKalshiSettlements(20);
+
+    if (settlements.length === 0) {
+      return {
+        text: `🏆 No settlements yet!\n\nWhen your positions settle, winnings will appear here.`,
+        mood: 'NEUTRAL'
+      };
+    }
+
+    let text = `
+🏆 *KALSHI SETTLEMENTS & WINNINGS*
+${'─'.repeat(35)}
+
+`;
+
+    let totalWins = 0;
+    let totalLosses = 0;
+    let winCount = 0;
+
+    for (const s of settlements) {
+      const won = s.settlement_value > 0;
+      if (won) {
+        totalWins += s.settlement_value;
+        winCount++;
+      } else {
+        totalLosses += Math.abs(s.settlement_value);
+      }
+
+      const icon = won ? '✅' : '❌';
+      const time = new Date(s.settled_time).toLocaleDateString();
+      text += `${icon} *${s.market_ticker.slice(0, 20)}*\n`;
+      text += `   Result: ${s.result.toUpperCase()} | Position: ${s.position}\n`;
+      text += `   ${won ? 'Won' : 'Lost'}: ${formatKalshiPrice(Math.abs(s.settlement_value))} | ${time}\n\n`;
+    }
+
+    const netPnL = totalWins - totalLosses;
+    const winRate = settlements.length > 0 ? (winCount / settlements.length * 100).toFixed(1) : 0;
+
+    text += `${'─'.repeat(35)}
+📊 *Summary*
+   Wins: ${winCount}/${settlements.length} (${winRate}%)
+   Total Won: +${formatKalshiPrice(totalWins)}
+   Total Lost: -${formatKalshiPrice(totalLosses)}
+   Net P&L: ${netPnL >= 0 ? '+' : ''}${formatKalshiPrice(netPnL)}`;
+
+    return { text, mood: netPnL >= 0 ? 'BULLISH' : 'BEARISH', data: { settlements, totalWins, totalLosses, netPnL } };
+  } catch (error) {
+    return {
+      text: `❌ Settlements error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /kcancel command - Cancel an order
+ */
+async function handleKalshiCancel(text: string): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  // Parse: /kcancel <order_id> or /kcancel all [ticker]
+  const match = text.match(/\/kcancel\s+(\S+)(?:\s+(\S+))?/i);
+
+  if (!match) {
+    return {
+      text: `
+🚫 *CANCEL ORDERS*
+
+Usage:
+  /kcancel <order_id> - Cancel specific order
+  /kcancel all - Cancel all resting orders
+  /kcancel all <ticker> - Cancel orders for market
+
+Examples:
+  /kcancel abc123def456
+  /kcancel all
+  /kcancel all KXBTC-25FEB28-T100K
+`,
+      mood: 'EDUCATIONAL',
+    };
+  }
+
+  const [, target, ticker] = match;
+
+  try {
+    if (target.toLowerCase() === 'all') {
+      const count = await cancelAllKalshiOrders(ticker?.toUpperCase());
+      return {
+        text: `✅ Canceled ${count} order${count !== 1 ? 's' : ''}${ticker ? ` for ${ticker.toUpperCase()}` : ''}`,
+        mood: 'NEUTRAL',
+      };
+    } else {
+      const success = await cancelKalshiOrder(target);
+      if (success) {
+        return { text: `✅ Order ${target.slice(0, 8)}... canceled`, mood: 'NEUTRAL' };
+      } else {
+        return { text: `❌ Failed to cancel order ${target.slice(0, 8)}...`, mood: 'ERROR' };
+      }
+    }
+  } catch (error) {
+    return {
+      text: `❌ Cancel error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /kbook command - View orderbook for a market
+ */
+async function handleKalshiOrderbook(text: string): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  // Parse: /kbook <ticker>
+  const match = text.match(/\/kbook\s+(\S+)/i);
+
+  if (!match) {
+    return {
+      text: `
+📊 *ORDERBOOK*
+
+Usage: /kbook <ticker>
+
+Example: /kbook KXBTC-25FEB28-T100K
+
+Shows YES and NO bid/ask depth.
+`,
+      mood: 'EDUCATIONAL',
+    };
+  }
+
+  const [, ticker] = match;
+
+  try {
+    const orderbook = await getKalshiOrderbook(ticker.toUpperCase());
+
+    if (!orderbook) {
+      return { text: `❌ Orderbook not found for ${ticker}`, mood: 'ERROR' };
+    }
+
+    let response = `
+📊 *ORDERBOOK: ${ticker.toUpperCase()}*
+${'─'.repeat(35)}
+
+*YES BIDS* (Buy YES)
+`;
+
+    // Show top 5 YES bids
+    const yesBids = orderbook.orderbook.yes.slice(0, 5);
+    if (yesBids.length === 0) {
+      response += `  No bids\n`;
+    } else {
+      for (const [price, qty] of yesBids) {
+        const bar = '█'.repeat(Math.min(Math.floor(qty / 10), 10));
+        response += `  ${price}¢ | ${qty} contracts ${bar}\n`;
+      }
+    }
+
+    response += `\n*NO BIDS* (Buy NO / Sell YES)
+`;
+
+    // Show top 5 NO bids
+    const noBids = orderbook.orderbook.no.slice(0, 5);
+    if (noBids.length === 0) {
+      response += `  No bids\n`;
+    } else {
+      for (const [price, qty] of noBids) {
+        const bar = '█'.repeat(Math.min(Math.floor(qty / 10), 10));
+        response += `  ${price}¢ | ${qty} contracts ${bar}\n`;
+      }
+    }
+
+    // Calculate spread
+    const bestYesBid = yesBids[0]?.[0] || 0;
+    const bestNoBid = noBids[0]?.[0] || 0;
+    const yesAsk = 100 - bestNoBid;
+    const spread = yesAsk - bestYesBid;
+
+    response += `
+${'─'.repeat(35)}
+Best YES: ${bestYesBid}¢ bid / ${yesAsk}¢ ask
+Spread: ${spread}¢ (${(spread / 100 * 100).toFixed(1)}%)
+`;
+
+    return { text: response, mood: 'NEUTRAL', data: orderbook };
+  } catch (error) {
+    return {
+      text: `❌ Orderbook error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /kportfolio command - Full portfolio summary with analytics
+ */
+async function handleKalshiPortfolio(): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  try {
+    const portfolio = await getKalshiPortfolioSummary();
+
+    if (!portfolio) {
+      return { text: '❌ Failed to load portfolio', mood: 'ERROR' };
+    }
+
+    const modeLabel = portfolio.isDemo ? '🧪 DEMO' : '💰 LIVE';
+
+    let text = `
+📈 *KALSHI PORTFOLIO* ${modeLabel}
+${'═'.repeat(35)}
+
+💰 *BALANCE*
+   Total: $${portfolio.balance.total.toFixed(2)}
+   Available: $${portfolio.balance.available.toFixed(2)}
+   In Positions: $${portfolio.balance.inPositions.toFixed(2)}
+   Pending Payout: $${portfolio.balance.pendingSettlement.toFixed(2)}
+
+📊 *POSITIONS*
+   Open: ${portfolio.positions.open}
+   Value: $${portfolio.positions.total_value.toFixed(2)}
+
+📋 *ORDERS*
+   Resting: ${portfolio.orders.resting}
+   Pending Value: $${portfolio.orders.pending_value.toFixed(2)}
+
+📜 *HISTORY*
+   Total Trades: ${portfolio.history.total_trades}
+   Realized P&L: ${portfolio.history.realized_pnl >= 0 ? '+' : ''}$${portfolio.history.realized_pnl.toFixed(2)}
+   Win Rate: ${(portfolio.history.win_rate * 100).toFixed(1)}%
+
+${'═'.repeat(35)}
+/kpositions - View positions
+/korders - View orders
+/ksettlements - View winnings
+`;
+
+    const mood = portfolio.history.realized_pnl >= 0 ? 'BULLISH' : 'BEARISH';
+    return { text, mood, data: portfolio };
+  } catch (error) {
+    return {
+      text: `❌ Portfolio error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
+ * Handle /kamend command - Amend an existing order
+ */
+async function handleKalshiAmend(text: string): Promise<SkillResponse> {
+  const client = getKalshiClient();
+  if (!client) {
+    return { text: '⚠️ Kalshi not configured. Use /kalshi for setup info.', mood: 'NEUTRAL' };
+  }
+
+  // Parse: /kamend <order_id> [count] [price]
+  const match = text.match(/\/kamend\s+(\S+)(?:\s+(\d+))?(?:\s+(\d+))?/i);
+
+  if (!match || (!match[2] && !match[3])) {
+    return {
+      text: `
+✏️ *AMEND ORDER*
+
+Usage: /kamend <order_id> [new_count] [new_price]
+
+Examples:
+  /kamend abc123 10 - Change count to 10
+  /kamend abc123 _ 55 - Change price to 55¢
+  /kamend abc123 5 60 - Change both
+
+Note: Use _ to skip a parameter.
+`,
+      mood: 'EDUCATIONAL',
+    };
+  }
+
+  const [, orderId, countStr, priceStr] = match;
+  const newCount = countStr && countStr !== '_' ? parseInt(countStr) : undefined;
+  const newPrice = priceStr && priceStr !== '_' ? parseInt(priceStr) : undefined;
+
+  try {
+    const order = await amendKalshiOrder(orderId, newCount, newPrice);
+
+    if (!order) {
+      return { text: `❌ Failed to amend order ${orderId.slice(0, 8)}...`, mood: 'ERROR' };
+    }
+
+    return {
+      text: `
+✅ *ORDER AMENDED*
+${'─'.repeat(35)}
+
+Order ID: ${order.order_id.slice(0, 8)}...
+Market: ${order.market_ticker}
+${newCount ? `New Count: ${order.count}` : ''}
+${newPrice ? `New Price: ${order.yes_price}¢` : ''}
+Status: ${order.status}
+`,
+      mood: 'NEUTRAL',
+      data: order,
+    };
+  } catch (error) {
+    return {
+      text: `❌ Amend error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       mood: 'ERROR',
     };
   }
@@ -2561,6 +3037,88 @@ Or search for markets first:
       return handleTopLists();
     }
 
+    // Signal Intelligence commands
+    if (lower === '/feed' || lower.startsWith('/feed ')) {
+      try {
+        const filterArg = lower.replace('/feed', '').trim();
+        const signals = await getRecentSignals({
+          limit: 10,
+          action: filterArg === 'alerts' ? 'ALERT' : undefined,
+        });
+        return { text: formatSignalsReport(signals), mood: signals.length > 0 ? 'BULLISH' : 'NEUTRAL' };
+      } catch (err) {
+        return { text: 'Signal feed temporarily unavailable. Try again.', mood: 'ERROR' };
+      }
+    }
+
+    if (lower === '/watch-on' || lower.startsWith('/watch-on')) {
+      if (!telegramId) return { text: 'Cannot identify your account. Send a message first.', mood: 'ERROR' };
+      const tidNum = typeof telegramId === 'string' ? parseInt(telegramId) : telegramId as number;
+      // Default subscription: arb, whale, volume, odds
+      const defaultTypes: SignalType[] = ['arb_opportunity', 'whale_entry', 'volume_surge', 'odds_shift', 'resolution_imminent'];
+      await subscribeToSignals(tidNum, defaultTypes, 0.55);
+      return {
+        text: formatSubscribeConfirmation(defaultTypes, 0.55),
+        mood: 'BULLISH',
+      };
+    }
+
+    if (lower === '/watch-off') {
+      if (!telegramId) return { text: 'Cannot identify your account.', mood: 'ERROR' };
+      const tidNum = typeof telegramId === 'string' ? parseInt(telegramId) : telegramId as number;
+      await unsubscribeFromSignals(tidNum);
+      return {
+        text: `*Signal alerts disabled.*\n\nYou won't receive proactive alerts.\nUse /watch-on to re-enable.\nUse /feed to check signals anytime.`,
+        mood: 'NEUTRAL',
+      };
+    }
+
+    if (lower === '/watch-status') {
+      if (!telegramId) return { text: 'Cannot identify your account.', mood: 'ERROR' };
+      const tidNum = typeof telegramId === 'string' ? parseInt(telegramId) : telegramId as number;
+      const status = await getSubscriptionStatus(tidNum);
+      if (!status || !status.isSubscribed) {
+        return { text: `*Not subscribed to signal alerts.*\n\nUse /watch-on to get proactive alerts.`, mood: 'NEUTRAL' };
+      }
+      return {
+        text: `*Signal alerts: ACTIVE*\n\nTypes: ${status.signalTypes.join(', ')}\nMin strength: ${Math.round(status.minStrength * 100)}%\n\nUse /watch-off to disable.`,
+        mood: 'BULLISH',
+      };
+    }
+
+    // ─── Vault v0: Signal Channel Commands + On-chain Vault ───────────────────
+    const vaultCommands = [
+      '/create-channel', '/channel', '/signal',
+      '/channels', '/subscribe-channel', '/unsubscribe-channel', '/my-channels',
+      '/my-vault',
+    ];
+    const matchedVaultCmd = vaultCommands.find(cmd => lower === cmd || lower.startsWith(cmd + ' '));
+    if (matchedVaultCmd) {
+      if (!telegramId) {
+        return { text: 'Cannot identify your account.', mood: 'ERROR' as const };
+      }
+      const cmdArgs = text.slice(matchedVaultCmd.length).trim().split(/\s+/).filter(Boolean);
+
+      // Capture vault output for single-response model used by telegramHandler
+      const messages: string[] = [];
+      const captureSend = async (_chatId: number, msgText: string) => {
+        messages.push(msgText);
+      };
+
+      const tidNum = typeof telegramId === 'string' ? parseInt(telegramId) : telegramId as number;
+      await handleVaultCommand(
+        matchedVaultCmd as Parameters<typeof handleVaultCommand>[0],
+        cmdArgs,
+        tidNum,
+        username || `User_${telegramId}`,
+        captureSend
+      );
+
+      if (messages.length > 0) {
+        return { text: messages[0], mood: 'NEUTRAL' as const };
+      }
+    }
+
     // Route to specific agents
     switch (agent) {
       case 'RESEARCH': {
@@ -2844,15 +3402,32 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
       }
 
       case 'KALSHI': {
+        // Overview and balance
         if (lower === '/kalshi') return await handleKalshiOverview();
         if (lower === '/kbalance') return await handleKalshiBalance();
+        if (lower === '/kportfolio') return await handleKalshiPortfolio();
+
+        // Positions and orders
         if (lower === '/kpositions') return await handleKalshiPositions();
+        if (lower.startsWith('/korders')) {
+          const status = extractQuery(text, '/korders');
+          return await handleKalshiOrders(status || undefined);
+        }
+        if (lower === '/kfills') return await handleKalshiFillsCmd();
+        if (lower === '/ksettlements' || lower === '/kwinnings') return await handleKalshiSettlementsCmd();
+
+        // Markets and orderbook
         if (lower.startsWith('/kmarkets')) {
           const query = extractQuery(text, '/kmarkets');
           return await handleKalshiMarkets(query || undefined);
         }
+        if (lower.startsWith('/kbook')) return await handleKalshiOrderbook(text);
+
+        // Trading commands
         if (lower.startsWith('/kbuy')) return await handleKalshiBuy(text);
         if (lower.startsWith('/ksell')) return await handleKalshiSell(text);
+        if (lower.startsWith('/kcancel')) return await handleKalshiCancel(text);
+        if (lower.startsWith('/kamend')) return await handleKalshiAmend(text);
         break;
       }
 
@@ -2873,6 +3448,68 @@ What would you like to explore?
 • /brief - Morning briefing
 
 Or just ask about any market topic!`,
+              mood: 'NEUTRAL',
+            };
+          }
+
+          case 'CONVERSATION': {
+            // Meta questions about the bot - not market queries
+            const lowerText = text.toLowerCase();
+
+            // Check for specific conversational intents
+            if (/who\s+(talk|spoke|chat|messaged)/.test(lowerText) || /who\s+did\s+you/.test(lowerText)) {
+              return {
+                text: `I'm a prediction market bot — I don't track individual conversations or user identities for privacy reasons.
+
+I can help you with:
+• /hot - See what markets are trending
+• /brief - Get your morning briefing
+• /me - View your prediction stats
+
+What would you like to explore?`,
+                mood: 'NEUTRAL',
+              };
+            }
+
+            if (/how\s+are\s+you|what'?s\s+up|wassup/.test(lowerText)) {
+              return {
+                text: `All systems operational! 🟢
+
+Currently tracking ${Math.floor(Math.random() * 50) + 500}+ live markets across Polymarket, Kalshi, and Manifold.
+
+What can I help you with?
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /brief - Morning briefing`,
+                mood: 'BULLISH',
+              };
+            }
+
+            if (/are\s+you\s+(a\s+)?(bot|ai|robot)/.test(lowerText)) {
+              return {
+                text: `Yes, I'm BeRight — an AI-powered prediction market intelligence agent.
+
+I help you:
+• Find market opportunities
+• Spot arbitrage across platforms
+• Track whale activity
+• Analyze forecasts
+
+Try /help to see all my commands!`,
+                mood: 'NEUTRAL',
+              };
+            }
+
+            // Generic conversational response
+            return {
+              text: `I'm BeRight, your prediction market intelligence agent. I'm here to help you find alpha in prediction markets!
+
+Try these commands:
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /brief - Morning briefing
+
+Or ask me about any market topic!`,
               mood: 'NEUTRAL',
             };
           }

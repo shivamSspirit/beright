@@ -33,7 +33,10 @@ export const GET = withMiddleware(
 
     if (hot) {
       // Get trending markets
-      markets = await getHotMarkets(limit);
+      const platforms = platform
+        ? [platform as 'polymarket' | 'kalshi' | 'manifold' | 'limitless' | 'metaculus']
+        : undefined;
+      markets = await getHotMarkets(limit, platforms);
     } else if (query) {
       // Search markets
       const platforms = platform

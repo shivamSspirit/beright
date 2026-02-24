@@ -99,37 +99,49 @@ Try searching for a specific topic like:
 💡 HOW ARBITRAGE WORKS
 
 True arbitrage = Buy YES on Platform A + NO on Platform B
-Total cost < $1 = Guaranteed profit
+Total cost < $1 = Profit potential
 
 Example:
 • Polymarket: "Will X happen?" at 40% YES
 • Kalshi: Same market at 50% YES
 • Buy YES @ 40¢ + NO @ 50¢ = 90¢ total
-• Guaranteed $1 payout = 10¢ profit (11% return)
+• $1 payout = 10¢ profit (11% return)
 
-But this requires IDENTICAL markets, not just similar topics.
+⚠️ IMPORTANT CAVEATS:
+• Prices shown are from scan time - may have changed
+• First to execute captures the opportunity
+• Requires IDENTICAL markets, not just similar topics
+• Slippage and execution costs affect real returns
 `;
     } else {
       text += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚠️ IMPORTANT DISCLAIMERS
+⚠️ CRITICAL: READ BEFORE TRADING
 
-1. VERIFY MANUALLY: Always confirm markets are truly equivalent
-2. CHECK RESOLUTION: Read the full resolution criteria on each platform
-3. CONSIDER TIMING: Opportunities may disappear before execution
-4. ACCOUNT FOR COSTS: Slippage may exceed estimates
-5. START SMALL: Test with minimum position sizes first
+🚨 THESE ARE *POTENTIAL* OPPORTUNITIES, NOT GUARANTEES
 
-The confidence grades (A-F) indicate our certainty that:
-• Markets are truly equivalent
-• Prices are accurate
-• Execution is feasible
-• Profit calculations are reliable
+EXECUTION RISKS:
+• 🏃 SPEED MATTERS: First to execute wins. Many users see this alert.
+• 📉 PRICE MOVEMENT: Prices shown were valid at scan time only.
+• 💸 SLIPPAGE: Large orders move prices against you.
+• ⏱️ STALENESS: Most arb opportunities close within 2-5 minutes.
 
-Grade A = High confidence, safe to proceed
-Grade B = Good confidence, proceed with caution
-Grade C = Moderate, manual verification needed
+BEFORE EXECUTING:
+1. ✅ VERIFY prices are still valid on BOTH platforms
+2. ✅ CHECK that markets are truly identical (same resolution criteria)
+3. ✅ USE LIMIT ORDERS, not market orders
+4. ✅ START SMALL - test with $50-100 first
+5. ✅ EXECUTE QUICKLY if prices still match
+
+CONFIDENCE GRADES:
+• Grade A = High confidence match, prices likely still valid
+• Grade B = Good match, verify before executing
+• Grade C = Moderate match, manual verification required
+
+📊 REALISTIC EXPECTATIONS:
+Not everyone who sees this alert will profit. Those who verify
+and execute fastest have the best chance of capturing the spread.
 `;
     }
 

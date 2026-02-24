@@ -611,6 +611,61 @@ export async function checkBackendHealth(): Promise<boolean> {
   }
 }
 
+// ============ UNIFIED GATEWAY API ============
+// Routes commands through the same handler as Telegram
+// Enables full agent/skill system in web terminal
+
+export interface GatewayResponse {
+  success: boolean;
+  text: string;           // Formatted for web (markdown stripped)
+  rawText: string;        // Original with Telegram markdown
+  mood: string;
+  data?: any;
+  sessionId: string;
+  error?: string;
+}
+
+/**
+ * Send a command or message through the unified gateway
+ * This routes through the full Telegram handler logic including:
+ * - Multi-agent routing (COMMANDER, RESEARCH, ARBITRAGE, WHALE, etc.)
+ * - All 60+ commands
+ * - LLM reasoning layer
+ * - Context and memory
+ * - Skill execution
+ */
+export async function sendToGateway(
+  message: string,
+  options?: {
+    userId?: string;
+    sessionId?: string;
+  }
+): Promise<GatewayResponse> {
+  return apiFetch('/api/gateway', {
+    method: 'POST',
+    body: JSON.stringify({
+      message,
+      userId: options?.userId,
+      sessionId: options?.sessionId,
+    }),
+  });
+}
+
+/**
+ * Get gateway status and available commands
+ */
+export async function getGatewayStatus(sessionId?: string): Promise<{
+  status: string;
+  activeSessions: number;
+  supportedCommands: string[];
+  sessionId?: string;
+  exists?: boolean;
+  messageCount?: number;
+}> {
+  const params = sessionId ? `?sessionId=${sessionId}` : '';
+  return apiFetch(`/api/gateway${params}`);
+}
+
 // ============ TAVILY API (Web Search & Research) ============
 
 export interface TavilySearchResult {

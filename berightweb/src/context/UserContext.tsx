@@ -46,8 +46,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const primaryWallet = wallets?.[0];
-  const walletAddress = primaryWallet?.address || null;
+  // Get wallet address - prioritize external wallets over embedded wallets
+  // External wallets: Phantom, Backpack, Solflare, etc.
+  // Embedded wallets: Created by Privy on social login (walletClientType: 'privy')
+
+  // Check useWallets for connected external wallets
+  const externalWallet = wallets?.find((w) => w.walletClientType !== 'privy');
+  const embeddedWalletFromHook = wallets?.find((w) => w.walletClientType === 'privy');
+
+  // Also check linkedAccounts for any wallet (fallback)
+  const linkedWalletAccount = privyUser?.linkedAccounts?.find(
+    (account) => account.type === 'wallet'
+  );
+  const linkedWalletAddress = linkedWalletAccount && 'address' in linkedWalletAccount
+    ? (linkedWalletAccount as { address: string }).address
+    : null;
+
+  // Priority: External wallet > Embedded wallet from hook > Linked wallet from user
+  const walletAddress =
+    externalWallet?.address ||
+    embeddedWalletFromHook?.address ||
+    linkedWalletAddress ||
+    null;
 
   // Wrapped login function with error handling
   const login = async () => {

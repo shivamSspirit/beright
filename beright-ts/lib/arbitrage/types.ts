@@ -5,7 +5,7 @@
  * validation, risk controls, and execution planning.
  */
 
-import { Platform, Market } from '../../types/index';
+import { Platform, Market } from '../markets';
 
 // ============================================
 // MARKET EQUIVALENCE TYPES

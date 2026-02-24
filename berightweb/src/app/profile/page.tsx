@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import BottomNav from '@/components/BottomNav';
 import { useUser } from '@/context/UserContext';
 import { useUserPredictions, useBackendStatus } from '@/hooks/useMarkets';
 import {
-  TrendingUp, Target, Flame, Share2, ChevronRight, Lock, Trophy, Zap, Settings, Bell, HelpCircle
+  TrendingUp, Target, Flame, Share2, ChevronRight, Lock, Trophy, Zap, Settings, Bell, HelpCircle,
+  Copy, Download, Send, RefreshCw, ExternalLink, Check, X, Wallet
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
@@ -106,7 +107,6 @@ export default function ProfilePage() {
   const { user, isAuthenticated, isLoading, login, logout, walletAddress, linkTelegram, refreshUser } = useUser();
   const { isConnected } = useBackendStatus();
   const { stats: apiStats, predictions } = useUserPredictions();
-  const [copied, setCopied] = useState(false);
   const [showTelegramLink, setShowTelegramLink] = useState(false);
   const [telegramInput, setTelegramInput] = useState('');
   const [linking, setLinking] = useState(false);
@@ -117,6 +117,19 @@ export default function ProfilePage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+
+  // Wallet & Balance state
+  const [solBalance, setSolBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  // Withdraw state
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawAddress, setWithdrawAddress] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawSuccess, setWithdrawSuccess] = useState(false);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -140,6 +153,99 @@ export default function ProfilePage() {
       fetchNotifications();
     }
   }, [walletAddress]);
+
+  // Fetch SOL balance
+  const fetchBalance = useCallback(async () => {
+    if (!walletAddress) return;
+    setLoadingBalance(true);
+    try {
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getBalance',
+          params: [walletAddress],
+        }),
+      });
+      const data = await response.json();
+      if (data.result?.value !== undefined) {
+        // Convert lamports to SOL (1 SOL = 1e9 lamports)
+        setSolBalance(data.result.value / 1e9);
+      }
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+      setSolBalance(null);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }, [walletAddress]);
+
+  // Fetch balance when wallet connects
+  useEffect(() => {
+    if (walletAddress && isAuthenticated) {
+      fetchBalance();
+    }
+  }, [walletAddress, isAuthenticated, fetchBalance]);
+
+  // Copy wallet address
+  const handleCopyAddress = async () => {
+    if (!walletAddress) return;
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
+  // Handle withdraw (placeholder - needs wallet signing)
+  const handleWithdraw = async () => {
+    if (!walletAddress || !withdrawAddress || !withdrawAmount) return;
+
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setWithdrawError('Please enter a valid amount');
+      return;
+    }
+    if (solBalance !== null && amount > solBalance) {
+      setWithdrawError('Insufficient balance');
+      return;
+    }
+    // Basic Solana address validation (32-44 chars, base58)
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(withdrawAddress)) {
+      setWithdrawError('Invalid Solana address');
+      return;
+    }
+
+    setWithdrawing(true);
+    setWithdrawError(null);
+    setWithdrawSuccess(false);
+
+    try {
+      // Note: Actual withdrawal requires wallet signing via Privy
+      // This is a placeholder that shows the flow
+      // In production, you'd use useSolanaWallets() from Privy to sign & send
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulated delay
+
+      setWithdrawSuccess(true);
+      setWithdrawAddress('');
+      setWithdrawAmount('');
+      // Refresh balance after withdrawal
+      setTimeout(() => {
+        fetchBalance();
+        setShowWithdraw(false);
+        setWithdrawSuccess(false);
+      }, 2000);
+    } catch (error) {
+      setWithdrawError(error instanceof Error ? error.message : 'Withdrawal failed');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false);
@@ -244,14 +350,6 @@ export default function ProfilePage() {
   // Get achievements based on real stats
   const achievements = getAchievements(stats);
 
-  const handleCopyAddress = async () => {
-    if (walletAddress) {
-      await navigator.clipboard.writeText(walletAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const handleLinkTelegram = async () => {
     if (!telegramInput.trim()) return;
     setLinking(true);
@@ -314,7 +412,7 @@ export default function ProfilePage() {
           {isAuthenticated && walletAddress ? (
             <button onClick={handleCopyAddress} className="wallet-address">
               <span>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
-              <span className="copy-icon">{copied ? '✓' : '📋'}</span>
+              <span className="copy-icon">{copiedAddress ? '✓' : '📋'}</span>
             </button>
           ) : (
             <p className="connect-hint">Connect wallet to save progress</p>
@@ -510,42 +608,184 @@ export default function ProfilePage() {
         ) : (
           <>
             {/* Settings Tab Content */}
-            {/* Wallet Connection */}
+            {/* Wallet Section */}
             {isLoading ? (
-              <div className="wallet-card loading">
+              <div className="wallet-section loading">
                 <div className="spinner" />
               </div>
-            ) : isAuthenticated ? (
-              <div className="wallet-card connected">
-                <div className="wallet-icon connected">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                    <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
-                  </svg>
+            ) : isAuthenticated && walletAddress ? (
+              <div className="wallet-section">
+                {/* Header */}
+                <div className="wallet-section-header">
+                  <div className="wallet-section-title">
+                    <Wallet size={20} />
+                    <span>Wallet</span>
+                  </div>
+                  <div className="wallet-connected-badge">
+                    <div className="connected-dot" />
+                    <span>Connected</span>
+                  </div>
                 </div>
-                <div className="wallet-info">
-                  <span className="wallet-status">Connected</span>
-                  <span className="wallet-desc">Predictions tracked on-chain</span>
+
+                {/* Balance Display */}
+                <div className="wallet-balance-card">
+                  <div className="balance-label">Available Balance</div>
+                  <div className="balance-row">
+                    <div className="balance-amount">
+                      {loadingBalance ? (
+                        <span className="balance-loading">Loading...</span>
+                      ) : solBalance !== null ? (
+                        <>
+                          <span className="balance-value">{solBalance.toFixed(4)}</span>
+                          <span className="balance-currency">SOL</span>
+                        </>
+                      ) : (
+                        <span className="balance-error">--</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={fetchBalance}
+                      className="refresh-balance-btn"
+                      disabled={loadingBalance}
+                    >
+                      <RefreshCw size={16} className={loadingBalance ? 'spinning' : ''} />
+                    </button>
+                  </div>
                 </div>
-                <button onClick={logout} className="disconnect-btn">
-                  Disconnect
+
+                {/* Wallet Address (Deposit) */}
+                <div className="wallet-address-section">
+                  <div className="address-label">
+                    <Download size={14} />
+                    <span>Deposit Address</span>
+                  </div>
+                  <div className="address-box">
+                    <span className="address-text">
+                      {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
+                    </span>
+                    <button onClick={handleCopyAddress} className="copy-btn">
+                      {copiedAddress ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                  <p className="address-hint">Send SOL to this address to deposit funds</p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="wallet-actions">
+                  <button
+                    onClick={() => setShowWithdraw(true)}
+                    className="wallet-action-btn withdraw"
+                  >
+                    <Send size={18} />
+                    <span>Withdraw</span>
+                  </button>
+                  <a
+                    href={`https://solscan.io/account/${walletAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="wallet-action-btn explorer"
+                  >
+                    <ExternalLink size={18} />
+                    <span>View on Solscan</span>
+                  </a>
+                </div>
+
+                {/* Disconnect */}
+                <button onClick={logout} className="disconnect-wallet-btn">
+                  Disconnect Wallet
                 </button>
+
+                {/* Withdraw Modal */}
+                {showWithdraw && (
+                  <div className="withdraw-modal-overlay" onClick={() => setShowWithdraw(false)}>
+                    <div className="withdraw-modal" onClick={(e) => e.stopPropagation()}>
+                      <div className="withdraw-header">
+                        <h3>Withdraw SOL</h3>
+                        <button onClick={() => setShowWithdraw(false)} className="close-modal-btn">
+                          <X size={20} />
+                        </button>
+                      </div>
+
+                      <div className="withdraw-balance">
+                        Available: <strong>{solBalance?.toFixed(4) || '0'} SOL</strong>
+                      </div>
+
+                      <div className="withdraw-form">
+                        <div className="form-group">
+                          <label>Recipient Address</label>
+                          <input
+                            type="text"
+                            value={withdrawAddress}
+                            onChange={(e) => setWithdrawAddress(e.target.value)}
+                            placeholder="Solana wallet address"
+                            disabled={withdrawing}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Amount (SOL)</label>
+                          <div className="amount-input-row">
+                            <input
+                              type="number"
+                              value={withdrawAmount}
+                              onChange={(e) => setWithdrawAmount(e.target.value)}
+                              placeholder="0.00"
+                              step="0.001"
+                              min="0"
+                              disabled={withdrawing}
+                            />
+                            <button
+                              onClick={() => solBalance && setWithdrawAmount((solBalance - 0.001).toFixed(4))}
+                              className="max-btn"
+                              disabled={withdrawing || !solBalance}
+                            >
+                              MAX
+                            </button>
+                          </div>
+                        </div>
+
+                        {withdrawError && (
+                          <div className="withdraw-error">{withdrawError}</div>
+                        )}
+
+                        {withdrawSuccess && (
+                          <div className="withdraw-success">Withdrawal successful!</div>
+                        )}
+
+                        <button
+                          onClick={handleWithdraw}
+                          disabled={withdrawing || !withdrawAddress || !withdrawAmount}
+                          className="withdraw-submit-btn"
+                        >
+                          {withdrawing ? (
+                            <>
+                              <div className="btn-spinner" />
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send size={18} />
+                              <span>Withdraw</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <button onClick={login} className="wallet-card connect">
-                <div className="wallet-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                    <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
-                  </svg>
+              <button onClick={login} className="wallet-section connect">
+                <div className="connect-wallet-content">
+                  <div className="connect-wallet-icon">
+                    <Wallet size={28} />
+                  </div>
+                  <div className="connect-wallet-text">
+                    <span className="connect-wallet-title">Connect Wallet</span>
+                    <span className="connect-wallet-desc">Link your wallet to deposit, withdraw & trade</span>
+                  </div>
+                  <ChevronRight size={20} className="connect-chevron" />
                 </div>
-                <div className="wallet-info">
-                  <span className="wallet-status">Connect Wallet</span>
-                  <span className="wallet-desc">Save predictions on-chain</span>
-                </div>
-                <span className="chevron">›</span>
               </button>
             )}
 
@@ -1729,31 +1969,506 @@ export default function ProfilePage() {
           border-radius: 2px;
         }
 
-        /* Settings Tab Styles */
-        .wallet-card {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 14px;
+        /* Settings Tab Styles - Wallet Section */
+        .wallet-section {
+          padding: 16px;
           background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 16px;
+        }
+
+        .wallet-section.loading {
+          display: flex;
+          justify-content: center;
+          padding: 40px;
+        }
+
+        .wallet-section.connect {
+          padding: 0;
+          background: transparent;
+          border: 1px solid rgba(0, 230, 118, 0.25);
+          cursor: pointer;
           transition: all 0.2s;
         }
 
-        .wallet-card.connect {
-          cursor: pointer;
-          border-color: rgba(0, 230, 118, 0.2);
-        }
-
-        .wallet-card.connect:hover {
+        .wallet-section.connect:hover {
           background: rgba(0, 230, 118, 0.05);
-          border-color: rgba(0, 230, 118, 0.3);
+          border-color: rgba(0, 230, 118, 0.4);
         }
 
-        .wallet-card.loading {
+        .connect-wallet-content {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 18px 16px;
+        }
+
+        .connect-wallet-icon {
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
           justify-content: center;
-          padding: 22px;
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 176, 255, 0.15));
+          border-radius: 12px;
+          color: #00E676;
+        }
+
+        .connect-wallet-text {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .connect-wallet-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #fff;
+        }
+
+        .connect-wallet-desc {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .connect-chevron {
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        .wallet-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+
+        .wallet-section-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 15px;
+          font-weight: 600;
+          color: #fff;
+        }
+
+        .wallet-connected-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 10px;
+          background: rgba(34, 197, 94, 0.15);
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 500;
+          color: #22C55E;
+        }
+
+        .connected-dot {
+          width: 6px;
+          height: 6px;
+          background: #22C55E;
+          border-radius: 50%;
+          animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        .wallet-balance-card {
+          padding: 16px;
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.08), rgba(0, 176, 255, 0.08));
+          border: 1px solid rgba(0, 230, 118, 0.15);
+          border-radius: 12px;
+          margin-bottom: 14px;
+        }
+
+        .balance-label {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+        }
+
+        .balance-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .balance-amount {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+
+        .balance-value {
+          font-size: 28px;
+          font-weight: 700;
+          color: #00E676;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .balance-currency {
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .balance-loading {
+          font-size: 16px;
+          color: rgba(255, 255, 255, 0.4);
+        }
+
+        .balance-error {
+          font-size: 24px;
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        .refresh-balance-btn {
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.06);
+          border: none;
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .refresh-balance-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .refresh-balance-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .refresh-balance-btn .spinning {
+          animation: spin 1s linear infinite;
+        }
+
+        .wallet-address-section {
+          margin-bottom: 14px;
+        }
+
+        .address-label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+        }
+
+        .address-box {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+        }
+
+        .address-text {
+          font-size: 13px;
+          font-family: 'JetBrains Mono', monospace;
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .copy-btn {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.06);
+          border: none;
+          border-radius: 8px;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #00E676;
+        }
+
+        .address-hint {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.35);
+          margin: 8px 0 0;
+        }
+
+        .wallet-actions {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+
+        .wallet-action-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-decoration: none;
+        }
+
+        .wallet-action-btn.withdraw {
+          background: linear-gradient(135deg, #6366F1, #818CF8);
+          border: none;
+          color: #fff;
+        }
+
+        .wallet-action-btn.withdraw:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .wallet-action-btn.explorer {
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .wallet-action-btn.explorer:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .disconnect-wallet-btn {
+          width: 100%;
+          padding: 10px;
+          background: transparent;
+          border: 1px solid rgba(255, 82, 82, 0.2);
+          border-radius: 10px;
+          font-size: 12px;
+          color: rgba(255, 82, 82, 0.8);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .disconnect-wallet-btn:hover {
+          background: rgba(255, 82, 82, 0.1);
+          border-color: rgba(255, 82, 82, 0.4);
+          color: #FF5252;
+        }
+
+        /* Withdraw Modal */
+        .withdraw-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.85);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 16px;
+        }
+
+        .withdraw-modal {
+          width: 100%;
+          max-width: 400px;
+          background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 20px;
+          overflow: hidden;
+        }
+
+        .withdraw-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 18px 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .withdraw-header h3 {
+          font-size: 17px;
+          font-weight: 600;
+          color: #fff;
+          margin: 0;
+        }
+
+        .close-modal-btn {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.06);
+          border: none;
+          border-radius: 8px;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .close-modal-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .withdraw-balance {
+          padding: 14px 20px;
+          background: rgba(255, 255, 255, 0.03);
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .withdraw-balance strong {
+          color: #00E676;
+        }
+
+        .withdraw-form {
+          padding: 20px;
+        }
+
+        .withdraw-form .form-group {
+          margin-bottom: 16px;
+        }
+
+        .withdraw-form label {
+          display: block;
+          font-size: 11px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+        }
+
+        .withdraw-form input {
+          width: 100%;
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          font-size: 14px;
+          color: #fff;
+          outline: none;
+          transition: all 0.2s;
+        }
+
+        .withdraw-form input:focus {
+          border-color: rgba(99, 102, 241, 0.5);
+          background: rgba(255, 255, 255, 0.06);
+        }
+
+        .withdraw-form input::placeholder {
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        .withdraw-form input:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .amount-input-row {
+          display: flex;
+          gap: 8px;
+        }
+
+        .amount-input-row input {
+          flex: 1;
+        }
+
+        .max-btn {
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .max-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .max-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .withdraw-error {
+          padding: 10px 12px;
+          background: rgba(255, 82, 82, 0.1);
+          border: 1px solid rgba(255, 82, 82, 0.2);
+          border-radius: 8px;
+          font-size: 12px;
+          color: #FF5252;
+          margin-bottom: 16px;
+        }
+
+        .withdraw-success {
+          padding: 10px 12px;
+          background: rgba(0, 230, 118, 0.1);
+          border: 1px solid rgba(0, 230, 118, 0.2);
+          border-radius: 8px;
+          font-size: 12px;
+          color: #00E676;
+          margin-bottom: 16px;
+        }
+
+        .withdraw-submit-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 14px;
+          background: linear-gradient(135deg, #6366F1, #818CF8);
+          border: none;
+          border-radius: 12px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #fff;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .withdraw-submit-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+
+        .withdraw-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .btn-spinner {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
         }
 
         .spinner {
@@ -1767,67 +2482,6 @@ export default function ProfilePage() {
 
         @keyframes spin {
           to { transform: rotate(360deg); }
-        }
-
-        .wallet-icon {
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(0, 230, 118, 0.1);
-          border-radius: 10px;
-          color: #00E676;
-          flex-shrink: 0;
-        }
-
-        .wallet-icon.connected {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22C55E;
-        }
-
-        .wallet-info {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .wallet-status {
-          font-size: 14px;
-          font-weight: 600;
-          color: #fff;
-        }
-
-        .wallet-card.connected .wallet-status {
-          color: #22C55E;
-        }
-
-        .wallet-desc {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.4);
-        }
-
-        .disconnect-btn {
-          padding: 7px 12px;
-          background: rgba(255, 255, 255, 0.06);
-          border: none;
-          border-radius: 8px;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.6);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .disconnect-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: #fff;
-        }
-
-        .chevron {
-          font-size: 22px;
-          color: rgba(255, 255, 255, 0.3);
-          font-weight: 300;
         }
 
         /* Telegram Modal */

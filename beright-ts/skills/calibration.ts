@@ -12,6 +12,7 @@
  */
 
 import { SkillResponse } from '../types/index';
+import { calculateBrier } from '../lib/reputation';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -96,14 +97,6 @@ function savePredictions(predictions: Prediction[]): void {
 }
 
 /**
- * Calculate Brier score for a single prediction
- */
-function calculateBrierScore(predictedProb: number, outcome: boolean): number {
-  const actualOutcome = outcome ? 1 : 0;
-  return Math.pow(predictedProb - actualOutcome, 2);
-}
-
-/**
  * Add a new prediction
  */
 export function addPrediction(
@@ -160,14 +153,12 @@ export function resolvePrediction(
   prediction.outcome = outcome;
   prediction.resolvedAt = new Date().toISOString();
 
-  // Calculate Brier score
-  // If we predicted YES with 70%, and outcome is YES (true), Brier = (0.7 - 1)^2 = 0.09
-  // If we predicted YES with 70%, and outcome is NO (false), Brier = (0.7 - 0)^2 = 0.49
-  const probForYes = prediction.direction === 'YES'
-    ? prediction.predictedProbability
-    : 1 - prediction.predictedProbability;
-
-  prediction.brierScore = calculateBrierScore(probForYes, outcome);
+  // Calculate Brier score using canonical formula from lib/reputation
+  prediction.brierScore = calculateBrier(
+    prediction.predictedProbability,
+    prediction.direction,
+    outcome,
+  );
 
   predictions[index] = prediction;
   savePredictions(predictions);

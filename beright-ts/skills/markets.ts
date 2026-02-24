@@ -633,8 +633,11 @@ export async function searchMarkets(
 /**
  * Get hot/trending markets
  */
-export async function getHotMarkets(limit = 20): Promise<Market[]> {
-  const markets = await searchMarkets('');
+export async function getHotMarkets(
+  limit: number = 20,
+  platforms?: Platform[]
+): Promise<Market[]> {
+  const markets = await searchMarkets('', platforms);
 
   // Sort by volume
   return markets

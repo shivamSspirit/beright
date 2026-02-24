@@ -350,9 +350,210 @@ CREATE TRIGGER sessions_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================
+-- SIGNALS TABLE (Signal Intelligence Engine)
+-- ============================================
+CREATE TABLE IF NOT EXISTS signals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Signal classification
+  type TEXT NOT NULL CHECK (type IN (
+    'volume_surge', 'odds_shift', 'arb_opportunity', 'resolution_imminent',
+    'new_market', 'smart_money', 'narrative_emergence', 'cross_market',
+    'insider_pattern', 'consensus_flip', 'whale_entry'
+  )),
+  market_id TEXT NOT NULL,
+  market_title TEXT,
+  platform TEXT,
+
+  -- Signal data
+  strength FLOAT NOT NULL CHECK (strength >= 0 AND strength <= 1),
+  raw_data JSONB DEFAULT '{}',
+
+  -- LLM evaluation
+  llm_verdict JSONB,           -- { action, confidence, reasoning }
+  action TEXT CHECK (action IN ('ALERT', 'WATCH', 'SKIP')),
+  confidence INT,              -- 0-100
+
+  -- Alert delivery
+  alert_text TEXT,
+  alerted_at TIMESTAMPTZ,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_signals_created ON signals(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signals_type ON signals(type);
+CREATE INDEX IF NOT EXISTS idx_signals_action ON signals(action) WHERE action != 'SKIP';
+CREATE INDEX IF NOT EXISTS idx_signals_platform ON signals(platform);
+
+-- ============================================
+-- SIGNAL SUBSCRIPTIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS signal_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  telegram_id BIGINT NOT NULL,
+  signal_types TEXT[] DEFAULT ARRAY['arb_opportunity', 'whale_entry', 'volume_surge'],
+  min_strength FLOAT DEFAULT 0.6,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(telegram_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_signal_subs_telegram ON signal_subscriptions(telegram_id) WHERE is_active = TRUE;
+
+-- ============================================
+-- FORECASTER PROFILES TABLE (Phase 2)
+-- ============================================
+CREATE TABLE IF NOT EXISTS forecaster_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  telegram_id BIGINT UNIQUE,
+  display_name TEXT,
+  wallet_address TEXT,
+
+  -- Brier scores (lower = better, 0 = perfect)
+  brier_overall FLOAT,
+  brier_politics FLOAT,
+  brier_crypto FLOAT,
+  brier_sports FLOAT,
+  brier_macro FLOAT,
+
+  -- Stats
+  prediction_count INT DEFAULT 0,
+  resolved_count INT DEFAULT 0,
+  accuracy_30d FLOAT,
+  global_rank INT,
+
+  -- Reputation
+  badges TEXT[] DEFAULT ARRAY[]::TEXT[],
+  is_public BOOLEAN DEFAULT FALSE,
+
+  -- Vault linkage (Phase 4+)
+  vault_address TEXT,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_forecaster_telegram ON forecaster_profiles(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_forecaster_rank ON forecaster_profiles(global_rank) WHERE global_rank IS NOT NULL;
+
+CREATE TRIGGER forecaster_profiles_updated_at
+  BEFORE UPDATE ON forecaster_profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================
 -- SEED DATA (Optional - known whale wallets)
 -- ============================================
 INSERT INTO whale_wallets (wallet_address, label, platform) VALUES
   ('0x1234...', 'Polymarket Whale #1', 'polymarket'),
   ('0x5678...', 'Smart Money Alpha', 'polymarket')
 ON CONFLICT (wallet_address) DO NOTHING;
+
+
+-- ============================================
+-- SIGNAL CHANNELS TABLE (Phase 4 - Vault v0)
+-- Forecasters create channels; subscribers receive their signals
+-- ============================================
+CREATE TABLE IF NOT EXISTS signal_channels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  forecaster_telegram_id BIGINT NOT NULL,
+  forecaster_display_name TEXT,
+
+  -- Channel identity
+  name TEXT NOT NULL,
+  description TEXT,
+  slug TEXT UNIQUE,  -- URL-friendly identifier
+
+  -- Pricing tier
+  tier TEXT DEFAULT 'free' CHECK (tier IN ('free', 'pro', 'whale')),
+  monthly_price_usd DECIMAL(10,2) DEFAULT 0,
+
+  -- Performance tracking
+  signal_count INT DEFAULT 0,
+  subscriber_count INT DEFAULT 0,
+  win_rate FLOAT,
+  avg_roi FLOAT,
+  best_signal_text TEXT,
+
+  -- Status
+  is_active BOOLEAN DEFAULT TRUE,
+  is_verified BOOLEAN DEFAULT FALSE,  -- BeRight verified forecaster
+
+  -- Stats window
+  signals_7d INT DEFAULT 0,
+  signals_30d INT DEFAULT 0,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_channels_forecaster ON signal_channels(forecaster_telegram_id);
+CREATE INDEX IF NOT EXISTS idx_channels_active ON signal_channels(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_channels_slug ON signal_channels(slug) WHERE slug IS NOT NULL;
+
+CREATE TRIGGER signal_channels_updated_at
+  BEFORE UPDATE ON signal_channels
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================
+-- CHANNEL SUBSCRIPTIONS TABLE
+-- Who subscribes to which forecaster channel
+-- ============================================
+CREATE TABLE IF NOT EXISTS channel_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id UUID REFERENCES signal_channels(id) ON DELETE CASCADE,
+  subscriber_telegram_id BIGINT NOT NULL,
+
+  -- Subscription status
+  tier TEXT DEFAULT 'free' CHECK (tier IN ('free', 'pro', 'whale')),
+  is_active BOOLEAN DEFAULT TRUE,
+  notify_telegram BOOLEAN DEFAULT TRUE,
+
+  -- Tracking
+  subscribed_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,  -- NULL = no expiry (free tier)
+  last_notified_at TIMESTAMPTZ,
+
+  UNIQUE(channel_id, subscriber_telegram_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_chan_subs_channel ON channel_subscriptions(channel_id) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_chan_subs_subscriber ON channel_subscriptions(subscriber_telegram_id) WHERE is_active = TRUE;
+
+-- ============================================
+-- CHANNEL SIGNALS TABLE
+-- Signals/predictions broadcast through a channel
+-- ============================================
+CREATE TABLE IF NOT EXISTS channel_signals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id UUID REFERENCES signal_channels(id) ON DELETE CASCADE,
+  forecaster_telegram_id BIGINT NOT NULL,
+
+  -- The prediction
+  market_title TEXT NOT NULL,
+  platform TEXT,
+  direction TEXT CHECK (direction IN ('YES', 'NO')),
+  probability FLOAT CHECK (probability >= 0 AND probability <= 1),
+  confidence TEXT CHECK (confidence IN ('low', 'medium', 'high')),
+  reasoning TEXT,
+  time_horizon TEXT,  -- '24h', '1w', '1m', 'until resolution'
+
+  -- On-chain commitment
+  on_chain_tx TEXT,
+  commit_hash TEXT,
+
+  -- Resolution tracking
+  resolved_at TIMESTAMPTZ,
+  outcome BOOLEAN,  -- TRUE = correct, FALSE = wrong
+  brier_score FLOAT,
+
+  -- Delivery
+  notified_count INT DEFAULT 0,
+  notified_at TIMESTAMPTZ,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chan_signals_channel ON channel_signals(channel_id);
+CREATE INDEX IF NOT EXISTS idx_chan_signals_created ON channel_signals(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chan_signals_unresolved ON channel_signals(channel_id) WHERE resolved_at IS NULL;

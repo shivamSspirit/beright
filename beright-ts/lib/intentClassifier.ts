@@ -31,6 +31,7 @@ export type IntentType =
   | 'EDUCATIONAL'        // Learn about concepts
   | 'GREETING'           // Hello/hi
   | 'HELP'               // How to use
+  | 'CONVERSATION'       // Meta questions about the bot (who are you, what did you do, etc.)
   | 'UNKNOWN';           // Can't determine
 
 export interface IntentResult {
@@ -81,6 +82,34 @@ const INTENT_PATTERNS: IntentPattern[] = [
     ],
     keywords: ['help', 'how to', 'what can you', 'command for', 'commands'],
     priority: 99,
+  },
+
+  // CONVERSATION (meta questions about the bot itself - NOT market queries)
+  {
+    intent: 'CONVERSATION',
+    agent: 'commander',
+    patterns: [
+      // Questions about the bot's actions/history
+      /\b(who|what)\s+(talk(ed)?|spoke|chat(ted)?|messaged|contacted)\s+(with\s+)?(you|to\s+you|the\s+bot)/i,
+      /\b(who|what)\s+(did\s+you|have\s+you)\s+(talk|speak|chat|message|do|see)/i,
+      /\bwho\s+(are\s+)?you(r)?\s*(users?|friends?|contacts?)?\b/i,
+      // "who talked to you", "who messaged you today", "what did you do today"
+      /\b(what|who)\s+did\s+(you|the\s+bot)\s+(do|see|process|handle)/i,
+      /\bwhat\s+(have\s+)?you\s+(been\s+)?(doing|up\s+to)/i,
+      // "who talked to you today", "who messaged you yesterday"
+      /\bwho\s+\w+\s+(to\s+)?you\s+(today|yesterday|this\s+week|recently)/i,
+      // Personal questions about the bot
+      /\b(how\s+are\s+you|how'?s\s+it\s+going|what'?s\s+up|wassup)\b/i,
+      /\b(tell\s+me\s+about\s+yourself|who\s+made\s+you|who\s+created\s+you)\b/i,
+      // "are you a bot", "are you AI", "are you real"
+      /\bare\s+you\s+(a\s+)?(bot|ai|robot|human|real|alive)/i,
+      // Conversational follow-ups that aren't market queries
+      /^(yes|no|ok|okay|thanks|thank\s+you|cool|nice|great|awesome|got\s+it|understood)[\s!.]*$/i,
+      // Random conversational noise
+      /^(lol|lmao|haha|hehe|wow|omg|wtf)[\s!.]*$/i,
+    ],
+    keywords: [],  // No keywords - rely on patterns only
+    priority: 98,
   },
 
   // EDUCATIONAL (before research to catch concept queries)
@@ -511,9 +540,37 @@ function hasMarketIndicators(text: string): boolean {
 }
 
 /**
+ * Check if text looks like a conversational/meta question (NOT a market query)
+ */
+function isConversationalQuery(text: string): boolean {
+  const conversationalPatterns = [
+    // Questions about the bot/its actions
+    /\b(who|what)\s+(talk|spoke|chat|messaged|contacted)\s+(with|to)\s+(you|me|the\s+bot)/i,
+    /\b(who|what)\s+(did\s+you|have\s+you)\s+(talk|speak|chat|do|see)/i,
+    /\bwho\s+(are\s+)?you/i,
+    /\b(how\s+are\s+you|how'?s\s+it\s+going|what'?s\s+up)/i,
+    /\bare\s+you\s+(a\s+)?(bot|ai|robot|human|real)/i,
+    /\b(tell\s+me\s+about\s+yourself|who\s+made\s+you)/i,
+    /\bwhat\s+(have\s+)?you\s+(been\s+)?(doing|up\s+to)/i,
+    // Generic conversational phrases
+    /^(yes|no|ok|okay|thanks|thank\s+you|cool|nice|great|awesome|got\s+it)[\s!.]*$/i,
+    /^(lol|lmao|haha|hehe|wow|omg|wtf)[\s!.]*$/i,
+    // Sentences with "you" as the subject that aren't market-related
+    /\b(do\s+you|can\s+you|will\s+you|are\s+you|were\s+you)\s+(remember|know|think|like|want|have|see)/i,
+    // Questions about past interactions
+    /\b(today|yesterday|last\s+(week|month|time))\b.*\b(you|with\s+you)\b/i,
+  ];
+
+  return conversationalPatterns.some(pattern => pattern.test(text));
+}
+
+/**
  * Check if text looks like a market query
  */
 function looksLikeMarketQuery(text: string): boolean {
+  // Reject conversational queries first
+  if (isConversationalQuery(text)) return false;
+
   // Must have some substance (not just stopwords)
   const words = text.split(/\s+/).filter(w => w.length > 2);
   if (words.length < 1) return false;
@@ -524,8 +581,12 @@ function looksLikeMarketQuery(text: string): boolean {
   // Contains capitalized words (likely proper nouns / topics)
   if (/[A-Z][a-z]+/.test(text)) return true;
 
-  // Multiple words that could be a topic
-  if (words.length >= 2) return true;
+  // Multiple words that could be a topic - but NOT just any multi-word phrase
+  // Require at least one word that looks like a topic (noun-like, not just pronouns/verbs)
+  const topicWords = words.filter(w =>
+    !['who', 'what', 'when', 'where', 'why', 'how', 'you', 'your', 'the', 'this', 'that', 'with', 'today', 'talk', 'spoke'].includes(w.toLowerCase())
+  );
+  if (topicWords.length >= 2) return true;
 
   return false;
 }
@@ -554,6 +615,7 @@ export function getIntentSuggestions(intent: IntentType): string[] {
     EDUCATIONAL: ['/hot', '/arb', '/brief'],
     GREETING: ['/help', '/brief', '/hot'],
     HELP: ['/brief', '/hot', '/arb'],
+    CONVERSATION: ['/help', '/brief', '/hot'],
     UNKNOWN: ['/help', '/hot', '/brief'],
   };
 
@@ -569,5 +631,6 @@ export {
   looksLikeMarketQuery,
   hasMarketIndicators,
   isEducationalTopic,
+  isConversationalQuery,
   INTENT_PATTERNS,
 };

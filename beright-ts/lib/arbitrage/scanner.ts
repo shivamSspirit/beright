@@ -12,8 +12,7 @@
  * 5. Generate actionable output
  */
 
-import { Market, Platform } from '../../types/index';
-import { searchMarkets, getHotMarkets } from '../../skills/markets';
+import { Market, Platform, searchMarkets } from '../markets';
 import { matchMarkets, getMatchingStats } from './marketMatcher';
 import { findArbitrageOpportunities, analyzeArbitrage } from './calculator';
 import {
@@ -291,7 +290,7 @@ export function formatScanResult(result: ScanResult): string {
   // Opportunities
   if (result.opportunities.length === 0) {
     lines.push('━'.repeat(45));
-    lines.push('❌ NO PROFITABLE ARBITRAGE RIGHT NOW');
+    lines.push('❌ NO ARBITRAGE OPPORTUNITIES DETECTED');
     lines.push('━'.repeat(45));
     lines.push('');
     lines.push('Markets are efficiently priced at the moment.');
@@ -309,8 +308,10 @@ export function formatScanResult(result: ScanResult): string {
     const bestProfit = Math.max(...result.opportunities.map(o => o.netProfitPct * 100));
 
     lines.push('━'.repeat(45));
-    lines.push(`🚨 FOUND ${result.opportunities.length} OPPORTUNITIES (up to ${bestProfit.toFixed(1)}% profit)`);
+    lines.push(`🚨 ${result.opportunities.length} POTENTIAL OPPORTUNITIES (up to ${bestProfit.toFixed(1)}%)`);
     lines.push('━'.repeat(45));
+    lines.push('');
+    lines.push('⚠️ Prices shown at scan time. Verify before executing.');
     lines.push('');
 
     for (let i = 0; i < result.opportunities.length; i++) {
@@ -350,6 +351,7 @@ export function formatScanResult(result: ScanResult): string {
 /**
  * Format a single opportunity for display
  * ENHANCED: Includes links, profit calculation, clear execution steps
+ * UPDATED: Honest risk warnings about execution, competition, and price staleness
  */
 export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: number): string {
   const lines: string[] = [];
@@ -374,7 +376,7 @@ export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: num
   const profit1000 = (1000 * opp.netProfitPct).toFixed(2);
 
   // Header with profit highlight
-  lines.push(`🚨 ARB #${index} | ${netProfitPct.toFixed(1)}% PROFIT | Grade ${opp.confidence.grade} ${confidenceEmoji[opp.confidence.grade]}`);
+  lines.push(`🚨 ARB #${index} | ${netProfitPct.toFixed(1)}% POTENTIAL PROFIT | Grade ${opp.confidence.grade} ${confidenceEmoji[opp.confidence.grade]}`);
   lines.push('━'.repeat(45));
   lines.push('');
 
@@ -384,7 +386,7 @@ export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: num
   lines.push('');
 
   // Price comparison with links
-  lines.push('💰 PRICES:');
+  lines.push('💰 PRICES (as of detection):');
   const priceA = (marketA.yesPrice * 100).toFixed(0);
   const priceB = (marketB.yesPrice * 100).toFixed(0);
   lines.push(`├─ ${marketA.platform.toUpperCase()}: ${priceA}¢ YES`);
@@ -403,11 +405,11 @@ export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: num
   lines.push(`Step 2: ${leg2.action.toUpperCase()} ${leg2.side} @ ${leg2.platform} at ${(leg2.targetPrice * 100).toFixed(0)}¢`);
   lines.push('');
 
-  // Profit calculation
-  lines.push('💵 PROFIT CALCULATOR:');
-  lines.push(`├─ $100 position → $${profit100} profit`);
-  lines.push(`├─ $500 position → $${profit500} profit`);
-  lines.push(`└─ $1000 position → $${profit1000} profit`);
+  // Profit calculation - UPDATED LANGUAGE
+  lines.push('💵 POTENTIAL PROFIT (if executed at shown prices):');
+  lines.push(`├─ $100 position → $${profit100}`);
+  lines.push(`├─ $500 position → $${profit500}`);
+  lines.push(`└─ $1000 position → $${profit1000}`);
   lines.push('');
 
   // Recommended size
@@ -425,8 +427,18 @@ export function formatOpportunity(opp: ValidatedArbitrageOpportunity, index: num
   }
   lines.push('');
 
-  // Urgency
-  lines.push('⏰ Execute within 5-10 mins (prices move fast!)');
+  // CRITICAL EXECUTION WARNINGS - NEW
+  lines.push('━'.repeat(45));
+  lines.push('⚡ EXECUTION REALITY CHECK:');
+  lines.push('');
+  lines.push('🏃 SPEED: First to execute wins. Prices move fast.');
+  lines.push('👥 COMPETITION: Others see this alert too.');
+  lines.push('📉 SLIPPAGE: Actual prices may differ from shown.');
+  lines.push('⏱️ STALENESS: Prices were valid at scan time only.');
+  lines.push('');
+  lines.push('✅ VERIFY prices on platforms BEFORE executing.');
+  lines.push('✅ Use LIMIT orders, not market orders.');
+  lines.push('✅ Start SMALL to test execution.');
 
   return lines.join('\n');
 }

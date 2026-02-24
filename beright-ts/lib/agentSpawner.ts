@@ -1,12 +1,16 @@
 /**
  * Agent Spawner - Multi-agent delegation system for BeRight Protocol
  *
- * Handles spawning specialist agents (scout, analyst, trader) from the orchestrator.
- * Uses OpenClaw agent protocol for inter-agent communication.
+ * Each agent (Scout, Analyst, Trader) is invoked as a real Claude LLM call
+ * using its configured system prompt, model, and temperature.
+ * Skills run first to gather context; Claude reasons about the results.
+ *
+ * Falls back to keyword matching if ANTHROPIC_API_KEY is not set.
  */
 
 import { SkillResponse, Mood } from '../types/index';
 import { AGENTS, AgentConfig, isAgentAllowed, getAgentConfig } from '../config/agents';
+import { llmChat } from './llm';
 
 // Agent execution context
 export interface AgentContext {
@@ -133,11 +137,14 @@ export async function spawnAgent(task: AgentTask): Promise<AgentResult> {
 }
 
 /**
- * Execute the actual agent task
+ * Execute the agent task via real Anthropic API call.
  *
- * In a full OpenClaw deployment, this would spawn a subprocess or
- * make an API call to the agent runtime. For now, we execute inline
- * with the agent's system prompt and tools.
+ * Flow:
+ * 1. Run relevant skill(s) to gather raw data (fast, deterministic)
+ * 2. Call Claude with the agent's system prompt + raw data as context
+ * 3. Claude reasons about the data and produces a natural language response
+ *
+ * Falls back to keyword-based routing if API key is absent.
  */
 async function executeAgentTask(
   agent: AgentConfig,
@@ -147,31 +154,116 @@ async function executeAgentTask(
 ): Promise<AgentResult> {
   const startTime = Date.now();
 
-  // Import the relevant skills based on agent tools
-  const toolResults: Record<string, unknown> = {};
+  try {
+    // Step 1: Gather raw context from skills (fast, deterministic)
+    const rawContext = await gatherSkillContext(agent, task);
 
-  // Execute based on agent type
+    // Step 2: Ask the LLM to reason about the data
+    const userMessage = rawContext
+      ? `Task: ${task}\n\n--- Raw data gathered ---\n${rawContext}`
+      : task;
+
+    const response = await llmChat({
+      system: agent.systemPrompt,
+      user: userMessage,
+      maxTokens: agent.maxTokens,
+      temperature: agent.temperature,
+      quality: agent.id === 'analyst' ? 'smart' : 'smart',
+    });
+
+    if (response.provider !== 'none') {
+      console.log(`[AgentSpawner] ${agent.name} via ${response.provider}/${response.model} (${response.tokensUsed} tokens)`);
+      return {
+        agentId: agent.id,
+        success: true,
+        response: { text: response.text, mood: 'NEUTRAL' as Mood },
+        executionTimeMs: Date.now() - startTime,
+        tokensUsed: response.tokensUsed,
+      };
+    }
+  } catch (err) {
+    console.warn(`[AgentSpawner] LLM call failed for ${agent.id}, falling back:`, err);
+  }
+
+  // Fallback: keyword-based routing (no LLM)
   switch (agent.id) {
     case 'scout':
       return await executeScoutTask(agent, task, context);
-
     case 'analyst':
       return await executeAnalystTask(agent, task, context);
-
     case 'trader':
       return await executeTraderTask(agent, task, context);
-
     default:
       return {
         agentId: agent.id,
         success: false,
-        response: {
-          text: `Unknown agent type: ${agent.id}`,
-          mood: 'ERROR' as Mood,
-        },
+        response: { text: `Unknown agent type: ${agent.id}`, mood: 'ERROR' as Mood },
         executionTimeMs: Date.now() - startTime,
       };
   }
+}
+
+/**
+ * Run the relevant skills for an agent and return raw text context.
+ * This is the "perception" layer — fast, deterministic data gathering.
+ * Claude then reasons about this data.
+ */
+async function gatherSkillContext(agent: AgentConfig, task: string): Promise<string> {
+  const taskLower = task.toLowerCase();
+  const parts: string[] = [];
+
+  try {
+    if (agent.id === 'scout' || agent.id === 'analyst') {
+      if (taskLower.includes('arb') || taskLower.includes('arbitrage') || taskLower.includes('spread')) {
+        const { arbitrage } = await import('../skills/arbitrage');
+        const result = await arbitrage(task);
+        parts.push(`ARBITRAGE SCAN:\n${result.text}`);
+
+      } else if (taskLower.includes('hot') || taskLower.includes('trending')) {
+        const { getHotMarkets } = await import('../skills/markets');
+        const markets = await getHotMarkets(10);
+        parts.push(`HOT MARKETS (${markets.length}):\n${markets.slice(0, 10).map(m =>
+          `- ${m.title || m.question}: YES=${((m.yesPrice || 0.5) * 100).toFixed(0)}% vol=$${m.volume || 0}`
+        ).join('\n')}`);
+
+      } else if (taskLower.includes('news') || taskLower.includes('intel')) {
+        const { newsSearch } = await import('../skills/intel');
+        const result = await newsSearch(task.replace(/news|intel/gi, '').trim() || 'prediction markets');
+        parts.push(`NEWS INTEL:\n${result.text}`);
+
+      } else {
+        const { searchMarkets } = await import('../skills/markets');
+        const markets = await searchMarkets(task);
+        parts.push(`MARKET SEARCH (${markets.length} results):\n${markets.slice(0, 8).map(m =>
+          `- [${m.platform}] ${m.title || m.question}: YES=${((m.yesPrice || 0.5) * 100).toFixed(0)}%`
+        ).join('\n')}`);
+      }
+    }
+
+    if (agent.id === 'analyst') {
+      if (taskLower.includes('calibration') || taskLower.includes('accuracy')) {
+        const { calibration } = await import('../skills/calibration');
+        const result = await calibration();
+        parts.push(`CALIBRATION DATA:\n${result.text}`);
+      } else {
+        const { research } = await import('../skills/research');
+        const result = await research(task);
+        parts.push(`RESEARCH DATA:\n${result.text}`);
+      }
+    }
+
+    if (agent.id === 'trader') {
+      if (taskLower.includes('whale')) {
+        const { whaleWatch } = await import('../skills/whale');
+        const result = await whaleWatch();
+        parts.push(`WHALE DATA:\n${result.text}`);
+      }
+    }
+  } catch (err) {
+    console.warn('[AgentSpawner] Skill context gathering failed:', err);
+  }
+
+  return parts.join('\n\n');
 }
 
 /**

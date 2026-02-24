@@ -68,6 +68,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
+    "@coral-xyz/anchor": "^0.32.1",
     "@solana/web3.js": "^1.95.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tavily/core": "^0.7.1",
