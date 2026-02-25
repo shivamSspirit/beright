@@ -384,10 +384,18 @@ async function executeAnalystTask(
     response = await verifyClaimSkill(claim);
     response.text = `📊 *ANALYST: VERIFICATION*\n${'─'.repeat(30)}\n\n${response.text}`;
   } else if ((taskLower.includes('deep') || taskLower.includes('comprehensive')) && isTavilyConfigured()) {
-    // Deep research with Tavily
+    // Deep research with Tavily - fall back to regular research if Tavily fails
     const query = extractQuery(task) || task;
-    response = await deepResearch(query);
-    response.text = `📊 *ANALYST DEEP RESEARCH*\n${'─'.repeat(30)}\n\n${response.text}`;
+    try {
+      response = await deepResearch(query);
+      response.text = `📊 *ANALYST DEEP RESEARCH*\n${'─'.repeat(30)}\n\n${response.text}`;
+    } catch (tavilyError) {
+      console.warn('[AgentSpawner] Tavily deep research failed, falling back to standard research:',
+        tavilyError instanceof Error ? tavilyError.message : tavilyError);
+      // Fall back to standard research with Groq synthesis
+      response = await research(query);
+      response.text = `📊 *ANALYST REPORT: ${query.toUpperCase()}*\n${'─'.repeat(30)}\n\n${response.text}`;
+    }
   } else {
     // Standard research (enhanced with Tavily if available)
     const query = extractQuery(task) || task;
