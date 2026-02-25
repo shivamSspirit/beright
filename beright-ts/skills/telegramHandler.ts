@@ -3590,221 +3590,6 @@ What would you like to explore?`,
             };
           }
 
-          default: {
-            // Fall back to regex classifier for edge cases
-            const intentResult = classifyIntent(text);
-            console.log(`[FallbackIntent] "${text.slice(0, 30)}..." → ${intentResult.intent}`);
-
-            // Continue with existing regex-based routing...
-            switch (intentResult.intent) {
-              case 'GREETING': {
-                return {
-                  text: `Hey! I'm BeRight, your prediction market intelligence agent.
-
-What would you like to explore?
-• /hot - Trending markets
-• /arb - Arbitrage opportunities
-• /brief - Morning briefing
-
-Or just ask about any market topic!`,
-                  mood: 'NEUTRAL',
-                };
-              }
-
-          case 'CONVERSATION': {
-            // Meta questions about the bot - not market queries
-            const lowerText = text.toLowerCase();
-
-            // Check for specific conversational intents
-            if (/who\s+(talk|spoke|chat|messaged)/.test(lowerText) || /who\s+did\s+you/.test(lowerText)) {
-              return {
-                text: `I'm a prediction market bot — I don't track individual conversations or user identities for privacy reasons.
-
-I can help you with:
-• /hot - See what markets are trending
-• /brief - Get your morning briefing
-• /me - View your prediction stats
-
-What would you like to explore?`,
-                mood: 'NEUTRAL',
-              };
-            }
-
-            if (/how\s+are\s+you|what'?s\s+up|wassup/.test(lowerText)) {
-              return {
-                text: `All systems operational! 🟢
-
-Currently tracking ${Math.floor(Math.random() * 50) + 500}+ live markets across Polymarket, Kalshi, and Manifold.
-
-What can I help you with?
-• /hot - Trending markets
-• /arb - Arbitrage opportunities
-• /brief - Morning briefing`,
-                mood: 'BULLISH',
-              };
-            }
-
-            if (/are\s+you\s+(a\s+)?(bot|ai|robot)/.test(lowerText)) {
-              return {
-                text: `Yes, I'm BeRight — an AI-powered prediction market intelligence agent.
-
-I help you:
-• Find market opportunities
-• Spot arbitrage across platforms
-• Track whale activity
-• Analyze forecasts
-
-Try /help to see all my commands!`,
-                mood: 'NEUTRAL',
-              };
-            }
-
-            // Generic conversational response
-            return {
-              text: `I'm BeRight, your prediction market intelligence agent. I'm here to help you find alpha in prediction markets!
-
-Try these commands:
-• /hot - Trending markets
-• /arb - Arbitrage opportunities
-• /brief - Morning briefing
-
-Or ask me about any market topic!`,
-              mood: 'NEUTRAL',
-            };
-          }
-
-          case 'HELP': {
-            // Check if asking about a specific command
-            const specificHelp = getCommandHelp(text);
-            if (specificHelp) {
-              return { text: specificHelp, mood: 'EDUCATIONAL' };
-            }
-            // Otherwise show full help
-            return { text: HELP_TEXT, mood: 'NEUTRAL' };
-          }
-
-          case 'EDUCATIONAL': {
-            // Educational query - provide learning content
-            const query = intentResult.extractedQuery || text;
-            const lowerQuery = query.toLowerCase();
-
-            // Direct answers for common platform/concept questions
-            if (/how\s+many\s+(prediction\s+)?(market\s+)?(platform|provider|exchange)/i.test(lowerQuery) ||
-                /list.*platform/i.test(lowerQuery) ||
-                /which\s+platform/i.test(lowerQuery)) {
-              return {
-                text: `**Prediction Market Platforms I Track:**
-
-**Crypto-Native:**
-• **Polymarket** — Largest crypto prediction market. USDC on Polygon. High liquidity.
-• **Limitless** — Newer platform with unique markets.
-
-**Regulated (US):**
-• **Kalshi** — CFTC-regulated exchange. Event contracts, institutional-grade.
-
-**Play Money / Research:**
-• **Manifold** — Play money markets. Great for long-tail questions.
-• **Metaculus** — Scientific forecasting. Expert calibration.
-
-I aggregate odds across all of these to find arbitrage and consensus.
-
-Try /hot to see trending markets, or /arb to find price gaps.`,
-                mood: 'EDUCATIONAL',
-              };
-            }
-
-            // For other educational queries, use research with Groq synthesis
-            const researchResult = await research(query);
-            return researchResult;
-          }
-
-          case 'HOT_TRENDING': {
-            // User wants to see what's trending
-            const hotMarkets = await getHotMarkets();
-            if (hotMarkets.length > 0) {
-              return { text: formatMarkets(hotMarkets, '🔥 Hot Markets'), mood: 'BULLISH', data: hotMarkets };
-            }
-            return { text: 'No hot markets found right now. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
-          }
-
-          case 'ARBITRAGE': {
-            // User wants arbitrage opportunities
-            const query = intentResult.extractedQuery || '';
-            const arbResult = await arbitrage(query || 'top');
-            return arbResult;
-          }
-
-          case 'WHALE_TRACKING': {
-            // User wants whale activity
-            const whaleResult = await whaleWatch();
-            return whaleResult;
-          }
-
-          case 'NEWS_INTEL': {
-            // User wants news/intel
-            const query = intentResult.extractedQuery || '';
-            if (query) {
-              const intelResult = await intelReport(query);
-              return intelResult;
-            }
-            return { text: 'What topic would you like intel on? Try: /intel <topic>', mood: 'NEUTRAL' };
-          }
-
-          case 'RESEARCH': {
-            // User wants deep analysis
-            const query = intentResult.extractedQuery || '';
-            if (query) {
-              const researchResult = await research(query);
-              return researchResult;
-            }
-            return { text: 'What would you like me to research? Try: /research <topic>', mood: 'NEUTRAL' };
-          }
-
-          case 'ODDS_COMPARE': {
-            // User wants to compare odds
-            const query = intentResult.extractedQuery || '';
-            if (query) {
-              const comparison = await compareOdds(query);
-              return { text: formatComparison(comparison), mood: 'NEUTRAL', data: comparison };
-            }
-            return { text: 'What market would you like to compare odds for? Try: /odds <topic>', mood: 'NEUTRAL' };
-          }
-
-          case 'TRADE_QUOTE': {
-            // User wants a trade quote
-            return {
-              text: `For trading, use these commands:
-• /buy <ticker> YES|NO <amount> - Get quote
-• /trade <ticker> YES|NO <amount> - Place trade
-• /swap <amount> <from> <to> - Token swap
-
-Example: /buy TRUMP-2024 YES 50`,
-              mood: 'NEUTRAL',
-            };
-          }
-
-          case 'PORTFOLIO': {
-            // User wants portfolio info
-            if (!telegramId) {
-              return { text: 'Could not identify your account', mood: 'ERROR' };
-            }
-            const portfolioResult = await handlePortfolioCmd(telegramId);
-            return portfolioResult;
-          }
-
-          case 'ALERTS': {
-            // User wants alerts info
-            return {
-              text: `Price Alerts:
-• /alert <market> above/below <price> - Set alert
-• /alert - View all alerts
-• /subscribe - Get morning briefs
-
-Example: /alert bitcoin above 95`,
-              mood: 'NEUTRAL',
-            };
-          }
-
           case 'PREDICTION': {
             // User wants to make a prediction
             return {
@@ -3818,53 +3603,25 @@ Your predictions are tracked for calibration scoring.`,
             };
           }
 
-          case 'CALIBRATION': {
-            // User wants calibration stats
-            const calResult = await calibration();
-            return calResult;
-          }
-
-          case 'MARKET_SEARCH': {
-            // User is searching for markets
-            const query = intentResult.extractedQuery || text;
-            const markets = await searchMarkets(query);
-            if (markets.length > 0) {
-              return { text: formatMarkets(markets, `Markets: ${query}`), mood: 'NEUTRAL', data: markets };
-            }
-            // No markets found, provide suggestions
-            const suggestions = getIntentSuggestions('MARKET_SEARCH');
-            return {
-              text: `No markets found for "${query}".
-
-Try these instead:
-${suggestions.map(s => `• ${s}`).join('\n')}
-
-Or ask about a broader topic like "bitcoin", "elections", or "fed".`,
-              mood: 'NEUTRAL',
-            };
-          }
-
           case 'UNKNOWN':
           default: {
-            // Try to be helpful even with unknown intent
-            // First check if it looks like a market query
-            const query = intentResult.extractedQuery || text;
-            if (query.length > 2) {
-              const markets = await searchMarkets(query);
-              if (markets.length > 0) {
-                return { text: formatMarkets(markets, `Markets: ${query}`), mood: 'NEUTRAL', data: markets };
-              }
+            // LLM couldn't determine intent - try market search as last resort
+            const markets = await searchMarkets(text);
+            if (markets.length > 0) {
+              return { text: formatMarkets(markets, `Markets: ${text}`), mood: 'NEUTRAL', data: markets };
             }
 
-            // Provide contextual help
-            const suggestions = getIntentSuggestions('UNKNOWN');
+            // Nothing found - show helpful guidance
             return {
-              text: `I'm not sure what you're looking for. I'm BeRight, your prediction market intelligence agent.
+              text: `I'm BeRight, your prediction market intelligence agent.
 
-Try these:
-${suggestions.map(s => `• ${s}`).join('\n')}
+I can help you with:
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /research <topic> - Deep analysis with AI
+• /brief - Morning briefing
 
-Or ask me about a specific topic like "bitcoin" or "fed rate".`,
+Or ask me about any prediction market topic!`,
               mood: 'NEUTRAL',
             };
           }
