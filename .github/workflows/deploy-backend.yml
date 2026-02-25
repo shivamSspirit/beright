@@ -27,21 +27,40 @@ jobs:
     environment: EC2_HOST
 
     steps:
-      - name: Deploy to EC2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2SSHKEY }}" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H ${{ secrets.EC2IPV4 }} >> ~/.ssh/known_hosts
+
+      - name: Sync code to EC2
+        run: |
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude 'logs' \
+            --exclude '.env' \
+            --exclude 'memory' \
+            --exclude '.git' \
+            -e "ssh -i ~/.ssh/ec2_key" \
+            ./ ${{ secrets.EC2USER }}@${{ secrets.EC2IPV4 }}:/opt/beright/
+
+      - name: Build and restart on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2IPV4 }}
           username: ${{ secrets.EC2USER }}
           key: ${{ secrets.EC2SSHKEY }}
-          debug: true
           script: |
             cd /opt/beright
-            git pull origin main
             npm install
             cd beright-ts && npm install && npm run build && cd ..
-            cp /opt/beright/.env /opt/beright/beright-ts/.env
-            pm2 delete all || true
-            pm2 start ecosystem.config.js
+            cp /opt/beright/.env /opt/beright/beright-ts/.env 2>/dev/null || true
+            pm2 restart all || pm2 start ecosystem.config.js
             pm2 save
             echo "=== PM2 Status ==="
             pm2 status
