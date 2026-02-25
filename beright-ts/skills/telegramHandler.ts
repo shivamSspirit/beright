@@ -86,6 +86,7 @@ import { getAgentForCommand, AGENTS } from '../config/agents';
 
 // Smart Intent Classifier
 import { classifyIntent, getIntentSuggestions, IntentResult } from '../lib/intentClassifier';
+import { classifyIntentSmart, isObviousGreeting } from '../lib/smartIntentClassifier';
 
 // Market watcher for auto-resolution
 import { getMarketWatcher } from '../services/marketWatcher';
@@ -3478,12 +3479,88 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
       }
 
       default: {
-        // Smart Intent Classification
-        const intentResult = classifyIntent(text);
-        console.log(`[Intent] "${text}" → ${intentResult.intent} (${Math.round(intentResult.confidence * 100)}%) - ${intentResult.reasoning}`);
+        // Quick checks before LLM (save tokens)
+        if (isObviousGreeting(text)) {
+          return {
+            text: `Hey! I'm BeRight, your prediction market intelligence agent.
 
-        // Route based on detected intent
-        switch (intentResult.intent) {
+What would you like to explore?
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /brief - Morning briefing
+
+Or just ask me anything about prediction markets!`,
+            mood: 'NEUTRAL',
+          };
+        }
+
+        // Use LLM to understand natural language (Groq - fast & free)
+        const smartIntent = await classifyIntentSmart(text);
+        console.log(`[SmartIntent] "${text.slice(0, 40)}..." → ${smartIntent.intent} (${Math.round(smartIntent.confidence * 100)}%) - ${smartIntent.reasoning}`);
+
+        // Route based on LLM-detected intent
+        switch (smartIntent.intent) {
+          case 'PLATFORM_INFO': {
+            return {
+              text: `**Prediction Market Platforms I Track:**
+
+**Crypto-Native:**
+• **Polymarket** — Largest crypto prediction market. USDC on Polygon.
+• **Limitless** — Newer platform with unique markets.
+
+**Regulated (US):**
+• **Kalshi** — CFTC-regulated exchange. Event contracts.
+
+**Play Money / Research:**
+• **Manifold** — Play money markets. Wisdom of crowds.
+• **Metaculus** — Scientific forecasting. Expert calibration.
+
+I aggregate odds across all of these to find arbitrage and consensus.
+
+Try /hot for trending markets or /arb for price gaps.`,
+              mood: 'EDUCATIONAL',
+            };
+          }
+
+          case 'MARKET_ANALYSIS': {
+            // User wants analysis - use research with Groq synthesis
+            const topic = smartIntent.topic || text;
+            const researchResult = await research(topic);
+            return researchResult;
+          }
+
+          case 'PRICE_CHECK': {
+            // User wants current odds
+            const topic = smartIntent.topic || text;
+            const markets = await searchMarkets(topic);
+            if (markets.length > 0) {
+              return { text: formatMarkets(markets, `Odds: ${topic}`), mood: 'NEUTRAL', data: markets };
+            }
+            return { text: `No markets found for "${topic}". Try /hot to see what's trending.`, mood: 'NEUTRAL' };
+          }
+
+          case 'ARBITRAGE': {
+            const arbResult = await arbitrage(smartIntent.topic || 'top');
+            return arbResult;
+          }
+
+          case 'TRENDING': {
+            const hotMarkets = await getHotMarkets();
+            if (hotMarkets.length > 0) {
+              return { text: formatMarkets(hotMarkets, '🔥 Hot Markets'), mood: 'BULLISH', data: hotMarkets };
+            }
+            return { text: 'No hot markets found. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
+          }
+
+          case 'WHALE_ACTIVITY': {
+            const whaleResult = await whaleWatch();
+            return whaleResult;
+          }
+
+          case 'HELP': {
+            return { text: HELP_TEXT, mood: 'NEUTRAL' };
+          }
+
           case 'GREETING': {
             return {
               text: `Hey! I'm BeRight, your prediction market intelligence agent.
@@ -3493,10 +3570,46 @@ What would you like to explore?
 • /arb - Arbitrage opportunities
 • /brief - Morning briefing
 
-Or just ask about any market topic!`,
+Or just ask me anything about prediction markets!`,
               mood: 'NEUTRAL',
             };
           }
+
+          case 'GENERAL_CHAT': {
+            return {
+              text: `I'm specialized for prediction markets — not general chat.
+
+But I'm happy to discuss:
+• Market odds and analysis
+• Forecasting methodology
+• Platform comparisons
+• Trading strategies
+
+What would you like to explore?`,
+              mood: 'NEUTRAL',
+            };
+          }
+
+          default: {
+            // Fall back to regex classifier for edge cases
+            const intentResult = classifyIntent(text);
+            console.log(`[FallbackIntent] "${text.slice(0, 30)}..." → ${intentResult.intent}`);
+
+            // Continue with existing regex-based routing...
+            switch (intentResult.intent) {
+              case 'GREETING': {
+                return {
+                  text: `Hey! I'm BeRight, your prediction market intelligence agent.
+
+What would you like to explore?
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /brief - Morning briefing
+
+Or just ask about any market topic!`,
+                  mood: 'NEUTRAL',
+                };
+              }
 
           case 'CONVERSATION': {
             // Meta questions about the bot - not market queries
