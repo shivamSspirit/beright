@@ -448,39 +448,54 @@ function AIIntelligence() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function TrustSignals() {
-  const chains = [
-    { name: 'Solana', icon: '◎' },
-    { name: 'Ethereum', icon: '⟠' },
-    { name: 'Base', icon: '🔵' },
-  ];
-
-  const badges = [
-    { icon: '🔒', label: 'Smart Contracts' },
-    { icon: '⚡', label: 'On-chain Settlement' },
-    { icon: '🌐', label: 'Non-Custodial' },
+  const features = [
+    { icon: '⚡', label: '400ms Finality', desc: 'Lightning-fast settlement' },
+    { icon: '💰', label: '$0.00025 Fees', desc: 'Near-zero transaction costs' },
+    { icon: '🔒', label: 'Non-Custodial', desc: 'Your keys, your funds' },
   ];
 
   return (
-    <section className="trust-section" aria-label="Supported chains and features">
-      <div className="trust-chains">
-        <span className="trust-label">Powered by</span>
-        <div className="chains-row">
-          {chains.map((chain, i) => (
-            <div key={i} className="chain-badge">
-              <span className="chain-icon">{chain.icon}</span>
-              <span className="chain-name">{chain.name}</span>
-            </div>
-          ))}
+    <section className="trust-section" aria-label="Platform features">
+      {/* Solana Branding */}
+      <div className="solana-powered">
+        <div className="solana-logo">
+          <svg viewBox="0 0 397 311" fill="none" className="solana-svg">
+            <path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solana-gradient-1)"/>
+            <path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solana-gradient-2)"/>
+            <path d="M332.1 120.9c-2.4-2.4-5.7-3.8-9.2-3.8H5.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solana-gradient-3)"/>
+            <defs>
+              <linearGradient id="solana-gradient-1" x1="0" y1="0" x2="397" y2="311">
+                <stop stopColor="#00FFA3"/>
+                <stop offset="1" stopColor="#DC1FFF"/>
+              </linearGradient>
+              <linearGradient id="solana-gradient-2" x1="0" y1="0" x2="397" y2="311">
+                <stop stopColor="#00FFA3"/>
+                <stop offset="1" stopColor="#DC1FFF"/>
+              </linearGradient>
+              <linearGradient id="solana-gradient-3" x1="0" y1="0" x2="397" y2="311">
+                <stop stopColor="#00FFA3"/>
+                <stop offset="1" stopColor="#DC1FFF"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div className="solana-text">
+          <span className="solana-label">Powered by</span>
+          <span className="solana-name">Solana</span>
         </div>
       </div>
 
       <div className="trust-divider" />
 
-      <div className="trust-badges">
-        {badges.map((badge, i) => (
-          <div key={i} className="security-badge">
-            <span className="badge-icon">{badge.icon}</span>
-            <span className="badge-label">{badge.label}</span>
+      {/* Features */}
+      <div className="trust-features">
+        {features.map((feature, i) => (
+          <div key={i} className="trust-feature">
+            <span className="feature-icon">{feature.icon}</span>
+            <div className="feature-text">
+              <span className="feature-label">{feature.label}</span>
+              <span className="feature-desc">{feature.desc}</span>
+            </div>
           </div>
         ))}
       </div>
@@ -543,6 +558,14 @@ function Footer() {
         </div>
       </div>
 
+      {/* Risk Disclaimer */}
+      <div className="footer-disclaimer">
+        <p className="disclaimer-text">
+          ⚠️ Trading prediction markets involves risk. Past performance is not indicative of future results.
+          Only trade with funds you can afford to lose. BeRight does not provide financial advice.
+        </p>
+      </div>
+
       <div className="footer-bottom">
         <p className="footer-copyright">© 2025 BeRight Protocol. All rights reserved.</p>
       </div>
@@ -596,31 +619,80 @@ export default function LandingHero() {
 
         {/* Hero Content */}
         <div className="hero-content">
+          {/* Solana Badge */}
+          <div className="hero-badge">
+            <span className="badge-icon">◎</span>
+            <span className="badge-text">Built on Solana</span>
+          </div>
+
           {/* Main Headline */}
           <h1 className="hero-headline">
+            <span className="headline-pre">Bet on</span>
             <span className="headline-main">
-              Prediction <span className="gradient-text">Markets</span>
+              What You <span className="gradient-text">Know</span>
             </span>
           </h1>
 
           {/* Subheadline */}
           <p className="hero-sub">
-            Trade on the outcome of real-world events.
+            The prediction market for people who do their research.
+            <br />
+            <span className="hero-sub-accent">AI-powered insights. On-chain settlement. Your edge.</span>
           </p>
 
           {/* CTA Button */}
           <button className="cta-button" onClick={handleConnect}>
-            <span className="cta-text">Connect Wallet</span>
+            <span className="cta-text">Start Trading</span>
             <span className="cta-arrow">→</span>
           </button>
 
-          {/* Risk Disclaimer - Prominently placed near CTA */}
-          <div className="risk-disclaimer" role="alert">
-            <span className="disclaimer-icon">⚠️</span>
-            <p className="disclaimer-text">
-              Trading involves risk. Past performance is not indicative of future results.
-              Only trade with money you can afford to lose.
-            </p>
+          {/* Mini stats under CTA */}
+          <div className="hero-mini-stats">
+            <span className="mini-stat">
+              <span className="stat-value">$1</span>
+              <span className="stat-label">min trade</span>
+            </span>
+            <span className="mini-divider">·</span>
+            <span className="mini-stat">
+              <span className="stat-value">&lt;1s</span>
+              <span className="stat-label">settlement</span>
+            </span>
+            <span className="mini-divider">·</span>
+            <span className="mini-stat">
+              <span className="stat-value">0%</span>
+              <span className="stat-label">platform fee</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Hero Visual - Animated prediction flow */}
+        <div className="hero-visual" aria-hidden="true">
+          <div className="prediction-flow">
+            <div className="flow-card flow-question">
+              <span className="flow-label">Question</span>
+              <span className="flow-text">Will ETH hit $5K?</span>
+            </div>
+            <div className="flow-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+              </svg>
+            </div>
+            <div className="flow-card flow-position">
+              <span className="flow-label">Your Position</span>
+              <div className="flow-buttons">
+                <span className="flow-btn yes active">YES $0.42</span>
+                <span className="flow-btn no">NO $0.58</span>
+              </div>
+            </div>
+            <div className="flow-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+              </svg>
+            </div>
+            <div className="flow-card flow-outcome">
+              <span className="flow-label">If Correct</span>
+              <span className="flow-payout">+138%</span>
+            </div>
           </div>
         </div>
 
@@ -861,13 +933,50 @@ export default function LandingHero() {
           z-index: 10;
           text-align: center;
           max-width: 720px;
-          margin: 0 auto 80px;
+          margin: 0 auto 60px;
+        }
+
+        /* Hero Badge */
+        .hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: linear-gradient(135deg, rgba(0, 255, 163, 0.1) 0%, rgba(220, 31, 255, 0.08) 100%);
+          border: 1px solid rgba(0, 255, 163, 0.3);
+          border-radius: 100px;
+          margin-bottom: 24px;
+          animation: fadeUp 0.5s ease-out;
+        }
+
+        .hero-badge .badge-icon {
+          font-size: 16px;
+          color: #00FFA3;
+        }
+
+        .hero-badge .badge-text {
+          font-size: 13px;
+          font-weight: 600;
+          background: linear-gradient(90deg, #00FFA3, #DC1FFF);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
 
         /* Headline */
         .hero-headline {
           margin: 0 0 20px;
-          animation: fadeUp 0.6s ease-out;
+          animation: fadeUp 0.6s ease-out 0.1s both;
+        }
+
+        .headline-pre {
+          display: block;
+          font-size: 24px;
+          font-weight: 500;
+          color: var(--color-text-tertiary);
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          margin-bottom: 8px;
         }
 
         .headline-main {
@@ -888,9 +997,14 @@ export default function LandingHero() {
         .hero-sub {
           font-size: 20px;
           color: var(--color-text-secondary);
-          line-height: 1.5;
+          line-height: 1.6;
           margin: 0 0 32px;
-          animation: fadeUp 0.6s ease-out 0.1s both;
+          animation: fadeUp 0.6s ease-out 0.2s both;
+        }
+
+        .hero-sub-accent {
+          color: var(--color-text-tertiary);
+          font-size: 16px;
         }
 
         /* CTA Button */
@@ -950,30 +1064,145 @@ export default function LandingHero() {
           transform: translateX(4px);
         }
 
-        /* Risk Disclaimer - Prominent placement near CTA */
-        .risk-disclaimer {
-          margin-top: 24px;
-          padding: 16px 20px;
-          background: rgba(255, 184, 0, 0.1);
-          border: 1px solid rgba(255, 184, 0, 0.3);
-          border-radius: 12px;
+        /* Mini Stats under CTA */
+        .hero-mini-stats {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 20px;
+          animation: fadeUp 0.6s ease-out 0.4s both;
+        }
+
+        .mini-stat {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+        }
+
+        .mini-stat .stat-value {
+          font-size: 14px;
+          font-weight: 700;
+          font-family: var(--font-mono);
+          color: var(--color-text);
+        }
+
+        .mini-stat .stat-label {
+          font-size: 12px;
+          color: var(--color-text-tertiary);
+        }
+
+        .mini-divider {
+          color: var(--color-text-tertiary);
+          font-size: 14px;
+        }
+
+        /* Hero Visual - Prediction Flow */
+        .hero-visual {
+          position: relative;
+          z-index: 10;
+          display: flex;
+          justify-content: center;
+          margin-bottom: 80px;
+          animation: fadeUp 0.8s ease-out 0.5s both;
+        }
+
+        .prediction-flow {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           gap: 12px;
-          text-align: left;
-          animation: fadeUp 0.6s ease-out 0.3s both;
+          padding: 24px;
+          background: linear-gradient(145deg, rgba(17, 17, 19, 0.9) 0%, rgba(10, 10, 11, 0.95) 100%);
+          border: 1px solid var(--color-border);
+          border-radius: 20px;
+          backdrop-filter: blur(10px);
         }
 
-        .disclaimer-icon {
-          font-size: 20px;
-          flex-shrink: 0;
+        .flow-card {
+          padding: 14px 20px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          min-width: 200px;
+          text-align: center;
         }
 
-        .disclaimer-text {
-          font-size: 13px;
-          line-height: 1.6;
-          color: var(--color-text-secondary);
-          margin: 0;
+        .flow-label {
+          display: block;
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--color-text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 6px;
+        }
+
+        .flow-text {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .flow-arrow {
+          width: 20px;
+          height: 20px;
+          color: var(--color-text-tertiary);
+          animation: flowBounce 2s ease-in-out infinite;
+        }
+
+        .flow-arrow svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        @keyframes flowBounce {
+          0%, 100% { transform: translateY(0); opacity: 0.5; }
+          50% { transform: translateY(4px); opacity: 1; }
+        }
+
+        .flow-buttons {
+          display: flex;
+          gap: 8px;
+          justify-content: center;
+        }
+
+        .flow-btn {
+          padding: 8px 14px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          font-family: var(--font-mono);
+        }
+
+        .flow-btn.yes {
+          background: rgba(0, 255, 136, 0.1);
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          color: var(--color-green);
+        }
+
+        .flow-btn.yes.active {
+          background: rgba(0, 255, 136, 0.2);
+          border-color: var(--color-green);
+          box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+        }
+
+        .flow-btn.no {
+          background: rgba(255, 71, 87, 0.1);
+          border: 1px solid rgba(255, 71, 87, 0.2);
+          color: var(--color-text-tertiary);
+        }
+
+        .flow-outcome {
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
+          border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        .flow-payout {
+          font-size: 24px;
+          font-weight: 900;
+          font-family: var(--font-mono);
+          color: var(--color-green);
         }
 
         @keyframes fadeUp {
@@ -1965,7 +2194,7 @@ export default function LandingHero() {
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
-           TRUST SIGNALS
+           TRUST SIGNALS - Solana Powered
            ═══════════════════════════════════════════════════════════════════════ */
 
         .trust-section {
@@ -1974,72 +2203,87 @@ export default function LandingHero() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 40px;
-          padding: 40px;
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
+          gap: 48px;
+          padding: 32px 48px;
+          background: linear-gradient(135deg, rgba(0, 255, 163, 0.03) 0%, rgba(220, 31, 255, 0.02) 100%);
+          border: 1px solid rgba(0, 255, 163, 0.15);
           border-radius: 20px;
           margin-bottom: 80px;
         }
 
-        .trust-label {
-          font-size: 12px;
+        .solana-powered {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .solana-logo {
+          width: 40px;
+          height: 32px;
+        }
+
+        .solana-svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        .solana-text {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .solana-label {
+          font-size: 10px;
+          font-weight: 500;
           color: var(--color-text-tertiary);
           text-transform: uppercase;
           letter-spacing: 1px;
-          margin-bottom: 12px;
-          display: block;
         }
 
-        .chains-row {
-          display: flex;
-          gap: 16px;
-        }
-
-        .chain-badge {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 14px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--color-border);
-          border-radius: 8px;
-        }
-
-        .chain-icon {
-          font-size: 18px;
-        }
-
-        .chain-name {
-          font-size: 13px;
-          font-weight: 600;
+        .solana-name {
+          font-size: 20px;
+          font-weight: 800;
+          background: linear-gradient(90deg, #00FFA3, #DC1FFF);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
 
         .trust-divider {
           width: 1px;
-          height: 60px;
-          background: var(--color-border);
+          height: 50px;
+          background: linear-gradient(180deg, transparent 0%, rgba(0, 255, 163, 0.3) 50%, transparent 100%);
         }
 
-        .trust-badges {
+        .trust-features {
           display: flex;
-          gap: 24px;
+          gap: 32px;
         }
 
-        .security-badge {
+        .trust-feature {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
         }
 
-        .badge-icon {
+        .feature-icon {
           font-size: 20px;
         }
 
-        .badge-label {
-          font-size: 13px;
-          color: var(--color-text-secondary);
-          font-weight: 500;
+        .feature-text {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .feature-label {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--color-text);
+        }
+
+        .feature-desc {
+          font-size: 11px;
+          color: var(--color-text-tertiary);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -2141,6 +2385,23 @@ export default function LandingHero() {
         .footer-copyright {
           font-size: 12px;
           color: var(--color-text-tertiary);
+          margin: 0;
+        }
+
+        .footer-disclaimer {
+          max-width: 800px;
+          margin: 0 auto 24px;
+          padding: 16px 24px;
+          background: rgba(255, 184, 0, 0.05);
+          border: 1px solid rgba(255, 184, 0, 0.15);
+          border-radius: 12px;
+          text-align: center;
+        }
+
+        .footer-disclaimer .disclaimer-text {
+          font-size: 12px;
+          color: var(--color-text-tertiary);
+          line-height: 1.6;
           margin: 0;
         }
 
@@ -2330,6 +2591,10 @@ export default function LandingHero() {
             padding: 80px 16px 60px;
           }
 
+          .headline-pre {
+            font-size: 18px;
+          }
+
           .headline-main {
             font-size: 42px;
             letter-spacing: -2px;
@@ -2339,15 +2604,31 @@ export default function LandingHero() {
             font-size: 17px;
           }
 
+          .hero-sub-accent {
+            font-size: 14px;
+          }
+
           .cta-button {
             width: 100%;
             padding: 18px 32px;
           }
 
-          .risk-disclaimer {
-            flex-direction: column;
-            text-align: center;
-            gap: 8px;
+          .hero-mini-stats {
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .hero-visual {
+            margin-bottom: 60px;
+          }
+
+          .prediction-flow {
+            padding: 16px;
+          }
+
+          .flow-card {
+            min-width: 160px;
+            padding: 12px 16px;
           }
 
           .markets-grid {
@@ -2370,6 +2651,12 @@ export default function LandingHero() {
             gap: 8px;
           }
 
+          .trust-features {
+            flex-direction: column;
+            gap: 16px;
+            align-items: center;
+          }
+
           .sticky-cta {
             display: block;
           }
@@ -2377,12 +2664,6 @@ export default function LandingHero() {
           .footer-links {
             flex-direction: column;
             gap: 32px;
-          }
-
-          .trust-badges {
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
           }
 
           .ai-feature-card {
