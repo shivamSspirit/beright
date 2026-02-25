@@ -558,14 +558,6 @@ function Footer() {
         </div>
       </div>
 
-      {/* Risk Disclaimer */}
-      <div className="footer-disclaimer">
-        <p className="disclaimer-text">
-          ⚠️ Trading prediction markets involves risk. Past performance is not indicative of future results.
-          Only trade with funds you can afford to lose. BeRight does not provide financial advice.
-        </p>
-      </div>
-
       <div className="footer-bottom">
         <p className="footer-copyright">© 2025 BeRight Protocol. All rights reserved.</p>
       </div>
@@ -2385,23 +2377,6 @@ export default function LandingHero() {
         .footer-copyright {
           font-size: 12px;
           color: var(--color-text-tertiary);
-          margin: 0;
-        }
-
-        .footer-disclaimer {
-          max-width: 800px;
-          margin: 0 auto 24px;
-          padding: 16px 24px;
-          background: rgba(255, 184, 0, 0.05);
-          border: 1px solid rgba(255, 184, 0, 0.15);
-          border-radius: 12px;
-          text-align: center;
-        }
-
-        .footer-disclaimer .disclaimer-text {
-          font-size: 12px;
-          color: var(--color-text-tertiary);
-          line-height: 1.6;
           margin: 0;
         }
 
