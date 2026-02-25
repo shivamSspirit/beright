@@ -3631,15 +3631,45 @@ Your predictions are tracked for calibration scoring.`,
           case 'UNKNOWN':
           default: {
             // LLM couldn't determine intent
-            // ONLY search if LLM extracted a SPECIFIC topic (not the raw text)
-            if (smartIntent.topic && smartIntent.topic.length > 2) {
-              const markets = await searchMarkets(smartIntent.topic);
+            // Check if topic is a REAL extracted topic (not just the original text)
+            const isRealTopic = smartIntent.topic &&
+              smartIntent.topic.length > 2 &&
+              smartIntent.topic.length < 30 && // Real topics are short
+              !smartIntent.topic.toLowerCase().includes('how many') && // Not a question
+              !smartIntent.topic.toLowerCase().includes('what') &&
+              smartIntent.topic.toLowerCase() !== text.toLowerCase().trim(); // Not the original text
+
+            if (isRealTopic) {
+              const markets = await searchMarkets(smartIntent.topic!);
               if (markets.length > 0) {
                 return { text: formatMarkets(markets, `Markets: ${smartIntent.topic}`), mood: 'NEUTRAL', data: markets };
               }
             }
 
-            // No topic or no results - show helpful guidance
+            // Check if this looks like a platform/capability question
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes('platform') || lowerText.includes('how many') ||
+                lowerText.includes('what can') || lowerText.includes('solana')) {
+              return {
+                text: `**Prediction Market Platforms:**
+
+**On Solana:**
+• [DFlow](https://dflow.net) — Tokenized Kalshi markets on Solana
+• [Limitless](https://limitless.exchange) — Native Solana prediction markets
+
+**Other Major Platforms:**
+• [Polymarket](https://polymarket.com) — Largest crypto PM (Polygon/USDC)
+• [Kalshi](https://kalshi.com) — CFTC-regulated (USD)
+• [Manifold](https://manifold.markets) — Play money
+
+I aggregate data from all of these. Try:
+• /hot — See trending markets
+• /arb — Find price gaps across platforms`,
+                mood: 'EDUCATIONAL',
+              };
+            }
+
+            // Generic fallback
             return {
               text: `I'm BeRight, your prediction market intelligence agent.
 
@@ -3647,7 +3677,6 @@ I didn't quite catch that. Try:
 • /hot - See what's trending
 • /arb - Find arbitrage opportunities
 • /research bitcoin - Analyze a specific topic
-• "What are the odds on X?" - Check prices
 
 Or ask about something specific like bitcoin, trump, or fed rates!`,
               mood: 'NEUTRAL',

@@ -36,13 +36,18 @@ const CLASSIFIER_PROMPT = `You are an intent classifier for BeRight, a predictio
 BeRight tracks: Polymarket, Kalshi, Manifold, Metaculus, Limitless.
 
 CRITICAL RULES:
-1. ONLY set "topic" if user mentions a SPECIFIC topic (bitcoin, trump, fed, etc). Do NOT extract generic words like "markets" or "link".
-2. If the query is vague/general, classify as BROWSE_MARKETS or TRENDING, NOT as a search.
-3. MARKET_ANALYSIS requires a CLEAR, SPECIFIC topic. "link of markets" has no topic.
+1. ONLY set "topic" if user mentions a SPECIFIC topic (bitcoin, trump, fed, etc). Do NOT extract generic words like "markets", "link", "platform".
+2. NEVER set "topic" to the full user message or a question. Topics are SHORT (1-3 words max): "bitcoin", "trump", "fed rates".
+3. If the query is vague/general/a question, classify appropriately but set topic to null.
+4. MARKET_ANALYSIS requires a CLEAR, SPECIFIC topic. "link of markets" has no topic.
+5. Questions about "how many" platforms or "which" platforms → PLATFORM_INFO, topic: null
 
 INTENTS (pick ONE):
 
-PLATFORM_INFO - Questions about platforms (how many platforms, which ones do you track, what is Polymarket)
+PLATFORM_INFO - Questions about platforms, chains, infrastructure
+  Examples: "how many platforms", "which platforms", "what is Polymarket", "platforms on Solana",
+            "prediction markets on Solana", "which chains", "how many prediction market platforms"
+  INCLUDES: Any question with "platform", "Solana", "Polygon", "chain" + prediction markets
 BROWSE_MARKETS - User wants to see/browse/list available markets, but NO specific topic
   Examples: "show me markets", "link of markets", "list markets", "markets available", "what markets", "any markets"
 TRENDING - User wants what's hot, popular, moving, trending right now
