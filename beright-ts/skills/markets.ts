@@ -28,9 +28,9 @@ const PLATFORM_TIMEOUT: Record<Platform, number> = {
 // DFlow API for tokenized Kalshi markets (FREE, no key required)
 const DFLOW_API = DFLOW.metadataApi;
 
-// Simple response cache (30s TTL)
+// Simple response cache (10s TTL - short for freshness)
 const marketCache: Map<string, { data: Market[]; expiry: number }> = new Map();
-const CACHE_TTL = 30_000;
+const CACHE_TTL = 10_000; // 10 seconds - balance freshness vs API limits
 
 function getCached(key: string): Market[] | null {
   const entry = marketCache.get(key);
@@ -252,18 +252,30 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
 /**
  * Sports/parlay keywords to filter out from DFlow
  * These are sports betting parlays, not prediction markets
+ *
+ * NOTE: This is aggressive - we filter ALL sports to focus on
+ * prediction markets (politics, crypto, economics, tech, world events)
  */
 const SPORTS_PARLAY_KEYWORDS = [
-  'nba', 'nfl', 'nhl', 'mlb', 'ncaa', 'college',
+  // Major leagues
+  'nba', 'nfl', 'nhl', 'mlb', 'ncaa', 'college', 'mls', 'ufc', 'wwe',
   'parlay', 'spread', 'over/under', 'moneyline',
-  'basketball', 'football', 'hockey', 'baseball',
+  // Sports
+  'basketball', 'football', 'hockey', 'baseball', 'soccer', 'tennis',
+  'golf', 'pga', 'lpga', 'masters', 'open championship', 'ryder cup',
+  'tournament', 'golfer', 'birdie', 'bogey', 'fairway',
+  'cognizant', 'classic', 'invitational', // Golf tournament names
+  // Teams
   'lakers', 'celtics', 'warriors', 'bulls', 'nets',
   'chiefs', 'eagles', 'cowboys', '49ers', 'patriots',
   'yankees', 'dodgers', 'cubs', 'red sox',
+  // Game terms
   'game 1', 'game 2', 'game 3', 'game 4', 'game 5', 'game 6', 'game 7',
-  'series', 'playoff', 'championship', 'finals',
-  'points', 'rebounds', 'assists', 'touchdowns', 'yards',
+  'series', 'playoff', 'championship', 'finals', 'super bowl',
+  'points', 'rebounds', 'assists', 'touchdowns', 'yards', 'goals',
   'vs.', ' at ', 'home team', 'away team',
+  // Individual sports
+  'win the ', 'defeat ', 'beat ', // "Will X win the Y" patterns
 ];
 
 /**
@@ -631,7 +643,21 @@ export async function searchMarkets(
 }
 
 /**
- * Get hot/trending markets
+ * Detect market category for diversification
+ */
+function getMarketCategory(title: string): string {
+  const t = title.toLowerCase();
+  if (/trump|biden|election|president|congress|senate|governor|vote|republican|democrat/i.test(t)) return 'politics';
+  if (/bitcoin|btc|ethereum|eth|crypto|solana|defi|token/i.test(t)) return 'crypto';
+  if (/fed|rate|inflation|gdp|recession|jobs|unemployment|cpi|fomc/i.test(t)) return 'economics';
+  if (/ai|openai|google|apple|tesla|microsoft|meta|nvidia|chatgpt/i.test(t)) return 'tech';
+  if (/ukraine|russia|china|war|nato|iran|israel|military/i.test(t)) return 'world';
+  return 'other';
+}
+
+/**
+ * Get hot/trending markets - DIVERSIFIED by category
+ * Shows variety across politics, crypto, economics, tech, world
  */
 export async function getHotMarkets(
   limit: number = 20,
@@ -639,11 +665,40 @@ export async function getHotMarkets(
 ): Promise<Market[]> {
   const markets = await searchMarkets('', platforms);
 
-  // Sort by volume
-  return markets
+  // Filter and sort by volume
+  const sorted = markets
     .filter(m => m.volume > 0)
-    .sort((a, b) => b.volume - a.volume)
-    .slice(0, limit);
+    .sort((a, b) => b.volume - a.volume);
+
+  // Diversify: pick from different categories, not just highest volume
+  const result: Market[] = [];
+  const usedCategories = new Set<string>();
+  const usedTitles = new Set<string>();
+
+  // First pass: one from each category (ensures diversity)
+  for (const market of sorted) {
+    if (result.length >= limit) break;
+    const cat = getMarketCategory(market.title);
+    const titleKey = market.title.slice(0, 30).toLowerCase(); // Dedupe similar titles
+
+    if (!usedCategories.has(cat) && !usedTitles.has(titleKey)) {
+      result.push(market);
+      usedCategories.add(cat);
+      usedTitles.add(titleKey);
+    }
+  }
+
+  // Second pass: fill remaining with highest volume (avoiding duplicates)
+  for (const market of sorted) {
+    if (result.length >= limit) break;
+    const titleKey = market.title.slice(0, 30).toLowerCase();
+    if (!usedTitles.has(titleKey)) {
+      result.push(market);
+      usedTitles.add(titleKey);
+    }
+  }
+
+  return result;
 }
 
 /**
