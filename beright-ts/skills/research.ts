@@ -25,6 +25,7 @@ import {
   verifyClaim,
   TavilySearchResponse,
 } from '../lib/tavily';
+import { synthesizeResearch, ResearchSynthesis } from '../lib/synthesis/researchSynthesis';
 
 // ============================================
 // EDUCATIONAL/CONCEPT QUERY DETECTION
@@ -257,8 +258,9 @@ function analyze(
 
 /**
  * Format research report with source quality indicators
+ * Now includes AI synthesis from Groq LLM when available
  */
-function formatResearchReport(report: ResearchReport): string {
+function formatResearchReport(report: ResearchReport, synthesis?: ResearchSynthesis | null): string {
   const { query, markets, news, reddit, analysis } = report;
 
   // Data quality emoji
@@ -284,6 +286,61 @@ Generated: ${report.timestamp.slice(0, 19)}
 Data Quality: ${qualityEmoji[dataQuality]} ${dataQuality.toUpperCase()} (${sourceConfidence}% source confidence)
 Official Sources: ${officialCount > 0 ? `✅ ${officialCount} verified` : '⚠️ None found'}
 `;
+
+  // AI SYNTHESIS SECTION - Show prominently at top if available
+  if (synthesis) {
+    const recEmoji: Record<string, string> = {
+      'BUY': '🟢',
+      'SELL': '🔴',
+      'HOLD': '🟡',
+      'WATCH': '👀',
+    };
+    const confEmoji: Record<string, string> = {
+      'high': '🎯',
+      'medium': '📊',
+      'low': '⚠️',
+    };
+
+    output += `
+${'━'.repeat(60)}
+🧠 AI SUPERFORECASTER ANALYSIS
+${'━'.repeat(60)}
+
+📈 PROBABILITY: ${synthesis.probability}% ${confEmoji[synthesis.confidence] || '📊'} (${synthesis.confidence} confidence)
+💡 RECOMMENDATION: ${recEmoji[synthesis.recommendation] || '•'} ${synthesis.recommendation}
+
+${synthesis.narrative}
+
+`;
+
+    // Trading edge - highlight if found
+    if (synthesis.tradingEdge && synthesis.tradingEdge !== 'no edge detected') {
+      output += `⚡ TRADING EDGE
+${'─'.repeat(40)}
+${synthesis.tradingEdge}
+
+`;
+    }
+
+    // Bullish/Bearish factors
+    if (synthesis.bullishFactors.length > 0 || synthesis.bearishFactors.length > 0) {
+      output += `📊 FACTORS
+${'─'.repeat(40)}
+`;
+      if (synthesis.bullishFactors.length > 0) {
+        output += `✅ Bullish: ${synthesis.bullishFactors.join(' | ')}\n`;
+      }
+      if (synthesis.bearishFactors.length > 0) {
+        output += `❌ Bearish: ${synthesis.bearishFactors.join(' | ')}\n`;
+      }
+      if (synthesis.keyUncertainties.length > 0) {
+        output += `⚠️ Uncertainties: ${synthesis.keyUncertainties.join(' | ')}\n`;
+      }
+      output += '\n';
+    }
+
+    output += `${'━'.repeat(60)}\n`;
+  }
 
   // Current Odds
   output += '\n📈 CURRENT ODDS\n';
@@ -475,6 +532,24 @@ export async function research(query: string): Promise<SkillResponse> {
     // Analyze
     const analysis = analyze(markets, normalizedNews, reddit);
 
+    // Synthesize with Groq LLM (Tier 2 - intelligent reasoning)
+    let synthesis: ResearchSynthesis | null = null;
+    try {
+      synthesis = await synthesizeResearch({
+        query,
+        markets,
+        news: normalizedNews,
+        reddit,
+        facts,
+        analysis,
+      });
+      if (synthesis) {
+        console.log(`[Research] Synthesis complete: ${synthesis.recommendation} (${synthesis.probability}%) in ${synthesis.tokensUsed} tokens`);
+      }
+    } catch (err) {
+      console.warn('[Research] Synthesis failed, using static analysis:', err instanceof Error ? err.message : err);
+    }
+
     // Enhance analysis with Tavily facts
     if (facts && facts.facts.length > 0) {
       (analysis as any).tavilyFacts = facts.facts;
@@ -504,9 +579,9 @@ export async function research(query: string): Promise<SkillResponse> {
     };
 
     return {
-      text: formatResearchReport(report),
+      text: formatResearchReport(report, synthesis),
       mood: analysis.confidence === 'high' ? 'EDUCATIONAL' : 'NEUTRAL',
-      data: report,
+      data: { ...report, synthesis },
     };
   } catch (error) {
     return {
@@ -581,6 +656,27 @@ export async function deepResearch(query: string): Promise<SkillResponse> {
     // Check if Tavily returned meaningful content
     const hasReport = researchResult.report && researchResult.report.trim().length > 50;
 
+    // For market queries, synthesize with Groq LLM
+    let synthesis: ResearchSynthesis | null = null;
+    if (!isEducational && markets.length > 0) {
+      try {
+        synthesis = await synthesizeResearch({
+          query,
+          markets,
+          news: { articles: [], articleCount: 0 },
+          reddit: { postCount: 0, totalComments: 0, engagementLevel: 'LOW' },
+          facts,
+          analysis: { consensusPrice: null, priceRange: null, dataQuality: 'unknown' },
+          tavilyReport: researchResult.report,
+        });
+        if (synthesis) {
+          console.log(`[DeepResearch] Synthesis complete: ${synthesis.recommendation} (${synthesis.probability}%)`);
+        }
+      } catch (err) {
+        console.warn('[DeepResearch] Synthesis failed:', err instanceof Error ? err.message : err);
+      }
+    }
+
     let output = '';
 
     if (isEducational) {
@@ -644,9 +740,53 @@ ${'='.repeat(60)}
 
 Generated: ${timestamp().slice(0, 19)}
 Research time: ${(researchResult.responseTime / 1000).toFixed(1)}s
-Powered by: Tavily AI Research
+Powered by: Tavily AI Research + Groq LLM
 
 `;
+
+      // AI SYNTHESIS - Show prominently at top if available
+      if (synthesis) {
+        const recEmoji: Record<string, string> = {
+          'BUY': '🟢',
+          'SELL': '🔴',
+          'HOLD': '🟡',
+          'WATCH': '👀',
+        };
+        const confEmoji: Record<string, string> = {
+          'high': '🎯',
+          'medium': '📊',
+          'low': '⚠️',
+        };
+
+        output += `${'━'.repeat(60)}
+🧠 AI SUPERFORECASTER ANALYSIS
+${'━'.repeat(60)}
+
+📈 PROBABILITY: ${synthesis.probability}% ${confEmoji[synthesis.confidence] || '📊'} (${synthesis.confidence} confidence)
+💡 RECOMMENDATION: ${recEmoji[synthesis.recommendation] || '•'} ${synthesis.recommendation}
+
+${synthesis.narrative}
+
+`;
+
+        if (synthesis.tradingEdge && synthesis.tradingEdge !== 'no edge detected') {
+          output += `⚡ TRADING EDGE: ${synthesis.tradingEdge}
+
+`;
+        }
+
+        if (synthesis.bullishFactors.length > 0) {
+          output += `✅ Bullish: ${synthesis.bullishFactors.join(' | ')}\n`;
+        }
+        if (synthesis.bearishFactors.length > 0) {
+          output += `❌ Bearish: ${synthesis.bearishFactors.join(' | ')}\n`;
+        }
+        if (synthesis.keyUncertainties.length > 0) {
+          output += `⚠️ Uncertainties: ${synthesis.keyUncertainties.join(' | ')}\n`;
+        }
+
+        output += `\n${'━'.repeat(60)}\n\n`;
+      }
 
       if (hasReport) {
         output += `📋 RESEARCH REPORT
@@ -716,7 +856,7 @@ Always verify critical information independently.
     return {
       text: output,
       mood: 'EDUCATIONAL',
-      data: { research: researchResult, markets, facts, isEducational },
+      data: { research: researchResult, markets, facts, isEducational, synthesis },
     };
   } catch (error) {
     console.error('Deep research error:', error);
