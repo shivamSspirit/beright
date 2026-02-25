@@ -119,49 +119,168 @@ function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HOW IT WORKS SECTION
+// HOW IT WORKS SECTION - Enhanced with visual flow
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function HowItWorks() {
-  const steps = [
-    {
-      icon: '🎯',
-      title: 'Predict',
-      desc: 'Choose YES or NO on any market',
-      detail: 'Find markets on politics, crypto, sports, and more'
-    },
-    {
-      icon: '✅',
-      title: 'Win',
-      desc: 'Get paid when you\'re right',
-      detail: 'Correct predictions pay out at market resolution'
-    },
-    {
-      icon: '💸',
-      title: 'Withdraw',
-      desc: 'Cash out your winnings',
-      detail: 'Transfer funds back to your wallet'
-    },
-  ];
-
   return (
     <section id="how-it-works" className="how-section" aria-labelledby="how-title">
       <h2 id="how-title" className="section-title">
         <span className="title-icon">⚡</span>
         How It Works
       </h2>
-      <p className="section-subtitle">Three steps to start trading</p>
+      <p className="section-subtitle">Buy shares. If you're right, they pay $1. If wrong, $0.</p>
 
-      <div className="steps-grid">
-        {steps.map((step, i) => (
-          <div key={i} className="step-card" style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="step-number">{i + 1}</div>
-            <span className="step-icon">{step.icon}</span>
-            <h3 className="step-title">{step.title}</h3>
-            <p className="step-desc">{step.desc}</p>
-            <p className="step-detail">{step.detail}</p>
+      <div className="steps-visual-grid">
+        {/* Step 1: Connect Wallet */}
+        <div className="step-visual-card" style={{ animationDelay: '0ms' }}>
+          <div className="step-badge">1</div>
+          <div className="step-visual-content">
+            <div className="step-visual-icon wallet-visual">
+              <div className="wallet-frame">
+                <div className="wallet-header">
+                  <span className="wallet-dot" />
+                  <span className="wallet-dot" />
+                  <span className="wallet-dot" />
+                </div>
+                <div className="wallet-body">
+                  <svg className="wallet-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M19 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                    <path d="M15 7h6v10h-6a2 2 0 01-2-2V9a2 2 0 012-2z"/>
+                    <circle cx="17" cy="12" r="1"/>
+                  </svg>
+                  <span className="wallet-connect-pulse" />
+                </div>
+              </div>
+            </div>
+            <h3 className="step-visual-title">Connect Wallet</h3>
+            <p className="step-visual-desc">Sign in with email or any Web3 wallet. Your keys, your funds.</p>
+            <div className="step-visual-detail">
+              <span className="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Non-custodial
+              </span>
+              <span className="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+                30 seconds
+              </span>
+            </div>
           </div>
-        ))}
+        </div>
+
+        {/* Arrow Connector */}
+        <div className="step-connector" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+
+        {/* Step 2: Browse & Trade */}
+        <div className="step-visual-card" style={{ animationDelay: '100ms' }}>
+          <div className="step-badge">2</div>
+          <div className="step-visual-content">
+            <div className="step-visual-icon market-visual">
+              <div className="market-preview-card">
+                <div className="preview-header">
+                  <span className="preview-topic">BTC &gt; $150K?</span>
+                  <span className="preview-odds">34%</span>
+                </div>
+                <div className="preview-actions">
+                  <button className="preview-btn yes-btn" aria-label="Buy YES">
+                    <span className="btn-label">YES</span>
+                    <span className="btn-price">$0.34</span>
+                  </button>
+                  <button className="preview-btn no-btn" aria-label="Buy NO">
+                    <span className="btn-label">NO</span>
+                    <span className="btn-price">$0.66</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <h3 className="step-visual-title">Browse & Trade</h3>
+            <p className="step-visual-desc">Find markets on politics, crypto, sports. Buy YES or NO shares.</p>
+            <div className="step-visual-detail">
+              <span className="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+                USDC
+              </span>
+              <span className="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                  <path d="M22 4L12 14.01l-3-3"/>
+                </svg>
+                Instant
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Arrow Connector */}
+        <div className="step-connector" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+
+        {/* Step 3: Shares in Wallet */}
+        <div className="step-visual-card" style={{ animationDelay: '200ms' }}>
+          <div className="step-badge">3</div>
+          <div className="step-visual-content">
+            <div className="step-visual-icon tokens-visual">
+              <div className="tokens-container">
+                <div className="token-item yes-token">
+                  <span className="token-symbol">YES</span>
+                  <span className="token-amount">100</span>
+                </div>
+                <div className="token-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 5v14M5 12l7 7 7-7"/>
+                  </svg>
+                </div>
+                <div className="token-result">
+                  <span className="result-win">$100</span>
+                  <span className="result-label">if correct</span>
+                </div>
+              </div>
+            </div>
+            <h3 className="step-visual-title">Collect Winnings</h3>
+            <p className="step-visual-desc">Winning shares pay $1 each. Losers pay $0. Settle directly to wallet.</p>
+            <div className="step-visual-detail">
+              <span className="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+                Auto-settle
+              </span>
+              <span className="detail-chip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                  <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
+                </svg>
+                On-chain
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Visual explainer */}
+      <div className="how-explainer">
+        <div className="explainer-box">
+          <span className="explainer-icon">💡</span>
+          <p className="explainer-text">
+            <strong>Example:</strong> Buy 10 YES shares at $0.34 each = $3.40 cost.
+            If correct, receive $10.00 (194% return). If wrong, receive $0.
+          </p>
+        </div>
       </div>
     </section>
   );
@@ -915,7 +1034,7 @@ export default function LandingHero() {
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
-           HOW IT WORKS
+           HOW IT WORKS - Enhanced Visual
            ═══════════════════════════════════════════════════════════════════════ */
 
         .how-section {
@@ -925,61 +1044,346 @@ export default function LandingHero() {
           text-align: center;
         }
 
-        .steps-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-          margin-top: 40px;
+        .steps-visual-grid {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          margin-top: 48px;
         }
 
-        .step-card {
+        .step-connector {
+          width: 40px;
+          height: 40px;
+          color: var(--color-text-tertiary);
+          flex-shrink: 0;
+        }
+
+        .step-connector svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        .step-visual-card {
           position: relative;
           background: var(--color-surface);
           border: 1px solid var(--color-border);
-          border-radius: 20px;
-          padding: 32px 24px;
+          border-radius: 24px;
+          padding: 28px 24px 24px;
+          width: 280px;
           text-align: center;
           animation: fadeUp 0.5s ease-out both;
+          transition: all 0.3s ease;
         }
 
-        .step-number {
+        .step-visual-card:hover {
+          border-color: var(--color-border-hover);
+          transform: translateY(-4px);
+        }
+
+        .step-badge {
           position: absolute;
-          top: -12px;
-          left: 24px;
-          width: 24px;
-          height: 24px;
-          background: var(--color-green);
+          top: -14px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 28px;
+          height: 28px;
+          background: linear-gradient(135deg, var(--color-green) 0%, #00CC6A 100%);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: 13px;
+          font-weight: 800;
           color: #000;
+          box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
         }
 
-        .step-icon {
-          display: block;
-          font-size: 48px;
-          margin-bottom: 16px;
+        .step-visual-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
 
-        .step-title {
-          font-size: 20px;
+        .step-visual-icon {
+          width: 100%;
+          height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+
+        /* Wallet Visual */
+        .wallet-frame {
+          width: 100px;
+          height: 80px;
+          background: linear-gradient(145deg, #1a1a1c 0%, #0d0d0e 100%);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .wallet-header {
+          display: flex;
+          gap: 4px;
+          padding: 8px 10px;
+          background: rgba(255,255,255,0.02);
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .wallet-dot {
+          width: 6px;
+          height: 6px;
+          background: var(--color-text-tertiary);
+          border-radius: 50%;
+        }
+
+        .wallet-body {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 50px;
+          position: relative;
+        }
+
+        .wallet-icon-svg {
+          width: 32px;
+          height: 32px;
+          color: var(--color-green);
+        }
+
+        .wallet-connect-pulse {
+          position: absolute;
+          width: 48px;
+          height: 48px;
+          border: 2px solid var(--color-green);
+          border-radius: 50%;
+          animation: walletPulse 2s ease-out infinite;
+        }
+
+        @keyframes walletPulse {
+          0% { transform: scale(0.8); opacity: 0.8; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Market Preview Visual */
+        .market-preview-card {
+          width: 140px;
+          background: linear-gradient(145deg, #1a1a1c 0%, #0d0d0e 100%);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          padding: 12px;
+        }
+
+        .preview-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .preview-topic {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .preview-odds {
+          font-size: 10px;
+          font-weight: 700;
+          color: var(--color-green);
+          font-family: var(--font-mono);
+        }
+
+        .preview-actions {
+          display: flex;
+          gap: 6px;
+        }
+
+        .preview-btn {
+          flex: 1;
+          padding: 8px 4px;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-family: inherit;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          transition: transform 0.2s;
+        }
+
+        .preview-btn:hover {
+          transform: scale(1.05);
+        }
+
+        .preview-btn.yes-btn {
+          background: rgba(0, 255, 136, 0.15);
+          border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .preview-btn.no-btn {
+          background: rgba(255, 71, 87, 0.15);
+          border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-label {
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .yes-btn .btn-label { color: var(--color-green); }
+        .no-btn .btn-label { color: var(--color-red); }
+
+        .btn-price {
+          font-size: 9px;
+          font-family: var(--font-mono);
+          color: var(--color-text-secondary);
+        }
+
+        /* Tokens Visual */
+        .tokens-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .token-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          background: rgba(0, 255, 136, 0.1);
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          border-radius: 10px;
+        }
+
+        .token-symbol {
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--color-green);
+        }
+
+        .token-amount {
+          font-size: 14px;
+          font-weight: 700;
+          font-family: var(--font-mono);
+          color: var(--color-text);
+        }
+
+        .token-arrow {
+          width: 20px;
+          height: 20px;
+          color: var(--color-text-tertiary);
+          animation: tokenBounce 1.5s ease-in-out infinite;
+        }
+
+        .token-arrow svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        @keyframes tokenBounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(4px); }
+        }
+
+        .token-result {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 10px 20px;
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%);
+          border: 1px solid rgba(0, 255, 136, 0.4);
+          border-radius: 10px;
+        }
+
+        .result-win {
+          font-size: 18px;
+          font-weight: 800;
+          font-family: var(--font-mono);
+          color: var(--color-green);
+        }
+
+        .result-label {
+          font-size: 10px;
+          color: var(--color-text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        /* Step Text Content */
+        .step-visual-title {
+          font-size: 18px;
           font-weight: 700;
           margin: 0 0 8px;
+          color: var(--color-text);
         }
 
-        .step-desc {
-          font-size: 15px;
-          color: var(--color-text-secondary);
-          margin: 0 0 12px;
-        }
-
-        .step-detail {
+        .step-visual-desc {
           font-size: 13px;
+          color: var(--color-text-secondary);
+          margin: 0 0 16px;
+          line-height: 1.5;
+        }
+
+        .step-visual-detail {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .detail-chip {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--color-border);
+          border-radius: 6px;
+          font-size: 11px;
           color: var(--color-text-tertiary);
+        }
+
+        .detail-chip svg {
+          color: var(--color-green);
+        }
+
+        /* Explainer Box */
+        .how-explainer {
+          margin-top: 40px;
+        }
+
+        .explainer-box {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 24px;
+          background: rgba(0, 212, 255, 0.08);
+          border: 1px solid rgba(0, 212, 255, 0.2);
+          border-radius: 12px;
+          text-align: left;
+        }
+
+        .explainer-icon {
+          font-size: 24px;
+          flex-shrink: 0;
+        }
+
+        .explainer-text {
+          font-size: 13px;
+          color: var(--color-text-secondary);
           margin: 0;
+          line-height: 1.5;
+        }
+
+        .explainer-text strong {
+          color: var(--color-cyan);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -1304,6 +1708,21 @@ export default function LandingHero() {
           }
         }
 
+        @media (max-width: 1024px) {
+          .steps-visual-grid {
+            flex-wrap: wrap;
+            gap: 24px;
+          }
+
+          .step-connector {
+            display: none;
+          }
+
+          .step-visual-card {
+            width: calc(50% - 12px);
+          }
+        }
+
         @media (max-width: 768px) {
           .nav-links {
             display: none;
@@ -1337,8 +1756,20 @@ export default function LandingHero() {
             grid-template-columns: 1fr;
           }
 
-          .steps-grid {
-            grid-template-columns: 1fr;
+          .steps-visual-grid {
+            flex-direction: column;
+            gap: 20px;
+          }
+
+          .step-visual-card {
+            width: 100%;
+            max-width: 320px;
+          }
+
+          .explainer-box {
+            flex-direction: column;
+            text-align: center;
+            gap: 8px;
           }
 
           .sticky-cta {
