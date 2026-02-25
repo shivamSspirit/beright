@@ -287,6 +287,163 @@ function HowItWorks() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// AI INTELLIGENCE SECTION - BeRight's unique edge
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function AIIntelligence() {
+  return (
+    <section id="ai-intelligence" className="ai-section" aria-labelledby="ai-title">
+      <div className="ai-header">
+        <span className="ai-badge">✨ BeRight Edge</span>
+        <h2 id="ai-title" className="section-title">
+          <span className="title-icon">🤖</span>
+          AI-Powered Trading
+        </h2>
+        <p className="section-subtitle">
+          Not just markets. Intelligence that helps you win.
+        </p>
+      </div>
+
+      <div className="ai-features-grid">
+        {/* Feature 1: AI Fact-Check */}
+        <div className="ai-feature-card">
+          <div className="ai-feature-visual">
+            <div className="fact-check-visual">
+              <div className="chat-bubble user-bubble">
+                <span className="bubble-label">You</span>
+                <span className="bubble-text">Will BTC hit $150K?</span>
+              </div>
+              <div className="chat-bubble ai-bubble">
+                <span className="bubble-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4M12 8h.01"/>
+                  </svg>
+                  BeRight AI
+                </span>
+                <span className="bubble-text">
+                  <span className="fact-item">📊 ETF inflows: +$2.1B this week</span>
+                  <span className="fact-item">📰 Fed signals rate pause</span>
+                  <span className="fact-item">⚠️ RSI overbought at 78</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="ai-feature-content">
+            <h3 className="ai-feature-title">AI Research Assistant</h3>
+            <p className="ai-feature-desc">
+              Ask any market question. Get fact-checked insights, news summaries,
+              and data analysis before you trade.
+            </p>
+            <div className="ai-feature-tags">
+              <span className="ai-tag">Real-time data</span>
+              <span className="ai-tag">Source citations</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 2: Prediction Memo */}
+        <div className="ai-feature-card">
+          <div className="ai-feature-visual">
+            <div className="memo-visual">
+              <div className="memo-card">
+                <div className="memo-header">
+                  <span className="memo-date">Feb 25, 2026</span>
+                  <span className="memo-status resolved">✓ Resolved</span>
+                </div>
+                <div className="memo-content">
+                  <span className="memo-market">Fed cuts in March</span>
+                  <span className="memo-position">
+                    <span className="position-badge yes">YES</span>
+                    @ $0.42
+                  </span>
+                </div>
+                <div className="memo-reasoning">
+                  <span className="reasoning-label">Your reasoning:</span>
+                  <span className="reasoning-text">"CPI trending down, unemployment ticking up..."</span>
+                </div>
+                <div className="memo-result">
+                  <span className="result-label">Result:</span>
+                  <span className="result-value win">+138%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="ai-feature-content">
+            <h3 className="ai-feature-title">Prediction Journal</h3>
+            <p className="ai-feature-desc">
+              Every prediction stored with your reasoning. Review what worked,
+              learn from mistakes, improve over time.
+            </p>
+            <div className="ai-feature-tags">
+              <span className="ai-tag">On-chain history</span>
+              <span className="ai-tag">Export anytime</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 3: Brier Score */}
+        <div className="ai-feature-card">
+          <div className="ai-feature-visual">
+            <div className="brier-visual">
+              <div className="brier-card">
+                <div className="brier-header">
+                  <span className="brier-label">Your Brier Score</span>
+                  <span className="brier-info" title="Lower is better. 0 = perfect, 0.25 = random">ⓘ</span>
+                </div>
+                <div className="brier-score">
+                  <span className="score-value">0.18</span>
+                  <span className="score-rank">Top 12%</span>
+                </div>
+                <div className="brier-breakdown">
+                  <div className="breakdown-item">
+                    <span className="breakdown-label">Calibration</span>
+                    <div className="breakdown-bar">
+                      <div className="breakdown-fill" style={{ width: '85%' }} />
+                    </div>
+                    <span className="breakdown-value">85%</span>
+                  </div>
+                  <div className="breakdown-item">
+                    <span className="breakdown-label">Resolution</span>
+                    <div className="breakdown-bar">
+                      <div className="breakdown-fill" style={{ width: '72%' }} />
+                    </div>
+                    <span className="breakdown-value">72%</span>
+                  </div>
+                </div>
+                <div className="brier-predictions">
+                  <span className="predictions-count">47 predictions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="ai-feature-content">
+            <h3 className="ai-feature-title">Brier Score Tracking</h3>
+            <p className="ai-feature-desc">
+              Scientific accuracy measurement. See how calibrated your predictions
+              are and compare against other forecasters.
+            </p>
+            <div className="ai-feature-tags">
+              <span className="ai-tag">Leaderboard ranking</span>
+              <span className="ai-tag">Skill decomposition</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom callout */}
+      <div className="ai-callout">
+        <span className="callout-icon">💡</span>
+        <p className="callout-text">
+          <strong>Why this matters:</strong> Most traders lose because they trade on vibes.
+          BeRight gives you data, tracks your reasoning, and measures your actual skill.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TRUST SIGNALS SECTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -491,6 +648,9 @@ export default function LandingHero() {
 
         {/* How It Works */}
         <HowItWorks />
+
+        {/* AI Intelligence - BeRight's unique edge */}
+        <AIIntelligence />
 
         {/* Trust Signals */}
         <TrustSignals />
@@ -1387,6 +1547,424 @@ export default function LandingHero() {
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
+           AI INTELLIGENCE SECTION
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        .ai-section {
+          position: relative;
+          z-index: 10;
+          margin-bottom: 100px;
+          padding: 60px 0;
+        }
+
+        .ai-header {
+          text-align: center;
+          margin-bottom: 48px;
+        }
+
+        .ai-badge {
+          display: inline-block;
+          padding: 6px 14px;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(0, 212, 255, 0.15) 100%);
+          border: 1px solid rgba(168, 85, 247, 0.3);
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #A855F7;
+          margin-bottom: 16px;
+          letter-spacing: 0.5px;
+        }
+
+        .ai-features-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+          margin-bottom: 40px;
+        }
+
+        .ai-feature-card {
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 20px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+          animation: fadeUp 0.5s ease-out both;
+        }
+
+        .ai-feature-card:hover {
+          border-color: rgba(168, 85, 247, 0.3);
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(168, 85, 247, 0.1);
+        }
+
+        .ai-feature-visual {
+          padding: 24px;
+          background: linear-gradient(180deg, rgba(168, 85, 247, 0.05) 0%, transparent 100%);
+          min-height: 200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .ai-feature-content {
+          padding: 24px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .ai-feature-title {
+          font-size: 18px;
+          font-weight: 700;
+          margin: 0 0 8px;
+          color: var(--color-text);
+        }
+
+        .ai-feature-desc {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          line-height: 1.6;
+          margin: 0 0 16px;
+        }
+
+        .ai-feature-tags {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .ai-tag {
+          padding: 4px 10px;
+          background: rgba(168, 85, 247, 0.1);
+          border: 1px solid rgba(168, 85, 247, 0.2);
+          border-radius: 6px;
+          font-size: 11px;
+          color: #A855F7;
+          font-weight: 500;
+        }
+
+        /* Fact Check Visual */
+        .fact-check-visual {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          width: 100%;
+          max-width: 260px;
+        }
+
+        .chat-bubble {
+          padding: 12px 14px;
+          border-radius: 12px;
+          animation: fadeUp 0.4s ease-out both;
+        }
+
+        .user-bubble {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--color-border);
+          align-self: flex-end;
+          margin-left: 20%;
+        }
+
+        .ai-bubble {
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(0, 212, 255, 0.1) 100%);
+          border: 1px solid rgba(168, 85, 247, 0.3);
+          align-self: flex-start;
+          margin-right: 10%;
+        }
+
+        .bubble-label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--color-text-tertiary);
+          margin-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .ai-bubble .bubble-label {
+          color: #A855F7;
+        }
+
+        .bubble-text {
+          font-size: 13px;
+          color: var(--color-text);
+          line-height: 1.4;
+        }
+
+        .ai-bubble .bubble-text {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .fact-item {
+          font-size: 11px;
+          color: var(--color-text-secondary);
+        }
+
+        /* Memo Visual */
+        .memo-visual {
+          width: 100%;
+          max-width: 240px;
+        }
+
+        .memo-card {
+          background: linear-gradient(145deg, #1a1a1c 0%, #0d0d0e 100%);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          padding: 14px;
+        }
+
+        .memo-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .memo-date {
+          font-size: 10px;
+          color: var(--color-text-tertiary);
+        }
+
+        .memo-status {
+          font-size: 10px;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 4px;
+        }
+
+        .memo-status.resolved {
+          background: rgba(0, 255, 136, 0.15);
+          color: var(--color-green);
+        }
+
+        .memo-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .memo-market {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--color-text);
+        }
+
+        .memo-position {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: var(--color-text-secondary);
+          font-family: var(--font-mono);
+        }
+
+        .position-badge {
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .position-badge.yes {
+          background: rgba(0, 255, 136, 0.2);
+          color: var(--color-green);
+        }
+
+        .memo-reasoning {
+          padding: 10px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 8px;
+          margin-bottom: 12px;
+        }
+
+        .reasoning-label {
+          display: block;
+          font-size: 9px;
+          color: var(--color-text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .reasoning-text {
+          font-size: 11px;
+          color: var(--color-text-secondary);
+          font-style: italic;
+        }
+
+        .memo-result {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-top: 10px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .result-label {
+          font-size: 11px;
+          color: var(--color-text-tertiary);
+        }
+
+        .result-value {
+          font-size: 16px;
+          font-weight: 800;
+          font-family: var(--font-mono);
+        }
+
+        .result-value.win {
+          color: var(--color-green);
+        }
+
+        /* Brier Score Visual */
+        .brier-visual {
+          width: 100%;
+          max-width: 220px;
+        }
+
+        .brier-card {
+          background: linear-gradient(145deg, #1a1a1c 0%, #0d0d0e 100%);
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          padding: 16px;
+        }
+
+        .brier-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .brier-label {
+          font-size: 11px;
+          color: var(--color-text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .brier-info {
+          font-size: 12px;
+          color: var(--color-text-tertiary);
+          cursor: help;
+        }
+
+        .brier-score {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .score-value {
+          font-size: 36px;
+          font-weight: 900;
+          font-family: var(--font-mono);
+          background: linear-gradient(135deg, var(--color-green) 0%, var(--color-cyan) 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .score-rank {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--color-green);
+          padding: 3px 8px;
+          background: rgba(0, 255, 136, 0.1);
+          border-radius: 4px;
+        }
+
+        .brier-breakdown {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+
+        .breakdown-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .breakdown-label {
+          font-size: 10px;
+          color: var(--color-text-tertiary);
+          width: 70px;
+          flex-shrink: 0;
+        }
+
+        .breakdown-bar {
+          flex: 1;
+          height: 6px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+          overflow: hidden;
+        }
+
+        .breakdown-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--color-cyan), #A855F7);
+          border-radius: 3px;
+          transition: width 0.5s ease;
+        }
+
+        .breakdown-value {
+          font-size: 11px;
+          font-weight: 600;
+          font-family: var(--font-mono);
+          color: var(--color-text-secondary);
+          width: 32px;
+          text-align: right;
+        }
+
+        .brier-predictions {
+          text-align: center;
+          padding-top: 12px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .predictions-count {
+          font-size: 11px;
+          color: var(--color-text-tertiary);
+        }
+
+        /* AI Callout */
+        .ai-callout {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 20px 28px;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(0, 212, 255, 0.08) 100%);
+          border: 1px solid rgba(168, 85, 247, 0.2);
+          border-radius: 16px;
+          max-width: 700px;
+          margin: 0 auto;
+        }
+
+        .callout-icon {
+          font-size: 28px;
+          flex-shrink: 0;
+        }
+
+        .callout-text {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          line-height: 1.6;
+          margin: 0;
+          text-align: left;
+        }
+
+        .callout-text strong {
+          color: #A855F7;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
            TRUST SIGNALS
            ═══════════════════════════════════════════════════════════════════════ */
 
@@ -1721,6 +2299,26 @@ export default function LandingHero() {
           .step-visual-card {
             width: calc(50% - 12px);
           }
+
+          .ai-features-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+
+          .ai-feature-card {
+            display: flex;
+            flex-direction: row;
+          }
+
+          .ai-feature-visual {
+            min-width: 280px;
+            min-height: auto;
+          }
+
+          .ai-feature-content {
+            border-top: none;
+            border-left: 1px solid var(--color-border);
+          }
         }
 
         @media (max-width: 768px) {
@@ -1785,6 +2383,27 @@ export default function LandingHero() {
             flex-direction: column;
             align-items: center;
             gap: 16px;
+          }
+
+          .ai-feature-card {
+            flex-direction: column;
+          }
+
+          .ai-feature-visual {
+            min-width: auto;
+            min-height: 180px;
+          }
+
+          .ai-feature-content {
+            border-left: none;
+            border-top: 1px solid var(--color-border);
+          }
+
+          .ai-callout {
+            flex-direction: column;
+            text-align: center;
+            gap: 10px;
+            padding: 16px 20px;
           }
         }
 
