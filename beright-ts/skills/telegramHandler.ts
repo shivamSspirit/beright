@@ -88,6 +88,9 @@ import { getAgentForCommand, AGENTS } from '../config/agents';
 import { classifyIntent, getIntentSuggestions, IntentResult } from '../lib/intentClassifier';
 import { classifyIntentSmart, isObviousGreeting } from '../lib/smartIntentClassifier';
 
+// Agent Persona
+import { getPersonaGreeting, getPersonaUnknown, PERSONA_HELP, PERSONA_SYSTEM_PROMPT } from '../lib/persona';
+
 // Market watcher for auto-resolution
 import { getMarketWatcher } from '../services/marketWatcher';
 
@@ -595,17 +598,10 @@ _Trade directly on ${market.platform}_`,
 function handleFreeformInput(text: string): SkillResponse | null {
   const lower = text.toLowerCase().trim();
 
-  // Greetings
+  // Greetings - use persona
   if (/^(hi|hello|hey|yo|sup|hola|greetings)/i.test(lower)) {
     return {
-      text: `Hey! I'm BeRight, your prediction market intelligence agent.
-
-What would you like to explore?
-• /hot - See trending markets
-• /arb - Find arbitrage opportunities
-• /research <topic> - Deep dive on a topic
-
-Or just ask me about any market topic!`,
+      text: getPersonaGreeting(),
       mood: 'NEUTRAL',
     };
   }
@@ -3482,14 +3478,7 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
         // Quick checks before LLM (save tokens)
         if (isObviousGreeting(text)) {
           return {
-            text: `Hey! I'm BeRight, your prediction market intelligence agent.
-
-What would you like to explore?
-• /hot - Trending markets
-• /arb - Arbitrage opportunities
-• /brief - Morning briefing
-
-Or just ask me anything about prediction markets!`,
+            text: getPersonaGreeting(),
             mood: 'NEUTRAL',
           };
         }
@@ -3588,14 +3577,7 @@ Try /hot for trending markets or /arb for price gaps.`,
 
           case 'GREETING': {
             return {
-              text: `Hey! I'm BeRight, your prediction market intelligence agent.
-
-What would you like to explore?
-• /hot - Trending markets
-• /arb - Arbitrage opportunities
-• /brief - Morning briefing
-
-Or just ask me anything about prediction markets!`,
+              text: getPersonaGreeting(),
               mood: 'NEUTRAL',
             };
           }
@@ -3669,16 +3651,9 @@ I aggregate data from all of these. Try:
               };
             }
 
-            // Generic fallback
+            // Generic fallback - use persona
             return {
-              text: `I'm BeRight, your prediction market intelligence agent.
-
-I didn't quite catch that. Try:
-• /hot - See what's trending
-• /arb - Find arbitrage opportunities
-• /research bitcoin - Analyze a specific topic
-
-Or ask about something specific like bitcoin, trump, or fed rates!`,
+              text: getPersonaUnknown(),
               mood: 'NEUTRAL',
             };
           }
