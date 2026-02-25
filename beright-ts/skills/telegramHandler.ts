@@ -3544,12 +3544,23 @@ Try /hot for trending markets or /arb for price gaps.`,
             return arbResult;
           }
 
-          case 'TRENDING': {
+          case 'TRENDING':
+          case 'BROWSE_MARKETS': {
+            // User wants to see available markets or what's trending
             const hotMarkets = await getHotMarkets();
             if (hotMarkets.length > 0) {
-              return { text: formatMarkets(hotMarkets, '🔥 Hot Markets'), mood: 'BULLISH', data: hotMarkets };
+              return { text: formatMarkets(hotMarkets, '🔥 Trending Markets'), mood: 'BULLISH', data: hotMarkets };
             }
-            return { text: 'No hot markets found. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
+            return {
+              text: `Here's how to explore markets:
+
+• /hot - See trending markets with high volume
+• /arb - Find arbitrage opportunities across platforms
+• /research <topic> - Deep analysis on any topic (bitcoin, elections, etc.)
+
+Or ask me about a specific topic like "bitcoin", "trump", or "fed rates"!`,
+              mood: 'NEUTRAL'
+            };
           }
 
           case 'WHALE_ACTIVITY': {
@@ -3605,23 +3616,26 @@ Your predictions are tracked for calibration scoring.`,
 
           case 'UNKNOWN':
           default: {
-            // LLM couldn't determine intent - try market search as last resort
-            const markets = await searchMarkets(text);
-            if (markets.length > 0) {
-              return { text: formatMarkets(markets, `Markets: ${text}`), mood: 'NEUTRAL', data: markets };
+            // LLM couldn't determine intent
+            // ONLY search if LLM extracted a SPECIFIC topic (not the raw text)
+            if (smartIntent.topic && smartIntent.topic.length > 2) {
+              const markets = await searchMarkets(smartIntent.topic);
+              if (markets.length > 0) {
+                return { text: formatMarkets(markets, `Markets: ${smartIntent.topic}`), mood: 'NEUTRAL', data: markets };
+              }
             }
 
-            // Nothing found - show helpful guidance
+            // No topic or no results - show helpful guidance
             return {
               text: `I'm BeRight, your prediction market intelligence agent.
 
-I can help you with:
-• /hot - Trending markets
-• /arb - Arbitrage opportunities
-• /research <topic> - Deep analysis with AI
-• /brief - Morning briefing
+I didn't quite catch that. Try:
+• /hot - See what's trending
+• /arb - Find arbitrage opportunities
+• /research bitcoin - Analyze a specific topic
+• "What are the odds on X?" - Check prices
 
-Or ask me about any prediction market topic!`,
+Or ask about something specific like bitcoin, trump, or fed rates!`,
               mood: 'NEUTRAL',
             };
           }

@@ -11,8 +11,9 @@ import { llmChat } from './llm';
 
 export type SmartIntent =
   | 'PLATFORM_INFO'      // Questions about platforms, how many, which ones
-  | 'MARKET_ANALYSIS'    // Analyze a specific market/event
-  | 'PRICE_CHECK'        // What are the odds on X
+  | 'BROWSE_MARKETS'     // User wants to see/browse/list markets (no specific topic)
+  | 'MARKET_ANALYSIS'    // Analyze a specific topic/event (requires clear topic)
+  | 'PRICE_CHECK'        // What are the odds on X (requires clear topic)
   | 'ARBITRAGE'          // Find arb/spreads
   | 'TRENDING'           // What's hot/moving
   | 'WHALE_ACTIVITY'     // Smart money movements
@@ -25,7 +26,7 @@ export type SmartIntent =
 export interface SmartIntentResult {
   intent: SmartIntent;
   confidence: number;
-  topic?: string;           // Extracted topic/market/question
+  topic?: string;           // Extracted topic/market/question (only if clear)
   reasoning: string;        // Why this intent
   suggestedAction?: string; // What to do
 }
@@ -34,25 +35,36 @@ const CLASSIFIER_PROMPT = `You are an intent classifier for BeRight, a predictio
 
 BeRight tracks: Polymarket, Kalshi, Manifold, Metaculus, Limitless.
 
-Classify the user's message into ONE intent:
+CRITICAL RULES:
+1. ONLY set "topic" if user mentions a SPECIFIC topic (bitcoin, trump, fed, etc). Do NOT extract generic words like "markets" or "link".
+2. If the query is vague/general, classify as BROWSE_MARKETS or TRENDING, NOT as a search.
+3. MARKET_ANALYSIS requires a CLEAR, SPECIFIC topic. "link of markets" has no topic.
 
-PLATFORM_INFO - Questions about platforms (how many, which ones, list them, what is Polymarket)
-MARKET_ANALYSIS - Wants analysis on a specific topic/event (will X happen, what do you think about Y)
-PRICE_CHECK - Wants current odds/prices on something
-ARBITRAGE - Looking for price discrepancies, spreads, arb opportunities
-TRENDING - What's hot, trending, moving, popular markets
+INTENTS (pick ONE):
+
+PLATFORM_INFO - Questions about platforms (how many platforms, which ones do you track, what is Polymarket)
+BROWSE_MARKETS - User wants to see/browse/list available markets, but NO specific topic
+  Examples: "show me markets", "link of markets", "list markets", "markets available", "what markets", "any markets"
+TRENDING - User wants what's hot, popular, moving, trending right now
+  Examples: "what's hot", "trending", "popular markets", "what's moving"
+MARKET_ANALYSIS - User wants analysis on a SPECIFIC named topic/event
+  Examples: "analyze bitcoin", "what about trump winning", "fed rate analysis"
+  REQUIRES: A clear topic like bitcoin, trump, elections, fed, etc.
+PRICE_CHECK - User wants current odds/prices on a SPECIFIC topic
+  Examples: "odds on bitcoin 100k", "what's the price of trump winning"
+ARBITRAGE - Looking for arbitrage, price gaps, spreads across platforms
 WHALE_ACTIVITY - Smart money, big bets, whale movements
-PREDICTION - User wants to make/record a prediction
-HELP - How to use, what can you do, commands
-GREETING - Hello, hi, gm (just greeting, nothing else)
-GENERAL_CHAT - Conversational but not about prediction markets
-UNKNOWN - Can't determine
+PREDICTION - User wants to make/record their own prediction
+HELP - How to use BeRight, what can you do, commands, capabilities
+GREETING - Just a greeting (hi, hello, gm, hey) with nothing else
+GENERAL_CHAT - Conversational but NOT about prediction markets
+UNKNOWN - Only if truly unclassifiable
 
-Respond ONLY with JSON:
+Respond ONLY with valid JSON:
 {
   "intent": "INTENT_NAME",
   "confidence": 0.0-1.0,
-  "topic": "extracted topic if any",
+  "topic": "only if SPECIFIC topic mentioned, otherwise null",
   "reasoning": "brief explanation",
   "suggestedAction": "what BeRight should do"
 }`;
