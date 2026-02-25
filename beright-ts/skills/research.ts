@@ -25,6 +25,7 @@ import {
   verifyClaim,
   TavilySearchResponse,
 } from '../lib/tavily';
+import { deepResearch as freeDeepResearch } from '../lib/webSearch';
 import { synthesizeResearch, ResearchSynthesis } from '../lib/synthesis/researchSynthesis';
 
 // ============================================
@@ -621,19 +622,12 @@ function convertTavilyNews(tavilyNews: {
 }
 
 /**
- * Deep research using Tavily's research endpoint
- * Provides comprehensive analysis with multi-step research
+ * Deep research using web search + LLM synthesis
+ * Uses free alternatives (DuckDuckGo, Serper) when Tavily unavailable/limited
  *
  * Now detects educational queries and formats appropriately
  */
 export async function deepResearch(query: string): Promise<SkillResponse> {
-  if (!isTavilyConfigured()) {
-    return {
-      text: '❌ Deep research requires Tavily API key.\nSet TAVILY_API_KEY in your environment.',
-      mood: 'ERROR',
-    };
-  }
-
   try {
     console.log(`Deep researching: ${query}`);
 
@@ -641,19 +635,47 @@ export async function deepResearch(query: string): Promise<SkillResponse> {
     const isEducational = isEducationalQuery(query);
     console.log(`  Query type: ${isEducational ? 'EDUCATIONAL' : 'MARKET-SPECIFIC'}`);
 
-    // For educational queries, only do web research (skip market search)
+    // Try Tavily first, fall back to free webSearch
+    let researchResult: { report: string; sources: Array<{ url: string; title: string }> };
+    let facts: { facts: string[]; sources: Array<{ title: string; url: string }>; answer?: string; confidence: string };
+
+    if (isTavilyConfigured()) {
+      try {
+        const [tavilyResult, tavilyFacts] = await Promise.all([
+          tavilyResearch(query),
+          getFactsForPrediction(query),
+        ]);
+        researchResult = { report: tavilyResult.report, sources: tavilyResult.sources };
+        facts = tavilyFacts;
+        console.log(`  [Research] Using Tavily`);
+      } catch (tavilyError) {
+        // Tavily failed (likely limit exceeded) - use free alternative
+        console.warn(`  [Research] Tavily failed, using free webSearch:`, tavilyError instanceof Error ? tavilyError.message : tavilyError);
+        const freeResult = await freeDeepResearch(query);
+        researchResult = { report: freeResult.summary, sources: freeResult.sources };
+        facts = {
+          facts: freeResult.facts,
+          sources: freeResult.sources,
+          confidence: 'medium',
+        };
+        console.log(`  [Research] Using free webSearch (${freeResult.provider})`);
+      }
+    } else {
+      // No Tavily configured - use free alternative
+      console.log(`  [Research] No Tavily key, using free webSearch`);
+      const freeResult = await freeDeepResearch(query);
+      researchResult = { report: freeResult.summary, sources: freeResult.sources };
+      facts = {
+        facts: freeResult.facts,
+        sources: freeResult.sources,
+        confidence: 'medium',
+      };
+    }
+
     // For market queries, include market data
-    const researchPromise = tavilyResearch(query);
-    const marketsPromise = isEducational ? Promise.resolve([]) : searchMarkets(query);
-    const factsPromise = getFactsForPrediction(query);
+    const markets = isEducational ? [] : await searchMarkets(query);
 
-    const [researchResult, markets, facts] = await Promise.all([
-      researchPromise,
-      marketsPromise,
-      factsPromise,
-    ]);
-
-    // Check if Tavily returned meaningful content
+    // Check if we have meaningful content
     const hasReport = researchResult.report && researchResult.report.trim().length > 50;
 
     // For market queries, synthesize with Groq LLM
@@ -739,8 +761,7 @@ ${'='.repeat(60)}
 ${'='.repeat(60)}
 
 Generated: ${timestamp().slice(0, 19)}
-Research time: ${(researchResult.responseTime / 1000).toFixed(1)}s
-Powered by: Tavily AI Research + Groq LLM
+Powered by: Web Search + Groq LLM
 
 `;
 
