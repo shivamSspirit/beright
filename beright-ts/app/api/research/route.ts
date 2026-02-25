@@ -42,18 +42,34 @@ export const POST = withMiddleware(
       success: true,
     });
 
+    // Extract synthesis data if available (Groq LLM analysis)
+    const synthesis = (result.data as any)?.synthesis;
+
     return NextResponse.json({
       success: true,
       question,
       analysis: {
         summary: result.text,
         mood: result.mood,
-        confidence: (result.data as any)?.confidence || 'medium',
+        confidence: synthesis?.confidence || (result.data as any)?.analysis?.confidence || 'medium',
         sources: (result.data as any)?.sources || [],
         marketData: (result.data as any)?.markets || [],
         baseRate: (result.data as any)?.baseRate,
-        recommendation: (result.data as any)?.recommendation,
+        recommendation: synthesis?.recommendation || 'WATCH',
       },
+      // AI Synthesis from Groq LLM (if available)
+      aiSynthesis: synthesis ? {
+        probability: synthesis.probability,
+        confidence: synthesis.confidence,
+        recommendation: synthesis.recommendation,
+        narrative: synthesis.narrative,
+        tradingEdge: synthesis.tradingEdge,
+        bullishFactors: synthesis.bullishFactors,
+        bearishFactors: synthesis.bearishFactors,
+        keyUncertainties: synthesis.keyUncertainties,
+        model: synthesis.model,
+        tokensUsed: synthesis.tokensUsed,
+      } : null,
       analyzedAt: new Date().toISOString(),
     });
   },
