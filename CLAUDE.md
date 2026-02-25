@@ -5,6 +5,106 @@ BeRight is a prediction market intelligence platform with Telegram bot integrati
 
 ---
 
+## OpenClaw Agent Technology (CRITICAL)
+
+BeRight runs on OpenClaw's AI agent architecture. These principles guide all agent behavior.
+
+### Core Files (The Agent's "Brain")
+
+| File | Purpose |
+|------|---------|
+| `SOUL.md` | Agent personality, values, voice, boundaries |
+| `IDENTITY.md` | Who the agent is, capabilities, architecture |
+| `HEARTBEAT.md` | Dynamic status, pending signals, goals (auto-updated) |
+| `MEMORY.md` | Synced lessons, episodic memory |
+| `AGENTS.md` | Multi-agent roster and routing |
+| `TOOLS.md` | Skills execution reference |
+
+### Two-Tier Pattern (ALWAYS FOLLOW)
+
+```
+Tier 1: DETERMINISTIC (fast, free)
+├── Fetch market data from APIs
+├── Aggregate news/social signals
+├── Calculate spreads/arbitrage
+└── Return raw structured data
+
+Tier 2: LLM REASONING (when needed)
+├── Synthesize all Tier 1 data
+├── Apply superforecaster methodology
+├── Generate probability estimates
+└── Identify trading edge
+```
+
+**Rule**: Always do Tier 1 first. Only call LLM (Tier 2) when synthesis/reasoning is needed.
+
+### Agent Persona Principles
+
+**Authenticity over performance**: Skip "Great question!" and "I'd be happy to help!" — just help.
+
+**Personality as asset**: Hold perspectives, disagree when warranted, display preferences. Avoid being a "search engine with extra steps."
+
+**Proactive problem-solving**: Try to figure it out. Read the file. Check the context. Search for it. Resourcefulness precedes requests for clarification.
+
+**Competence builds trust**: Careful with external actions, bold with internal reasoning.
+
+**Concise when needed, thorough when it matters**: Match depth to complexity.
+
+### Cognitive Loop (Heartbeat)
+
+Every 30 minutes, the agent runs:
+```
+PERCEIVE → UPDATE BELIEFS → DELIBERATE → ACT → REFLECT
+```
+
+1. **Perceive**: Gather signals from markets, news, whales
+2. **Update Beliefs**: Integrate new observations
+3. **Deliberate**: Decide what to pursue (goals)
+4. **Act**: Execute skills
+5. **Reflect**: Learn from outcomes, update calibration
+
+### Memory System
+
+- **Episodic Memory**: `memory/episodes.json` - Past actions and outcomes
+- **Daily Logs**: `memory/daily/YYYY-MM-DD.md` - Timestamped activity
+- **Lessons Learned**: Synced to `MEMORY.md` for persistence
+
+**After significant actions**: Call `recordEpisode()` and `syncToOpenClawMemory()`.
+
+### Multi-Agent Coordination
+
+| Agent | Role | When to Use |
+|-------|------|-------------|
+| **Scout** | Fast scanning, arb detection | Quick market checks, trends |
+| **Analyst** | Deep research, probability | Complex questions, synthesis |
+| **Trader** | Execution, risk management | Trade quotes, position sizing |
+
+**Routing Rule**: Match task complexity to agent. Scout for speed, Analyst for depth.
+
+### Fixing Common Issues
+
+**Bot doesn't understand context**:
+→ Check `lib/intentClassifier.ts` patterns
+→ Add regex for missing phrases
+→ Test with `classifyIntent()` directly
+
+**Research returns raw data without synthesis**:
+→ Ensure `synthesizeResearch()` is called (Tier 2)
+→ Check Groq API key is set
+→ Verify `lib/synthesis/researchSynthesis.ts` integration
+
+**Tavily API limit errors**:
+→ `deepResearch()` uses premium Tavily Research API
+→ Add try-catch fallback to `research()` (we did this)
+→ Check Tavily credit allocation
+
+**Agent persona feels robotic**:
+→ Update SOUL.md with more personality
+→ Check telegramHandler response formatting
+→ Add conversational patterns to intent classifier
+
+---
+
 ## Viral Product Strategy (MUST READ BEFORE BUILDING)
 
 **Source:** [Nikita Bier's Thread](https://x.com/nikitabier/status/1481118406749220868) - Creator of TBH (acquired by Facebook) & Gas (acquired by Discord)

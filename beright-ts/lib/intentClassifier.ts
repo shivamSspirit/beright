@@ -206,7 +206,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     priority: 60,
   },
 
-  // RESEARCH/ANALYSIS
+  // RESEARCH/ANALYSIS - Enhanced for natural market conversations
   {
     intent: 'RESEARCH',
     agent: 'analyst',
@@ -214,11 +214,28 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /\b(research|analyze|analysis|deep\s+dive|investigate|study)\b/i,
       /\b(what\s+do\s+you\s+think|your\s+take|opinion\s+on)\b/i,
       /\b(probability|likelihood|chances?|forecast)\b/i,
+      // Natural market questions
+      /\bwill\s+.+\s+(happen|win|pass|reach|hit|go|be)\b/i,
+      /\bwhat('s|\s+is)\s+(the\s+)?(chance|probability|likelihood)\b/i,
+      /\bdo\s+you\s+think\s+.+\s+will\b/i,
+      /\bhow\s+likely\s+is\b/i,
+      /\bshould\s+i\s+(bet|buy|invest|trade)\b/i,
+      // Prediction market specific
+      /\b(polymarket|kalshi|manifold|metaculus)\s+.*(says?|shows?|pricing|at)\b/i,
+      /\bwhat('s|\s+is)\s+.*(pricing|priced|odds)\b/i,
+      // "Is X going to Y" patterns
+      /\bis\s+.+\s+(going\s+to|gonna|likely\s+to)\b/i,
+      // Opinion seeking
+      /\b(agree|disagree|think|believe)\s+(that|the|market|it)\b/i,
+      /\bchange\s+my\s+mind\b/i,
+      /\bwhy\s+is\s+.*(market|polymarket|kalshi).*\s+(pricing|priced|at)\b/i,
     ],
     keywords: [
       'research', 'analyze', 'analysis', 'deep dive', 'investigate',
       'what do you think', 'your take', 'probability', 'likelihood',
-      'chances', 'forecast', 'will it happen',
+      'chances', 'forecast', 'will it happen', 'going to happen',
+      'should i bet', 'is it likely', 'market pricing', 'change my mind',
+      'what are the odds', 'do you agree', 'do you think',
     ],
     priority: 55,
   },
