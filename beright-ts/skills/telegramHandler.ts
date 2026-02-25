@@ -65,6 +65,9 @@ import { handleWallet as handleDFlowWallet, handleDFlowSearch, handleTrade as ha
 import { handleAgentCommand, subscribeToAgent } from './proactiveAgent';
 import { handlePosterCommand } from './agentPoster';
 
+// Paper Trading System
+import traderSkillHandlers from './trader';
+
 // Signal Intelligence Engine
 import { getRecentSignals, formatSignalsReport } from '../lib/signals/index';
 import { subscribe as subscribeToSignals, unsubscribe as unsubscribeFromSignals, getSubscriptionStatus, formatSubscribeConfirmation } from '../lib/alertRouter';
@@ -162,6 +165,16 @@ function routeMessage(text: string): string {
   if (lower.startsWith('/trade')) return 'EXECUTOR';
   if (lower.startsWith('/positions')) return 'EXECUTOR';
   if (lower.startsWith('/mypositions')) return 'EXECUTOR';
+  // Paper trading system commands
+  if (lower.startsWith('/trader')) return 'TRADER';
+  if (lower.startsWith('/paper')) return 'TRADER';
+  if (lower.startsWith('/paptrade')) return 'TRADER';
+  if (lower.startsWith('/pappositions')) return 'TRADER';
+  if (lower.startsWith('/papclose')) return 'TRADER';
+  if (lower.startsWith('/perftrader')) return 'TRADER';
+  if (lower.startsWith('/risktrader')) return 'TRADER';
+  if (lower.startsWith('/strategies')) return 'TRADER';
+
   // Kalshi direct commands (full trading)
   if (lower.startsWith('/kalshi')) return 'KALSHI';
   if (lower.startsWith('/kbalance')) return 'KALSHI';
@@ -3021,6 +3034,34 @@ Or search for markets first:
       return handleAlerts(telegramId || '', args || undefined);
     }
 
+    // ============================================
+    // PAPER TRADING SYSTEM COMMANDS
+    // ============================================
+    if (lower.startsWith('/trader')) {
+      return await traderSkillHandlers['/trader'](message);
+    }
+    if (lower.startsWith('/paper')) {
+      return await traderSkillHandlers['/paper'](message);
+    }
+    if (lower.startsWith('/paptrade')) {
+      return await traderSkillHandlers['/paptrade'](message);
+    }
+    if (lower.startsWith('/pappositions')) {
+      return await traderSkillHandlers['/pappositions'](message);
+    }
+    if (lower.startsWith('/papclose')) {
+      return await traderSkillHandlers['/papclose'](message);
+    }
+    if (lower.startsWith('/perftrader')) {
+      return await traderSkillHandlers['/perftrader'](message);
+    }
+    if (lower.startsWith('/risktrader')) {
+      return await traderSkillHandlers['/risktrader'](message);
+    }
+    if (lower.startsWith('/strategies')) {
+      return await traderSkillHandlers['/strategies'](message);
+    }
+
     // Copy trading commands
     if (lower.startsWith('/follow')) {
       if (!telegramId) return { text: 'Could not identify your account', mood: 'ERROR' };
@@ -3031,7 +3072,12 @@ Or search for markets first:
       return handleUnfollowUser(text, telegramId);
     }
     if (lower === '/signals' || lower.startsWith('/signals ')) {
-      return handleSignals(telegramId);
+      // Use paper trading signals if from /signals with trader context, else copy trading
+      const traderSignals = await traderSkillHandlers['/signals'](message);
+      if (traderSignals.text.includes('No pending signals')) {
+        return handleSignals(telegramId);
+      }
+      return traderSignals;
     }
     if (lower === '/toplists') {
       return handleTopLists();
@@ -3527,6 +3573,34 @@ Or ask me about any market topic!`,
           case 'EDUCATIONAL': {
             // Educational query - provide learning content
             const query = intentResult.extractedQuery || text;
+            const lowerQuery = query.toLowerCase();
+
+            // Direct answers for common platform/concept questions
+            if (/how\s+many\s+(prediction\s+)?(market\s+)?(platform|provider|exchange)/i.test(lowerQuery) ||
+                /list.*platform/i.test(lowerQuery) ||
+                /which\s+platform/i.test(lowerQuery)) {
+              return {
+                text: `**Prediction Market Platforms I Track:**
+
+**Crypto-Native:**
+• **Polymarket** — Largest crypto prediction market. USDC on Polygon. High liquidity.
+• **Limitless** — Newer platform with unique markets.
+
+**Regulated (US):**
+• **Kalshi** — CFTC-regulated exchange. Event contracts, institutional-grade.
+
+**Play Money / Research:**
+• **Manifold** — Play money markets. Great for long-tail questions.
+• **Metaculus** — Scientific forecasting. Expert calibration.
+
+I aggregate odds across all of these to find arbitrage and consensus.
+
+Try /hot to see trending markets, or /arb to find price gaps.`,
+                mood: 'EDUCATIONAL',
+              };
+            }
+
+            // For other educational queries, use research with Groq synthesis
             const researchResult = await research(query);
             return researchResult;
           }

@@ -121,10 +121,22 @@ const INTENT_PATTERNS: IntentPattern[] = [
     patterns: [
       /^(what\s+is|what\s+are|how\s+does|how\s+do|explain|define|tell\s+me\s+about|learn\s+about)/i,
       /^(basics\s+of|introduction\s+to|guide\s+to|overview\s+of)/i,
+      // "how many X are there", "how many platforms", "list of X"
+      /^how\s+many\s+.*(are\s+there|exist|platforms?|providers?|markets?)/i,
+      /^(list|name|which)\s+(of\s+|the\s+)?(all\s+)?(prediction\s+)?(market\s+)?(platforms?|providers?|exchanges?)/i,
+      // General knowledge questions about prediction markets
+      /\b(prediction\s+market|polymarket|kalshi|manifold|metaculus)\s+(is|are|platform|work)/i,
+      /\bwhat\s+(platforms?|sites?|exchanges?)\s+(do\s+you|can\s+i|are\s+there)/i,
+      // "tell me about", "explain how"
+      /^(can\s+you\s+)?(tell|explain|describe|teach)\s+(me\s+)?(about|how)/i,
+      // "what is the difference", "compare X and Y"
+      /\bwhat('s|\s+is)\s+the\s+difference\s+between/i,
     ],
     keywords: [
       'what is', 'what are', 'how does', 'how do', 'explain',
       'meaning of', 'definition', 'understand', 'learn about',
+      'how many', 'list of', 'which platforms', 'prediction market platforms',
+      'tell me about', 'teach me',
     ],
     priority: 85,
   },
