@@ -17,6 +17,28 @@ const LESSONS_FILE = path.join(MEMORY_DIR, 'lessons.json');
 const DAILY_LOG_DIR = path.join(MEMORY_DIR, 'daily');
 
 const MAX_EPISODES = 500;
+
+// ============================================
+// DIRECTORY INITIALIZATION (OpenClaw requirement)
+// ============================================
+
+/**
+ * Initialize memory directories on module load.
+ * Ensures memory/daily/ exists for daily logs.
+ */
+function initializeMemoryDirectories(): void {
+  const dirs = [MEMORY_DIR, DAILY_LOG_DIR];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`[Memory] Created directory: ${dir}`);
+    }
+  }
+}
+
+// Run on module load
+initializeMemoryDirectories();
+
 const RECENT_WINDOW = 50;
 
 // ============================================

@@ -79,6 +79,10 @@ import {
   getAgentsSummary,
 } from '../lib/cognitive';
 
+// Memory System (OpenClaw integration)
+import { recordEpisode, syncToOpenClawMemory } from '../lib/cognitive/memory';
+import { updateHeartbeatMD } from '../lib/cognitive/heartbeatWriter';
+
 // Interval constants — now defined in lib/orchestrator.ts, accessed via INTERVALS
 const BUILDER_INTERVAL   = INTERVALS.builder;
 const COGNITIVE_INTERVAL = INTERVALS.cognitive;
@@ -611,6 +615,28 @@ Reason: ${exec.reason}
     );
   } catch (err) {
     console.warn('Heartbeat on-chain log failed:', err);
+  }
+
+  // 15. Record episode and sync to OpenClaw MEMORY.md
+  try {
+    const outcome = alerts.length > 0 ? 'success' : 'neutral';
+    recordEpisode(
+      'Heartbeat cycle',
+      `Scans: ${state.totalScans}, Arbs: ${arbResult.arbsFound}, Whales: ${whaleResult.alertsFound}, Alerts: ${alerts.length}`,
+      outcome as any,
+      { signals: alerts.map(a => String(a.mood || 'NEUTRAL')) }
+    );
+    syncToOpenClawMemory();
+    console.log(`[${timestamp()}] Synced to MEMORY.md`);
+  } catch (err) {
+    console.warn('Memory sync failed:', err);
+  }
+
+  // 16. Update HEARTBEAT.md with dynamic state (OpenClaw)
+  try {
+    updateHeartbeatMD();
+  } catch (err) {
+    console.warn('HEARTBEAT.md update failed:', err);
   }
 
   return alerts;
