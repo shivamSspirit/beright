@@ -136,6 +136,26 @@ module.exports = {
       error_file: './logs/orchestrator-error.log',
       out_file: './logs/orchestrator-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+
+    // Autonomous Paper Trader (24/7 market scanning & trading)
+    {
+      name: 'autonomous-trader',
+      cwd: './beright-ts',
+      script: 'npx',
+      args: 'ts-node services/autonomousTrader.ts',
+      env: {
+        NODE_ENV: 'production'
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      restart_delay: 10000,
+      max_restarts: 10,
+      max_memory_restart: '500M',
+      error_file: './logs/trader-error.log',
+      out_file: './logs/trader-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
   ]
 };
