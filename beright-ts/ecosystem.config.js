@@ -14,6 +14,29 @@
 module.exports = {
   apps: [
     {
+      name: 'gateway',
+      script: 'npm',
+      args: 'run dev',
+      cwd: __dirname,
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 5000,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001,
+      },
+      // Log configuration
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: 'logs/gateway-error.log',
+      out_file: 'logs/gateway-out.log',
+      merge_logs: true,
+      // Memory limit - restart if exceeds 512MB
+      max_memory_restart: '512M',
+      // Graceful shutdown
+      kill_timeout: 10000,
+    },
+    {
       name: 'autonomous-trader',
       script: 'npx',
       args: 'ts-node services/autonomousTrader.ts',
