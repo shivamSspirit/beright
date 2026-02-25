@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { telegramHandler } from '../../../skills/telegramHandler';
+import { secureTelegramHandler } from '../../../lib/secureHandler';
 import { TelegramMessage } from '../../../types/index';
 
 export const runtime = 'nodejs';
@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Gateway] Processing: "${message.slice(0, 50)}..." | Session: ${activeSessionId}`);
 
-    // Route through the full Telegram handler (includes all skills, agents, LLM)
-    const response = await telegramHandler(pseudoMessage);
+    // Route through SECURE handler (rate limit + input sanitization + allowlist + output filter)
+    const response = await secureTelegramHandler(pseudoMessage);
 
     // Record bot response in session
     addToSessionHistory(activeSessionId, 'bot', response.text);

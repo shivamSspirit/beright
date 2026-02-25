@@ -139,6 +139,12 @@ const SUPER_ADMIN_COMMANDS: string[] = [
   // Memory/system commands
   '/memory',
   '/recall',
+  // Gateway/Monitor control (CRITICAL - can stop services)
+  '/arb-monitor',
+  '/gateway',
+  '/shutdown',
+  '/stop',
+  '/restart',
 ];
 
 // ============================================
@@ -187,6 +193,85 @@ const BANNED_PATTERNS: RegExp[] = [
   /roleplay\s+as/i,
   /from\s+now\s+on/i,
   /new\s+instructions/i,
+
+  // ============================================
+  // AWS/CLOUD DESTRUCTION (CRITICAL)
+  // ============================================
+  /aws\s+ec2\s+terminate/i,
+  /aws\s+ec2\s+delete/i,
+  /aws\s+ec2\s+stop-instances/i,
+  /aws\s+s3\s+rb/i,                    // bucket delete
+  /aws\s+s3\s+rm\s+.*--recursive/i,
+  /aws\s+rds\s+delete/i,
+  /aws\s+lambda\s+delete/i,
+  /aws\s+iam\s+delete/i,
+  /aws\s+cloudformation\s+delete/i,
+  /aws\s+ecs\s+delete/i,
+  /aws\s+eks\s+delete/i,
+  /terraform\s+destroy/i,
+  /pulumi\s+destroy/i,
+  /kubectl\s+delete/i,
+  /docker\s+rm\s+-f/i,
+  /docker\s+system\s+prune/i,
+  /docker\s+container\s+rm/i,
+
+  // ============================================
+  // SYSTEM DESTRUCTION
+  // ============================================
+  /rm\s+-rf\s+\//i,                    // recursive delete root
+  /rm\s+-rf\s+~\//i,                   // recursive delete home
+  /rm\s+-rf\s+\*/i,                    // recursive delete all
+  /rm\s+-rf\s+\.\//i,                  // recursive delete cwd
+  /:(){ :\|:& };:/,                    // fork bomb
+  /mkfs\./i,                           // format filesystem
+  /dd\s+if=.*of=\/dev/i,               // disk overwrite
+  />\s*\/dev\/sda/i,                   // overwrite disk
+  /shred\s+/i,                         // secure delete
+
+  // ============================================
+  // PROCESS/SERVICE CONTROL
+  // ============================================
+  /kill\s+-9\s+-1/i,                   // kill all processes
+  /killall\s+/i,
+  /pkill\s+-9/i,
+  /shutdown\s+/i,
+  /reboot/i,
+  /init\s+0/i,
+  /init\s+6/i,
+  /systemctl\s+stop/i,
+  /systemctl\s+disable/i,
+  /service\s+.*\s+stop/i,
+  /pm2\s+stop\s+all/i,
+  /pm2\s+delete\s+all/i,
+
+  // ============================================
+  // CREDENTIAL THEFT
+  // ============================================
+  /cat\s+.*\.env/i,
+  /cat\s+.*credentials/i,
+  /cat\s+.*\.aws/i,
+  /cat\s+.*\.ssh/i,
+  /cat\s+\/etc\/passwd/i,
+  /cat\s+\/etc\/shadow/i,
+  /cat\s+.*id_rsa/i,
+  /cat\s+.*\.pem/i,
+  /curl.*\|.*sh/i,                     // pipe to shell
+  /wget.*\|.*sh/i,
+  /curl.*\|.*bash/i,
+  /wget.*\|.*bash/i,
+
+  // ============================================
+  // NETWORK ATTACKS
+  // ============================================
+  /nmap\s+/i,
+  /nikto\s+/i,
+  /sqlmap\s+/i,
+  /hydra\s+/i,
+  /metasploit/i,
+  /msfconsole/i,
+  /netcat\s+.*-e/i,                    // reverse shell
+  /nc\s+.*-e/i,
+  /bash\s+-i\s+>&/i,                   // bash reverse shell
 ];
 
 // ============================================
@@ -200,19 +285,33 @@ const SECRET_PATTERNS: RegExp[] = [
   /xai-[a-zA-Z0-9]{32,}/g,          // OpenAI style
   /[a-f0-9]{64}/g,                   // Generic hex keys
 
+  // AWS Credentials (CRITICAL)
+  /AKIA[0-9A-Z]{16}/g,              // AWS Access Key ID
+  /[A-Za-z0-9/+=]{40}/g,            // AWS Secret Access Key (base64-ish)
+  /aws_access_key_id[=:]\s*["']?[^\s"']+/gi,
+  /aws_secret_access_key[=:]\s*["']?[^\s"']+/gi,
+  /AWS_ACCESS_KEY_ID[=:]\s*["']?[^\s"']+/gi,
+  /AWS_SECRET_ACCESS_KEY[=:]\s*["']?[^\s"']+/gi,
+  /AWS_SESSION_TOKEN[=:]\s*["']?[^\s"']+/gi,
+
   // Private keys
   /-----BEGIN.*PRIVATE KEY-----[\s\S]*?-----END.*PRIVATE KEY-----/g,
+  /-----BEGIN RSA PRIVATE KEY-----[\s\S]*?-----END RSA PRIVATE KEY-----/g,
+  /-----BEGIN EC PRIVATE KEY-----[\s\S]*?-----END EC PRIVATE KEY-----/g,
   /[1-9A-HJ-NP-Za-km-z]{87,88}/g,   // Base58 private keys (Solana)
 
   // Database URLs
   /postgres(ql)?:\/\/[^\s]+/gi,
   /mysql:\/\/[^\s]+/gi,
   /mongodb(\+srv)?:\/\/[^\s]+/gi,
+  /redis:\/\/[^\s]+/gi,
 
   // Tokens
   /eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/g,  // JWTs
   /ghp_[a-zA-Z0-9]{36}/g,           // GitHub tokens
   /gho_[a-zA-Z0-9]{36}/g,           // GitHub OAuth
+  /xoxb-[0-9]{10,}-[0-9]{10,}-[a-zA-Z0-9]{24}/g,  // Slack Bot Token
+  /xoxp-[0-9]{10,}-[0-9]{10,}-[a-zA-Z0-9]{24}/g,  // Slack User Token
 
   // Environment-specific
   /SUPABASE_SERVICE_ROLE_KEY[=:]\s*["']?[^\s"']+/gi,
@@ -221,6 +320,10 @@ const SECRET_PATTERNS: RegExp[] = [
   /KALSHI_API_SECRET[=:]\s*["']?[^\s"']+/gi,
   /SOLANA_PRIVATE_KEY[=:]\s*["']?[^\s"']+/gi,
   /HELIUS_API_KEY[=:]\s*["']?[^\s"']+/gi,
+  /OPENAI_API_KEY[=:]\s*["']?[^\s"']+/gi,
+  /STRIPE_SECRET_KEY[=:]\s*["']?[^\s"']+/gi,
+  /TWILIO_AUTH_TOKEN[=:]\s*["']?[^\s"']+/gi,
+  /DATABASE_URL[=:]\s*["']?[^\s"']+/gi,
 ];
 
 // ============================================
