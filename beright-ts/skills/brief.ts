@@ -30,19 +30,87 @@ interface MorningBriefData {
 }
 
 /**
+ * Diversify markets to show variety, not just highest volume
+ * Prioritizes: 1) Big movers 2) Different categories 3) Volume
+ */
+function diversifyMarkets(
+  markets: Market[],
+  movers: MarketMover[],
+  limit: number
+): Market[] {
+  const result: Market[] = [];
+  const usedTitles = new Set<string>();
+
+  // Category keywords to detect topic
+  const categories = {
+    politics: /trump|biden|election|president|congress|senate|governor|vote/i,
+    crypto: /bitcoin|btc|ethereum|eth|crypto|solana|defi/i,
+    economics: /fed|rate|inflation|gdp|recession|jobs|unemployment/i,
+    tech: /ai|openai|google|apple|tesla|microsoft|meta/i,
+    sports: /nba|nfl|mlb|ufc|fight|game|match|playoff/i,
+    world: /ukraine|russia|china|war|nato|iran|israel/i,
+  };
+
+  const getCategory = (title: string): string => {
+    for (const [cat, regex] of Object.entries(categories)) {
+      if (regex.test(title)) return cat;
+    }
+    return 'other';
+  };
+
+  // 1. First, add top movers (markets with biggest price changes)
+  const moverTitles = new Set(movers.filter(m => Math.abs(m.change24h) > 2).map(m => m.title));
+  for (const market of markets) {
+    if (result.length >= 3) break;
+    if (moverTitles.has(market.title) && !usedTitles.has(market.title)) {
+      result.push(market);
+      usedTitles.add(market.title);
+    }
+  }
+
+  // 2. Then, add one from each category (diversity)
+  const usedCategories = new Set<string>();
+  for (const market of markets) {
+    if (result.length >= limit) break;
+    const cat = getCategory(market.title);
+    if (!usedCategories.has(cat) && !usedTitles.has(market.title)) {
+      result.push(market);
+      usedTitles.add(market.title);
+      usedCategories.add(cat);
+    }
+  }
+
+  // 3. Fill remaining with highest volume
+  for (const market of markets) {
+    if (result.length >= limit) break;
+    if (!usedTitles.has(market.title)) {
+      result.push(market);
+      usedTitles.add(market.title);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Generate the complete morning brief
  * All data is real — no simulated/mock data
+ *
+ * Shows DIVERSE markets, not just highest volume
  */
 export async function generateMorningBrief(userId?: string): Promise<MorningBriefData> {
   console.log('Generating morning brief...');
 
   // Fetch all data in parallel for speed — all real sources
-  const [hotMarkets, arbOpportunities, marketMovers, whaleResult] = await Promise.all([
-    getHotMarkets(10),
+  const [allHotMarkets, arbOpportunities, marketMovers, whaleResult] = await Promise.all([
+    getHotMarkets(30), // Get more to diversify
     scanArbitrage().catch(() => []),
-    getMarketMovers(5),
+    getMarketMovers(10),
     whaleWatch().catch(() => ({ data: [] })),
   ]);
+
+  // DIVERSIFY: Pick markets from different topics, not just top by volume
+  const hotMarkets = diversifyMarkets(allHotMarkets, marketMovers, 10);
 
   // Extract whale alerts from skill response
   const whaleAlerts: WhaleAlert[] = Array.isArray(whaleResult.data) ? whaleResult.data : [];
@@ -93,12 +161,24 @@ ${date}
 
 `;
 
-  // Hot Markets Section
-  brief += `🔥 *HOT MARKETS*\n`;
-  for (const market of data.hotMarkets.slice(0, 3)) {
+  // TOP MOVERS Section (most interesting - price changes)
+  const bigMovers = data.marketMovers.filter(m => Math.abs(m.change24h) > 1).slice(0, 3);
+  if (bigMovers.length > 0) {
+    brief += `📈 *TOP MOVERS (24H)*\n`;
+    for (const mover of bigMovers) {
+      const arrow = mover.change24h >= 0 ? '🟢' : '🔴';
+      const sign = mover.change24h >= 0 ? '+' : '';
+      brief += `${arrow} ${mover.title.slice(0, 35)}...\n`;
+      brief += `   ${formatPct(mover.currentPrice)} (${sign}${mover.change24h.toFixed(1)}%)\n`;
+    }
+  }
+
+  // Diversified Markets Section
+  brief += `\n🔥 *MARKETS TO WATCH*\n`;
+  for (const market of data.hotMarkets.slice(0, 4)) {
     const mover = data.marketMovers.find(m => m.title === market.title);
-    const changeStr = mover
-      ? ` (${mover.change24h >= 0 ? '+' : ''}${mover.change24h.toFixed(0)}% 24h)`
+    const changeStr = mover && Math.abs(mover.change24h) > 0.5
+      ? ` (${mover.change24h >= 0 ? '+' : ''}${mover.change24h.toFixed(0)}%)`
       : '';
     brief += `• ${market.title.slice(0, 40)}...\n`;
     brief += `  📊 ${formatPct(market.yesPrice)}${changeStr}\n`;
