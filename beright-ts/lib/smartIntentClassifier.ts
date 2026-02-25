@@ -168,7 +168,7 @@ export function fastPatternMatch(message: string): SmartIntentResult | null {
   // TRENDING patterns - user wants best/hot/top markets
   const trendingPatterns = [
     /\b(best|top|hot|trending|popular|good)\s*(market|bet|pick|trade)/i,
-    /\b(find|show|give|get)\s*(me\s*)?(the\s*)?(best|top|hot|good)/i,
+    /\b(find|show|give|get|send)\s*(me\s*)?(the\s*)?(best|top|hot|good)/i,
     /\bwhat('s| is| are)?\s*(hot|trending|best|top)/i,
     /\b(closing|expiring|ending)\s*(soon|today|tomorrow|in\s+\d+)/i,
     /\bmarkets?\s*(closing|expiring|ending)/i,
@@ -182,6 +182,28 @@ export function fastPatternMatch(message: string): SmartIntentResult | null {
         intent: 'TRENDING',
         confidence: 0.9,
         reasoning: 'Fast pattern match: trending/best markets request',
+      };
+    }
+  }
+
+  // BROWSE_MARKETS patterns - user wants to see/browse markets (general)
+  const browsePatterns = [
+    /\b(show|send|give|get)\s*(me\s*)?(the\s*)?(market|markets)/i,
+    /\b(market|markets)\s*(link|url|page)/i,
+    /\b(link|url)\s*(to|for|of)\s*(market|markets)/i,
+    /^(market|markets)s?$/i,
+    /\bsend\s*markets?/i,
+    /\bgive\s*(me\s*)?markets?/i,
+    /\bshow\s*(me\s*)?markets?/i,
+    /\bwhere\s*(can\s+i|to)\s*(see|find|browse)\s*markets?/i,
+  ];
+
+  for (const pattern of browsePatterns) {
+    if (pattern.test(lower)) {
+      return {
+        intent: 'BROWSE_MARKETS',
+        confidence: 0.9,
+        reasoning: 'Fast pattern match: browse markets request',
       };
     }
   }
@@ -201,6 +223,15 @@ export function fastPatternMatch(message: string): SmartIntentResult | null {
       intent: 'HELP',
       confidence: 0.9,
       reasoning: 'Fast pattern match: help request',
+    };
+  }
+
+  // Simple affirmations like "ok", "yes", "no" - treat as UNKNOWN to avoid confusion
+  if (/^(ok|okay|yes|no|sure|thanks|ty|thx|cool|nice|great)[\s!.]*$/i.test(lower)) {
+    return {
+      intent: 'GREETING',
+      confidence: 0.7,
+      reasoning: 'Fast pattern match: simple acknowledgment',
     };
   }
 

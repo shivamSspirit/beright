@@ -3543,7 +3543,21 @@ Try /hot for trending markets or /arb for price gaps.`,
           }
 
           case 'BROWSE_MARKETS': {
-            // User wants links to prediction market platforms
+            // User wants to see markets - show hot markets
+            const browseHotMarkets = await getHotMarkets();
+            if (browseHotMarkets.length > 0) {
+              return {
+                text: formatMarkets(browseHotMarkets, '🔥 Trending Markets') + `
+
+**Platform Links:**
+• [Polymarket](https://polymarket.com)
+• [Kalshi](https://kalshi.com)
+• [Manifold](https://manifold.markets)`,
+                mood: 'BULLISH',
+                data: browseHotMarkets
+              };
+            }
+            // Fallback to platform links if no markets
             return {
               text: `**Prediction Market Platforms:**
 
