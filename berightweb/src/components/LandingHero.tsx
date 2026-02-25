@@ -1,24 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BERIGHT LANDING PAGE v2.0
+// BERIGHT LANDING PAGE v2.1 - CLEANED UP
 // ═══════════════════════════════════════════════════════════════════════════════
-// Design: Premium Fintech Terminal - Bloomberg meets modern crypto trading
-// Principles: Nikita Bier viral strategy (FOMO, money-focused, toilet-testable)
+// Removed: Fake live ticker, unverifiable stats, misleading marketing hooks
+// Added: Prominent risk disclaimer near CTA
 // ═══════════════════════════════════════════════════════════════════════════════
-
-// Live wins with readable usernames + avatars
-const LIVE_WINS = [
-  { username: 'CryptoKing', avatar: '👑', amount: 847, market: 'BTC > $100K', time: '12s' },
-  { username: 'TraderJoe', avatar: '📈', amount: 2150, market: 'Trump 2028', time: '34s' },
-  { username: 'DeFiQueen', avatar: '💎', amount: 523, market: 'ETH Merge', time: '1m' },
-  { username: 'AlphaHunter', avatar: '🎯', amount: 1890, market: 'Fed Rate Cut', time: '2m' },
-  { username: 'WhaleMike', avatar: '🐋', amount: 3670, market: 'SOL > $500', time: '3m' },
-  { username: 'LuckyAce', avatar: '🃏', amount: 3200, market: 'AI Bubble', time: '4m' },
-];
 
 // 6 cards for balanced grid (3x2 on desktop, 2x3 on tablet, 1x6 on mobile)
 const HOT_OPPS = [
@@ -66,80 +56,7 @@ function Navbar({ onConnect }: { onConnect: () => void }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// LIVE WIN TICKER - BRANDED + READABLE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function LiveWinTicker() {
-  const [currentWin, setCurrentWin] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setCurrentWin((prev) => (prev + 1) % LIVE_WINS.length);
-        setIsAnimating(false);
-      }, 300);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, []);
-
-  const win = LIVE_WINS[currentWin];
-
-  return (
-    <div className={`live-ticker ${isAnimating ? 'slide-out' : ''}`} role="status" aria-live="polite">
-      <div className="ticker-brand">
-        <span className="brand-icon">◉</span>
-        <span className="brand-text">BeRight Live</span>
-      </div>
-      <div className="ticker-divider" />
-      <div className="ticker-content">
-        <span className="ticker-avatar" aria-hidden="true">{win.avatar}</span>
-        <span className="ticker-user">{win.username}</span>
-        <span className="ticker-action">just won</span>
-        <span className="ticker-amount">${win.amount.toLocaleString()}</span>
-        <span className="ticker-market">on {win.market}</span>
-      </div>
-      <span className="ticker-time">{win.time} ago</span>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// COUNTING NUMBER ANIMATION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function CountingNumber({
-  target,
-  prefix = '',
-  suffix = '',
-  duration = 2000
-}: {
-  target: number;
-  prefix?: string;
-  suffix?: string;
-  duration?: number;
-}) {
-  const [value, setValue] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const start = Date.now();
-    const animate = () => {
-      const elapsed = Date.now() - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.floor(target * eased));
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [target, duration]);
-
-  return <span ref={ref}>{prefix}{value.toLocaleString()}{suffix}</span>;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MARKET OPPORTUNITY CARD - ENHANCED
+// MARKET OPPORTUNITY CARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) {
@@ -222,8 +139,8 @@ function HowItWorks() {
     {
       icon: '💸',
       title: 'Withdraw',
-      desc: 'Cash out anytime, instantly',
-      detail: 'No lockups. Your money, your control'
+      desc: 'Cash out your winnings',
+      detail: 'Transfer funds back to your wallet'
     },
   ];
 
@@ -233,7 +150,7 @@ function HowItWorks() {
         <span className="title-icon">⚡</span>
         How It Works
       </h2>
-      <p className="section-subtitle">Three steps to start profiting</p>
+      <p className="section-subtitle">Three steps to start trading</p>
 
       <div className="steps-grid">
         {steps.map((step, i) => (
@@ -262,13 +179,13 @@ function TrustSignals() {
   ];
 
   const badges = [
-    { icon: '🔒', label: 'Audited Smart Contracts' },
-    { icon: '⚡', label: 'Instant Settlement' },
+    { icon: '🔒', label: 'Smart Contracts' },
+    { icon: '⚡', label: 'On-chain Settlement' },
     { icon: '🌐', label: 'Non-Custodial' },
   ];
 
   return (
-    <section className="trust-section" aria-label="Trust signals and supported chains">
+    <section className="trust-section" aria-label="Supported chains and features">
       <div className="trust-chains">
         <span className="trust-label">Powered by</span>
         <div className="chains-row">
@@ -308,7 +225,7 @@ function Footer() {
             <span className="logo-icon">◉</span>
             BeRight
           </span>
-          <p className="footer-tagline">Predict markets. Get paid.</p>
+          <p className="footer-tagline">Prediction Markets Protocol</p>
         </div>
 
         <div className="footer-links">
@@ -351,10 +268,6 @@ function Footer() {
       </div>
 
       <div className="footer-bottom">
-        <p className="footer-disclaimer">
-          Trading involves risk. Past performance is not indicative of future results.
-          Only trade with money you can afford to lose.
-        </p>
         <p className="footer-copyright">© 2025 BeRight Protocol. All rights reserved.</p>
       </div>
     </footer>
@@ -367,14 +280,6 @@ function Footer() {
 
 export default function LandingHero() {
   const { login, ready } = usePrivy();
-  const [todayProfits, setTodayProfits] = useState(847523);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTodayProfits(prev => prev + Math.floor(Math.random() * 500));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleConnect = useCallback(() => {
     if (navigator.vibrate) navigator.vibrate(10);
@@ -402,9 +307,6 @@ export default function LandingHero() {
       {/* Navigation */}
       <Navbar onConnect={handleConnect} />
 
-      {/* Live Ticker */}
-      <LiveWinTicker />
-
       {/* Hero Section */}
       <main className="hero">
         {/* Background Effects */}
@@ -421,87 +323,39 @@ export default function LandingHero() {
           {/* Main Headline */}
           <h1 className="hero-headline">
             <span className="headline-main">
-              Start <span className="gradient-text">Profiting</span>
+              Prediction <span className="gradient-text">Markets</span>
             </span>
           </h1>
 
           {/* Subheadline */}
           <p className="hero-sub">
-            Predict markets. Get paid when you're right.
+            Trade on the outcome of real-world events.
           </p>
 
-          {/* Stats Chip */}
-          <div className="winner-chip">
-            <span className="chip-icon">💰</span>
-            <span className="chip-text">Average winner: $340/trade</span>
-          </div>
-
-          {/* Live Stats Bar */}
-          <div className="stats-bar">
-            <div className="stat">
-              <span className="stat-icon">💵</span>
-              <div className="stat-content">
-                <span className="stat-label">Paid out today</span>
-                <span className="stat-value green">
-                  $<CountingNumber target={todayProfits} />
-                </span>
-              </div>
-            </div>
-
-            <div className="stat-divider" />
-
-            <div className="stat">
-              <span className="stat-icon">📊</span>
-              <div className="stat-content">
-                <span className="stat-label">Active markets</span>
-                <span className="stat-value">
-                  <CountingNumber target={847} />
-                </span>
-              </div>
-            </div>
-
-            <div className="stat-divider" />
-
-            <div className="stat">
-              <span className="stat-icon">👥</span>
-              <div className="stat-content">
-                <span className="stat-label">Online now</span>
-                <span className="stat-value">
-                  <span className="online-dot" />
-                  <CountingNumber target={1247} />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA Button - Fixed Width */}
+          {/* CTA Button */}
           <button className="cta-button" onClick={handleConnect}>
-            <span className="cta-text">Start Making Money</span>
+            <span className="cta-text">Connect Wallet</span>
             <span className="cta-arrow">→</span>
           </button>
 
-          {/* Social Proof - Near CTA */}
-          <div className="social-proof">
-            <span className="proof-icon">🔥</span>
-            <span className="proof-text">
-              <CountingNumber target={2847} /> traders made money today
-            </span>
+          {/* Risk Disclaimer - Prominently placed near CTA */}
+          <div className="risk-disclaimer" role="alert">
+            <span className="disclaimer-icon">⚠️</span>
+            <p className="disclaimer-text">
+              Trading involves risk. Past performance is not indicative of future results.
+              Only trade with money you can afford to lose.
+            </p>
           </div>
-
-          {/* Micro-copy */}
-          <p className="cta-note">
-            Connect wallet in 10 seconds · Min bet $1 · Withdraw anytime
-          </p>
         </div>
 
         {/* Hot Markets Section */}
         <section id="markets" className="markets-section" aria-labelledby="markets-title">
           <div className="markets-header">
             <h2 id="markets-title" className="section-title">
-              <span className="title-icon">🔥</span>
-              Hot Right Now
+              <span className="title-icon">📊</span>
+              Active Markets
             </h2>
-            <span className="section-subtitle">Markets with edge</span>
+            <span className="section-subtitle">Browse prediction markets</span>
           </div>
 
           <div className="markets-grid">
@@ -511,7 +365,7 @@ export default function LandingHero() {
           </div>
 
           <button className="see-all-button" onClick={handleConnect}>
-            <span>See all 847 markets</span>
+            <span>Browse all markets</span>
             <span className="button-arrow">→</span>
           </button>
         </section>
@@ -529,20 +383,16 @@ export default function LandingHero() {
       {/* Mobile Sticky CTA */}
       <div className="sticky-cta" aria-hidden="true">
         <div className="sticky-inner">
-          <div className="sticky-info">
-            <span className="live-dot" />
-            <span className="sticky-amount">$<CountingNumber target={todayProfits} /></span>
-            <span className="sticky-label">paid today</span>
-          </div>
+          <span className="sticky-brand">◉ BeRight</span>
           <button className="sticky-button" onClick={handleConnect}>
-            Start Now
+            Connect Wallet
           </button>
         </div>
       </div>
 
       <style jsx global>{`
         /* ═══════════════════════════════════════════════════════════════════════
-           BERIGHT LANDING v2.0 - PREMIUM FINTECH TERMINAL
+           BERIGHT LANDING v2.1 - CLEANED UP
            ═══════════════════════════════════════════════════════════════════════ */
 
         @import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
@@ -588,7 +438,7 @@ export default function LandingHero() {
 
         .navbar {
           position: fixed;
-          top: 40px;
+          top: 0;
           left: 0;
           right: 0;
           z-index: 50;
@@ -597,7 +447,6 @@ export default function LandingHero() {
         }
 
         .navbar.scrolled {
-          top: 0;
           background: rgba(10, 10, 11, 0.9);
           backdrop-filter: blur(20px);
           border-bottom: 1px solid var(--color-border);
@@ -663,104 +512,11 @@ export default function LandingHero() {
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
-           LIVE TICKER - BRANDED
-           ═══════════════════════════════════════════════════════════════════════ */
-
-        .live-ticker {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 10px 20px;
-          background: linear-gradient(90deg, var(--color-green-dim) 0%, rgba(0, 200, 100, 0.08) 100%);
-          border-bottom: 1px solid rgba(0, 255, 136, 0.2);
-          font-size: 13px;
-          transition: transform 0.3s ease;
-        }
-
-        .live-ticker.slide-out {
-          transform: translateY(-100%);
-        }
-
-        .ticker-brand {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 4px 12px;
-          background: rgba(0, 255, 136, 0.15);
-          border-radius: 6px;
-          flex-shrink: 0;
-        }
-
-        .brand-icon {
-          color: var(--color-green);
-          font-size: 12px;
-        }
-
-        .brand-text {
-          font-weight: 700;
-          font-size: 11px;
-          letter-spacing: 0.5px;
-          color: var(--color-green);
-          text-transform: uppercase;
-        }
-
-        .ticker-divider {
-          width: 1px;
-          height: 20px;
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        .ticker-content {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          flex: 1;
-          min-width: 0;
-        }
-
-        .ticker-avatar {
-          font-size: 16px;
-        }
-
-        .ticker-user {
-          font-weight: 600;
-          color: var(--color-text);
-        }
-
-        .ticker-action {
-          color: var(--color-text-tertiary);
-        }
-
-        .ticker-amount {
-          font-weight: 700;
-          color: var(--color-green);
-          font-family: var(--font-mono);
-        }
-
-        .ticker-market {
-          color: var(--color-text-secondary);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .ticker-time {
-          color: var(--color-text-tertiary);
-          font-size: 12px;
-          flex-shrink: 0;
-        }
-
-        /* ═══════════════════════════════════════════════════════════════════════
            HERO SECTION
            ═══════════════════════════════════════════════════════════════════════ */
 
         .hero {
-          padding: 140px 20px 80px;
+          padding: 100px 20px 80px;
           max-width: 1200px;
           margin: 0 auto;
           position: relative;
@@ -854,100 +610,8 @@ export default function LandingHero() {
           font-size: 20px;
           color: var(--color-text-secondary);
           line-height: 1.5;
-          margin: 0 0 20px;
+          margin: 0 0 32px;
           animation: fadeUp 0.6s ease-out 0.1s both;
-        }
-
-        /* Winner Chip */
-        .winner-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          background: linear-gradient(135deg, rgba(255, 184, 0, 0.15) 0%, rgba(255, 184, 0, 0.05) 100%);
-          border: 1px solid rgba(255, 184, 0, 0.3);
-          border-radius: 100px;
-          margin-bottom: 32px;
-          animation: fadeUp 0.6s ease-out 0.15s both;
-        }
-
-        .chip-icon {
-          font-size: 16px;
-        }
-
-        .chip-text {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--color-amber);
-        }
-
-        /* Stats Bar */
-        .stats-bar {
-          display: flex;
-          align-items: stretch;
-          justify-content: center;
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: 16px;
-          margin-bottom: 32px;
-          animation: fadeUp 0.6s ease-out 0.2s both;
-          overflow: hidden;
-        }
-
-        .stat {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 20px 28px;
-        }
-
-        .stat-icon {
-          font-size: 24px;
-        }
-
-        .stat-content {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-        }
-
-        .stat-label {
-          font-size: 11px;
-          color: var(--color-text-tertiary);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-          font-size: 22px;
-          font-weight: 700;
-          font-family: var(--font-mono);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .stat-value.green {
-          color: var(--color-green);
-        }
-
-        .stat-divider {
-          width: 1px;
-          background: var(--color-border);
-        }
-
-        .online-dot {
-          width: 8px;
-          height: 8px;
-          background: var(--color-green);
-          border-radius: 50%;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.2); }
         }
 
         /* CTA Button */
@@ -956,9 +620,9 @@ export default function LandingHero() {
           align-items: center;
           justify-content: center;
           gap: 12px;
-          width: 340px;
+          width: 280px;
           max-width: 100%;
-          padding: 22px 40px;
+          padding: 20px 40px;
           background: linear-gradient(135deg, var(--color-green) 0%, #00CC6A 100%);
           border: none;
           border-radius: 14px;
@@ -968,7 +632,7 @@ export default function LandingHero() {
           cursor: pointer;
           font-family: inherit;
           transition: all 0.3s ease;
-          animation: fadeUp 0.6s ease-out 0.25s both;
+          animation: fadeUp 0.6s ease-out 0.2s both;
           position: relative;
           overflow: hidden;
         }
@@ -1007,35 +671,30 @@ export default function LandingHero() {
           transform: translateX(4px);
         }
 
-        /* Social Proof */
-        .social-proof {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          margin-top: 20px;
-          padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--color-border);
-          border-radius: 100px;
+        /* Risk Disclaimer - Prominent placement near CTA */
+        .risk-disclaimer {
+          margin-top: 24px;
+          padding: 16px 20px;
+          background: rgba(255, 184, 0, 0.1);
+          border: 1px solid rgba(255, 184, 0, 0.3);
+          border-radius: 12px;
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          text-align: left;
           animation: fadeUp 0.6s ease-out 0.3s both;
         }
 
-        .proof-icon {
-          font-size: 14px;
+        .disclaimer-icon {
+          font-size: 20px;
+          flex-shrink: 0;
         }
 
-        .proof-text {
+        .disclaimer-text {
           font-size: 13px;
+          line-height: 1.6;
           color: var(--color-text-secondary);
-          font-weight: 500;
-        }
-
-        /* Micro-copy */
-        .cta-note {
-          font-size: 13px;
-          color: var(--color-text-tertiary);
-          margin: 16px 0 0;
-          animation: fadeUp 0.6s ease-out 0.35s both;
+          margin: 0;
         }
 
         @keyframes fadeUp {
@@ -1497,13 +1156,6 @@ export default function LandingHero() {
           text-align: center;
         }
 
-        .footer-disclaimer {
-          font-size: 12px;
-          color: var(--color-text-tertiary);
-          margin: 0 0 12px;
-          line-height: 1.6;
-        }
-
         .footer-copyright {
           font-size: 12px;
           color: var(--color-text-tertiary);
@@ -1536,30 +1188,10 @@ export default function LandingHero() {
           margin: 0 auto;
         }
 
-        .sticky-info {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .live-dot {
-          width: 8px;
-          height: 8px;
-          background: var(--color-green);
-          border-radius: 50%;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .sticky-amount {
-          font-family: var(--font-mono);
+        .sticky-brand {
           font-weight: 700;
           font-size: 16px;
-          color: var(--color-green);
-        }
-
-        .sticky-label {
-          font-size: 13px;
-          color: var(--color-text-tertiary);
+          color: var(--color-text);
         }
 
         .sticky-button {
@@ -1609,6 +1241,11 @@ export default function LandingHero() {
 
         .loading-logo .logo-icon.pulse {
           animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.2); }
         }
 
         .loading-bar {
@@ -1668,16 +1305,12 @@ export default function LandingHero() {
         }
 
         @media (max-width: 768px) {
-          .navbar {
-            top: 36px;
-          }
-
           .nav-links {
             display: none;
           }
 
           .hero {
-            padding: 120px 16px 60px;
+            padding: 80px 16px 60px;
           }
 
           .headline-main {
@@ -1689,24 +1322,15 @@ export default function LandingHero() {
             font-size: 17px;
           }
 
-          .stats-bar {
-            flex-direction: column;
-            gap: 0;
-          }
-
-          .stat {
-            padding: 16px 20px;
-            justify-content: center;
-          }
-
-          .stat-divider {
-            width: 80%;
-            height: 1px;
-          }
-
           .cta-button {
             width: 100%;
-            padding: 20px 32px;
+            padding: 18px 32px;
+          }
+
+          .risk-disclaimer {
+            flex-direction: column;
+            text-align: center;
+            gap: 8px;
           }
 
           .markets-grid {
@@ -1715,15 +1339,6 @@ export default function LandingHero() {
 
           .steps-grid {
             grid-template-columns: 1fr;
-          }
-
-          .live-ticker {
-            font-size: 12px;
-            padding: 8px 12px;
-          }
-
-          .ticker-market {
-            display: none;
           }
 
           .sticky-cta {
@@ -1744,7 +1359,7 @@ export default function LandingHero() {
 
         @media (max-width: 480px) {
           .hero {
-            padding: 100px 12px 50px;
+            padding: 70px 12px 50px;
           }
 
           .headline-main {
@@ -1754,14 +1369,6 @@ export default function LandingHero() {
 
           .hero-sub {
             font-size: 15px;
-          }
-
-          .winner-chip {
-            padding: 6px 12px;
-          }
-
-          .chip-text {
-            font-size: 12px;
           }
 
           .section-title {
@@ -1780,10 +1387,6 @@ export default function LandingHero() {
             gap: 10px;
           }
 
-          .sticky-amount {
-            font-size: 14px;
-          }
-
           .sticky-button {
             padding: 10px 20px;
             font-size: 14px;
@@ -1799,8 +1402,6 @@ export default function LandingHero() {
 
         /* Reduced motion */
         @media (prefers-reduced-motion: reduce) {
-          .live-dot,
-          .online-dot,
           .loading-fill,
           .cta-button::before {
             animation: none;
@@ -1808,21 +1409,13 @@ export default function LandingHero() {
 
           .hero-headline,
           .hero-sub,
-          .winner-chip,
-          .stats-bar,
           .cta-button,
-          .social-proof,
-          .cta-note,
+          .risk-disclaimer,
           .market-card,
           .step-card {
             animation: none;
             opacity: 1;
             transform: none;
-          }
-
-          .live-ticker.slide-out {
-            transform: none;
-            opacity: 0;
           }
         }
       `}</style>
