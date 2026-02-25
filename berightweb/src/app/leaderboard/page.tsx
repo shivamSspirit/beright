@@ -38,6 +38,22 @@ interface LeaderboardUser {
   change: number;
 }
 
+// Demo/placeholder data for empty leaderboard - shows what it looks like with active users
+const DEMO_LEADERBOARD: LeaderboardUser[] = [
+  { rank: 1, displayName: 'CryptoOracle', avatar: '👑', avatarUrl: null, walletAddress: null, profit: 12450, accuracy: 87.3, streak: 23, alpha: 34, predictions: 156, xp: 8730, league: 'Diamond', change: 2 },
+  { rank: 2, displayName: 'PolyWhale', avatar: '🐋', avatarUrl: null, walletAddress: null, profit: 9820, accuracy: 82.1, streak: 18, alpha: 28, predictions: 203, xp: 6210, league: 'Diamond', change: -1 },
+  { rank: 3, displayName: 'SharpPredictor', avatar: '🎯', avatarUrl: null, walletAddress: null, profit: 8340, accuracy: 79.8, streak: 15, alpha: 22, predictions: 178, xp: 5420, league: 'Platinum', change: 0 },
+  { rank: 4, displayName: 'MarketMaven', avatar: '📈', avatarUrl: null, walletAddress: null, profit: 6790, accuracy: 76.4, streak: 12, alpha: 19, predictions: 145, xp: 4350, league: 'Platinum', change: 3 },
+  { rank: 5, displayName: 'FutureSeer', avatar: '🔮', avatarUrl: null, walletAddress: null, profit: 5230, accuracy: 74.2, streak: 9, alpha: 15, predictions: 132, xp: 3890, league: 'Gold', change: 1 },
+  { rank: 6, displayName: 'AlphaBrain', avatar: '🧠', avatarUrl: null, walletAddress: null, profit: 4100, accuracy: 71.8, streak: 7, alpha: 12, predictions: 98, xp: 3210, league: 'Gold', change: -2 },
+  { rank: 7, displayName: 'RocketTrader', avatar: '🚀', avatarUrl: null, walletAddress: null, profit: 3450, accuracy: 69.5, streak: 6, alpha: 10, predictions: 87, xp: 2780, league: 'Gold', change: 0 },
+  { rank: 8, displayName: 'DiamondHands', avatar: '💎', avatarUrl: null, walletAddress: null, profit: 2890, accuracy: 67.2, streak: 5, alpha: 8, predictions: 76, xp: 2340, league: 'Silver', change: 2 },
+  { rank: 9, displayName: 'BoltCaller', avatar: '⚡', avatarUrl: null, walletAddress: null, profit: 2340, accuracy: 65.8, streak: 4, alpha: 6, predictions: 65, xp: 1920, league: 'Silver', change: -1 },
+  { rank: 10, displayName: 'WolfTracker', avatar: '🐺', avatarUrl: null, walletAddress: null, profit: 1890, accuracy: 63.4, streak: 3, alpha: 5, predictions: 54, xp: 1540, league: 'Silver', change: 1 },
+  { rank: 11, displayName: 'FoxHunter', avatar: '🦊', avatarUrl: null, walletAddress: null, profit: 1520, accuracy: 61.2, streak: 2, alpha: 4, predictions: 43, xp: 1210, league: 'Bronze', change: 0 },
+  { rank: 12, displayName: 'EagleEye', avatar: '🦅', avatarUrl: null, walletAddress: null, profit: 1180, accuracy: 58.9, streak: 1, alpha: 3, predictions: 32, xp: 890, league: 'Bronze', change: 3 },
+];
+
 export default function LeaderboardPage() {
   const { isConnected } = useBackendStatus();
   const { data, loading, usingMock } = useLeaderboard({ limit: 50 });
@@ -47,7 +63,7 @@ export default function LeaderboardPage() {
   const podiumRef = useRef<HTMLDivElement>(null);
 
   // Transform API data to LeaderboardUser format
-  const leaderboardData: LeaderboardUser[] = (data?.leaderboard || []).map((entry, index) => {
+  const apiData: LeaderboardUser[] = (data?.leaderboard || []).map((entry, index) => {
     // Get display name: username > truncated wallet > "User X"
     const walletAddr = entry.walletAddress || entry.wallet_address;
     const username = entry.username || entry.displayName;
@@ -73,6 +89,10 @@ export default function LeaderboardPage() {
       change: 0, // Not available from API yet
     };
   });
+
+  // Use demo data if no real data available (shows users what leaderboard looks like)
+  const showingDemo = !loading && apiData.length === 0;
+  const leaderboardData = showingDemo ? DEMO_LEADERBOARD : apiData;
 
   // Get sorted data based on active dimension
   const getSortedData = () => {
@@ -158,8 +178,8 @@ export default function LeaderboardPage() {
           </Link>
           <div className="lb-title">
             <h1>Leaderboard</h1>
-            <span className="lb-badge">
-              {isConnected ? 'Live' : 'Demo'}
+            <span className={`lb-badge ${showingDemo ? 'demo' : ''}`}>
+              {showingDemo ? 'Demo' : isConnected ? 'Live' : 'Offline'}
             </span>
           </div>
           <button className="share-btn" aria-label="Share">
@@ -233,12 +253,16 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* Empty State */}
-        {!loading && leaderboardData.length === 0 && (
-          <div className="lb-empty">
-            <span className="empty-icon">📊</span>
-            <span className="empty-text">No leaderboard data available yet</span>
-            <span className="empty-sub">Make predictions to appear on the leaderboard</span>
+        {/* Demo Data Banner */}
+        {showingDemo && (
+          <div className="demo-banner">
+            <div className="demo-banner-content">
+              <span className="demo-banner-icon">✨</span>
+              <div className="demo-banner-text">
+                <span className="demo-banner-title">Example Leaderboard</span>
+                <span className="demo-banner-desc">Make predictions to join the rankings and compete for rewards!</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -506,6 +530,11 @@ export default function LeaderboardPage() {
           letter-spacing: 0.5px;
         }
 
+        .lb-badge.demo {
+          background: rgba(139, 92, 246, 0.2);
+          color: #A78BFA;
+        }
+
         .share-btn {
           width: 36px;
           height: 36px;
@@ -710,30 +739,53 @@ export default function LeaderboardPage() {
           to { transform: rotate(360deg); }
         }
 
-        .lb-empty {
+        /* Demo Banner */
+        .demo-banner {
+          margin-bottom: 16px;
+          padding: 14px 16px;
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.1));
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          border-radius: 14px;
+          animation: demoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes demoPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.2); }
+          50% { box-shadow: 0 0 20px 4px rgba(139, 92, 246, 0.15); }
+        }
+
+        .demo-banner-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .demo-banner-icon {
+          font-size: 24px;
+          animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(1.15) rotate(10deg); }
+        }
+
+        .demo-banner-text {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 60px 20px;
-          gap: 12px;
-          text-align: center;
+          gap: 2px;
         }
 
-        .empty-icon {
-          font-size: 48px;
-          opacity: 0.6;
+        .demo-banner-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #A78BFA;
         }
 
-        .empty-text {
-          font-size: 16px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.7);
-        }
-
-        .empty-sub {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.4);
+        .demo-banner-desc {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.6);
+          line-height: 1.4;
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
