@@ -547,6 +547,279 @@ export const db = {
       return data || [];
     },
   },
+
+  // ----------------------------------------
+  // TRADING SYSTEM
+  // ----------------------------------------
+  trading: {
+    async createTrade(trade: {
+      user_id: string;
+      mode: 'paper' | 'live';
+      platform: string;
+      market_id: string;
+      market_ticker: string;
+      market_title: string;
+      category?: string;
+      direction: 'YES' | 'NO';
+      order_type?: string;
+      entry_price: number;
+      quantity: number;
+      entry_value_usd?: number;
+      strategy?: string;
+      signal_id?: string;
+      signal_confidence?: number;
+      stop_loss_price?: number;
+      take_profit_price?: number;
+      max_loss_usd?: number;
+      expires_at?: string;
+    }): Promise<any> {
+      const { data, error } = await supabaseAdmin
+        .from('trades')
+        .insert({
+          ...trade,
+          category: trade.category || 'general',
+          order_type: trade.order_type || 'market',
+          entry_value_usd: trade.entry_value_usd || trade.entry_price * trade.quantity,
+          strategy: trade.strategy || 'manual',
+          status: 'open',
+          quantity_filled: trade.quantity,
+          unrealized_pnl: 0,
+          fees: 0,
+          filled_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async getTrades(userId: string, options?: {
+      mode?: 'paper' | 'live';
+      status?: string;
+      strategy?: string;
+      limit?: number;
+    }): Promise<any[]> {
+      let query = supabaseAdmin
+        .from('trades')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (options?.mode) query = query.eq('mode', options.mode);
+      if (options?.status) query = query.eq('status', options.status);
+      if (options?.strategy) query = query.eq('strategy', options.strategy);
+      if (options?.limit) query = query.limit(options.limit);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async getOpenTrades(userId: string, mode: 'paper' | 'live' = 'paper'): Promise<any[]> {
+      const { data, error } = await supabaseAdmin
+        .from('trades')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('mode', mode)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+
+    async closeTrade(tradeId: string, exitPrice: number, closeReason: string): Promise<any> {
+      // Get current trade
+      const { data: trade } = await supabaseAdmin
+        .from('trades')
+        .select('*')
+        .eq('id', tradeId)
+        .single();
+
+      if (!trade) throw new Error('Trade not found');
+
+      const t = trade as { entry_price: number; quantity: number; direction: string };
+      const pnl = t.direction === 'YES'
+        ? (exitPrice - t.entry_price) * t.quantity
+        : (t.entry_price - exitPrice) * t.quantity;
+
+      const pnlPercent = t.entry_price > 0 ? pnl / (t.entry_price * t.quantity) : 0;
+
+      const { data, error } = await supabaseAdmin
+        .from('trades')
+        .update({
+          exit_price: exitPrice,
+          exit_value_usd: exitPrice * t.quantity,
+          realized_pnl: pnl,
+          pnl_percent: pnlPercent,
+          status: 'closed',
+          close_reason: closeReason,
+          closed_at: new Date().toISOString(),
+        })
+        .eq('id', tradeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async updateTradePrice(tradeId: string, currentPrice: number): Promise<any> {
+      const { data: trade } = await supabaseAdmin
+        .from('trades')
+        .select('entry_price, quantity, direction')
+        .eq('id', tradeId)
+        .single();
+
+      if (!trade) throw new Error('Trade not found');
+
+      const t = trade as { entry_price: number; quantity: number; direction: string };
+      const unrealizedPnl = t.direction === 'YES'
+        ? (currentPrice - t.entry_price) * t.quantity
+        : (t.entry_price - currentPrice) * t.quantity;
+
+      const { data, error } = await supabaseAdmin
+        .from('trades')
+        .update({ unrealized_pnl: unrealizedPnl })
+        .eq('id', tradeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async getSettings(userId: string): Promise<any | null> {
+      const { data, error } = await supabaseAdmin
+        .from('trading_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+
+    async upsertSettings(settings: {
+      user_id: string;
+      mode?: 'paper' | 'live';
+      auto_execute?: boolean;
+      enabled_strategies?: string[];
+      strategy_configs?: Record<string, unknown>;
+      risk_config?: Record<string, unknown>;
+      initial_balance?: number;
+      notify_on_trade?: boolean;
+      notify_on_alert?: boolean;
+      telegram_chat_id?: number;
+    }): Promise<any> {
+      const { data, error } = await supabaseAdmin
+        .from('trading_settings')
+        .upsert({
+          ...settings,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async savePerformance(perf: {
+      user_id: string;
+      strategy: string;
+      mode: 'paper' | 'live';
+      period: string;
+      total_trades: number;
+      winning_trades: number;
+      losing_trades: number;
+      win_rate: number;
+      total_pnl: number;
+      avg_pnl: number;
+      avg_win: number;
+      avg_loss: number;
+      profit_factor: number;
+      sharpe_ratio?: number;
+      max_drawdown: number;
+      start_date: string;
+      end_date: string;
+    }): Promise<any> {
+      const { data, error } = await supabaseAdmin
+        .from('strategy_performance')
+        .insert(perf)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async getPerformance(userId: string, options?: {
+      strategy?: string;
+      mode?: 'paper' | 'live';
+      period?: string;
+    }): Promise<any[]> {
+      let query = supabaseAdmin
+        .from('strategy_performance')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (options?.strategy) query = query.eq('strategy', options.strategy);
+      if (options?.mode) query = query.eq('mode', options.mode);
+      if (options?.period) query = query.eq('period', options.period);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+
+    async savePortfolioSnapshot(snapshot: {
+      user_id: string;
+      mode: 'paper' | 'live';
+      cash_balance: number;
+      portfolio_value: number;
+      total_value: number;
+      total_pnl: number;
+      total_pnl_percent: number;
+      realized_pnl: number;
+      unrealized_pnl: number;
+      total_trades: number;
+      winning_trades: number;
+      losing_trades: number;
+      win_rate: number;
+      sharpe_ratio?: number;
+      max_drawdown: number;
+      max_drawdown_percent: number;
+      position_count: number;
+    }): Promise<any> {
+      const { data, error } = await supabaseAdmin
+        .from('portfolio_snapshots')
+        .insert(snapshot)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async getPortfolioHistory(userId: string, mode: 'paper' | 'live' = 'paper', days: number = 30): Promise<any[]> {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const { data, error } = await supabaseAdmin
+        .from('portfolio_snapshots')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('mode', mode)
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+  },
 };
 
 export default supabase;

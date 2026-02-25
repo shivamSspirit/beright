@@ -438,3 +438,109 @@ export type LeaderboardEntry = Database['public']['Views']['leaderboard']['Row']
 export type NewPrediction = Database['public']['Tables']['predictions']['Insert'];
 export type NewAlert = Database['public']['Tables']['alerts']['Insert'];
 export type NewWatchlistItem = Database['public']['Tables']['watchlist']['Insert'];
+
+// ============================================
+// TRADING SYSTEM TYPES (Paper & Live Trading)
+// ============================================
+
+export interface TradeRow {
+  id: string;
+  user_id: string;
+  mode: 'paper' | 'live';
+  platform: string;
+  market_id: string;
+  market_ticker: string;
+  market_title: string;
+  category: string;
+  direction: 'YES' | 'NO';
+  order_type: 'market' | 'limit' | 'stop_loss' | 'take_profit';
+  entry_price: number;
+  exit_price: number | null;
+  quantity: number;
+  quantity_filled: number;
+  entry_value_usd: number;
+  exit_value_usd: number | null;
+  unrealized_pnl: number;
+  realized_pnl: number | null;
+  pnl_percent: number | null;
+  fees: number;
+  strategy: string;
+  signal_id: string | null;
+  signal_confidence: number | null;
+  stop_loss_price: number | null;
+  take_profit_price: number | null;
+  max_loss_usd: number | null;
+  status: 'pending' | 'open' | 'filled' | 'partial' | 'cancelled' | 'rejected' | 'closed';
+  close_reason: string | null;
+  execution_latency_ms: number | null;
+  slippage: number | null;
+  order_id: string | null;
+  tx_signature: string | null;
+  created_at: string;
+  filled_at: string | null;
+  closed_at: string | null;
+  expires_at: string | null;
+}
+
+export interface StrategyPerformanceRow {
+  id: string;
+  user_id: string;
+  strategy: string;
+  mode: 'paper' | 'live';
+  period: 'daily' | 'weekly' | 'monthly' | 'all_time';
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate: number;
+  total_pnl: number;
+  avg_pnl: number;
+  avg_win: number;
+  avg_loss: number;
+  profit_factor: number;
+  sharpe_ratio: number | null;
+  sortino_ratio: number | null;
+  max_drawdown: number;
+  calmar_ratio: number | null;
+  avg_slippage: number;
+  avg_latency_ms: number;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+}
+
+export interface TradingSettingsRow {
+  user_id: string;
+  mode: 'paper' | 'live';
+  auto_execute: boolean;
+  enabled_strategies: string[];
+  strategy_configs: Record<string, unknown>;
+  risk_config: Record<string, unknown>;
+  initial_balance: number;
+  notify_on_trade: boolean;
+  notify_on_alert: boolean;
+  telegram_chat_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortfolioSnapshotRow {
+  id: string;
+  user_id: string;
+  mode: 'paper' | 'live';
+  cash_balance: number;
+  portfolio_value: number;
+  total_value: number;
+  total_pnl: number;
+  total_pnl_percent: number;
+  realized_pnl: number;
+  unrealized_pnl: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate: number;
+  sharpe_ratio: number | null;
+  max_drawdown: number;
+  max_drawdown_percent: number;
+  position_count: number;
+  created_at: string;
+}
