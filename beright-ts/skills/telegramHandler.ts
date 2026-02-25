@@ -3544,22 +3544,36 @@ Try /hot for trending markets or /arb for price gaps.`,
             return arbResult;
           }
 
-          case 'TRENDING':
-          case 'BROWSE_MARKETS': {
-            // User wants to see available markets or what's trending
+          case 'TRENDING': {
+            // User wants what's hot/moving
             const hotMarkets = await getHotMarkets();
             if (hotMarkets.length > 0) {
               return { text: formatMarkets(hotMarkets, '🔥 Trending Markets'), mood: 'BULLISH', data: hotMarkets };
             }
+            return { text: 'No trending markets found. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
+          }
+
+          case 'BROWSE_MARKETS': {
+            // User wants links to prediction market platforms
             return {
-              text: `Here's how to explore markets:
+              text: `**Prediction Market Platforms:**
 
-• /hot - See trending markets with high volume
-• /arb - Find arbitrage opportunities across platforms
-• /research <topic> - Deep analysis on any topic (bitcoin, elections, etc.)
+**Crypto-Native (USDC):**
+• [Polymarket](https://polymarket.com) — Largest crypto prediction market
+• [Limitless](https://limitless.exchange) — Newer platform, unique markets
 
-Or ask me about a specific topic like "bitcoin", "trump", or "fed rates"!`,
-              mood: 'NEUTRAL'
+**Regulated (US):**
+• [Kalshi](https://kalshi.com) — CFTC-regulated, event contracts
+
+**Play Money / Research:**
+• [Manifold](https://manifold.markets) — Play money, wisdom of crowds
+• [Metaculus](https://metaculus.com) — Scientific forecasting
+
+**Quick Actions:**
+• /hot — See what's trending now
+• /arb — Find price gaps across platforms
+• /research <topic> — Deep analysis on any topic`,
+              mood: 'EDUCATIONAL'
             };
           }
 
