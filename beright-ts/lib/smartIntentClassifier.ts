@@ -41,17 +41,21 @@ CRITICAL RULES:
 3. If the query is vague/general/a question, classify appropriately but set topic to null.
 4. MARKET_ANALYSIS requires a CLEAR, SPECIFIC topic. "link of markets" has no topic.
 5. Questions about "how many" platforms or "which" platforms → PLATFORM_INFO, topic: null
+6. IMPORTANT: "best markets", "good markets", "hot markets", "top markets" = TRENDING (user wants recommendations)
+7. Market requests with time constraints ("closing soon", "expiring", "ending today") = TRENDING
 
 INTENTS (pick ONE):
 
-PLATFORM_INFO - Questions about platforms, chains, infrastructure
-  Examples: "how many platforms", "which platforms", "what is Polymarket", "platforms on Solana",
-            "prediction markets on Solana", "which chains", "how many prediction market platforms"
-  INCLUDES: Any question with "platform", "Solana", "Polygon", "chain" + prediction markets
-BROWSE_MARKETS - User wants to see/browse/list available markets, but NO specific topic
-  Examples: "show me markets", "link of markets", "list markets", "markets available", "what markets", "any markets"
-TRENDING - User wants what's hot, popular, moving, trending right now
+TRENDING - User wants what's hot, popular, best, top, or time-sensitive markets
   Examples: "what's hot", "trending", "popular markets", "what's moving"
+  ALSO: "find me best markets", "show me top markets", "good markets", "best bets"
+  ALSO: "markets closing soon", "expiring today", "ending soon", "closing in one day"
+  ALSO: "find me hot markets", "give me your best picks", "what should I bet on"
+BROWSE_MARKETS - User wants to see/browse/list available markets, but NO specific topic and NO quality preference
+  Examples: "show me markets", "link of markets", "list markets", "markets available", "what markets", "any markets"
+  NOTE: If they say "best" or "hot" or "top" → use TRENDING instead
+PLATFORM_INFO - Questions about platforms, chains, infrastructure
+  Examples: "how many platforms", "which platforms", "what is Polymarket", "platforms on Solana"
 MARKET_ANALYSIS - User wants analysis on a SPECIFIC named topic/event
   Examples: "analyze bitcoin", "what about trump winning", "fed rate analysis"
   REQUIRES: A clear topic like bitcoin, trump, elections, fed, etc.
@@ -79,6 +83,13 @@ Respond ONLY with valid JSON:
  */
 export async function classifyIntentSmart(message: string): Promise<SmartIntentResult> {
   const startTime = Date.now();
+
+  // Try fast pattern matching first (no LLM needed)
+  const fastResult = fastPatternMatch(message);
+  if (fastResult) {
+    console.log(`[SmartIntent] Fast match: "${message.slice(0, 30)}..." → ${fastResult.intent}`);
+    return fastResult;
+  }
 
   try {
     const response = await llmChat({
@@ -147,8 +158,58 @@ export function isObviousGreeting(message: string): boolean {
   return greetings.test(message.trim());
 }
 
+/**
+ * Fast pattern matching for common queries (skip LLM for speed)
+ * Returns null if no obvious match, otherwise returns the intent
+ */
+export function fastPatternMatch(message: string): SmartIntentResult | null {
+  const lower = message.toLowerCase().trim();
+
+  // TRENDING patterns - user wants best/hot/top markets
+  const trendingPatterns = [
+    /\b(best|top|hot|trending|popular|good)\s*(market|bet|pick|trade)/i,
+    /\b(find|show|give|get)\s*(me\s*)?(the\s*)?(best|top|hot|good)/i,
+    /\bwhat('s| is| are)?\s*(hot|trending|best|top)/i,
+    /\b(closing|expiring|ending)\s*(soon|today|tomorrow|in\s+\d+)/i,
+    /\bmarkets?\s*(closing|expiring|ending)/i,
+    /\bwhat\s+should\s+i\s+(bet|buy|trade)/i,
+    /\b(recommend|suggestion|pick)/i,
+  ];
+
+  for (const pattern of trendingPatterns) {
+    if (pattern.test(lower)) {
+      return {
+        intent: 'TRENDING',
+        confidence: 0.9,
+        reasoning: 'Fast pattern match: trending/best markets request',
+      };
+    }
+  }
+
+  // ARBITRAGE patterns
+  if (/\b(arb|arbitrage|spread|mispriced|price\s*gap)/i.test(lower)) {
+    return {
+      intent: 'ARBITRAGE',
+      confidence: 0.9,
+      reasoning: 'Fast pattern match: arbitrage request',
+    };
+  }
+
+  // HELP patterns
+  if (/^(help|commands?|what\s+can\s+you|how\s+do\s+i|how\s+to)[\s?]*$/i.test(lower)) {
+    return {
+      intent: 'HELP',
+      confidence: 0.9,
+      reasoning: 'Fast pattern match: help request',
+    };
+  }
+
+  return null; // No fast match, use LLM
+}
+
 export default {
   classifyIntentSmart,
   isExplicitCommand,
   isObviousGreeting,
+  fastPatternMatch,
 };
