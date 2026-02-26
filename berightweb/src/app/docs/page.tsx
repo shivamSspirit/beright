@@ -1083,7 +1083,7 @@ export default function DocsPage() {
 
         .logo-icon {
           font-size: 24px;
-          color: #10B981;
+          color: #00C2FF;
         }
 
         .logo-text {
