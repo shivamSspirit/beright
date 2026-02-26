@@ -84,9 +84,17 @@ import { db } from '../lib/supabase/client';
 import { spawnAgent, AgentTask } from '../lib/agentSpawner';
 import { getAgentForCommand, AGENTS } from '../config/agents';
 
-// Smart Intent Classifier
+// Smart Intent Classifier (legacy - kept for fallback)
 import { classifyIntent, getIntentSuggestions, IntentResult } from '../lib/intentClassifier';
 import { classifyIntentSmart, isObviousGreeting } from '../lib/smartIntentClassifier';
+
+// NEW: Semantic Intelligence Agent
+// Replaces regex-based intent classification with LLM-powered understanding
+import {
+  processMessage as semanticProcess,
+  shouldUseSemanticProcessing,
+  getQuickResponse,
+} from '../lib/semanticIntegration';
 
 // Agent Persona
 import { getPersonaGreeting, getPersonaUnknown, PERSONA_HELP, PERSONA_SYSTEM_PROMPT } from '../lib/persona';
@@ -3475,201 +3483,89 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
       }
 
       default: {
-        // Quick checks before LLM (save tokens)
-        if (isObviousGreeting(text)) {
+        // ============================================================
+        // SEMANTIC INTELLIGENCE AGENT
+        // Uses LLM-powered understanding instead of regex patterns
+        // Injects SOUL.md + IDENTITY.md + prediction market knowledge
+        // Routes to Scout/Analyst/Trader based on semantic understanding
+        // ============================================================
+
+        // Quick responses for trivial cases (no LLM needed)
+        const quickResponse = getQuickResponse(text);
+        if (quickResponse) {
           return {
-            text: getPersonaGreeting(),
-            mood: 'NEUTRAL',
+            text: quickResponse.text,
+            mood: quickResponse.mood,
           };
         }
 
-        // Use LLM to understand natural language (Groq - fast & free)
-        const smartIntent = await classifyIntentSmart(text);
-        console.log(`[SmartIntent] "${text.slice(0, 40)}..." → ${smartIntent.intent} (${Math.round(smartIntent.confidence * 100)}%) - ${smartIntent.reasoning}`);
+        try {
+          // Use semantic orchestrator for full understanding
+          console.log(`[SemanticAgent] Processing: "${text.slice(0, 50)}..."`);
 
-        // Route based on LLM-detected intent
-        switch (smartIntent.intent) {
-          case 'PLATFORM_INFO': {
-            return {
-              text: `**Prediction Market Platforms I Track:**
+          const result = await semanticProcess(text, chatId, telegramId);
 
-**Crypto-Native:**
-• **Polymarket** — Largest crypto prediction market. USDC on Polygon.
-• **Limitless** — Newer platform with unique markets.
+          console.log(`[SemanticAgent] Understanding: ${result.understanding.goal}/${result.understanding.domain} → ${result.understanding.recommendedAgent} (${Math.round(result.understanding.confidence * 100)}%) in ${result.processingTimeMs}ms`);
+          console.log(`[SemanticAgent] Interpretation: ${result.understanding.interpretation}`);
 
-**Regulated (US):**
-• **Kalshi** — CFTC-regulated exchange. Event contracts.
+          // Return the orchestrated response
+          return {
+            text: result.response.text,
+            mood: result.response.mood,
+            data: result.response.data,
+          };
 
-**Play Money / Research:**
-• **Manifold** — Play money markets. Wisdom of crowds.
-• **Metaculus** — Scientific forecasting. Expert calibration.
+        } catch (error) {
+          // Fallback to legacy system if semantic processing fails
+          console.error('[SemanticAgent] Error, falling back to legacy:', error);
 
-I aggregate odds across all of these to find arbitrage and consensus.
+          // Use legacy smart intent classifier as fallback
+          const smartIntent = await classifyIntentSmart(text);
+          console.log(`[SmartIntent:Fallback] "${text.slice(0, 40)}..." → ${smartIntent.intent}`);
 
-Try /hot for trending markets or /arb for price gaps.`,
-              mood: 'EDUCATIONAL',
-            };
-          }
-
-          case 'MARKET_ANALYSIS': {
-            // User wants analysis - use research with Groq synthesis
-            const topic = smartIntent.topic || text;
-            const researchResult = await research(topic);
-            return researchResult;
-          }
-
-          case 'PRICE_CHECK': {
-            // User wants current odds
-            const topic = smartIntent.topic || text;
-            const markets = await searchMarkets(topic);
-            if (markets.length > 0) {
-              return { text: formatMarkets(markets, `Odds: ${topic}`), mood: 'NEUTRAL', data: markets };
+          // Handle legacy intents
+          switch (smartIntent.intent) {
+            case 'MARKET_ANALYSIS': {
+              const topic = smartIntent.topic || text;
+              return await research(topic);
             }
-            return { text: `No markets found for "${topic}". Try /hot to see what's trending.`, mood: 'NEUTRAL' };
-          }
-
-          case 'ARBITRAGE': {
-            const arbResult = await arbitrage(smartIntent.topic || 'top');
-            return arbResult;
-          }
-
-          case 'TRENDING': {
-            // User wants what's hot/moving
-            const hotMarkets = await getHotMarkets();
-            if (hotMarkets.length > 0) {
-              return { text: formatMarkets(hotMarkets, '🔥 Trending Markets'), mood: 'BULLISH', data: hotMarkets };
-            }
-            return { text: 'No trending markets found. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
-          }
-
-          case 'BROWSE_MARKETS': {
-            // User wants to see markets - show hot markets
-            const browseHotMarkets = await getHotMarkets();
-            if (browseHotMarkets.length > 0) {
-              return {
-                text: formatMarkets(browseHotMarkets, '🔥 Trending Markets') + `
-
-**Platform Links:**
-• [Polymarket](https://polymarket.com)
-• [Kalshi](https://kalshi.com)
-• [Manifold](https://manifold.markets)`,
-                mood: 'BULLISH',
-                data: browseHotMarkets
-              };
-            }
-            // Fallback to platform links if no markets
-            return {
-              text: `**Prediction Market Platforms:**
-
-**Crypto-Native (USDC):**
-• [Polymarket](https://polymarket.com) — Largest crypto prediction market
-• [Limitless](https://limitless.exchange) — Newer platform, unique markets
-
-**Regulated (US):**
-• [Kalshi](https://kalshi.com) — CFTC-regulated, event contracts
-
-**Play Money / Research:**
-• [Manifold](https://manifold.markets) — Play money, wisdom of crowds
-• [Metaculus](https://metaculus.com) — Scientific forecasting
-
-**Quick Actions:**
-• /hot — See what's trending now
-• /arb — Find price gaps across platforms
-• /research <topic> — Deep analysis on any topic`,
-              mood: 'EDUCATIONAL'
-            };
-          }
-
-          case 'WHALE_ACTIVITY': {
-            const whaleResult = await whaleWatch();
-            return whaleResult;
-          }
-
-          case 'HELP': {
-            return { text: HELP_TEXT, mood: 'NEUTRAL' };
-          }
-
-          case 'GREETING': {
-            return {
-              text: getPersonaGreeting(),
-              mood: 'NEUTRAL',
-            };
-          }
-
-          case 'GENERAL_CHAT': {
-            return {
-              text: `I'm specialized for prediction markets — not general chat.
-
-But I'm happy to discuss:
-• Market odds and analysis
-• Forecasting methodology
-• Platform comparisons
-• Trading strategies
-
-What would you like to explore?`,
-              mood: 'NEUTRAL',
-            };
-          }
-
-          case 'PREDICTION': {
-            // User wants to make a prediction
-            return {
-              text: `To make a prediction:
-/predict <question> <probability> YES|NO
-
-Example: /predict "Will Bitcoin hit 100k by March?" 65 YES
-
-Your predictions are tracked for calibration scoring.`,
-              mood: 'NEUTRAL',
-            };
-          }
-
-          case 'UNKNOWN':
-          default: {
-            // LLM couldn't determine intent
-            // Check if topic is a REAL extracted topic (not just the original text)
-            const isRealTopic = smartIntent.topic &&
-              smartIntent.topic.length > 2 &&
-              smartIntent.topic.length < 30 && // Real topics are short
-              !smartIntent.topic.toLowerCase().includes('how many') && // Not a question
-              !smartIntent.topic.toLowerCase().includes('what') &&
-              smartIntent.topic.toLowerCase() !== text.toLowerCase().trim(); // Not the original text
-
-            if (isRealTopic) {
-              const markets = await searchMarkets(smartIntent.topic!);
+            case 'PRICE_CHECK': {
+              const topic = smartIntent.topic || text;
+              const markets = await searchMarkets(topic);
               if (markets.length > 0) {
-                return { text: formatMarkets(markets, `Markets: ${smartIntent.topic}`), mood: 'NEUTRAL', data: markets };
+                return { text: formatMarkets(markets, `Odds: ${topic}`), mood: 'NEUTRAL', data: markets };
               }
+              return { text: `No markets found for "${topic}". Try /hot to see what's trending.`, mood: 'NEUTRAL' };
             }
-
-            // Check if this looks like a platform/capability question
-            const lowerText = text.toLowerCase();
-            if (lowerText.includes('platform') || lowerText.includes('how many') ||
-                lowerText.includes('what can') || lowerText.includes('solana')) {
-              return {
-                text: `**Prediction Market Platforms:**
-
-**On Solana:**
-• [DFlow](https://dflow.net) — Tokenized Kalshi markets on Solana
-• [Limitless](https://limitless.exchange) — Native Solana prediction markets
-
-**Other Major Platforms:**
-• [Polymarket](https://polymarket.com) — Largest crypto PM (Polygon/USDC)
-• [Kalshi](https://kalshi.com) — CFTC-regulated (USD)
-• [Manifold](https://manifold.markets) — Play money
-
-I aggregate data from all of these. Try:
-• /hot — See trending markets
-• /arb — Find price gaps across platforms`,
-                mood: 'EDUCATIONAL',
-              };
+            case 'ARBITRAGE': {
+              return await arbitrage(smartIntent.topic || 'top');
             }
-
-            // Generic fallback - use persona
-            return {
-              text: getPersonaUnknown(),
-              mood: 'NEUTRAL',
-            };
+            case 'TRENDING': {
+              const hotMarkets = await getHotMarkets();
+              if (hotMarkets.length > 0) {
+                return { text: formatMarkets(hotMarkets, '🔥 Trending Markets'), mood: 'BULLISH', data: hotMarkets };
+              }
+              return { text: 'No trending markets found. Try /arb for arbitrage opportunities.', mood: 'NEUTRAL' };
+            }
+            case 'WHALE_ACTIVITY': {
+              return await whaleWatch();
+            }
+            case 'HELP': {
+              return { text: HELP_TEXT, mood: 'NEUTRAL' };
+            }
+            case 'GREETING': {
+              return { text: getPersonaGreeting(), mood: 'NEUTRAL' };
+            }
+            default: {
+              // If we have a topic, try to search for markets
+              if (smartIntent.topic && smartIntent.topic.length > 2 && smartIntent.topic.length < 30) {
+                const markets = await searchMarkets(smartIntent.topic);
+                if (markets.length > 0) {
+                  return { text: formatMarkets(markets, `Markets: ${smartIntent.topic}`), mood: 'NEUTRAL', data: markets };
+                }
+              }
+              return { text: getPersonaUnknown(), mood: 'NEUTRAL' };
+            }
           }
         }
       }
