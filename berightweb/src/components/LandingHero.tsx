@@ -344,7 +344,7 @@ function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) 
     },
     ai: {
       icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><circle cx="15" cy="10" r="1.5" fill="currentColor"/><path d="M9 16h6"/></svg>,
-      color: '#A855F7'
+      color: 'var(--color-accent)'
     },
     sports: {
       icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 014 10 15 15 0 01-4 10 15 15 0 01-4-10 15 15 0 014-10z"/><path d="M2 12h20"/></svg>,
@@ -731,8 +731,8 @@ function TerminalPreview() {
 
   const agents = [
     { name: 'SCOUT', status: 'ACTIVE', color: '#00D4FF', task: 'Scanning live markets...' },
-    { name: 'ANALYST', status: 'PROCESSING', color: '#DC1FFF', task: 'Deep dive: BTC $150K' },
-    { name: 'TRADER', status: 'READY', color: '#00FF88', task: 'Awaiting signal' },
+    { name: 'ANALYST', status: 'PROCESSING', color: '#00D4FF', task: 'Deep dive: BTC $150K' },
+    { name: 'TRADER', status: 'READY', color: '#00D4FF', task: 'Awaiting signal' },
   ];
 
   const signals = [
@@ -1467,20 +1467,27 @@ export default function LandingHero() {
         @import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&display=swap');
 
-        /* CSS Variables */
+        /* CSS Variables - Clean 2-color palette */
         :root {
           --color-bg: #0A0A0B;
           --color-surface: #111113;
-          --color-border: rgba(255, 255, 255, 0.08);
-          --color-border-hover: rgba(255, 255, 255, 0.15);
+          --color-surface-elevated: #18181B;
+          --color-border: rgba(255, 255, 255, 0.06);
+          --color-border-hover: rgba(255, 255, 255, 0.12);
           --color-text: #FFFFFF;
-          --color-text-secondary: rgba(255, 255, 255, 0.7);
-          --color-text-tertiary: rgba(255, 255, 255, 0.5);
-          --color-green: #00FF88;
-          --color-green-dim: rgba(0, 255, 136, 0.15);
-          --color-cyan: #00D4FF;
-          --color-amber: #FFB800;
-          --color-red: #FF4757;
+          --color-text-secondary: rgba(255, 255, 255, 0.6);
+          --color-text-tertiary: rgba(255, 255, 255, 0.4);
+          /* Primary accent - Cyan */
+          --color-accent: #00D4FF;
+          --color-accent-dim: rgba(0, 212, 255, 0.12);
+          --color-accent-glow: rgba(0, 212, 255, 0.25);
+          /* Functional colors only */
+          --color-green: #22C55E;
+          --color-red: #EF4444;
+          /* Legacy support */
+          --color-cyan: var(--color-accent);
+          --color-amber: var(--color-accent);
+          --color-green-dim: var(--color-accent-dim);
           --font-display: 'Satoshi', system-ui, sans-serif;
           --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
         }
@@ -1651,16 +1658,13 @@ export default function LandingHero() {
 
         .hero-badge .badge-icon {
           font-size: 16px;
-          color: #00FFA3;
+          color: var(--color-accent);
         }
 
         .hero-badge .badge-text {
           font-size: 13px;
           font-weight: 600;
-          background: linear-gradient(90deg, #00FFA3, #DC1FFF);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-accent);
         }
 
         /* Headline */
@@ -1688,10 +1692,7 @@ export default function LandingHero() {
         }
 
         .gradient-text {
-          background: linear-gradient(135deg, var(--color-green) 0%, var(--color-cyan) 60%, #A855F7 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-accent);
         }
 
         .hero-sub {
@@ -2120,7 +2121,7 @@ export default function LandingHero() {
         }
 
         .market-card.is-hot {
-          border-color: rgba(255, 184, 0, 0.25);
+          border-color: var(--color-accent-glow);
         }
 
         .card-header {
@@ -2381,12 +2382,12 @@ export default function LandingHero() {
         .earning-badge {
           display: inline-block;
           padding: 8px 16px;
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(255, 184, 0, 0.1) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.3);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.2);
           border-radius: 100px;
           font-size: 13px;
           font-weight: 600;
-          color: var(--color-green);
+          color: var(--color-accent);
           margin-bottom: 16px;
         }
 
@@ -2413,20 +2414,11 @@ export default function LandingHero() {
           box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
         }
 
-        .earning-card.green:hover {
-          border-color: rgba(0, 255, 136, 0.4);
-        }
-
-        .earning-card.cyan:hover {
-          border-color: rgba(0, 212, 255, 0.4);
-        }
-
-        .earning-card.amber:hover {
-          border-color: rgba(255, 184, 0, 0.4);
-        }
-
+        .earning-card.green:hover,
+        .earning-card.cyan:hover,
+        .earning-card.amber:hover,
         .earning-card.purple:hover {
-          border-color: rgba(168, 85, 247, 0.4);
+          border-color: var(--color-accent-glow);
         }
 
         .earning-card-icon {
@@ -2479,24 +2471,12 @@ export default function LandingHero() {
           font-family: var(--font-mono);
         }
 
-        .earning-card-highlight.green {
-          background: rgba(0, 255, 136, 0.1);
-          color: var(--color-green);
-        }
-
-        .earning-card-highlight.cyan {
-          background: rgba(0, 212, 255, 0.1);
-          color: var(--color-cyan);
-        }
-
-        .earning-card-highlight.amber {
-          background: rgba(255, 184, 0, 0.1);
-          color: var(--color-amber);
-        }
-
+        .earning-card-highlight.green,
+        .earning-card-highlight.cyan,
+        .earning-card-highlight.amber,
         .earning-card-highlight.purple {
-          background: rgba(168, 85, 247, 0.1);
-          color: #A855F7;
+          background: var(--color-accent-dim);
+          color: var(--color-accent);
         }
 
         .earning-callout {
@@ -2504,8 +2484,8 @@ export default function LandingHero() {
           align-items: center;
           gap: 16px;
           padding: 20px 24px;
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 212, 255, 0.03) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.15);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.15);
           border-radius: 16px;
           max-width: 800px;
           margin: 0 auto;
@@ -2545,12 +2525,12 @@ export default function LandingHero() {
         .ai-badge {
           display: inline-block;
           padding: 6px 14px;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(0, 212, 255, 0.15) 100%);
-          border: 1px solid rgba(168, 85, 247, 0.3);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.2);
           border-radius: 20px;
           font-size: 12px;
           font-weight: 600;
-          color: #A855F7;
+          color: var(--color-accent);
           margin-bottom: 16px;
           letter-spacing: 0.5px;
         }
@@ -2572,14 +2552,14 @@ export default function LandingHero() {
         }
 
         .ai-feature-card:hover {
-          border-color: rgba(168, 85, 247, 0.3);
+          border-color: var(--color-accent-glow);
           transform: translateY(-4px);
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(168, 85, 247, 0.1);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
         }
 
         .ai-feature-visual {
           padding: 24px;
-          background: linear-gradient(180deg, rgba(168, 85, 247, 0.05) 0%, transparent 100%);
+          background: linear-gradient(180deg, var(--color-accent-dim) 0%, transparent 100%);
           min-height: 200px;
           display: flex;
           align-items: center;
@@ -2613,11 +2593,11 @@ export default function LandingHero() {
 
         .ai-tag {
           padding: 4px 10px;
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.2);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.2);
           border-radius: 6px;
           font-size: 11px;
-          color: #A855F7;
+          color: var(--color-accent);
           font-weight: 500;
         }
 
@@ -2644,8 +2624,8 @@ export default function LandingHero() {
         }
 
         .ai-bubble {
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(0, 212, 255, 0.1) 100%);
-          border: 1px solid rgba(168, 85, 247, 0.3);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.2);
           align-self: flex-start;
           margin-right: 10%;
         }
@@ -2663,7 +2643,7 @@ export default function LandingHero() {
         }
 
         .ai-bubble .bubble-label {
-          color: #A855F7;
+          color: var(--color-accent);
         }
 
         .bubble-text {
@@ -2888,7 +2868,7 @@ export default function LandingHero() {
 
         .breakdown-fill {
           height: 100%;
-          background: linear-gradient(90deg, var(--color-cyan), #A855F7);
+          background: var(--color-accent);
           border-radius: 3px;
           transition: width 0.5s ease;
         }
@@ -2920,8 +2900,8 @@ export default function LandingHero() {
           justify-content: center;
           gap: 12px;
           padding: 20px 28px;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(0, 212, 255, 0.08) 100%);
-          border: 1px solid rgba(168, 85, 247, 0.2);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.2);
           border-radius: 16px;
           max-width: 700px;
           margin: 0 auto;
@@ -2941,7 +2921,7 @@ export default function LandingHero() {
         }
 
         .callout-text strong {
-          color: #A855F7;
+          color: var(--color-accent);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -3293,14 +3273,14 @@ export default function LandingHero() {
         .signals-title {
           font-size: 10px;
           font-weight: 700;
-          color: #DC1FFF;
+          color: var(--color-accent);
           letter-spacing: 1px;
         }
 
         .signals-pulse {
           width: 8px;
           height: 8px;
-          background: #DC1FFF;
+          background: var(--color-accent);
           border-radius: 50%;
           animation: signalPulse 2s ease-in-out infinite;
         }
@@ -3331,19 +3311,11 @@ export default function LandingHero() {
           flex-shrink: 0;
         }
 
-        .signal-type.arb {
-          background: rgba(0, 255, 136, 0.15);
-          color: var(--color-green);
-        }
-
-        .signal-type.hot {
-          background: rgba(255, 184, 0, 0.15);
-          color: var(--color-amber);
-        }
-
+        .signal-type.arb,
+        .signal-type.hot,
         .signal-type.intel {
-          background: rgba(220, 31, 255, 0.15);
-          color: #DC1FFF;
+          background: var(--color-accent-dim);
+          color: var(--color-accent);
         }
 
         .signal-text {
@@ -3506,7 +3478,7 @@ export default function LandingHero() {
         .particle.p2 { left: 25%; top: 70%; animation-delay: 2s; }
         .particle.p3 { left: 75%; top: 30%; animation-delay: 4s; background: var(--color-cyan); }
         .particle.p4 { left: 85%; top: 60%; animation-delay: 6s; }
-        .particle.p5 { left: 50%; top: 15%; animation-delay: 8s; background: #A855F7; }
+        .particle.p5 { left: 50%; top: 15%; animation-delay: 8s; background: var(--color-accent); }
         .particle.p6 { left: 60%; top: 80%; animation-delay: 10s; }
 
         @keyframes floatParticle {
@@ -3579,10 +3551,7 @@ export default function LandingHero() {
         }
 
         .protocol-title .title-gradient {
-          background: linear-gradient(135deg, var(--color-green) 0%, var(--color-cyan) 50%, #A855F7 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-accent);
         }
 
         .protocol-subtitle {
@@ -3591,13 +3560,9 @@ export default function LandingHero() {
           margin: 0;
         }
 
-        .highlight-cyan {
-          color: var(--color-cyan);
-          font-weight: 600;
-        }
-
+        .highlight-cyan,
         .highlight-green {
-          color: var(--color-green);
+          color: var(--color-accent);
           font-weight: 600;
         }
 
@@ -3787,17 +3752,11 @@ export default function LandingHero() {
         }
 
         .forecasters .side-title {
-          background: linear-gradient(90deg, var(--color-cyan), #A855F7);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-accent);
         }
 
         .capitalists .side-title {
-          background: linear-gradient(90deg, var(--color-green), var(--color-cyan));
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-green);
         }
 
         .side-badge {
@@ -3829,8 +3788,8 @@ export default function LandingHero() {
           line-height: 1.5;
         }
 
-        .text-cyan { color: var(--color-cyan); }
-        .text-green { color: var(--color-green); }
+        .text-cyan,
+        .text-green { color: var(--color-accent); }
 
         /* Side Metrics */
         .side-metrics {
@@ -3860,14 +3819,10 @@ export default function LandingHero() {
           flex-shrink: 0;
         }
 
-        .metric-icon-wrap.cyan {
-          background: rgba(0, 212, 255, 0.1);
-          border: 1px solid rgba(0, 212, 255, 0.2);
-        }
-
+        .metric-icon-wrap.cyan,
         .metric-icon-wrap.green {
-          background: rgba(0, 255, 136, 0.1);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.15);
         }
 
         .metric-icon-wrap svg {
@@ -3875,8 +3830,10 @@ export default function LandingHero() {
           height: 18px;
         }
 
-        .metric-icon-wrap.cyan svg { stroke: var(--color-cyan); }
-        .metric-icon-wrap.green svg { stroke: var(--color-green); }
+        .metric-icon-wrap.cyan svg,
+        .metric-icon-wrap.green svg {
+          stroke: var(--color-accent);
+        }
 
         .metric-content {
           flex: 1;
@@ -3929,11 +3886,11 @@ export default function LandingHero() {
         }
 
         .metric-fill.cyan {
-          background: linear-gradient(90deg, var(--color-cyan), #A855F7);
+          background: var(--color-accent);
         }
 
         .metric-fill.green {
-          background: linear-gradient(90deg, var(--color-green), var(--color-cyan));
+          background: var(--color-green);
         }
 
         .metric-trend {
@@ -3979,8 +3936,8 @@ export default function LandingHero() {
           font-weight: 700;
         }
 
-        .benefit-check.cyan { color: var(--color-cyan); }
-        .benefit-check.green { color: var(--color-green); }
+        .benefit-check.cyan,
+        .benefit-check.green { color: var(--color-accent); }
 
         .benefit-text {
           font-size: 13px;
@@ -4074,7 +4031,7 @@ export default function LandingHero() {
 
         .orbit-3 {
           inset: -30px;
-          border-color: rgba(168, 85, 247, 0.1);
+          border-color: rgba(0, 212, 255, 0.1);
           animation-duration: 20s;
         }
 
@@ -4096,7 +4053,7 @@ export default function LandingHero() {
         .orbit-1 .orbit-dot { background: var(--color-green); box-shadow: 0 0 8px var(--color-green); }
         .orbit-2 .orbit-dot { background: var(--color-cyan); box-shadow: 0 0 8px var(--color-cyan); }
         .orbit-2 .orbit-dot.delay { top: auto; bottom: 0; }
-        .orbit-3 .orbit-dot { background: #A855F7; box-shadow: 0 0 8px #A855F7; }
+        .orbit-3 .orbit-dot { background: var(--color-accent); box-shadow: 0 0 8px var(--color-accent); }
 
         /* Core Glow Layers */
         .core-glow-outer,
@@ -4124,7 +4081,7 @@ export default function LandingHero() {
         .core-glow-inner {
           width: 80px;
           height: 80px;
-          background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 212, 255, 0.2) 0%, transparent 70%);
           animation: coreGlowPulse 3s ease-in-out infinite 1s;
         }
 
@@ -4294,10 +4251,7 @@ export default function LandingHero() {
         }
 
         .text-gradient {
-          background: linear-gradient(90deg, var(--color-green), var(--color-cyan));
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-accent);
           font-weight: 600;
         }
 
@@ -4376,7 +4330,7 @@ export default function LandingHero() {
         .trust-divider {
           width: 1px;
           height: 50px;
-          background: linear-gradient(180deg, transparent 0%, rgba(0, 255, 163, 0.3) 50%, transparent 100%);
+          background: linear-gradient(180deg, transparent 0%, var(--color-accent-glow) 50%, transparent 100%);
         }
 
         .trust-features {
@@ -4806,10 +4760,10 @@ export default function LandingHero() {
         .leaderboard-badge {
           display: inline-block;
           padding: 8px 16px;
-          background: rgba(255, 184, 0, 0.1);
-          border: 1px solid rgba(255, 184, 0, 0.2);
+          background: var(--color-accent-dim);
+          border: 1px solid rgba(0, 212, 255, 0.2);
           border-radius: 100px;
-          color: var(--color-amber);
+          color: var(--color-accent);
           font-family: var(--font-mono);
           font-size: 12px;
           font-weight: 600;
@@ -4855,8 +4809,8 @@ export default function LandingHero() {
         }
 
         .leaderboard-row.first {
-          background: rgba(255, 184, 0, 0.05);
-          border-left: 3px solid var(--color-amber);
+          background: var(--color-accent-dim);
+          border-left: 3px solid var(--color-accent);
         }
 
         .lb-rank {
@@ -5045,42 +4999,30 @@ export default function LandingHero() {
           transition: opacity 0.3s ease;
         }
 
-        .identity-card.cyan .card-glow {
-          background: var(--color-cyan);
-        }
-
-        .identity-card.green .card-glow {
-          background: var(--color-green);
-        }
-
+        .identity-card.cyan .card-glow,
+        .identity-card.green .card-glow,
         .identity-card.amber .card-glow {
-          background: var(--color-amber);
+          background: var(--color-accent);
         }
 
         .identity-card:hover,
         .identity-card.hovered {
           transform: translateY(-8px);
-          border-color: rgba(255, 255, 255, 0.15);
+          border-color: var(--color-border-hover);
         }
 
         .identity-card:hover .card-glow,
         .identity-card.hovered .card-glow {
-          opacity: 0.15;
+          opacity: 0.12;
         }
 
         .identity-card.cyan:hover,
-        .identity-card.cyan.hovered {
-          border-color: rgba(0, 212, 255, 0.3);
-        }
-
+        .identity-card.cyan.hovered,
         .identity-card.green:hover,
-        .identity-card.green.hovered {
-          border-color: rgba(0, 255, 136, 0.3);
-        }
-
+        .identity-card.green.hovered,
         .identity-card.amber:hover,
         .identity-card.amber.hovered {
-          border-color: rgba(255, 184, 0, 0.3);
+          border-color: var(--color-accent-glow);
         }
 
         .identity-card .card-content {
@@ -5144,16 +5086,10 @@ export default function LandingHero() {
           font-weight: 700;
         }
 
-        .identity-card .stat-check.cyan {
-          color: var(--color-cyan);
-        }
-
-        .identity-card .stat-check.green {
-          color: var(--color-green);
-        }
-
+        .identity-card .stat-check.cyan,
+        .identity-card .stat-check.green,
         .identity-card .stat-check.amber {
-          color: var(--color-amber);
+          color: var(--color-accent);
         }
 
         .identity-card .card-cta {
@@ -5174,21 +5110,11 @@ export default function LandingHero() {
           transition: all 0.2s ease;
         }
 
-        .identity-card .card-cta.cyan:hover {
-          background: var(--color-cyan);
-          border-color: var(--color-cyan);
-          color: var(--color-bg);
-        }
-
-        .identity-card .card-cta.green:hover {
-          background: var(--color-green);
-          border-color: var(--color-green);
-          color: var(--color-bg);
-        }
-
+        .identity-card .card-cta.cyan:hover,
+        .identity-card .card-cta.green:hover,
         .identity-card .card-cta.amber:hover {
-          background: var(--color-amber);
-          border-color: var(--color-amber);
+          background: var(--color-accent);
+          border-color: var(--color-accent);
           color: var(--color-bg);
         }
 
