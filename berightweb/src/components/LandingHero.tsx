@@ -1453,7 +1453,7 @@ export default function LandingHero() {
            ═══════════════════════════════════════════════════════════════════════ */
 
         .hero {
-          padding: 100px 20px 80px;
+          padding: 90px 20px 40px;
           max-width: 1200px;
           margin: 0 auto;
           position: relative;
@@ -1978,7 +1978,7 @@ export default function LandingHero() {
           z-index: 10;
           max-width: 900px;
           margin: 0 auto;
-          padding: 60px 24px 80px;
+          padding: 40px 24px 48px;
         }
 
         .markets-header {
@@ -2153,7 +2153,7 @@ export default function LandingHero() {
           z-index: 10;
           max-width: 900px;
           margin: 0 auto;
-          padding: 60px 24px 80px;
+          padding: 32px 24px 48px;
           text-align: center;
         }
 
@@ -2161,7 +2161,7 @@ export default function LandingHero() {
           font-size: 32px;
           font-weight: 700;
           color: var(--color-text);
-          margin: 0 0 40px;
+          margin: 0 0 28px;
         }
 
         .how-steps {
@@ -2254,12 +2254,12 @@ export default function LandingHero() {
         .ai-section {
           position: relative;
           z-index: 10;
-          padding: 80px 24px;
+          padding: 48px 24px;
         }
 
         .ai-header {
           text-align: center;
-          margin-bottom: 48px;
+          margin-bottom: 32px;
         }
 
         .ai-badge {
@@ -2671,12 +2671,12 @@ export default function LandingHero() {
         .terminal-section {
           position: relative;
           z-index: 10;
-          padding: 80px 24px;
+          padding: 48px 24px;
         }
 
         .terminal-header {
           text-align: center;
-          margin-bottom: 48px;
+          margin-bottom: 32px;
         }
 
         .terminal-badge {
@@ -3082,7 +3082,7 @@ export default function LandingHero() {
         /* Terminal CTA */
         .terminal-cta {
           text-align: center;
-          margin-top: 32px;
+          margin-top: 24px;
         }
 
         .terminal-cta .cta-text {
@@ -3148,7 +3148,7 @@ export default function LandingHero() {
         .protocol-section {
           position: relative;
           z-index: 10;
-          padding: 80px 24px;
+          padding: 48px 24px;
           overflow: hidden;
         }
 
@@ -3239,7 +3239,7 @@ export default function LandingHero() {
         /* Protocol Header */
         .protocol-header {
           text-align: center;
-          margin-bottom: 64px;
+          margin-bottom: 40px;
           position: relative;
           z-index: 2;
         }
@@ -3325,9 +3325,9 @@ export default function LandingHero() {
         .protocol-visual {
           display: grid;
           grid-template-columns: 1fr 320px 1fr;
-          gap: 40px;
+          gap: 32px;
           align-items: center;
-          margin-bottom: 60px;
+          margin-bottom: 40px;
           position: relative;
           z-index: 2;
         }
@@ -4057,8 +4057,8 @@ export default function LandingHero() {
           justify-content: center;
           gap: 48px;
           max-width: 900px;
-          margin: 0 auto 80px;
-          padding: 32px 48px;
+          margin: 0 auto 40px;
+          padding: 24px 40px;
           background: linear-gradient(135deg, rgba(0, 255, 163, 0.03) 0%, rgba(220, 31, 255, 0.02) 100%);
           border: 1px solid rgba(0, 255, 163, 0.15);
           border-radius: 20px;
@@ -4148,7 +4148,7 @@ export default function LandingHero() {
           z-index: 10;
           background: var(--color-surface);
           border-top: 1px solid var(--color-border);
-          padding: 60px 20px 30px;
+          padding: 40px 20px 24px;
         }
 
         .footer-inner {
@@ -4156,8 +4156,8 @@ export default function LandingHero() {
           margin: 0 auto;
           display: grid;
           grid-template-columns: 1fr 2fr 1fr;
-          gap: 40px;
-          padding-bottom: 40px;
+          gap: 32px;
+          padding-bottom: 24px;
           border-bottom: 1px solid var(--color-border);
         }
 
@@ -4231,7 +4231,7 @@ export default function LandingHero() {
         .footer-bottom {
           max-width: 1200px;
           margin: 0 auto;
-          padding-top: 30px;
+          padding-top: 20px;
           text-align: center;
         }
 
@@ -4360,9 +4360,9 @@ export default function LandingHero() {
           background: linear-gradient(180deg, rgba(0, 255, 136, 0.03) 0%, transparent 100%);
           border-top: 1px solid rgba(0, 255, 136, 0.15);
           border-bottom: 1px solid rgba(0, 255, 136, 0.1);
-          padding: 12px 0;
+          padding: 10px 0;
           overflow: hidden;
-          margin-top: 40px;
+          margin-top: 24px;
         }
 
         .live-ticker::before,
@@ -4486,11 +4486,11 @@ export default function LandingHero() {
           justify-content: center;
           align-items: center;
           gap: 48px;
-          padding: 32px 24px;
+          padding: 20px 24px;
           background: rgba(255, 255, 255, 0.02);
           border-top: 1px solid var(--color-border);
           border-bottom: 1px solid var(--color-border);
-          margin: 0 0 60px;
+          margin: 0 0 32px;
         }
 
         .trust-stat {
@@ -4561,13 +4561,13 @@ export default function LandingHero() {
 
         .leaderboard-section {
           max-width: 900px;
-          margin: 80px auto;
+          margin: 40px auto;
           padding: 0 24px;
         }
 
         .leaderboard-header {
           text-align: center;
-          margin-bottom: 40px;
+          margin-bottom: 28px;
         }
 
         .leaderboard-badge {
@@ -4717,8 +4717,8 @@ export default function LandingHero() {
         .identity-section {
           position: relative;
           max-width: 1200px;
-          margin: 80px auto;
-          padding: 80px 24px;
+          margin: 32px auto;
+          padding: 48px 24px;
           overflow: hidden;
         }
 
@@ -4750,7 +4750,7 @@ export default function LandingHero() {
 
         .identity-header {
           text-align: center;
-          margin-bottom: 48px;
+          margin-bottom: 32px;
           position: relative;
         }
 
@@ -4984,7 +4984,7 @@ export default function LandingHero() {
 
         .final-cta-section {
           position: relative;
-          padding: 80px 24px;
+          padding: 48px 24px 56px;
           text-align: center;
           overflow: hidden;
         }
@@ -5028,7 +5028,7 @@ export default function LandingHero() {
           font-size: 48px;
           font-weight: 700;
           color: var(--color-text);
-          margin: 0 0 40px;
+          margin: 0 0 28px;
           line-height: 1.2;
         }
 
