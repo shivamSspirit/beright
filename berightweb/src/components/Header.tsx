@@ -24,6 +24,7 @@ export default function Header() {
           <div className="nav-links" role="menubar">
             <Link href="/docs" className="nav-link" role="menuitem">Docs</Link>
             <Link href="/docs/faq" className="nav-link" role="menuitem">FAQ</Link>
+            <a href="https://pump.fun/coin/8ukcrYsyxBjTxw98FG1Hj3PBkbdqzE2CJbP5x2d5pump" target="_blank" rel="noopener noreferrer" className="nav-link token" role="menuitem">$beright</a>
           </div>
 
           <a href="https://t.me/berightai" target="_blank" rel="noopener noreferrer" className="nav-cta" aria-label="Join Telegram">
@@ -94,6 +95,16 @@ export default function Header() {
 
         .nav-link:hover {
           color: #fff;
+        }
+
+        .nav-link.token {
+          color: #00FF88;
+          font-weight: 600;
+        }
+
+        .nav-link.token:hover {
+          color: #00FF88;
+          text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
         }
 
         .nav-cta {
