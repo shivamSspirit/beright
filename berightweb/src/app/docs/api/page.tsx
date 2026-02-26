@@ -612,7 +612,7 @@ export default function APIDocsPage() {
       <style jsx>{`
         .api-page {
           min-height: 100vh;
-          background: #030305;
+          background: #080C14;
           color: #fff;
           font-family: 'Outfit', system-ui, sans-serif;
         }
@@ -640,7 +640,7 @@ export default function APIDocsPage() {
 
         .logo-be { color: #fff; }
         .logo-right {
-          background: linear-gradient(135deg, #00E676, #00B0FF, #8B5CF6);
+          background: linear-gradient(135deg, #10B981, #00C2FF, #8B5CF6);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -667,7 +667,7 @@ export default function APIDocsPage() {
         .api-hero {
           text-align: center;
           padding: 80px 24px 40px;
-          background: linear-gradient(180deg, rgba(0, 230, 118, 0.03) 0%, transparent 100%);
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.03) 0%, transparent 100%);
         }
 
         .api-hero h1 {
@@ -708,8 +708,8 @@ export default function APIDocsPage() {
           padding: 24px;
           margin: 0 auto 20px;
           max-width: 600px;
-          background: rgba(0, 230, 118, 0.05);
-          border: 1px solid rgba(0, 230, 118, 0.15);
+          background: rgba(16, 185, 129, 0.05);
+          border: 1px solid rgba(16, 185, 129, 0.15);
           border-radius: 12px;
         }
 
@@ -721,7 +721,7 @@ export default function APIDocsPage() {
         .base-code {
           font-family: 'JetBrains Mono', monospace;
           font-size: 16px;
-          color: #00E676;
+          color: #10B981;
         }
 
         /* Category Nav */
@@ -753,9 +753,9 @@ export default function APIDocsPage() {
         }
 
         .cat-btn.active {
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 176, 255, 0.15));
-          border-color: rgba(0, 230, 118, 0.3);
-          color: #00E676;
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 194, 255, 0.15));
+          border-color: rgba(16, 185, 129, 0.3);
+          color: #10B981;
         }
 
         /* Endpoints */
@@ -793,13 +793,13 @@ export default function APIDocsPage() {
         }
 
         .method.get {
-          background: rgba(0, 230, 118, 0.15);
-          color: #00E676;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10B981;
         }
 
         .method.post {
-          background: rgba(0, 176, 255, 0.15);
-          color: #00B0FF;
+          background: rgba(0, 194, 255, 0.15);
+          color: #00C2FF;
         }
 
         .method.patch {
@@ -809,7 +809,7 @@ export default function APIDocsPage() {
 
         .method.delete {
           background: rgba(255, 82, 82, 0.15);
-          color: #FF5252;
+          color: #F43F5E;
         }
 
         .path {
@@ -884,11 +884,11 @@ export default function APIDocsPage() {
         }
 
         .params .type {
-          color: #00B0FF;
+          color: #00C2FF;
         }
 
         .params .required {
-          color: #FF5252;
+          color: #F43F5E;
           font-weight: 600;
         }
 
@@ -925,7 +925,7 @@ export default function APIDocsPage() {
         }
 
         .code-block {
-          background: #0A0A12;
+          background: #0D1117;
           border: 1px solid rgba(255, 255, 255, 0.06);
           border-radius: 10px;
           margin-bottom: 12px;
@@ -995,7 +995,7 @@ export default function APIDocsPage() {
           display: block;
           font-size: 28px;
           font-weight: 800;
-          color: #00E676;
+          color: #10B981;
           font-family: 'JetBrains Mono', monospace;
           margin-bottom: 8px;
         }

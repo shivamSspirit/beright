@@ -448,7 +448,7 @@ export default function FeesPage() {
       <style jsx>{`
         .fees-page {
           min-height: 100vh;
-          background: #030305;
+          background: #080C14;
           color: #fff;
           font-family: 'Outfit', system-ui, sans-serif;
         }
@@ -476,7 +476,7 @@ export default function FeesPage() {
 
         .logo-be { color: #fff; }
         .logo-right {
-          background: linear-gradient(135deg, #00E676, #00B0FF, #8B5CF6);
+          background: linear-gradient(135deg, #10B981, #00C2FF, #8B5CF6);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -503,7 +503,7 @@ export default function FeesPage() {
         .page-hero {
           text-align: center;
           padding: 80px 24px 60px;
-          background: linear-gradient(180deg, rgba(0, 230, 118, 0.03) 0%, transparent 100%);
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.03) 0%, transparent 100%);
         }
 
         .hero-icon {
@@ -560,15 +560,15 @@ export default function FeesPage() {
           align-items: center;
           gap: 20px;
           padding: 24px 32px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.1), rgba(0, 176, 255, 0.1));
-          border: 1px solid rgba(0, 230, 118, 0.2);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 194, 255, 0.1));
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 16px;
           margin-bottom: 32px;
         }
 
         .free-badge {
           padding: 12px 24px;
-          background: linear-gradient(135deg, #00E676, #00C853);
+          background: linear-gradient(135deg, #10B981, #10B981);
           border-radius: 12px;
           font-size: 18px;
           font-weight: 800;
@@ -625,8 +625,8 @@ export default function FeesPage() {
         }
 
         .fee-price.free {
-          background: rgba(0, 230, 118, 0.15);
-          color: #00E676;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10B981;
         }
 
         .fee-desc {
@@ -645,8 +645,8 @@ export default function FeesPage() {
           display: flex;
           gap: 16px;
           padding: 20px 24px;
-          background: rgba(0, 176, 255, 0.05);
-          border: 1px solid rgba(0, 176, 255, 0.15);
+          background: rgba(0, 194, 255, 0.05);
+          border: 1px solid rgba(0, 194, 255, 0.15);
           border-radius: 12px;
         }
 
@@ -757,8 +757,8 @@ export default function FeesPage() {
         }
 
         .pd-badge.best {
-          background: rgba(0, 230, 118, 0.15);
-          color: #00E676;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10B981;
         }
 
         .pd-content {
@@ -784,7 +784,7 @@ export default function FeesPage() {
         }
 
         .pd-value.highlight {
-          color: #00E676;
+          color: #10B981;
         }
 
         .pd-note {
@@ -832,7 +832,7 @@ export default function FeesPage() {
           border-bottom: none;
           padding-top: 12px;
           margin-top: 4px;
-          border-top: 2px solid rgba(0, 230, 118, 0.3);
+          border-top: 2px solid rgba(16, 185, 129, 0.3);
         }
 
         .breakdown-label {
@@ -845,7 +845,7 @@ export default function FeesPage() {
         }
 
         .breakdown-row.highlight .breakdown-value {
-          color: #00E676;
+          color: #10B981;
           font-size: 16px;
         }
 
@@ -869,11 +869,11 @@ export default function FeesPage() {
           justify-content: center;
           width: 28px;
           height: 28px;
-          background: rgba(0, 176, 255, 0.15);
+          background: rgba(0, 194, 255, 0.15);
           border-radius: 8px;
           font-size: 14px;
           font-weight: 700;
-          color: #00B0FF;
+          color: #00C2FF;
           margin-bottom: 12px;
         }
 
@@ -929,7 +929,7 @@ export default function FeesPage() {
         .page-cta {
           text-align: center;
           padding: 80px 24px;
-          background: linear-gradient(180deg, transparent 0%, rgba(0, 230, 118, 0.02) 100%);
+          background: linear-gradient(180deg, transparent 0%, rgba(16, 185, 129, 0.02) 100%);
         }
 
         .page-cta h2 {
@@ -962,13 +962,13 @@ export default function FeesPage() {
         }
 
         .cta-btn.primary {
-          background: linear-gradient(135deg, #00E676, #00C853);
+          background: linear-gradient(135deg, #10B981, #10B981);
           color: #000;
         }
 
         .cta-btn.primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 230, 118, 0.3);
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
         }
 
         .cta-btn.secondary {

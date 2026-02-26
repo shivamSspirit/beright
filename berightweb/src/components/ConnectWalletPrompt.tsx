@@ -93,10 +93,10 @@ export default function ConnectWalletPrompt({
 
           {/* Wallet Icon */}
           <div className="cwp-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#00E676" strokeWidth="1.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5">
               <rect x="2" y="6" width="20" height="12" rx="2" />
               <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
-              <circle cx="18" cy="12" r="1" fill="#00E676" />
+              <circle cx="18" cy="12" r="1" fill="#10B981" />
             </svg>
           </div>
 
@@ -270,7 +270,7 @@ export default function ConnectWalletPrompt({
           justify-content: center;
           background: rgba(0, 230, 118, 0.15);
           border-radius: 50%;
-          color: #00E676;
+          color: #10B981;
           font-size: 11px;
           flex-shrink: 0;
         }
@@ -283,7 +283,7 @@ export default function ConnectWalletPrompt({
           gap: 10px;
           width: 100%;
           padding: 14px 20px;
-          background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%);
+          background: linear-gradient(135deg, #10B981 0%, #00C2FF 100%);
           border: none;
           border-radius: 14px;
           font-size: 15px;

@@ -979,12 +979,12 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
         .tm-side.active.yes {
           background: rgba(0, 230, 118, 0.1);
-          border-color: #00E676;
+          border-color: #10B981;
         }
 
         .tm-side.active.no {
           background: rgba(255, 82, 82, 0.1);
-          border-color: #FF5252;
+          border-color: #F43F5E;
         }
 
         .tm-side-label {
@@ -993,8 +993,8 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
           color: rgba(255,255,255,0.8);
         }
 
-        .tm-side.active.yes .tm-side-label { color: #00E676; }
-        .tm-side.active.no .tm-side-label { color: #FF5252; }
+        .tm-side.active.yes .tm-side-label { color: #10B981; }
+        .tm-side.active.no .tm-side-label { color: #F43F5E; }
 
         .tm-side-price {
           font-family: 'JetBrains Mono', monospace;
@@ -1167,12 +1167,12 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-action.yes {
-          background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+          background: linear-gradient(135deg, #10B981 0%, #10B981 100%);
           color: #000;
         }
 
         .tm-action.no {
-          background: linear-gradient(135deg, #FF5252 0%, #D32F2F 100%);
+          background: linear-gradient(135deg, #F43F5E 0%, #F43F5E 100%);
           color: #fff;
         }
 
@@ -1219,11 +1219,11 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-status-icon.success {
-          background: linear-gradient(135deg, #00E676, #00C853);
+          background: linear-gradient(135deg, #10B981, #10B981);
         }
 
         .tm-status-icon.error {
-          background: linear-gradient(135deg, #FF5252, #D32F2F);
+          background: linear-gradient(135deg, #F43F5E, #F43F5E);
         }
 
         .tm-status-icon svg {
@@ -1265,7 +1265,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
         .tm-error {
           font-size: 12px;
-          color: #FF5252;
+          color: #F43F5E;
           text-align: center;
         }
 
@@ -1328,7 +1328,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-copy-btn.copied svg {
-          color: #00E676;
+          color: #10B981;
         }
 
         .tm-tx-link {
@@ -1339,7 +1339,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-tx-link:hover {
-          color: #00E676;
+          color: #10B981;
           text-decoration: underline;
         }
 
@@ -1385,11 +1385,11 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-memo-status.success {
-          color: #00E676;
+          color: #10B981;
         }
 
         .tm-memo-status.error {
-          color: #FF5252;
+          color: #F43F5E;
         }
 
         .tm-memo-info {
@@ -1406,7 +1406,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
         .tm-memo-error-text {
           font-size: 12px;
-          color: #FF5252;
+          color: #F43F5E;
           margin: 0;
         }
 
@@ -1416,7 +1416,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
           background: rgba(255, 82, 82, 0.1);
           border: 1px solid rgba(255, 82, 82, 0.3);
           border-radius: 8px;
-          color: #FF5252;
+          color: #F43F5E;
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
@@ -1644,7 +1644,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-copy-address-btn.copied svg {
-          color: #00E676;
+          color: #10B981;
         }
 
         .tm-deposit-note {

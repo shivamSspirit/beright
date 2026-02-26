@@ -233,7 +233,7 @@ export function DailyChallengeBanner({
         }
 
         .xp-earned {
-          color: #00E676;
+          color: #10B981;
           margin-left: 6px;
           font-weight: 600;
         }
@@ -288,8 +288,8 @@ export function DailyChallengeBanner({
         }
 
         .challenge-item.complete {
-          background: rgba(0, 230, 118, 0.08);
-          border-color: rgba(0, 230, 118, 0.2);
+          background: rgba(16, 185, 129, 0.08);
+          border-color: rgba(16, 185, 129, 0.2);
         }
 
         .challenge-emoji {
@@ -332,7 +332,7 @@ export function DailyChallengeBanner({
         }
 
         .challenge-item.complete .challenge-progress-fill {
-          background: #00E676;
+          background: #10B981;
         }
 
         .challenge-reward {
@@ -357,7 +357,7 @@ export function DailyChallengeBanner({
 
         .reward-claimed {
           font-size: 16px;
-          color: #00E676;
+          color: #10B981;
         }
       `}</style>
     </animated.div>
@@ -640,8 +640,8 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
           align-items: center;
           gap: 12px;
           padding: 14px 18px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
-          border: 1px solid rgba(0, 230, 118, 0.3);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+          border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 16px;
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
@@ -668,7 +668,7 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
         .achievement-ring {
           position: absolute;
           inset: 0;
-          border: 2px solid rgba(0, 230, 118, 0.5);
+          border: 2px solid rgba(16, 185, 129, 0.5);
           border-radius: 50%;
           animation: ring-pulse 1s ease-out infinite;
         }
@@ -689,7 +689,7 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
         .achievement-label {
           font-size: 10px;
           font-weight: 600;
-          color: #00E676;
+          color: #10B981;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
@@ -708,9 +708,9 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
         .achievement-xp {
           font-size: 14px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           padding: 6px 10px;
-          background: rgba(0, 230, 118, 0.15);
+          background: rgba(16, 185, 129, 0.15);
           border-radius: 8px;
           flex-shrink: 0;
         }

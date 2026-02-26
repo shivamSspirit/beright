@@ -367,7 +367,7 @@ export default function ResolutionPage() {
       <style jsx>{`
         .resolution-page {
           min-height: 100vh;
-          background: #030305;
+          background: #080C14;
           color: #fff;
           font-family: 'Outfit', system-ui, sans-serif;
         }
@@ -395,7 +395,7 @@ export default function ResolutionPage() {
 
         .logo-be { color: #fff; }
         .logo-right {
-          background: linear-gradient(135deg, #00E676, #00B0FF, #8B5CF6);
+          background: linear-gradient(135deg, #10B981, #00C2FF, #8B5CF6);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -499,7 +499,7 @@ export default function ResolutionPage() {
           justify-content: center;
           width: 32px;
           height: 32px;
-          background: linear-gradient(135deg, #00E676, #00B0FF);
+          background: linear-gradient(135deg, #10B981, #00C2FF);
           border-radius: 50%;
           font-size: 14px;
           font-weight: 800;
@@ -540,8 +540,8 @@ export default function ResolutionPage() {
         }
 
         .oracle-card.primary {
-          border-color: rgba(0, 230, 118, 0.2);
-          background: rgba(0, 230, 118, 0.02);
+          border-color: rgba(16, 185, 129, 0.2);
+          background: rgba(16, 185, 129, 0.02);
         }
 
         .oracle-header {
@@ -553,11 +553,11 @@ export default function ResolutionPage() {
 
         .oracle-badge {
           padding: 4px 10px;
-          background: rgba(0, 230, 118, 0.15);
+          background: rgba(16, 185, 129, 0.15);
           border-radius: 6px;
           font-size: 11px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
         }
 
         .oracle-badge.secondary {
@@ -594,7 +594,7 @@ export default function ResolutionPage() {
         .oracle-card li::before {
           content: '✓';
           margin-right: 8px;
-          color: #00E676;
+          color: #10B981;
         }
 
         /* Sources Grid */
@@ -650,10 +650,10 @@ export default function ResolutionPage() {
 
         .source-tag {
           padding: 4px 10px;
-          background: rgba(0, 176, 255, 0.1);
+          background: rgba(0, 194, 255, 0.1);
           border-radius: 6px;
           font-size: 12px;
-          color: #00B0FF;
+          color: #00C2FF;
         }
 
         .source-examples ul {
@@ -810,11 +810,11 @@ export default function ResolutionPage() {
         .timing-value {
           display: inline-block;
           padding: 6px 14px;
-          background: rgba(0, 230, 118, 0.1);
+          background: rgba(16, 185, 129, 0.1);
           border-radius: 8px;
           font-size: 14px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           font-family: 'JetBrains Mono', monospace;
         }
 
@@ -849,7 +849,7 @@ export default function ResolutionPage() {
         .page-cta {
           text-align: center;
           padding: 80px 24px;
-          background: linear-gradient(180deg, transparent 0%, rgba(0, 230, 118, 0.02) 100%);
+          background: linear-gradient(180deg, transparent 0%, rgba(16, 185, 129, 0.02) 100%);
         }
 
         .page-cta h2 {
@@ -882,13 +882,13 @@ export default function ResolutionPage() {
         }
 
         .cta-btn.primary {
-          background: linear-gradient(135deg, #00E676, #00C853);
+          background: linear-gradient(135deg, #10B981, #10B981);
           color: #000;
         }
 
         .cta-btn.primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 230, 118, 0.3);
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
         }
 
         .cta-btn.secondary {

@@ -145,7 +145,7 @@ function CompletionScreen({
       particleCount: 100,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ['#00E676', '#2979FF', '#FFD700'],
+      colors: ['#10B981', '#2979FF', '#FFD700'],
     });
   }, []);
 
@@ -275,7 +275,7 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
       setShowFactCheck(true);
 
       // Small confetti on initial swipe
-      const colors = direction === 'right' ? ['#00E676', '#00C853'] : ['#FF5252', '#D32F2F'];
+      const colors = direction === 'right' ? ['#10B981', '#10B981'] : ['#F43F5E', '#F43F5E'];
       confetti({
         particleCount: 20,
         spread: 40,
@@ -365,7 +365,7 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
       setPendingSwipe(null);
 
       // Big celebration confetti
-      const colors = direction === 'yes' ? ['#00E676', '#00C853', '#4CAF50'] : ['#FF5252', '#D32F2F', '#E91E63'];
+      const colors = direction === 'yes' ? ['#10B981', '#10B981', '#10B981'] : ['#F43F5E', '#F43F5E', '#F43F5E'];
       confetti({
         particleCount: 60,
         spread: 80,

@@ -47,10 +47,10 @@ export default function Header() {
         }
 
         .navbar.scrolled {
-          background: rgba(10, 10, 11, 0.85);
+          background: rgba(8, 12, 20, 0.92);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          border-bottom: 1px solid rgba(30, 58, 95, 0.2);
         }
 
         .nav-inner {
@@ -67,12 +67,12 @@ export default function Header() {
           align-items: center;
           gap: 6px;
           text-decoration: none;
-          color: #fff;
+          color: #F1F5F9;
           line-height: 1;
         }
 
         .logo-icon {
-          color: #00FF88;
+          color: #00C2FF;
           font-size: 26px;
           line-height: 1;
           display: inline-block;
@@ -84,7 +84,7 @@ export default function Header() {
           font-size: 22px;
           font-weight: 800;
           letter-spacing: -0.5px;
-          color: #fff;
+          color: #F1F5F9;
           line-height: 1;
           display: inline-block;
           vertical-align: middle;
@@ -97,7 +97,7 @@ export default function Header() {
         }
 
         .nav-link {
-          color: rgba(255, 255, 255, 0.6);
+          color: #94A3B8;
           text-decoration: none;
           font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
           font-size: 15px;
@@ -107,7 +107,7 @@ export default function Header() {
         }
 
         .nav-link:hover {
-          color: #fff;
+          color: #F1F5F9;
         }
 
         .nav-cta {
@@ -115,10 +115,10 @@ export default function Header() {
           align-items: center;
           gap: 8px;
           padding: 10px 18px;
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 176, 255, 0.1) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          background: rgba(0, 194, 255, 0.1);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 10px;
-          color: #fff;
+          color: #F1F5F9;
           font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
           font-size: 14px;
           font-weight: 600;
@@ -128,10 +128,10 @@ export default function Header() {
         }
 
         .nav-cta:hover {
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 176, 255, 0.15) 100%);
-          border-color: rgba(0, 255, 136, 0.35);
+          background: rgba(0, 194, 255, 0.15);
+          border-color: rgba(0, 194, 255, 0.35);
           transform: translateY(-1px);
-          box-shadow: 0 4px 20px rgba(0, 255, 136, 0.15);
+          box-shadow: 0 4px 20px rgba(0, 194, 255, 0.15);
         }
 
         .nav-cta svg {

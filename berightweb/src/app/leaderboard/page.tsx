@@ -461,7 +461,7 @@ export default function LeaderboardPage() {
       <style jsx>{`
         .leaderboard-page {
           min-height: 100dvh;
-          background: #0A0A0F;
+          background: #080C14;
           padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
         }
 
@@ -521,8 +521,8 @@ export default function LeaderboardPage() {
 
         .lb-badge {
           padding: 4px 10px;
-          background: rgba(0, 230, 118, 0.15);
-          color: #00E676;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10B981;
           font-size: 10px;
           font-weight: 600;
           border-radius: 12px;
@@ -592,8 +592,8 @@ export default function LeaderboardPage() {
 
         .dim-tab.active {
           color: #000;
-          background: #00E676;
-          border-color: #00E676;
+          background: #10B981;
+          border-color: #10B981;
         }
 
         .dim-tab.active svg {
@@ -730,7 +730,7 @@ export default function LeaderboardPage() {
           width: 28px;
           height: 28px;
           border: 2px solid rgba(255, 255, 255, 0.1);
-          border-top-color: #00E676;
+          border-top-color: #10B981;
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
@@ -921,7 +921,7 @@ export default function LeaderboardPage() {
           bottom: -6px;
           right: -6px;
           padding: 3px;
-          background: #12121A;
+          background: #121929;
           border-radius: 50%;
         }
 
@@ -951,13 +951,13 @@ export default function LeaderboardPage() {
         .podium-metric {
           font-size: 14px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           font-family: var(--font-mono, 'JetBrains Mono', monospace);
         }
 
         .podium-metric.hero {
           font-size: 20px;
-          text-shadow: 0 0 20px rgba(0, 230, 118, 0.5);
+          text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
         }
 
         .podium-streak {
@@ -993,7 +993,7 @@ export default function LeaderboardPage() {
            YOUR RANK CARD
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         .your-rank-card {
-          background: linear-gradient(145deg, #18182A, #12121F);
+          background: linear-gradient(145deg, #161E2E, #121929);
           border: 1px solid rgba(99, 102, 241, 0.2);
           border-radius: 16px;
           padding: 16px;
@@ -1035,11 +1035,11 @@ export default function LeaderboardPage() {
         }
 
         .rank-change.up {
-          color: #00E676;
+          color: #10B981;
         }
 
         .rank-change.down {
-          color: #FF5252;
+          color: #F43F5E;
         }
 
         .your-league {
@@ -1091,7 +1091,7 @@ export default function LeaderboardPage() {
         }
 
         .stat-val.green {
-          color: #00E676;
+          color: #10B981;
         }
 
         .stat-val.fire {
@@ -1189,7 +1189,7 @@ export default function LeaderboardPage() {
         .you-val {
           font-size: 15px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           font-family: var(--font-mono, monospace);
           display: block;
         }
@@ -1197,7 +1197,7 @@ export default function LeaderboardPage() {
         .rival-val {
           font-size: 15px;
           font-weight: 700;
-          color: #FF5252;
+          color: #F43F5E;
           font-family: var(--font-mono, monospace);
           display: block;
         }
@@ -1222,7 +1222,7 @@ export default function LeaderboardPage() {
         }
 
         .gap-amount {
-          color: #FF5252;
+          color: #F43F5E;
           font-weight: 600;
         }
 
@@ -1313,11 +1313,11 @@ export default function LeaderboardPage() {
         }
 
         .rank-change-indicator.up {
-          color: #00E676;
+          color: #10B981;
         }
 
         .rank-change-indicator.down {
-          color: #FF5252;
+          color: #F43F5E;
         }
 
         .rank-avatar {
@@ -1375,7 +1375,7 @@ export default function LeaderboardPage() {
         }
 
         .rank-metric.green {
-          color: #00E676;
+          color: #10B981;
         }
 
         .rank-streak {

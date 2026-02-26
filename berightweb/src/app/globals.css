@@ -14,7 +14,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #0A0A0B;
+  background: #080C14;
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
@@ -32,7 +32,7 @@
 }
 
 .loader-icon {
-  color: #00FF88;
+  color: #00C2FF;
   font-size: 32px;
   animation: pulse-loader 1.5s ease-in-out infinite;
 }
@@ -48,8 +48,8 @@
 .loader-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #00FF88;
+  border: 3px solid rgba(30, 58, 95, 0.3);
+  border-top-color: #00C2FF;
   border-radius: 50%;
   animation: spin-loader 0.8s linear infinite;
 }
@@ -64,46 +64,53 @@
 }
 
 :root {
-  /* Core Background - Pure Black */
-  --bg-void: #000000;
-  --bg-deep: #0A0A12;
-  --bg-elevated: #0D0D1A;
+  /* ══════════════════════════════════════════════════════════════
+     PREMIUM NAVY THEME - Inspired by Linear, Vercel, Uniswap
+     ══════════════════════════════════════════════════════════════ */
 
-  /* Card Background - FULLY OPAQUE */
-  --card-bg: #1A1A2E;
-  --card-bg-gradient: linear-gradient(145deg, #1C1C32, #161628);
-  --card-border: rgba(255, 255, 255, 0.08);
+  /* Core Backgrounds - Deep Navy */
+  --bg-void: #080C14;
+  --bg-deep: #0D1117;
+  --bg-elevated: #121929;
 
-  /* Glass Morphism - for overlays only */
-  --glass-bg: rgba(20, 20, 35, 0.95);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  /* Card Backgrounds - Navy Tones */
+  --card-bg: #161E2E;
+  --card-bg-gradient: linear-gradient(145deg, #1A2435, #141C2A);
+  --card-border: rgba(30, 58, 95, 0.2);
 
-  /* YES/NO Colors - Vivid */
-  --yes: #00E676;
-  --yes-glow: rgba(0, 230, 118, 0.4);
-  --yes-subtle: rgba(0, 230, 118, 0.15);
-  --no: #FF1744;
-  --no-glow: rgba(255, 23, 68, 0.4);
-  --no-subtle: rgba(255, 23, 68, 0.15);
+  /* Glass Morphism - Cool Navy */
+  --glass-bg: rgba(15, 23, 36, 0.96);
+  --glass-border: rgba(56, 189, 248, 0.125);
 
-  /* Accent - Electric Blue */
-  --accent: #2979FF;
-  --accent-glow: rgba(41, 121, 255, 0.4);
+  /* YES/NO Colors - Refined */
+  --yes: #10B981;
+  --yes-glow: rgba(16, 185, 129, 0.4);
+  --yes-subtle: rgba(16, 185, 129, 0.12);
+  --no: #F43F5E;
+  --no-glow: rgba(244, 63, 94, 0.4);
+  --no-subtle: rgba(244, 63, 94, 0.12);
 
-  /* AI Purple */
-  --ai: #8B5CF6;
+  /* Primary Accent - Electric Teal/Blue */
+  --accent: #00C2FF;
+  --accent-glow: rgba(0, 194, 255, 0.4);
+  --accent-subtle: rgba(0, 194, 255, 0.12);
 
-  /* Text Hierarchy - BOOSTED CONTRAST */
-  --text-primary: #FFFFFF;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-muted: rgba(255, 255, 255, 0.5);
-  --text-ghost: rgba(255, 255, 255, 0.35);
+  /* AI Purple - Soft Violet */
+  --ai: #A78BFA;
+  --ai-glow: rgba(167, 139, 250, 0.4);
+  --ai-subtle: rgba(167, 139, 250, 0.12);
+
+  /* Text Hierarchy - Slate Greys */
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-ghost: #475569;
 
   /* Fire/Streak Color */
-  --fire: #FF6B35;
+  --fire: #FB923C;
 
   /* Gold/Achievement */
-  --gold: #FFD700;
+  --gold: #FBBF24;
 
   /* Typography */
   --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
@@ -249,39 +256,39 @@ body::before {
 }
 
 .pill-trending {
-  background: rgba(255, 107, 53, 0.2);
+  background: rgba(251, 146, 60, 0.12);
   color: var(--fire);
-  border: 1px solid rgba(255, 107, 53, 0.3);
+  border: 1px solid rgba(251, 146, 60, 0.25);
 }
 
 .pill-crypto {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
-  border: 1px solid rgba(255, 193, 7, 0.3);
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(251, 191, 36, 0.25);
 }
 
 .pill-politics {
-  background: rgba(99, 102, 241, 0.2);
-  color: #818CF8;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(167, 139, 250, 0.12);
+  color: var(--ai);
+  border: 1px solid rgba(167, 139, 250, 0.25);
 }
 
 .pill-economics {
-  background: rgba(0, 230, 118, 0.2);
+  background: var(--yes-subtle);
   color: var(--yes);
-  border: 1px solid rgba(0, 230, 118, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .pill-tech {
-  background: rgba(139, 92, 246, 0.2);
-  color: var(--ai);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border: 1px solid rgba(0, 194, 255, 0.25);
 }
 
 .pill-sports {
-  background: rgba(255, 107, 53, 0.2);
+  background: rgba(251, 146, 60, 0.12);
   color: var(--fire);
-  border: 1px solid rgba(255, 107, 53, 0.3);
+  border: 1px solid rgba(251, 146, 60, 0.25);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -314,8 +321,8 @@ body::before {
 }
 
 .vote-btn-no {
-  background: rgba(255, 23, 68, 0.15);
-  border-color: rgba(255, 23, 68, 0.4);
+  background: var(--no-subtle);
+  border-color: rgba(244, 63, 94, 0.4);
   color: var(--no);
 }
 
@@ -326,14 +333,14 @@ body::before {
 }
 
 .vote-btn-yes {
-  background: rgba(0, 230, 118, 0.15);
-  border-color: rgba(0, 230, 118, 0.4);
+  background: var(--yes-subtle);
+  border-color: rgba(16, 185, 129, 0.4);
   color: var(--yes);
 }
 
 .vote-btn-yes:active {
   background: var(--yes);
-  color: #000;
+  color: #080C14;
   transform: scale(0.9);
 }
 
@@ -348,10 +355,10 @@ body::before {
   right: 0;
   z-index: 100;
   padding-bottom: var(--safe-area-bottom);
-  background: rgba(10, 10, 18, 0.95);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--card-border);
 }
 
 .bottom-nav-inner {
@@ -714,8 +721,8 @@ body::before {
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 193, 7, 0.1));
-  border: 1px solid rgba(255, 107, 53, 0.4);
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(251, 191, 36, 0.08));
+  border: 1px solid rgba(251, 146, 60, 0.35);
   border-radius: 100px;
   font-weight: 700;
   color: var(--fire);
@@ -831,9 +838,9 @@ body::before {
 .swipe-card-v2 .card-inner {
   width: 100%;
   height: 100%;
-  background: linear-gradient(165deg, #1A1A2E 0%, #141420 100%);
+  background: var(--card-bg-gradient);
   border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border);
   overflow: hidden;
   position: relative;
   transition: box-shadow 0.15s ease;
@@ -864,16 +871,16 @@ body::before {
 
 .swipe-card-v2 .stamp-yes {
   right: 20px;
-  color: #00E676;
-  text-shadow: 0 0 40px rgba(0, 230, 118, 0.6), 0 0 80px rgba(0, 230, 118, 0.3);
-  box-shadow: 0 0 30px rgba(0, 230, 118, 0.3), inset 0 0 20px rgba(0, 230, 118, 0.1);
+  color: var(--yes);
+  text-shadow: 0 0 40px var(--yes-glow), 0 0 80px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.3), inset 0 0 20px rgba(16, 185, 129, 0.1);
 }
 
 .swipe-card-v2 .stamp-no {
   left: 20px;
-  color: #FF5252;
-  text-shadow: 0 0 40px rgba(255, 82, 82, 0.6), 0 0 80px rgba(255, 82, 82, 0.3);
-  box-shadow: 0 0 30px rgba(255, 82, 82, 0.3), inset 0 0 20px rgba(255, 82, 82, 0.1);
+  color: var(--no);
+  text-shadow: 0 0 40px var(--no-glow), 0 0 80px rgba(244, 63, 94, 0.3);
+  box-shadow: 0 0 30px rgba(244, 63, 94, 0.3), inset 0 0 20px rgba(244, 63, 94, 0.1);
 }
 
 /* Card Top */
@@ -908,17 +915,17 @@ body::before {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #00E676;
+  background: var(--yes);
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.4);
+    box-shadow: 0 0 0 0 var(--yes-glow);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 8px 4px rgba(0, 230, 118, 0.2);
+    box-shadow: 0 0 8px 4px rgba(16, 185, 129, 0.2);
     transform: scale(1.1);
   }
 }
@@ -988,21 +995,21 @@ body::before {
 }
 
 .swipe-card-v2 .chart-value.yes-value {
-  color: #00E676;
-  text-shadow: 0 0 20px rgba(0, 230, 118, 0.3);
+  color: var(--yes);
+  text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
 }
 
 .swipe-card-v2 .chart-value.no-value {
-  color: #FF5252;
-  text-shadow: 0 0 20px rgba(255, 82, 82, 0.3);
+  color: var(--no);
+  text-shadow: 0 0 20px rgba(244, 63, 94, 0.3);
 }
 
 .swipe-card-v2 .chart-yes .chart-label {
-  color: #00E676;
+  color: var(--yes);
 }
 
 .swipe-card-v2 .chart-no .chart-label {
-  color: #FF5252;
+  color: var(--no);
 }
 
 .swipe-card-v2 .chart-no .chart-header {
@@ -1145,20 +1152,20 @@ body::before {
 }
 
 .swipe-card-v2 .action-no {
-  background: rgba(255, 82, 82, 0.08);
-  border-color: rgba(255, 82, 82, 0.35);
-  color: #FF5252;
+  background: var(--no-subtle);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: var(--no);
 }
 
 .swipe-card-v2 .action-no::before {
-  background: radial-gradient(circle at center, rgba(255, 82, 82, 0.3), transparent 70%);
+  background: radial-gradient(circle at center, rgba(244, 63, 94, 0.3), transparent 70%);
 }
 
 .swipe-card-v2 .action-no:hover {
-  background: rgba(255, 82, 82, 0.15);
-  border-color: #FF5252;
+  background: rgba(244, 63, 94, 0.2);
+  border-color: var(--no);
   transform: scale(1.08);
-  box-shadow: 0 0 30px rgba(255, 82, 82, 0.3), 0 10px 40px rgba(255, 82, 82, 0.2);
+  box-shadow: 0 0 30px var(--no-glow), 0 10px 40px rgba(244, 63, 94, 0.2);
 }
 
 .swipe-card-v2 .action-no:hover::before {
@@ -1170,27 +1177,27 @@ body::before {
 }
 
 .swipe-card-v2 .action-no:active {
-  background: #FF5252;
+  background: var(--no);
   color: #fff;
   transform: scale(0.92);
-  box-shadow: 0 0 50px rgba(255, 82, 82, 0.5);
+  box-shadow: 0 0 50px var(--no-glow);
 }
 
 .swipe-card-v2 .action-yes {
-  background: rgba(0, 230, 118, 0.08);
-  border-color: rgba(0, 230, 118, 0.35);
-  color: #00E676;
+  background: var(--yes-subtle);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--yes);
 }
 
 .swipe-card-v2 .action-yes::before {
-  background: radial-gradient(circle at center, rgba(0, 230, 118, 0.3), transparent 70%);
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.3), transparent 70%);
 }
 
 .swipe-card-v2 .action-yes:hover {
-  background: rgba(0, 230, 118, 0.15);
-  border-color: #00E676;
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--yes);
   transform: scale(1.08);
-  box-shadow: 0 0 30px rgba(0, 230, 118, 0.3), 0 10px 40px rgba(0, 230, 118, 0.2);
+  box-shadow: 0 0 30px var(--yes-glow), 0 10px 40px rgba(16, 185, 129, 0.2);
 }
 
 .swipe-card-v2 .action-yes:hover::before {
@@ -1202,10 +1209,10 @@ body::before {
 }
 
 .swipe-card-v2 .action-yes:active {
-  background: #00E676;
-  color: #000;
+  background: var(--yes);
+  color: var(--bg-void);
   transform: scale(0.92);
-  box-shadow: 0 0 50px rgba(0, 230, 118, 0.5);
+  box-shadow: 0 0 50px var(--yes-glow);
 }
 
 /* Swipe Hint - Animated */
@@ -1552,12 +1559,12 @@ body::before {
 }
 
 .markets-status.live {
-  background: rgba(0, 230, 118, 0.15);
+  background: var(--yes-subtle);
   color: var(--yes);
 }
 
 .markets-status.demo {
-  background: rgba(139, 92, 246, 0.15);
+  background: var(--ai-subtle);
   color: var(--ai);
 }
 
@@ -1652,15 +1659,15 @@ body::before {
 
 /* Jupiter Market Card */
 .market-card-jupiter {
-  background: linear-gradient(145deg, #1C1C32, #161628);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card-bg-gradient);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
   padding: 16px;
   transition: all 0.2s;
 }
 
 .market-card-jupiter:hover {
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(30, 58, 95, 0.4);
   transform: translateY(-2px);
 }
 
@@ -1733,7 +1740,7 @@ body::before {
 
 .market-card-jupiter .btn-yes {
   padding: 4px 8px;
-  background: rgba(0, 230, 118, 0.15);
+  background: var(--yes-subtle);
   color: var(--yes);
   border: none;
   border-radius: 4px;
@@ -1743,13 +1750,13 @@ body::before {
 }
 
 .market-card-jupiter .btn-yes:hover {
-  background: rgba(0, 230, 118, 0.25);
+  background: rgba(16, 185, 129, 0.25);
 }
 
 .market-card-jupiter .btn-no {
   padding: 4px 8px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #EF4444;
+  background: var(--no-subtle);
+  color: var(--no);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -1758,7 +1765,7 @@ body::before {
 }
 
 .market-card-jupiter .btn-no:hover {
-  background: rgba(239, 68, 68, 0.25);
+  background: rgba(244, 63, 94, 0.25);
 }
 
 .market-card-jupiter .btn-divider {
@@ -1835,9 +1842,9 @@ body::before {
 .swipe-card-v3 .card-inner-v3 {
   width: 100%;
   height: 100%;
-  background: linear-gradient(168deg, #0F0F1A 0%, #0A0A14 50%, #0D0D18 100%);
+  background: linear-gradient(168deg, var(--bg-elevated) 0%, var(--bg-deep) 50%, var(--bg-elevated) 100%);
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--card-border);
   overflow: hidden;
   position: relative;
   display: flex;
@@ -1880,16 +1887,16 @@ body::before {
 
 .swipe-card-v3 .stamp-yes {
   right: 16px;
-  color: #00E676;
-  text-shadow: 0 0 30px rgba(0, 230, 118, 0.8);
-  box-shadow: 0 0 40px rgba(0, 230, 118, 0.4);
+  color: var(--yes);
+  text-shadow: 0 0 30px var(--yes-glow);
+  box-shadow: 0 0 40px var(--yes-glow);
 }
 
 .swipe-card-v3 .stamp-no {
   left: 16px;
-  color: #FF5252;
-  text-shadow: 0 0 30px rgba(255, 82, 82, 0.8);
-  box-shadow: 0 0 40px rgba(255, 82, 82, 0.4);
+  color: var(--no);
+  text-shadow: 0 0 30px var(--no-glow);
+  box-shadow: 0 0 40px var(--no-glow);
 }
 
 /* === TOP BAR === */
@@ -2034,13 +2041,13 @@ body::before {
 }
 
 .swipe-card-v3 .price-card.yes {
-  border-color: rgba(0, 230, 118, 0.2);
-  background: linear-gradient(135deg, rgba(0, 230, 118, 0.08), rgba(0, 0, 0, 0.4));
+  border-color: rgba(16, 185, 129, 0.2);
+  background: linear-gradient(135deg, var(--yes-subtle), rgba(8, 12, 20, 0.6));
 }
 
 .swipe-card-v3 .price-card.no {
-  border-color: rgba(255, 82, 82, 0.2);
-  background: linear-gradient(135deg, rgba(255, 82, 82, 0.08), rgba(0, 0, 0, 0.4));
+  border-color: rgba(244, 63, 94, 0.2);
+  background: linear-gradient(135deg, var(--no-subtle), rgba(8, 12, 20, 0.6));
 }
 
 .swipe-card-v3 .price-top {
@@ -2059,11 +2066,11 @@ body::before {
 }
 
 .swipe-card-v3 .price-card.yes .price-label {
-  color: #00E676;
+  color: var(--yes);
 }
 
 .swipe-card-v3 .price-card.no .price-label {
-  color: #FF5252;
+  color: var(--no);
 }
 
 .swipe-card-v3 .mini-sparkline {
@@ -2086,13 +2093,13 @@ body::before {
 }
 
 .swipe-card-v3 .price-card.yes .price-value {
-  color: #00E676;
-  text-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+  color: var(--yes);
+  text-shadow: 0 0 20px var(--yes-glow);
 }
 
 .swipe-card-v3 .price-card.no .price-value {
-  color: #FF5252;
-  text-shadow: 0 0 20px rgba(255, 82, 82, 0.4);
+  color: var(--no);
+  text-shadow: 0 0 20px var(--no-glow);
 }
 
 .swipe-card-v3 .price-pct {
@@ -2112,11 +2119,11 @@ body::before {
 }
 
 .swipe-card-v3 .price-movement.up {
-  color: #00E676;
+  color: var(--yes);
 }
 
 .swipe-card-v3 .price-movement.down {
-  color: #FF5252;
+  color: var(--no);
 }
 
 .swipe-card-v3 .price-vs {
@@ -2171,11 +2178,11 @@ body::before {
 }
 
 .swipe-card-v3 .stat-change.up {
-  color: #00E676;
+  color: var(--yes);
 }
 
 .swipe-card-v3 .stat-change.down {
-  color: #FF5252;
+  color: var(--no);
 }
 
 .swipe-card-v3 .stat-divider {
@@ -2257,41 +2264,41 @@ body::before {
 }
 
 .swipe-card-v3 .trade-btn.yes {
-  background: rgba(0, 230, 118, 0.1);
-  border-color: rgba(0, 230, 118, 0.4);
+  background: var(--yes-subtle);
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 .swipe-card-v3 .trade-btn.yes:hover {
-  background: rgba(0, 230, 118, 0.2);
-  border-color: #00E676;
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--yes);
   transform: scale(1.03);
-  box-shadow: 0 0 30px rgba(0, 230, 118, 0.3);
+  box-shadow: 0 0 30px var(--yes-glow);
 }
 
 .swipe-card-v3 .trade-btn.yes:active {
-  background: #00E676;
+  background: var(--yes);
   transform: scale(0.97);
 }
 
 .swipe-card-v3 .trade-btn.yes:active .trade-side,
 .swipe-card-v3 .trade-btn.yes:active .trade-price {
-  color: #000;
+  color: var(--bg-void);
 }
 
 .swipe-card-v3 .trade-btn.no {
-  background: rgba(255, 82, 82, 0.1);
-  border-color: rgba(255, 82, 82, 0.4);
+  background: var(--no-subtle);
+  border-color: rgba(244, 63, 94, 0.4);
 }
 
 .swipe-card-v3 .trade-btn.no:hover {
-  background: rgba(255, 82, 82, 0.2);
-  border-color: #FF5252;
+  background: rgba(244, 63, 94, 0.2);
+  border-color: var(--no);
   transform: scale(1.03);
-  box-shadow: 0 0 30px rgba(255, 82, 82, 0.3);
+  box-shadow: 0 0 30px var(--no-glow);
 }
 
 .swipe-card-v3 .trade-btn.no:active {
-  background: #FF5252;
+  background: var(--no);
   transform: scale(0.97);
 }
 
@@ -2307,11 +2314,11 @@ body::before {
 }
 
 .swipe-card-v3 .trade-btn.yes .trade-side {
-  color: #00E676;
+  color: var(--yes);
 }
 
 .swipe-card-v3 .trade-btn.no .trade-side {
-  color: #FF5252;
+  color: var(--no);
 }
 
 .swipe-card-v3 .trade-price {
@@ -2321,11 +2328,11 @@ body::before {
 }
 
 .swipe-card-v3 .trade-btn.yes .trade-price {
-  color: #00E676;
+  color: var(--yes);
 }
 
 .swipe-card-v3 .trade-btn.no .trade-price {
-  color: #FF5252;
+  color: var(--no);
 }
 
 /* Swipe Hint */

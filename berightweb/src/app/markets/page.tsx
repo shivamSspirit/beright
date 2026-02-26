@@ -327,8 +327,8 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
         <defs>
           {/* Gradient fill under the line */}
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={isUp ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 82, 82, 0.3)'} />
-            <stop offset="60%" stopColor={isUp ? 'rgba(0, 230, 118, 0.08)' : 'rgba(255, 82, 82, 0.08)'} />
+            <stop offset="0%" stopColor={isUp ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'} />
+            <stop offset="60%" stopColor={isUp ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)'} />
             <stop offset="100%" stopColor="transparent" />
           </linearGradient>
           {/* Line glow effect */}
@@ -356,7 +356,7 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
         <path
           d={pathData}
           fill="none"
-          stroke={isUp ? '#00E676' : '#FF5252'}
+          stroke={isUp ? '#10B981' : '#F43F5E'}
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -368,7 +368,7 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
           cx={drawWidth}
           cy={lastY}
           r="5"
-          fill={isUp ? 'rgba(0, 230, 118, 0.25)' : 'rgba(255, 82, 82, 0.25)'}
+          fill={isUp ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
           className="pulse-ring"
         />
 
@@ -377,7 +377,7 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
           cx={drawWidth}
           cy={lastY}
           r="3"
-          fill={isUp ? '#00E676' : '#FF5252'}
+          fill={isUp ? '#10B981' : '#F43F5E'}
           filter={`url(#${pulseGlowId})`}
           className="pulse-dot"
         />
@@ -852,7 +852,7 @@ export default function MarketsPage() {
 
         .markets-page {
           min-height: 100dvh;
-          background: linear-gradient(180deg, #0A0A0C 0%, #111114 50%, #0A0A0C 100%);
+          background: linear-gradient(180deg, #080C14 0%, #0D1117 50%, #080C14 100%);
           padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
         }
 
@@ -911,7 +911,7 @@ export default function MarketsPage() {
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
-        .status-badge.live { background: rgba(0, 255, 136, 0.12); color: #00FF88; }
+        .status-badge.live { background: rgba(16, 185, 129, 0.12); color: #10B981; }
         .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
         .status-badge.live .status-dot { box-shadow: 0 0 8px currentColor; animation: pulse-glow 2s infinite; }
 
@@ -925,7 +925,7 @@ export default function MarketsPage() {
           align-items: center;
           gap: 6px;
           padding: 8px 14px;
-          background: linear-gradient(135deg, #00FF88 0%, #00CC6A 100%);
+          background: linear-gradient(135deg, #10B981 0%, #10B981 100%);
           border: none;
           border-radius: 10px;
           font-size: 11px;
@@ -936,7 +936,7 @@ export default function MarketsPage() {
           text-transform: uppercase;
           letter-spacing: 0.02em;
         }
-        .connect-wallet-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3); }
+        .connect-wallet-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3); }
         .connect-wallet-btn svg { stroke: #000; }
 
         .wallet-badge {
@@ -944,15 +944,15 @@ export default function MarketsPage() {
           align-items: center;
           gap: 6px;
           padding: 6px 12px;
-          background: rgba(0, 255, 136, 0.1);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 20px;
           font-size: 11px;
           font-weight: 600;
           font-family: 'SF Mono', 'Fira Code', monospace;
-          color: #00FF88;
+          color: #10B981;
         }
-        .wallet-dot { width: 6px; height: 6px; border-radius: 50%; background: #00FF88; box-shadow: 0 0 8px #00FF88; }
+        .wallet-dot { width: 6px; height: 6px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981; }
 
         /* ━━━ SEARCH ━━━ */
         .search-container {
@@ -968,8 +968,8 @@ export default function MarketsPage() {
         }
         .search-container:focus-within {
           background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(0, 255, 136, 0.3);
-          box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.08);
+          border-color: rgba(16, 185, 129, 0.3);
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08);
         }
         .search-container svg { color: rgba(255, 255, 255, 0.3); flex-shrink: 0; }
         .search-container input {
@@ -1027,14 +1027,14 @@ export default function MarketsPage() {
           border-color: rgba(255, 255, 255, 0.12);
         }
         .filters-container :global(.dropdown.open .dropdown-trigger) {
-          background: rgba(0, 255, 136, 0.1);
-          border-color: rgba(0, 255, 136, 0.3);
-          color: #00FF88;
+          background: rgba(16, 185, 129, 0.1);
+          border-color: rgba(16, 185, 129, 0.3);
+          color: #10B981;
         }
         .filters-container :global(.dropdown-icon) { font-size: 11px; }
         .filters-container :global(.dropdown-label) { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
         .filters-container :global(.dropdown-arrow) { color: rgba(255, 255, 255, 0.4); transition: transform 0.2s; flex-shrink: 0; }
-        .filters-container :global(.dropdown.open .dropdown-arrow) { transform: rotate(180deg); color: #00FF88; }
+        .filters-container :global(.dropdown.open .dropdown-arrow) { transform: rotate(180deg); color: #10B981; }
 
         /* Portal dropdown */
         :global(.portal-dropdown-menu) {
@@ -1067,10 +1067,10 @@ export default function MarketsPage() {
           text-align: left;
         }
         :global(.portal-dropdown-item:hover) { background: rgba(255, 255, 255, 0.06); color: #fff; }
-        :global(.portal-dropdown-item.selected) { background: rgba(0, 255, 136, 0.12); color: #00FF88; }
+        :global(.portal-dropdown-item.selected) { background: rgba(16, 185, 129, 0.12); color: #10B981; }
         :global(.portal-dropdown-item .item-icon) { font-size: 14px; width: 20px; text-align: center; }
         :global(.portal-dropdown-item .item-label) { flex: 1; }
-        :global(.portal-dropdown-item .item-check) { color: #00FF88; flex-shrink: 0; }
+        :global(.portal-dropdown-item .item-check) { color: #10B981; flex-shrink: 0; }
 
         /* Results info */
         .results-info {
@@ -1096,7 +1096,7 @@ export default function MarketsPage() {
           text-transform: uppercase;
           letter-spacing: 0.03em;
         }
-        .data-source.dflow { background: rgba(0, 255, 136, 0.1); color: #00FF88; }
+        .data-source.dflow { background: rgba(16, 185, 129, 0.1); color: #10B981; }
         .source-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse-glow 2s infinite; }
 
         /* ━━━ MAIN GRID ━━━ */
@@ -1204,16 +1204,16 @@ export default function MarketsPage() {
           letter-spacing: 0.05em;
           text-transform: uppercase;
         }
-        .markets-grid :global(.price-yes .price-label) { color: #00E676; }
-        .markets-grid :global(.price-no .price-label) { color: #FF5252; }
+        .markets-grid :global(.price-yes .price-label) { color: #10B981; }
+        .markets-grid :global(.price-no .price-label) { color: #F43F5E; }
         .markets-grid :global(.price-value) {
           font-size: 14px;
           font-weight: 800;
           font-family: 'SF Mono', 'Fira Code', monospace;
           letter-spacing: -0.02em;
         }
-        .markets-grid :global(.price-yes .price-value) { color: #00E676; }
-        .markets-grid :global(.price-no .price-value) { color: #FF5252; }
+        .markets-grid :global(.price-yes .price-value) { color: #10B981; }
+        .markets-grid :global(.price-no .price-value) { color: #F43F5E; }
         .markets-grid :global(.price-spread) {
           display: flex;
           flex-direction: column;
@@ -1239,13 +1239,13 @@ export default function MarketsPage() {
         /* ━━━ PROBABILITY BAR ━━━ */
         .markets-grid :global(.prob-bar) {
           height: 3px;
-          background: rgba(255, 82, 82, 0.2);
+          background: rgba(244, 63, 94, 0.2);
           border-radius: 2px;
           overflow: hidden;
         }
         .markets-grid :global(.prob-fill) {
           height: 100%;
-          background: #00E676;
+          background: #10B981;
           border-radius: 2px;
           transition: width 0.3s ease;
         }
@@ -1306,12 +1306,12 @@ export default function MarketsPage() {
           font-family: 'SF Mono', 'Fira Code', monospace;
         }
         .markets-grid :global(.spark-badge.up) {
-          background: rgba(0, 230, 118, 0.12);
-          color: #00E676;
+          background: rgba(16, 185, 129, 0.12);
+          color: #10B981;
         }
         .markets-grid :global(.spark-badge.down) {
-          background: rgba(255, 82, 82, 0.12);
-          color: #FF5252;
+          background: rgba(244, 63, 94, 0.12);
+          color: #F43F5E;
         }
         .markets-grid :global(.spark-arrow) {
           font-size: 8px;
@@ -1351,29 +1351,29 @@ export default function MarketsPage() {
           text-transform: uppercase;
           letter-spacing: 0.03em;
         }
-        .markets-grid :global(.stat.change.up .stat-value) { color: #00E676; }
-        .markets-grid :global(.stat.change.down .stat-value) { color: #FF5252; }
-        .markets-grid :global(.stat.time.live .stat-value) { color: #00E676; }
-        .markets-grid :global(.stat.time.live .stat-label) { color: #00E676; }
+        .markets-grid :global(.stat.change.up .stat-value) { color: #10B981; }
+        .markets-grid :global(.stat.change.down .stat-value) { color: #F43F5E; }
+        .markets-grid :global(.stat.time.live .stat-value) { color: #10B981; }
+        .markets-grid :global(.stat.time.live .stat-label) { color: #10B981; }
 
         /* ━━━ TRADE BUTTON ━━━ */
         .markets-grid :global(.trade-btn) {
           margin: 0 10px 8px;
           padding: 7px;
           background: transparent;
-          border: 1px solid rgba(0, 230, 118, 0.3);
+          border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 6px;
           font-size: 10px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           text-transform: uppercase;
           letter-spacing: 0.05em;
           cursor: pointer;
           transition: all 0.15s ease;
         }
         .markets-grid :global(.trade-btn:hover) {
-          background: rgba(0, 230, 118, 0.1);
-          border-color: rgba(0, 230, 118, 0.5);
+          background: rgba(16, 185, 129, 0.1);
+          border-color: rgba(16, 185, 129, 0.5);
         }
         .markets-grid :global(.trade-btn:active) {
           transform: scale(0.98);
@@ -1451,21 +1451,21 @@ export default function MarketsPage() {
         }
         .load-more-btn:hover:not(:disabled) {
           background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(0, 255, 136, 0.3);
+          border-color: rgba(16, 185, 129, 0.3);
           color: #fff;
         }
         .load-more-btn:disabled { cursor: not-allowed; opacity: 0.6; }
         .load-more-btn.loading {
-          background: rgba(0, 255, 136, 0.08);
-          border-color: rgba(0, 255, 136, 0.2);
-          color: #00FF88;
+          background: rgba(16, 185, 129, 0.08);
+          border-color: rgba(16, 185, 129, 0.2);
+          color: #10B981;
         }
         .load-more-btn svg { stroke: currentColor; }
         .load-more-btn .spinner {
           width: 14px;
           height: 14px;
-          border: 2px solid rgba(0, 255, 136, 0.3);
-          border-top-color: #00FF88;
+          border: 2px solid rgba(16, 185, 129, 0.3);
+          border-top-color: #10B981;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }

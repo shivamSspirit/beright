@@ -76,9 +76,9 @@ const CATEGORIES = [...new Set(FAQ_ITEMS.map(item => item.category))];
 
 // Category color mapping
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  'Getting Started': { bg: 'rgba(0, 255, 136, 0.12)', border: 'rgba(0, 255, 136, 0.25)', text: '#00FF88' },
+  'Getting Started': { bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', text: '#10B981' },
   'Scoring & Calibration': { bg: 'rgba(255, 193, 7, 0.12)', border: 'rgba(255, 193, 7, 0.25)', text: '#FFC107' },
-  'Markets & Trading': { bg: 'rgba(0, 176, 255, 0.12)', border: 'rgba(0, 176, 255, 0.25)', text: '#00B0FF' },
+  'Markets & Trading': { bg: 'rgba(0, 194, 255, 0.12)', border: 'rgba(0, 194, 255, 0.25)', text: '#00C2FF' },
   'Telegram Bot': { bg: 'rgba(0, 136, 204, 0.12)', border: 'rgba(0, 136, 204, 0.25)', text: '#0088CC' },
   'Technical': { bg: 'rgba(156, 163, 175, 0.12)', border: 'rgba(156, 163, 175, 0.25)', text: '#9CA3AF' },
 };
@@ -245,7 +245,7 @@ export default function FAQPage() {
       <style jsx>{`
         .faq-page {
           min-height: 100vh;
-          background: #0A0A0B;
+          background: #080C14;
           color: #fff;
           font-family: 'Satoshi', system-ui, sans-serif;
         }
@@ -302,7 +302,7 @@ export default function FAQPage() {
         }
 
         .search-input:focus {
-          border-color: rgba(0, 255, 136, 0.3);
+          border-color: rgba(16, 185, 129, 0.3);
           background: rgba(255, 255, 255, 0.06);
         }
 
@@ -363,9 +363,9 @@ export default function FAQPage() {
         }
 
         .cat-btn.active {
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 176, 255, 0.15));
-          border-color: rgba(0, 230, 118, 0.3);
-          color: #00FF88;
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 194, 255, 0.15));
+          border-color: rgba(16, 185, 129, 0.3);
+          color: #10B981;
         }
 
         /* FAQ List */
@@ -387,7 +387,7 @@ export default function FAQPage() {
         }
 
         .faq-item.open {
-          border-color: rgba(0, 230, 118, 0.2);
+          border-color: rgba(16, 185, 129, 0.2);
         }
 
         .faq-question {
@@ -442,8 +442,8 @@ export default function FAQPage() {
         }
 
         .faq-item.open .faq-toggle {
-          background: rgba(0, 255, 136, 0.15);
-          color: #00FF88;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10B981;
         }
 
         /* No Results */
@@ -459,10 +459,10 @@ export default function FAQPage() {
 
         .no-results button {
           padding: 10px 20px;
-          background: rgba(0, 255, 136, 0.1);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 8px;
-          color: #00FF88;
+          color: #10B981;
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
@@ -529,13 +529,13 @@ export default function FAQPage() {
         }
 
         .cta-btn.primary {
-          background: linear-gradient(135deg, #00FF88, #00D4FF);
+          background: linear-gradient(135deg, #10B981, #00C2FF);
           color: #000;
         }
 
         .cta-btn.primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
         }
 
         .cta-btn.secondary {
@@ -566,7 +566,7 @@ export default function FAQPage() {
         }
 
         .footer-brand .logo-icon {
-          color: #00FF88;
+          color: #10B981;
         }
 
         .footer-copyright {

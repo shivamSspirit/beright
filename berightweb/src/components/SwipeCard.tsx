@@ -115,7 +115,7 @@ function MiniLineChart({ isYes, seed, price }: { isYes: boolean; seed: number; p
     return { points: pts.join(' '), trend: data[11] > data[0] };
   }, [seed, price]);
 
-  const color = isYes ? '#00E676' : '#FF5252';
+  const color = isYes ? '#10B981' : '#F43F5E';
   const gradientId = `grad-${isYes ? 'yes' : 'no'}-${seed}`;
 
   return (
@@ -1728,8 +1728,8 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         }
 
         .swipe-card-inner {
-          --yes: #00E676;
-          --no: #FF5252;
+          --yes: #10B981;
+          --no: #F43F5E;
           --glass: rgba(18, 18, 24, 0.85);
           --glass-border: rgba(255, 255, 255, 0.08);
 
@@ -2234,7 +2234,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           justify-content: center;
           background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
           border-radius: 12px;
-          color: #00E676;
+          color: #10B981;
           flex-shrink: 0;
         }
 
@@ -2264,7 +2264,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%);
+          background: linear-gradient(135deg, #10B981 0%, #00C2FF 100%);
           border-radius: 10px;
           color: #000;
           flex-shrink: 0;

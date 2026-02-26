@@ -60,10 +60,10 @@ export default function MoodPills({ selected, onSelect, counts }: MoodPillsProps
     moods.map((mood, i) => ({
       scale: selected === mood.id ? 1 : 1,
       background: selected === mood.id
-        ? 'rgba(0, 230, 118, 1)'
+        ? 'rgba(16, 185, 129, 1)'
         : 'rgba(255, 255, 255, 0.06)',
       borderColor: selected === mood.id
-        ? 'rgba(0, 230, 118, 1)'
+        ? 'rgba(16, 185, 129, 1)'
         : 'rgba(255, 255, 255, 0.1)',
       config: { tension: 400, friction: 26 },
     }))
@@ -153,14 +153,14 @@ export default function MoodPills({ selected, onSelect, counts }: MoodPillsProps
         }
 
         .mood-pill.selected {
-          background: #00E676;
-          border-color: #00E676;
+          background: #10B981;
+          border-color: #10B981;
           color: #000;
         }
 
         .mood-pill.selected:hover {
-          background: #00C853;
-          border-color: #00C853;
+          background: #10B981;
+          border-color: #10B981;
         }
 
         .mood-emoji {
@@ -363,14 +363,14 @@ export default function MoodPills({ selected, onSelect, counts }: MoodPillsProps
           }
 
           .mood-pill.selected {
-            background: #00E676;
-            border-color: #00E676;
+            background: #10B981;
+            border-color: #10B981;
             color: #000;
           }
 
           .mood-pill.selected:hover {
-            background: #00C853;
-            border-color: #00C853;
+            background: #10B981;
+            border-color: #10B981;
           }
 
           .mood-emoji {

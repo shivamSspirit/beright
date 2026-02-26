@@ -63,7 +63,7 @@ const useAnimatedCounter = (end: number, duration: number = 2000, trigger: boole
 };
 
 // Progress Ring component
-const ProgressRing = ({ progress, size = 60, strokeWidth = 5, color = '#00E676' }: {
+const ProgressRing = ({ progress, size = 60, strokeWidth = 5, color = '#10B981' }: {
   progress: number;
   size?: number;
   strokeWidth?: number;
@@ -1052,7 +1052,7 @@ export default function ProfilePage() {
       <style jsx>{`
         .profile-page {
           min-height: 100dvh;
-          background: #0A0A0F;
+          background: #080C14;
           padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
         }
 
@@ -1121,7 +1121,7 @@ export default function ProfilePage() {
           flex-direction: column;
           align-items: center;
           padding: 24px 20px;
-          background: linear-gradient(180deg, rgba(0, 230, 118, 0.08) 0%, rgba(10, 10, 15, 1) 100%);
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, rgba(10, 10, 15, 1) 100%);
           border: 1px solid rgba(255, 255, 255, 0.06);
           border-radius: 18px;
           animation: fadeInUp 0.4s ease-out;
@@ -1150,7 +1150,7 @@ export default function ProfilePage() {
           align-items: center;
           justify-content: center;
           font-size: 36px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.2), rgba(99, 102, 241, 0.2));
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(99, 102, 241, 0.2));
           border: 2px solid rgba(255, 255, 255, 0.1);
           border-radius: 22px;
         }
@@ -1160,12 +1160,12 @@ export default function ProfilePage() {
           bottom: -6px;
           right: -6px;
           padding: 4px 8px;
-          background: #0A0A0F;
-          border: 1px solid rgba(0, 230, 118, 0.4);
+          background: #080C14;
+          border: 1px solid rgba(16, 185, 129, 0.4);
           border-radius: 8px;
           font-size: 10px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           font-family: 'JetBrains Mono', monospace;
         }
 
@@ -1178,7 +1178,7 @@ export default function ProfilePage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #0A0A0F;
+          background: #080C14;
           border: 1px solid rgba(255, 215, 0, 0.4);
           border-radius: 50%;
           font-size: 14px;
@@ -1243,8 +1243,8 @@ export default function ProfilePage() {
           font-family: 'JetBrains Mono', monospace;
           font-size: 44px;
           font-weight: 800;
-          color: #00E676;
-          text-shadow: 0 0 40px rgba(0, 230, 118, 0.5);
+          color: #10B981;
+          text-shadow: 0 0 40px rgba(16, 185, 129, 0.5);
           line-height: 1;
         }
 
@@ -1334,8 +1334,8 @@ export default function ProfilePage() {
         }
 
         .quick-stat-icon.roi {
-          background: rgba(0, 230, 118, 0.15);
-          color: #00E676;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10B981;
         }
 
         .quick-stat-icon.fire {
@@ -1366,7 +1366,7 @@ export default function ProfilePage() {
           position: absolute;
           font-size: 11px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           font-family: 'JetBrains Mono', monospace;
         }
 
@@ -1377,7 +1377,7 @@ export default function ProfilePage() {
           font-family: 'JetBrains Mono', monospace;
         }
 
-        .quick-stat-value.green { color: #00E676; }
+        .quick-stat-value.green { color: #10B981; }
         .quick-stat-value.fire { color: #FF9500; }
 
         .quick-stat-label {
@@ -1390,7 +1390,7 @@ export default function ProfilePage() {
         /* League Section */
         .league-section {
           padding: 14px;
-          background: linear-gradient(145deg, #18182A, #12121F);
+          background: linear-gradient(145deg, #161E2E, #121929);
           border: 1px solid rgba(99, 102, 241, 0.15);
           border-radius: 14px;
         }
@@ -1531,8 +1531,8 @@ export default function ProfilePage() {
 
         .range-btn.active {
           color: #fff;
-          background: rgba(0, 230, 118, 0.15);
-          border-color: rgba(0, 230, 118, 0.3);
+          background: rgba(16, 185, 129, 0.15);
+          border-color: rgba(16, 185, 129, 0.3);
         }
 
         .chart-container {
@@ -1566,8 +1566,8 @@ export default function ProfilePage() {
           font-family: 'JetBrains Mono', monospace;
         }
 
-        .chart-stat-value.green { color: #00E676; }
-        .chart-stat-value.red { color: #FF5252; }
+        .chart-stat-value.green { color: #10B981; }
+        .chart-stat-value.red { color: #F43F5E; }
 
         /* Category Section */
         .category-section {
@@ -1661,8 +1661,8 @@ export default function ProfilePage() {
         }
 
         .trade-card.best {
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.1), rgba(0, 230, 118, 0.02));
-          border: 1px solid rgba(0, 230, 118, 0.2);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.02));
+          border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .trade-card.worst {
@@ -1684,8 +1684,8 @@ export default function ProfilePage() {
           letter-spacing: 0.5px;
         }
 
-        .trade-card.best .trade-card-header { color: #00E676; }
-        .trade-card.worst .trade-card-header { color: #FF5252; }
+        .trade-card.best .trade-card-header { color: #10B981; }
+        .trade-card.worst .trade-card-header { color: #F43F5E; }
 
         .trade-card-market {
           font-size: 11px;
@@ -1706,8 +1706,8 @@ export default function ProfilePage() {
           font-family: 'JetBrains Mono', monospace;
         }
 
-        .green { color: #00E676; }
-        .red { color: #FF5252; }
+        .green { color: #10B981; }
+        .red { color: #F43F5E; }
 
         /* Edge Section */
         .edge-section {
@@ -1729,8 +1729,8 @@ export default function ProfilePage() {
         }
 
         .edge-strengths {
-          background: rgba(0, 230, 118, 0.05);
-          border: 1px solid rgba(0, 230, 118, 0.15);
+          background: rgba(16, 185, 129, 0.05);
+          border: 1px solid rgba(16, 185, 129, 0.15);
         }
 
         .edge-improve {
@@ -1747,7 +1747,7 @@ export default function ProfilePage() {
           margin-bottom: 8px;
         }
 
-        .edge-title.strengths { color: #00E676; }
+        .edge-title.strengths { color: #10B981; }
         .edge-title.improve { color: #FF9500; }
 
         .edge-list {
@@ -1806,9 +1806,9 @@ export default function ProfilePage() {
         .share-stat-big {
           font-size: 32px;
           font-weight: 800;
-          color: #00E676;
+          color: #10B981;
           font-family: 'JetBrains Mono', monospace;
-          text-shadow: 0 0 30px rgba(0, 230, 118, 0.4);
+          text-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
         }
 
         .share-stat-label {
@@ -1986,14 +1986,14 @@ export default function ProfilePage() {
         .wallet-section.connect {
           padding: 0;
           background: transparent;
-          border: 1px solid rgba(0, 230, 118, 0.25);
+          border: 1px solid rgba(16, 185, 129, 0.25);
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .wallet-section.connect:hover {
-          background: rgba(0, 230, 118, 0.05);
-          border-color: rgba(0, 230, 118, 0.4);
+          background: rgba(16, 185, 129, 0.05);
+          border-color: rgba(16, 185, 129, 0.4);
         }
 
         .connect-wallet-content {
@@ -2009,9 +2009,9 @@ export default function ProfilePage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 176, 255, 0.15));
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 176, 255, 0.15));
           border-radius: 12px;
-          color: #00E676;
+          color: #10B981;
         }
 
         .connect-wallet-text {
@@ -2079,8 +2079,8 @@ export default function ProfilePage() {
 
         .wallet-balance-card {
           padding: 16px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.08), rgba(0, 176, 255, 0.08));
-          border: 1px solid rgba(0, 230, 118, 0.15);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(0, 176, 255, 0.08));
+          border: 1px solid rgba(16, 185, 129, 0.15);
           border-radius: 12px;
           margin-bottom: 14px;
         }
@@ -2108,7 +2108,7 @@ export default function ProfilePage() {
         .balance-value {
           font-size: 28px;
           font-weight: 700;
-          color: #00E676;
+          color: #10B981;
           font-family: 'JetBrains Mono', monospace;
         }
 
@@ -2203,7 +2203,7 @@ export default function ProfilePage() {
 
         .copy-btn:hover {
           background: rgba(255, 255, 255, 0.1);
-          color: #00E676;
+          color: #10B981;
         }
 
         .address-hint {
@@ -2270,7 +2270,7 @@ export default function ProfilePage() {
         .disconnect-wallet-btn:hover {
           background: rgba(255, 82, 82, 0.1);
           border-color: rgba(255, 82, 82, 0.4);
-          color: #FF5252;
+          color: #F43F5E;
         }
 
         /* Withdraw Modal */
@@ -2337,7 +2337,7 @@ export default function ProfilePage() {
         }
 
         .withdraw-balance strong {
-          color: #00E676;
+          color: #10B981;
         }
 
         .withdraw-form {
@@ -2421,17 +2421,17 @@ export default function ProfilePage() {
           border: 1px solid rgba(255, 82, 82, 0.2);
           border-radius: 8px;
           font-size: 12px;
-          color: #FF5252;
+          color: #F43F5E;
           margin-bottom: 16px;
         }
 
         .withdraw-success {
           padding: 10px 12px;
-          background: rgba(0, 230, 118, 0.1);
-          border: 1px solid rgba(0, 230, 118, 0.2);
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 8px;
           font-size: 12px;
-          color: #00E676;
+          color: #10B981;
           margin-bottom: 16px;
         }
 
@@ -2475,7 +2475,7 @@ export default function ProfilePage() {
           width: 22px;
           height: 22px;
           border: 2px solid rgba(255, 255, 255, 0.1);
-          border-top-color: #00E676;
+          border-top-color: #10B981;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }
@@ -2609,7 +2609,7 @@ export default function ProfilePage() {
 
         .notification-badge {
           padding: 2px 8px;
-          background: #FF5252;
+          background: #F43F5E;
           border-radius: 10px;
           font-size: 11px;
           font-weight: 700;
@@ -2814,7 +2814,7 @@ export default function ProfilePage() {
 
         .menu-badge {
           padding: 3px 8px;
-          background: #FF5252;
+          background: #F43F5E;
           border-radius: 8px;
           font-size: 11px;
           font-weight: 700;
@@ -2834,19 +2834,19 @@ export default function ProfilePage() {
           justify-content: center;
           gap: 8px;
           padding: 14px;
-          background: rgba(0, 230, 118, 0.08);
-          border: 1px solid rgba(0, 230, 118, 0.2);
+          background: rgba(16, 185, 129, 0.08);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 12px;
           font-size: 13px;
           font-weight: 600;
-          color: #00E676;
+          color: #10B981;
           text-decoration: none;
           transition: all 0.2s;
         }
 
         .public-profile-btn:hover {
-          background: rgba(0, 230, 118, 0.12);
-          border-color: rgba(0, 230, 118, 0.3);
+          background: rgba(16, 185, 129, 0.12);
+          border-color: rgba(16, 185, 129, 0.3);
         }
 
         .external-icon {
@@ -2928,7 +2928,7 @@ export default function ProfilePage() {
 
         .save-btn {
           padding: 6px 14px;
-          background: linear-gradient(135deg, #00E676, #00B0FF);
+          background: linear-gradient(135deg, #10B981, #00C2FF);
           border: none;
           border-radius: 8px;
           font-size: 12px;
@@ -2940,7 +2940,7 @@ export default function ProfilePage() {
 
         .save-btn:hover:not(:disabled) {
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 230, 118, 0.3);
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         .save-btn:disabled {
@@ -2954,17 +2954,17 @@ export default function ProfilePage() {
           border: 1px solid rgba(255, 82, 82, 0.2);
           border-radius: 8px;
           font-size: 12px;
-          color: #FF5252;
+          color: #F43F5E;
           margin-bottom: 12px;
         }
 
         .profile-success {
           padding: 10px 12px;
-          background: rgba(0, 230, 118, 0.1);
-          border: 1px solid rgba(0, 230, 118, 0.2);
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 8px;
           font-size: 12px;
-          color: #00E676;
+          color: #10B981;
           margin-bottom: 12px;
         }
 

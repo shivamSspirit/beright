@@ -118,15 +118,15 @@ export default function AIFactCheckModal({
   if (!isOpen) return null;
 
   const confidenceColors = {
-    high: '#00E676',
+    high: '#10B981',
     medium: '#FFB300',
-    low: '#FF5252',
+    low: '#F43F5E',
   };
 
   const recommendationConfig = {
     proceed: {
       icon: '✓',
-      color: '#00E676',
+      color: '#10B981',
       label: 'Proceed',
       description: 'Your choice aligns with available evidence',
     },
@@ -138,7 +138,7 @@ export default function AIFactCheckModal({
     },
     change: {
       icon: '↻',
-      color: '#FF5252',
+      color: '#F43F5E',
       label: 'Reconsider',
       description: 'Evidence suggests a different outcome',
     },
@@ -608,13 +608,13 @@ export default function AIFactCheckModal({
 
         .choice-badge.yes {
           background: rgba(0, 230, 118, 0.15);
-          color: #00E676;
+          color: #10B981;
           border: 1px solid rgba(0, 230, 118, 0.3);
         }
 
         .choice-badge.no {
           background: rgba(255, 82, 82, 0.15);
-          color: #FF5252;
+          color: #F43F5E;
           border: 1px solid rgba(255, 82, 82, 0.3);
         }
 
@@ -855,8 +855,8 @@ export default function AIFactCheckModal({
 
         .decision-btn.yes.active {
           background: rgba(0, 230, 118, 0.2);
-          color: #00E676;
-          border-color: #00E676;
+          color: #10B981;
+          border-color: #10B981;
         }
 
         .decision-btn.no {
@@ -867,8 +867,8 @@ export default function AIFactCheckModal({
 
         .decision-btn.no.active {
           background: rgba(255, 82, 82, 0.2);
-          color: #FF5252;
-          border-color: #FF5252;
+          color: #F43F5E;
+          border-color: #F43F5E;
         }
 
         .btn-icon {
@@ -896,8 +896,8 @@ export default function AIFactCheckModal({
           font-weight: 600;
         }
 
-        .context-value.yes { color: #00E676; }
-        .context-value.no { color: #FF5252; }
+        .context-value.yes { color: #10B981; }
+        .context-value.no { color: #F43F5E; }
 
         .context-divider {
           color: rgba(255, 255, 255, 0.3);
@@ -980,11 +980,11 @@ export default function AIFactCheckModal({
         }
 
         .action-btn.confirm.yes {
-          background: linear-gradient(135deg, #00E676, #00C853);
+          background: linear-gradient(135deg, #10B981, #10B981);
         }
 
         .action-btn.confirm.no {
-          background: linear-gradient(135deg, #FF5252, #D32F2F);
+          background: linear-gradient(135deg, #F43F5E, #F43F5E);
           color: #fff;
         }
 

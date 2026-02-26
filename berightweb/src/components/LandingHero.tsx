@@ -730,9 +730,9 @@ function TerminalPreview() {
   ];
 
   const agents = [
-    { name: 'SCOUT', status: 'ACTIVE', color: '#00D4FF', task: 'Scanning live markets...' },
-    { name: 'ANALYST', status: 'PROCESSING', color: '#00D4FF', task: 'Deep dive: BTC $150K' },
-    { name: 'TRADER', status: 'READY', color: '#00D4FF', task: 'Awaiting signal' },
+    { name: 'SCOUT', status: 'ACTIVE', color: '#00C2FF', task: 'Scanning live markets...' },
+    { name: 'ANALYST', status: 'PROCESSING', color: '#00C2FF', task: 'Deep dive: BTC $150K' },
+    { name: 'TRADER', status: 'READY', color: '#00C2FF', task: 'Awaiting signal' },
   ];
 
   const signals = [
@@ -1467,23 +1467,27 @@ export default function LandingHero() {
         @import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&display=swap');
 
-        /* CSS Variables - Clean 2-color palette */
+        /* CSS Variables - Premium Navy Theme (Linear/Vercel/Uniswap inspired) */
         :root {
-          --color-bg: #0A0A0B;
-          --color-surface: #111113;
-          --color-surface-elevated: #18181B;
-          --color-border: rgba(255, 255, 255, 0.06);
-          --color-border-hover: rgba(255, 255, 255, 0.12);
-          --color-text: #FFFFFF;
-          --color-text-secondary: rgba(255, 255, 255, 0.6);
-          --color-text-tertiary: rgba(255, 255, 255, 0.4);
-          /* Primary accent - Cyan */
-          --color-accent: #00D4FF;
-          --color-accent-dim: rgba(0, 212, 255, 0.12);
-          --color-accent-glow: rgba(0, 212, 255, 0.25);
-          /* Functional colors only */
-          --color-green: #22C55E;
-          --color-red: #EF4444;
+          --color-bg: #080C14;
+          --color-surface: #0D1117;
+          --color-surface-elevated: #121929;
+          --color-card: #161E2E;
+          --color-border: rgba(30, 58, 95, 0.2);
+          --color-border-hover: rgba(30, 58, 95, 0.4);
+          --color-text: #F1F5F9;
+          --color-text-secondary: #94A3B8;
+          --color-text-tertiary: #64748B;
+          /* Primary accent - Electric Teal */
+          --color-accent: #00C2FF;
+          --color-accent-dim: rgba(0, 194, 255, 0.12);
+          --color-accent-glow: rgba(0, 194, 255, 0.25);
+          /* Functional colors - Refined */
+          --color-green: #10B981;
+          --color-red: #F43F5E;
+          /* AI Purple */
+          --color-ai: #A78BFA;
+          --color-ai-dim: rgba(167, 139, 250, 0.12);
           /* Legacy support */
           --color-cyan: var(--color-accent);
           --color-amber: var(--color-accent);
@@ -1521,8 +1525,8 @@ export default function LandingHero() {
           align-items: center;
           gap: 12px;
           padding: 16px 24px;
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 212, 255, 0.1));
-          border: 1px solid rgba(0, 255, 136, 0.3);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 194, 255, 0.1));
+          border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 16px;
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
@@ -1587,7 +1591,7 @@ export default function LandingHero() {
           left: 50%;
           top: 20%;
           transform: translateX(-50%);
-          background: radial-gradient(circle, rgba(0, 255, 136, 0.08) 0%, transparent 60%);
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
           filter: blur(80px);
         }
 
@@ -1597,7 +1601,7 @@ export default function LandingHero() {
           height: 500px;
           left: -200px;
           top: 30%;
-          background: radial-gradient(circle, rgba(0, 212, 255, 0.06) 0%, transparent 60%);
+          background: radial-gradient(circle, rgba(0, 194, 255, 0.06) 0%, transparent 60%);
           filter: blur(60px);
         }
 
@@ -1727,7 +1731,7 @@ export default function LandingHero() {
         }
 
         .cta-button.primary {
-          background: linear-gradient(135deg, var(--color-green) 0%, #00CC6A 100%);
+          background: linear-gradient(135deg, var(--color-green) 0%, #10B981 100%);
           border: none;
           color: #000;
           position: relative;
@@ -1752,7 +1756,7 @@ export default function LandingHero() {
 
         .cta-button.primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 12px 40px rgba(0, 255, 136, 0.35);
+          box-shadow: 0 12px 40px rgba(16, 185, 129, 0.35);
         }
 
         .cta-button.ghost {
@@ -1837,8 +1841,8 @@ export default function LandingHero() {
         }
 
         @keyframes pulse {
-          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
-          50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(0, 255, 136, 0); }
+          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+          50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
         }
 
         .demo-live-text {
@@ -1900,11 +1904,11 @@ export default function LandingHero() {
         }
 
         .demo-btn.yes {
-          border-color: rgba(0, 255, 136, 0.2);
+          border-color: rgba(16, 185, 129, 0.2);
         }
 
         .demo-btn.yes.active {
-          background: rgba(0, 255, 136, 0.1);
+          background: rgba(16, 185, 129, 0.1);
           border-color: var(--color-green);
         }
 
@@ -1931,7 +1935,7 @@ export default function LandingHero() {
         .demo-step.outcome {
           text-align: center;
           padding: 16px;
-          background: rgba(0, 255, 136, 0.05);
+          background: rgba(16, 185, 129, 0.05);
           border-radius: 12px;
           margin-bottom: 0;
         }
@@ -2033,15 +2037,15 @@ export default function LandingHero() {
         }
 
         .flow-btn.yes {
-          background: rgba(0, 255, 136, 0.1);
-          border: 1px solid rgba(0, 255, 136, 0.3);
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.3);
           color: var(--color-green);
         }
 
         .flow-btn.yes.active {
-          background: rgba(0, 255, 136, 0.2);
+          background: rgba(16, 185, 129, 0.2);
           border-color: var(--color-green);
-          box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+          box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
         }
 
         .flow-btn.no {
@@ -2051,8 +2055,8 @@ export default function LandingHero() {
         }
 
         .flow-outcome {
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
-          border-color: rgba(0, 255, 136, 0.3);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(0, 194, 255, 0.05) 100%);
+          border-color: rgba(16, 185, 129, 0.3);
         }
 
         .flow-payout {
@@ -2180,7 +2184,7 @@ export default function LandingHero() {
 
         .odds-fill-yes {
           height: 100%;
-          background: linear-gradient(90deg, var(--color-green), #00CC6A);
+          background: linear-gradient(90deg, var(--color-green), #10B981);
           border-radius: 3px;
           transition: width 0.3s ease;
         }
@@ -2226,11 +2230,11 @@ export default function LandingHero() {
         }
 
         .trade-btn.yes {
-          border-color: rgba(0, 255, 136, 0.2);
+          border-color: rgba(16, 185, 129, 0.2);
         }
 
         .trade-btn.yes:hover {
-          background: rgba(0, 255, 136, 0.1);
+          background: rgba(16, 185, 129, 0.1);
           border-color: var(--color-green);
         }
 
@@ -2305,8 +2309,8 @@ export default function LandingHero() {
           width: 48px;
           height: 48px;
           margin: 0 auto 16px;
-          background: rgba(0, 255, 136, 0.1);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 12px;
           display: flex;
           align-items: center;
@@ -2323,7 +2327,7 @@ export default function LandingHero() {
           display: inline-block;
           width: 24px;
           height: 24px;
-          background: linear-gradient(135deg, var(--color-green) 0%, #00CC6A 100%);
+          background: linear-gradient(135deg, var(--color-green) 0%, #10B981 100%);
           border-radius: 50%;
           font-size: 12px;
           font-weight: 700;
@@ -2383,7 +2387,7 @@ export default function LandingHero() {
           display: inline-block;
           padding: 8px 16px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 100px;
           font-size: 13px;
           font-weight: 600;
@@ -2485,7 +2489,7 @@ export default function LandingHero() {
           gap: 16px;
           padding: 20px 24px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.15);
+          border: 1px solid rgba(0, 194, 255, 0.15);
           border-radius: 16px;
           max-width: 800px;
           margin: 0 auto;
@@ -2526,7 +2530,7 @@ export default function LandingHero() {
           display: inline-block;
           padding: 6px 14px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 20px;
           font-size: 12px;
           font-weight: 600;
@@ -2594,7 +2598,7 @@ export default function LandingHero() {
         .ai-tag {
           padding: 4px 10px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 6px;
           font-size: 11px;
           color: var(--color-accent);
@@ -2625,7 +2629,7 @@ export default function LandingHero() {
 
         .ai-bubble {
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           align-self: flex-start;
           margin-right: 10%;
         }
@@ -2696,7 +2700,7 @@ export default function LandingHero() {
         }
 
         .memo-status.resolved {
-          background: rgba(0, 255, 136, 0.15);
+          background: rgba(16, 185, 129, 0.15);
           color: var(--color-green);
         }
 
@@ -2730,7 +2734,7 @@ export default function LandingHero() {
         }
 
         .position-badge.yes {
-          background: rgba(0, 255, 136, 0.2);
+          background: rgba(16, 185, 129, 0.2);
           color: var(--color-green);
         }
 
@@ -2834,7 +2838,7 @@ export default function LandingHero() {
           font-weight: 600;
           color: var(--color-green);
           padding: 3px 8px;
-          background: rgba(0, 255, 136, 0.1);
+          background: rgba(16, 185, 129, 0.1);
           border-radius: 4px;
         }
 
@@ -2901,7 +2905,7 @@ export default function LandingHero() {
           gap: 12px;
           padding: 20px 28px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 16px;
           max-width: 700px;
           margin: 0 auto;
@@ -2942,8 +2946,8 @@ export default function LandingHero() {
         .terminal-badge {
           display: inline-block;
           padding: 6px 14px;
-          background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(0, 255, 136, 0.15) 100%);
-          border: 1px solid rgba(0, 212, 255, 0.3);
+          background: linear-gradient(135deg, rgba(0, 194, 255, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
+          border: 1px solid rgba(0, 194, 255, 0.3);
           border-radius: 20px;
           font-size: 12px;
           font-weight: 600;
@@ -2977,10 +2981,10 @@ export default function LandingHero() {
 
         .terminal-window {
           background: linear-gradient(180deg, #0a0a0c 0%, #050506 100%);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 0 60px rgba(0, 212, 255, 0.1), 0 0 120px rgba(0, 212, 255, 0.05);
+          box-shadow: 0 0 60px rgba(0, 194, 255, 0.1), 0 0 120px rgba(0, 194, 255, 0.05);
         }
 
         .terminal-title-bar {
@@ -3078,7 +3082,7 @@ export default function LandingHero() {
           font-weight: 600;
           color: var(--color-green);
           padding: 2px 6px;
-          background: rgba(0, 255, 136, 0.1);
+          background: rgba(16, 185, 129, 0.1);
           border-radius: 4px;
         }
 
@@ -3183,8 +3187,8 @@ export default function LandingHero() {
           gap: 4px;
           padding: 12px;
           margin: 12px 0;
-          background: rgba(0, 255, 136, 0.05);
-          border: 1px solid rgba(0, 255, 136, 0.15);
+          background: rgba(16, 185, 129, 0.05);
+          border: 1px solid rgba(16, 185, 129, 0.15);
           border-radius: 8px;
         }
 
@@ -3374,13 +3378,13 @@ export default function LandingHero() {
         }
 
         .terminal-btn.web {
-          background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 255, 136, 0.1) 100%);
-          border: 1px solid rgba(0, 212, 255, 0.3);
+          background: linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
+          border: 1px solid rgba(0, 194, 255, 0.3);
           color: var(--color-cyan);
         }
 
         .terminal-btn.web:hover {
-          background: linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(0, 255, 136, 0.15) 100%);
+          background: linear-gradient(135deg, rgba(0, 194, 255, 0.25) 0%, rgba(16, 185, 129, 0.15) 100%);
           border-color: var(--color-cyan);
           transform: translateY(-2px);
         }
@@ -3416,8 +3420,8 @@ export default function LandingHero() {
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            linear-gradient(rgba(0, 194, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 194, 255, 0.03) 1px, transparent 1px);
           background-size: 40px 40px;
           mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black, transparent);
         }
@@ -3429,7 +3433,7 @@ export default function LandingHero() {
           left: -100px;
           top: 50%;
           transform: translateY(-50%);
-          background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 60%);
+          background: radial-gradient(circle, rgba(0, 194, 255, 0.15) 0%, transparent 60%);
           filter: blur(80px);
           animation: glowPulse 4s ease-in-out infinite;
         }
@@ -3441,7 +3445,7 @@ export default function LandingHero() {
           right: -100px;
           top: 50%;
           transform: translateY(-50%);
-          background: radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 60%);
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 60%);
           filter: blur(80px);
           animation: glowPulse 4s ease-in-out infinite 2s;
         }
@@ -3453,7 +3457,7 @@ export default function LandingHero() {
           left: 50%;
           top: 50%;
           transform: translate(-50%, -50%);
-          background: radial-gradient(circle, rgba(0, 255, 136, 0.1) 0%, transparent 50%);
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
           filter: blur(60px);
           animation: glowPulse 3s ease-in-out infinite 1s;
         }
@@ -3501,8 +3505,8 @@ export default function LandingHero() {
           align-items: center;
           gap: 8px;
           padding: 8px 18px;
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 212, 255, 0.1) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.3);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(0, 194, 255, 0.1) 100%);
+          border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 100px;
           margin-bottom: 20px;
         }
@@ -3602,7 +3606,7 @@ export default function LandingHero() {
           position: relative;
           width: 100%;
           height: 2px;
-          background: linear-gradient(90deg, rgba(0, 212, 255, 0.3), rgba(0, 255, 136, 0.3));
+          background: linear-gradient(90deg, rgba(0, 194, 255, 0.3), rgba(16, 185, 129, 0.3));
         }
 
         .flow-particle {
@@ -3653,11 +3657,11 @@ export default function LandingHero() {
         }
 
         .forecasters .side-glow {
-          background: radial-gradient(ellipse at center, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+          background: radial-gradient(ellipse at center, rgba(0, 194, 255, 0.15) 0%, transparent 70%);
         }
 
         .capitalists .side-glow {
-          background: radial-gradient(ellipse at center, rgba(0, 255, 136, 0.15) 0%, transparent 70%);
+          background: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
         }
 
         .protocol-side:hover .side-glow {
@@ -3675,11 +3679,11 @@ export default function LandingHero() {
         }
 
         .forecasters .side-inner {
-          border-color: rgba(0, 212, 255, 0.2);
+          border-color: rgba(0, 194, 255, 0.2);
         }
 
         .capitalists .side-inner {
-          border-color: rgba(0, 255, 136, 0.2);
+          border-color: rgba(16, 185, 129, 0.2);
         }
 
         .protocol-side:hover .side-inner {
@@ -3688,13 +3692,13 @@ export default function LandingHero() {
         }
 
         .forecasters:hover .side-inner {
-          border-color: rgba(0, 212, 255, 0.4);
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 212, 255, 0.1);
+          border-color: rgba(0, 194, 255, 0.4);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 194, 255, 0.1);
         }
 
         .capitalists:hover .side-inner {
-          border-color: rgba(0, 255, 136, 0.4);
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 255, 136, 0.1);
+          border-color: rgba(16, 185, 129, 0.4);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(16, 185, 129, 0.1);
         }
 
         /* Side Header */
@@ -3722,11 +3726,11 @@ export default function LandingHero() {
         }
 
         .forecasters .icon-ring {
-          border: 2px solid rgba(0, 212, 255, 0.3);
+          border: 2px solid rgba(0, 194, 255, 0.3);
         }
 
         .capitalists .icon-ring {
-          border: 2px solid rgba(0, 255, 136, 0.3);
+          border: 2px solid rgba(16, 185, 129, 0.3);
         }
 
         @keyframes iconRing {
@@ -3770,15 +3774,15 @@ export default function LandingHero() {
         }
 
         .side-badge.elite {
-          background: rgba(0, 212, 255, 0.15);
+          background: rgba(0, 194, 255, 0.15);
           color: var(--color-cyan);
-          border: 1px solid rgba(0, 212, 255, 0.3);
+          border: 1px solid rgba(0, 194, 255, 0.3);
         }
 
         .side-badge.whale {
-          background: rgba(0, 255, 136, 0.15);
+          background: rgba(16, 185, 129, 0.15);
           color: var(--color-green);
-          border: 1px solid rgba(0, 255, 136, 0.3);
+          border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
         .side-desc {
@@ -3822,7 +3826,7 @@ export default function LandingHero() {
         .metric-icon-wrap.cyan,
         .metric-icon-wrap.green {
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.15);
+          border: 1px solid rgba(0, 194, 255, 0.15);
         }
 
         .metric-icon-wrap svg {
@@ -4018,20 +4022,20 @@ export default function LandingHero() {
 
         .orbit-1 {
           inset: 10px;
-          border-color: rgba(0, 255, 136, 0.2);
+          border-color: rgba(16, 185, 129, 0.2);
           animation-duration: 10s;
         }
 
         .orbit-2 {
           inset: -10px;
-          border-color: rgba(0, 212, 255, 0.15);
+          border-color: rgba(0, 194, 255, 0.15);
           animation-duration: 15s;
           animation-direction: reverse;
         }
 
         .orbit-3 {
           inset: -30px;
-          border-color: rgba(0, 212, 255, 0.1);
+          border-color: rgba(0, 194, 255, 0.1);
           animation-duration: 20s;
         }
 
@@ -4067,21 +4071,21 @@ export default function LandingHero() {
         .core-glow-outer {
           width: 160px;
           height: 160px;
-          background: radial-gradient(circle, rgba(0, 255, 136, 0.2) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
           animation: coreGlowPulse 3s ease-in-out infinite;
         }
 
         .core-glow-mid {
           width: 120px;
           height: 120px;
-          background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 194, 255, 0.15) 0%, transparent 70%);
           animation: coreGlowPulse 3s ease-in-out infinite 0.5s;
         }
 
         .core-glow-inner {
           width: 80px;
           height: 80px;
-          background: radial-gradient(circle, rgba(0, 212, 255, 0.2) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 194, 255, 0.2) 0%, transparent 70%);
           animation: coreGlowPulse 3s ease-in-out infinite 1s;
         }
 
@@ -4115,12 +4119,12 @@ export default function LandingHero() {
           flex-direction: column;
           align-items: center;
           background: linear-gradient(145deg, rgba(17, 17, 19, 0.95) 0%, rgba(10, 10, 11, 0.98) 100%);
-          border: 2px solid rgba(0, 255, 136, 0.4);
+          border: 2px solid rgba(16, 185, 129, 0.4);
           border-radius: 50%;
           width: 100px;
           height: 100px;
           justify-content: center;
-          box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+          box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
         }
 
         .core-icon {
@@ -4151,8 +4155,8 @@ export default function LandingHero() {
           align-items: center;
           gap: 8px;
           padding: 8px 16px;
-          background: rgba(0, 255, 136, 0.05);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          background: rgba(16, 185, 129, 0.05);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 100px;
           font-size: 12px;
           color: var(--color-text-secondary);
@@ -4160,8 +4164,8 @@ export default function LandingHero() {
         }
 
         .feature-pill:hover {
-          background: rgba(0, 255, 136, 0.1);
-          border-color: rgba(0, 255, 136, 0.4);
+          background: rgba(16, 185, 129, 0.1);
+          border-color: rgba(16, 185, 129, 0.4);
           color: var(--color-text);
         }
 
@@ -4189,7 +4193,7 @@ export default function LandingHero() {
         .callout-glow {
           position: absolute;
           inset: -20px;
-          background: radial-gradient(ellipse at center, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
+          background: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
           filter: blur(40px);
           opacity: 0;
           transition: opacity 0.4s ease;
@@ -4206,13 +4210,13 @@ export default function LandingHero() {
           gap: 24px;
           padding: 32px 40px;
           background: linear-gradient(135deg, rgba(17, 17, 19, 0.95) 0%, rgba(10, 10, 11, 0.98) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.2);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           border-radius: 24px;
           transition: all 0.4s ease;
         }
 
         .protocol-callout:hover .callout-content {
-          border-color: rgba(0, 255, 136, 0.4);
+          border-color: rgba(16, 185, 129, 0.4);
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
         }
 
@@ -4222,8 +4226,8 @@ export default function LandingHero() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 212, 255, 0.15) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.3);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(0, 194, 255, 0.15) 100%);
+          border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 16px;
           flex-shrink: 0;
         }
@@ -4500,7 +4504,7 @@ export default function LandingHero() {
 
         .sticky-button {
           padding: 12px 28px;
-          background: linear-gradient(135deg, var(--color-green) 0%, #00CC6A 100%);
+          background: linear-gradient(135deg, var(--color-green) 0%, #10B981 100%);
           border: none;
           border-radius: 10px;
           color: #000;
@@ -4513,7 +4517,7 @@ export default function LandingHero() {
 
         .sticky-button:hover {
           transform: scale(1.02);
-          box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -4564,7 +4568,7 @@ export default function LandingHero() {
         .loading-fill {
           width: 30%;
           height: 100%;
-          background: linear-gradient(90deg, var(--color-green), #00CC6A);
+          background: linear-gradient(90deg, var(--color-green), #10B981);
           border-radius: 2px;
           animation: loadingSlide 1s ease-in-out infinite;
         }
@@ -4582,9 +4586,9 @@ export default function LandingHero() {
         .live-ticker {
           position: relative;
           width: 100%;
-          background: linear-gradient(180deg, rgba(0, 255, 136, 0.03) 0%, transparent 100%);
-          border-top: 1px solid rgba(0, 255, 136, 0.15);
-          border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.03) 0%, transparent 100%);
+          border-top: 1px solid rgba(16, 185, 129, 0.15);
+          border-bottom: 1px solid rgba(16, 185, 129, 0.1);
           padding: 10px 0;
           overflow: hidden;
           margin-top: 24px;
@@ -4692,7 +4696,7 @@ export default function LandingHero() {
         }
 
         .ticker-badge {
-          background: rgba(0, 212, 255, 0.2);
+          background: rgba(0, 194, 255, 0.2);
           color: var(--color-cyan);
           padding: 2px 8px;
           border-radius: 4px;
@@ -4737,8 +4741,8 @@ export default function LandingHero() {
         }
 
         .filter-pill.active {
-          background: rgba(0, 255, 136, 0.1);
-          border-color: rgba(0, 255, 136, 0.3);
+          background: rgba(16, 185, 129, 0.1);
+          border-color: rgba(16, 185, 129, 0.3);
           color: var(--color-green);
         }
 
@@ -4761,7 +4765,7 @@ export default function LandingHero() {
           display: inline-block;
           padding: 8px 16px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 100px;
           color: var(--color-accent);
           font-family: var(--font-mono);
@@ -4931,7 +4935,7 @@ export default function LandingHero() {
           transform: translate(-50%, -50%);
           width: 600px;
           height: 600px;
-          background: radial-gradient(circle, rgba(0, 212, 255, 0.08) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 194, 255, 0.08) 0%, transparent 70%);
           filter: blur(60px);
         }
 
@@ -4944,8 +4948,8 @@ export default function LandingHero() {
         .identity-badge {
           display: inline-block;
           padding: 8px 16px;
-          background: rgba(0, 212, 255, 0.1);
-          border: 1px solid rgba(0, 212, 255, 0.2);
+          background: rgba(0, 194, 255, 0.1);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 100px;
           color: var(--color-cyan);
           font-family: var(--font-mono);
@@ -5161,7 +5165,7 @@ export default function LandingHero() {
           transform: translateY(-50%);
           width: 400px;
           height: 400px;
-          background: radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
           filter: blur(80px);
         }
 
@@ -5263,7 +5267,7 @@ export default function LandingHero() {
         .final-btn.primary:hover {
           background: #00E67A;
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
         }
 
         .final-btn.secondary {

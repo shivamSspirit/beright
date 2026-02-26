@@ -196,8 +196,8 @@ export default function GameHeader() {
           position: relative;
           width: 36px;
           height: 36px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(139, 92, 246, 0.15));
-          border: 1px solid rgba(0, 230, 118, 0.3);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(139, 92, 246, 0.15));
+          border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 10px;
           display: flex;
           align-items: center;
@@ -215,7 +215,7 @@ export default function GameHeader() {
           min-width: 16px;
           height: 16px;
           padding: 0 4px;
-          background: linear-gradient(135deg, #00E676, #00C853);
+          background: linear-gradient(135deg, #10B981, #10B981);
           border-radius: 8px;
           font-size: 9px;
           font-weight: 800;
@@ -251,7 +251,7 @@ export default function GameHeader() {
 
         .xp-fill {
           height: 100%;
-          background: linear-gradient(90deg, #00E676, #00C853);
+          background: linear-gradient(90deg, #10B981, #10B981);
           border-radius: 2px;
           transition: width 0.5s ease-out;
         }
