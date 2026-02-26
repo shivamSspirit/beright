@@ -10,11 +10,12 @@ import Header from '@/components/Header';
 // Layout: Hook → Social Proof → Product → Trust → Education → Identity → Close
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Only show 3 markets in the viral layout - less is more, creates scarcity
+// 4 curated markets showing variety - Crypto, Politics, AI, Sports
 const HOT_OPPS = [
   { market: 'BTC > $150K by June', odds: 34, change: +8, volume: '2.4M', closing: '6h', hot: true, category: 'crypto' },
-  { market: 'Fed cuts in March', odds: 78, change: +12, volume: '1.2M', closing: '18d', hot: true, category: 'politics' },
-  { market: 'Trump wins 2028', odds: 52, change: -3, volume: '8.1M', closing: '2y', hot: false, category: 'politics' },
+  { market: 'Fed cuts rates in March', odds: 78, change: +12, volume: '1.2M', closing: '18d', hot: true, category: 'politics' },
+  { market: 'GPT-5 releases Q1 2025', odds: 45, change: +5, volume: '890K', closing: '3mo', hot: true, category: 'ai' },
+  { market: 'Lakers win NBA Finals', odds: 18, change: -2, volume: '3.1M', closing: '6mo', hot: false, category: 'sports' },
 ];
 
 // Live ticker data - casino floor noise
@@ -38,14 +39,6 @@ const LEADERBOARD = [
   { rank: 5, brier: 0.19, winRate: 71, predictions: 1892 },
 ];
 
-// Market filter categories
-const MARKET_FILTERS = [
-  { id: 'hot', label: '🔥 Hot', active: true },
-  { id: 'crypto', label: '📈 Crypto', active: false },
-  { id: 'politics', label: '🏛️ Politics', active: false },
-  { id: 'sports', label: '⚽ Sports', active: false },
-  { id: 'ai', label: '🤖 AI', active: false },
-];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIVE TICKER - Casino Floor Noise (FOMO Engine)
@@ -164,6 +157,12 @@ function LeaderboardPeek({ onConnect }: { onConnect: () => void }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function FinalCTA({ onConnect }: { onConnect: () => void }) {
+  const trustFeatures = [
+    { icon: '⚡', label: '400ms Finality' },
+    { icon: '💰', label: '$0.00025 Fees' },
+    { icon: '🔒', label: 'Non-Custodial' },
+  ];
+
   return (
     <section className="final-cta-section">
       <div className="final-cta-bg" aria-hidden="true">
@@ -172,9 +171,34 @@ function FinalCTA({ onConnect }: { onConnect: () => void }) {
       </div>
 
       <div className="final-cta-content">
+        {/* Solana Badge */}
+        <div className="final-solana-badge">
+          <svg viewBox="0 0 397 311" fill="none" className="solana-icon" width="24" height="20">
+            <path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#sol-g1)"/>
+            <path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#sol-g2)"/>
+            <path d="M332.1 120.9c-2.4-2.4-5.7-3.8-9.2-3.8H5.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#sol-g3)"/>
+            <defs>
+              <linearGradient id="sol-g1" x1="0" y1="0" x2="397" y2="311"><stop stopColor="#00FFA3"/><stop offset="1" stopColor="#DC1FFF"/></linearGradient>
+              <linearGradient id="sol-g2" x1="0" y1="0" x2="397" y2="311"><stop stopColor="#00FFA3"/><stop offset="1" stopColor="#DC1FFF"/></linearGradient>
+              <linearGradient id="sol-g3" x1="0" y1="0" x2="397" y2="311"><stop stopColor="#00FFA3"/><stop offset="1" stopColor="#DC1FFF"/></linearGradient>
+            </defs>
+          </svg>
+          <span>Powered by Solana</span>
+        </div>
+
         <h2 className="final-cta-title">
           Ready to prove you're <span className="gradient-text">right</span>?
         </h2>
+
+        {/* Trust Features Row */}
+        <div className="final-trust-features">
+          {trustFeatures.map((f, i) => (
+            <span key={i} className="trust-pill">
+              <span className="trust-icon">{f.icon}</span>
+              <span>{f.label}</span>
+            </span>
+          ))}
+        </div>
 
         <div className="final-cta-buttons">
           <button className="final-btn primary" onClick={onConnect}>
@@ -183,7 +207,7 @@ function FinalCTA({ onConnect }: { onConnect: () => void }) {
         </div>
 
         <p className="final-cta-trust">
-          $1 minimum · 0% fees · Your keys, your funds
+          $1 minimum · Your keys, your funds · Start in seconds
         </p>
       </div>
     </section>
@@ -298,6 +322,14 @@ function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) 
   const yesPrice = (opp.odds / 100).toFixed(2);
   const noPrice = ((100 - opp.odds) / 100).toFixed(2);
 
+  const categoryConfig: Record<string, { emoji: string; color: string }> = {
+    crypto: { emoji: '₿', color: 'var(--color-amber)' },
+    politics: { emoji: '🏛️', color: 'var(--color-cyan)' },
+    ai: { emoji: '🤖', color: '#A855F7' },
+    sports: { emoji: '⚽', color: 'var(--color-green)' },
+  };
+  const cat = categoryConfig[opp.category] || { emoji: '📊', color: 'var(--color-text-tertiary)' };
+
   return (
     <article
       className={`market-card ${opp.hot ? 'is-hot' : ''}`}
@@ -305,15 +337,22 @@ function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) 
     >
       {/* Card Header */}
       <div className="card-header">
+        <span className="card-category" style={{ color: cat.color }}>
+          {cat.emoji} {opp.category.charAt(0).toUpperCase() + opp.category.slice(1)}
+        </span>
+        <span className={`card-change ${isUp ? 'up' : 'down'}`}>
+          {isUp ? '↑' : '↓'}{Math.abs(opp.change)}%
+        </span>
+      </div>
+
+      {/* Closing time */}
+      <div className="card-meta">
         <span className="card-closing">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 6v6l4 2"/>
           </svg>
-          {opp.closing}
-        </span>
-        <span className={`card-change ${isUp ? 'up' : 'down'}`}>
-          {isUp ? '↑' : '↓'}{Math.abs(opp.change)}%
+          Closes in {opp.closing}
         </span>
       </div>
 
@@ -1249,21 +1288,8 @@ export default function LandingHero() {
         {/* ACTIVE MARKETS - 2-column grid */}
         <section id="markets" className="markets-section" aria-labelledby="markets-title">
           <div className="markets-header">
-            <h2 id="markets-title" className="section-title">Active Markets</h2>
-          </div>
-
-          {/* Filter Pills - Emoji first, better visual anchor */}
-          <div className="market-filters" role="tablist" aria-label="Market categories">
-            {MARKET_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                className={`filter-pill ${filter.active ? 'active' : ''}`}
-                role="tab"
-                aria-selected={filter.active}
-              >
-                {filter.label}
-              </button>
-            ))}
+            <h2 id="markets-title" className="section-title">Hot Markets</h2>
+            <p className="section-subtitle">Live opportunities across Crypto, Politics, AI & Sports</p>
           </div>
 
           <div className="markets-grid">
@@ -1283,13 +1309,7 @@ export default function LandingHero() {
         {/* MIDDLE LAYER - Forecasters ↔ Capitalists */}
         <MiddleLayerConcept />
 
-        {/* TERMINAL PREVIEW - Pro features */}
-        <TerminalPreview />
-
-        {/* SOLANA TRUST BLOCK - Merged with footer trust */}
-        <TrustSignals />
-
-        {/* FINAL CTA - The Close */}
+        {/* FINAL CTA - The Close (with Trust Signals merged) */}
         <FinalCTA onConnect={handleComingSoon} />
       </main>
 
@@ -1927,6 +1947,12 @@ export default function LandingHero() {
           color: var(--color-text);
         }
 
+        .section-subtitle {
+          font-size: 15px;
+          color: var(--color-text-tertiary);
+          margin: 0;
+        }
+
         .markets-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -1958,6 +1984,17 @@ export default function LandingHero() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          margin-bottom: 8px;
+        }
+
+        .card-category {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .card-meta {
           margin-bottom: 10px;
         }
 
@@ -4908,6 +4945,48 @@ export default function LandingHero() {
           position: relative;
           max-width: 600px;
           margin: 0 auto;
+        }
+
+        .final-solana-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: linear-gradient(135deg, rgba(0, 255, 163, 0.1) 0%, rgba(220, 31, 255, 0.08) 100%);
+          border: 1px solid rgba(0, 255, 163, 0.25);
+          border-radius: 100px;
+          margin-bottom: 20px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--color-text-secondary);
+        }
+
+        .solana-icon {
+          flex-shrink: 0;
+        }
+
+        .final-trust-features {
+          display: flex;
+          justify-content: center;
+          gap: 16px;
+          margin-bottom: 24px;
+          flex-wrap: wrap;
+        }
+
+        .trust-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--color-border);
+          border-radius: 100px;
+          font-size: 13px;
+          color: var(--color-text-secondary);
+        }
+
+        .trust-icon {
+          font-size: 14px;
         }
 
         .final-cta-title {
