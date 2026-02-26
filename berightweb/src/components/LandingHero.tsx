@@ -109,30 +109,6 @@ function LiveTicker() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TRUST STRIP - Social Proof Numbers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function TrustStrip() {
-  const stats = [
-    { value: '$2.4M+', label: 'Volume' },
-    { value: '847', label: 'Forecasters' },
-    { value: '0%', label: 'Platform Fee' },
-    { value: '<1s', label: 'Settlement' },
-  ];
-
-  return (
-    <div className="trust-strip">
-      {stats.map((stat, i) => (
-        <div key={i} className="trust-stat">
-          <span className="trust-value">{stat.value}</span>
-          <span className="trust-label">{stat.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // LEADERBOARD PEEK - Ego Trigger
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -611,7 +587,7 @@ function TerminalPreview() {
   ];
 
   const agents = [
-    { name: 'SCOUT', status: 'ACTIVE', color: '#00D4FF', task: 'Scanning 847 markets...' },
+    { name: 'SCOUT', status: 'ACTIVE', color: '#00D4FF', task: 'Scanning live markets...' },
     { name: 'ANALYST', status: 'PROCESSING', color: '#DC1FFF', task: 'Deep dive: BTC $150K' },
     { name: 'TRADER', status: 'READY', color: '#00FF88', task: 'Awaiting signal' },
   ];
@@ -821,12 +797,7 @@ function MiddleLayerConcept() {
                 </div>
                 <div className="metric-content">
                   <span className="metric-label">Brier Score</span>
-                  <div className="metric-value-row">
-                    <span className="metric-value cyan">0.18</span>
-                    <div className="metric-bar">
-                      <div className="metric-fill cyan" style={{ width: '82%' }} />
-                    </div>
-                  </div>
+                  <span className="metric-desc">Calibration accuracy</span>
                 </div>
               </div>
               <div className="metric-item">
@@ -837,13 +808,8 @@ function MiddleLayerConcept() {
                   </svg>
                 </div>
                 <div className="metric-content">
-                  <span className="metric-label">Win Rate</span>
-                  <div className="metric-value-row">
-                    <span className="metric-value cyan">73%</span>
-                    <div className="metric-bar">
-                      <div className="metric-fill cyan" style={{ width: '73%' }} />
-                    </div>
-                  </div>
+                  <span className="metric-label">Track Record</span>
+                  <span className="metric-desc">Verified predictions</span>
                 </div>
               </div>
               <div className="metric-item">
@@ -853,11 +819,8 @@ function MiddleLayerConcept() {
                   </svg>
                 </div>
                 <div className="metric-content">
-                  <span className="metric-label">Predictions</span>
-                  <div className="metric-value-row">
-                    <span className="metric-value cyan">847</span>
-                    <span className="metric-trend up">+12%</span>
-                  </div>
+                  <span className="metric-label">Reputation</span>
+                  <span className="metric-desc">Skill-based ranking</span>
                 </div>
               </div>
             </div>
@@ -971,11 +934,8 @@ function MiddleLayerConcept() {
                   </svg>
                 </div>
                 <div className="metric-content">
-                  <span className="metric-label">Capital Deployed</span>
-                  <div className="metric-value-row">
-                    <span className="metric-value green">$50K+</span>
-                    <span className="metric-trend up">↑</span>
-                  </div>
+                  <span className="metric-label">Portfolio Allocation</span>
+                  <span className="metric-desc">Deploy capital strategically</span>
                 </div>
               </div>
               <div className="metric-item">
@@ -986,13 +946,8 @@ function MiddleLayerConcept() {
                   </svg>
                 </div>
                 <div className="metric-content">
-                  <span className="metric-label">Target ROI</span>
-                  <div className="metric-value-row">
-                    <span className="metric-value green">20%+</span>
-                    <div className="metric-bar">
-                      <div className="metric-fill green" style={{ width: '65%' }} />
-                    </div>
-                  </div>
+                  <span className="metric-label">Performance</span>
+                  <span className="metric-desc">Real-time P&L tracking</span>
                 </div>
               </div>
               <div className="metric-item">
@@ -1002,11 +957,8 @@ function MiddleLayerConcept() {
                   </svg>
                 </div>
                 <div className="metric-content">
-                  <span className="metric-label">Status</span>
-                  <div className="metric-value-row">
-                    <span className="metric-value green">Active</span>
-                    <span className="status-dot active" />
-                  </div>
+                  <span className="metric-label">Signal Access</span>
+                  <span className="metric-desc">Follow top forecasters</span>
                 </div>
               </div>
             </div>
@@ -1041,16 +993,6 @@ function MiddleLayerConcept() {
               BeRight creates a marketplace where <span className="text-gradient">forecasting skill becomes a tradeable asset</span>.
               Top predictors earn by sharing signals. Investors profit by following the best.
             </p>
-          </div>
-          <div className="callout-stats">
-            <div className="callout-stat">
-              <span className="stat-value">$2.4M+</span>
-              <span className="stat-label">Volume</span>
-            </div>
-            <div className="callout-stat">
-              <span className="stat-value">847</span>
-              <span className="stat-label">Forecasters</span>
-            </div>
           </div>
         </div>
       </div>
@@ -1308,9 +1250,6 @@ export default function LandingHero() {
 
         {/* LIVE TICKER - Casino Floor Noise */}
         <LiveTicker />
-
-        {/* TRUST BAR - Inline row (not its own section) */}
-        <TrustStrip />
 
         {/* ACTIVE MARKETS - 2-column grid */}
         <section id="markets" className="markets-section" aria-labelledby="markets-title">
@@ -3612,6 +3551,13 @@ export default function LandingHero() {
           letter-spacing: 0.5px;
         }
 
+        .metric-desc {
+          display: block;
+          font-size: 13px;
+          color: var(--color-text-secondary);
+          font-weight: 500;
+        }
+
         .metric-value-row {
           display: flex;
           align-items: center;
@@ -4012,22 +3958,6 @@ export default function LandingHero() {
           background-clip: text;
           -webkit-text-fill-color: transparent;
           font-weight: 600;
-        }
-
-        .callout-stats {
-          display: flex;
-          gap: 24px;
-          flex-shrink: 0;
-        }
-
-        .callout-stat {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 12px 20px;
-          background: rgba(0, 255, 136, 0.05);
-          border: 1px solid rgba(0, 255, 136, 0.15);
-          border-radius: 12px;
         }
 
         .stat-value {
@@ -4475,44 +4405,6 @@ export default function LandingHero() {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-        }
-
-        /* ═══════════════════════════════════════════════════════════════════════
-           TRUST STRIP - Social Proof Numbers
-           ═══════════════════════════════════════════════════════════════════════ */
-
-        .trust-strip {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 48px;
-          padding: 20px 24px;
-          background: rgba(255, 255, 255, 0.02);
-          border-top: 1px solid var(--color-border);
-          border-bottom: 1px solid var(--color-border);
-          margin: 0 0 32px;
-        }
-
-        .trust-stat {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .trust-value {
-          font-family: var(--font-mono);
-          font-size: 28px;
-          font-weight: 700;
-          color: var(--color-text);
-          letter-spacing: -0.5px;
-        }
-
-        .trust-label {
-          font-size: 13px;
-          color: var(--color-text-tertiary);
-          text-transform: uppercase;
-          letter-spacing: 1px;
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -5114,15 +5006,6 @@ export default function LandingHero() {
             justify-content: center;
           }
 
-          /* New components - tablet */
-          .trust-strip {
-            gap: 32px;
-          }
-
-          .trust-value {
-            font-size: 24px;
-          }
-
           .identity-cards {
             grid-template-columns: repeat(2, 1fr);
           }
@@ -5221,10 +5104,6 @@ export default function LandingHero() {
             text-align: center;
             gap: 20px;
           }
-
-          .callout-stats {
-            justify-content: center;
-          }
         }
 
         @media (max-width: 768px) {
@@ -5321,20 +5200,6 @@ export default function LandingHero() {
 
           .ticker-item {
             font-size: 12px;
-          }
-
-          .trust-strip {
-            flex-wrap: wrap;
-            gap: 24px;
-            padding: 24px 16px;
-          }
-
-          .trust-value {
-            font-size: 22px;
-          }
-
-          .trust-label {
-            font-size: 11px;
           }
 
           .market-filters {
@@ -5592,11 +5457,6 @@ export default function LandingHero() {
           .callout-headline {
             font-size: 18px;
           }
-
-          .callout-stats {
-            width: 100%;
-            justify-content: center;
-          }
         }
 
         @media (max-width: 480px) {
@@ -5679,20 +5539,6 @@ export default function LandingHero() {
 
           .trade-price {
             font-size: 14px;
-          }
-
-          /* Trust strip - 480px */
-          .trust-strip {
-            gap: 16px;
-            padding: 20px 12px;
-          }
-
-          .trust-value {
-            font-size: 18px;
-          }
-
-          .trust-label {
-            font-size: 10px;
           }
 
           /* How it works - 480px */
