@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import Header from '@/components/Header';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BERIGHT LANDING PAGE v3.0 - NIKITA BIER VIRAL STRATEGY
@@ -46,41 +46,6 @@ const MARKET_FILTERS = [
   { id: 'sports', label: '⚽ Sports', active: false },
   { id: 'ai', label: '🤖 AI', active: false },
 ];
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// NAVBAR COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function Navbar({ onConnect }: { onConnect: () => void }) {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  return (
-    <nav className={`navbar ${scrolled ? 'scrolled' : ''}`} role="navigation" aria-label="Main navigation">
-      <div className="nav-inner">
-        <a href="/" className="nav-logo" aria-label="BeRight Home">
-          <span className="logo-icon">◉</span>
-          <span className="logo-text">BeRight</span>
-        </a>
-
-        <div className="nav-links" role="menubar">
-          <a href="#markets" className="nav-link" role="menuitem">Markets</a>
-          <a href="#leaderboard" className="nav-link" role="menuitem">Leaderboard</a>
-          <a href="#terminal" className="nav-link" role="menuitem">Terminal</a>
-        </div>
-
-        <button className="nav-cta" onClick={onConnect} aria-label="Connect your wallet">
-          Connect Wallet
-        </button>
-      </div>
-    </nav>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIVE TICKER - Casino Floor Noise (FOMO Engine)
@@ -237,13 +202,13 @@ function FinalCTA({ onConnect }: { onConnect: () => void }) {
 
         <div className="final-cta-buttons">
           <button className="final-btn primary" onClick={onConnect}>
-            <span>Start Trading — Free</span>
+            <span>🚀 Coming Soon</span>
           </button>
-          <a href="https://t.me/beright_bot" className="final-btn secondary">
+          <a href="https://t.me/berightbot" target="_blank" rel="noopener noreferrer" className="final-btn secondary">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
             </svg>
-            <span>Open Telegram Bot</span>
+            <span>Join Telegram for Early Access</span>
           </a>
         </div>
 
@@ -1183,21 +1148,9 @@ function Footer() {
 
         <div className="footer-links">
           <div className="link-group">
-            <h4>Product</h4>
-            <a href="#markets">Markets</a>
-            <a href="#how-it-works">How it Works</a>
-            <a href="#leaderboard">Leaderboard</a>
-          </div>
-          <div className="link-group">
             <h4>Resources</h4>
             <a href="/docs">Documentation</a>
-            <a href="/faq">FAQ</a>
-            <a href="/support">Support</a>
-          </div>
-          <div className="link-group">
-            <h4>Legal</h4>
-            <a href="/terms">Terms of Service</a>
-            <a href="/privacy">Privacy Policy</a>
+            <a href="/docs/faq">FAQ</a>
           </div>
         </div>
 
@@ -1221,7 +1174,7 @@ function Footer() {
       </div>
 
       <div className="footer-bottom">
-        <p className="footer-copyright">© 2025 BeRight Protocol. All rights reserved.</p>
+        <p className="footer-copyright">© 2026 BeRight Protocol. All rights reserved.</p>
       </div>
     </footer>
   );
@@ -1232,33 +1185,26 @@ function Footer() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default function LandingHero() {
-  const { login, ready } = usePrivy();
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
-  const handleConnect = useCallback(() => {
+  const handleComingSoon = useCallback(() => {
     if (navigator.vibrate) navigator.vibrate(10);
-    login();
-  }, [login]);
-
-  if (!ready) {
-    return (
-      <div className="loading-screen" role="status" aria-label="Loading">
-        <div className="loading-content">
-          <span className="loading-logo">
-            <span className="logo-icon pulse">◉</span>
-            BeRight
-          </span>
-          <div className="loading-bar">
-            <div className="loading-fill" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+    setShowComingSoon(true);
+    setTimeout(() => setShowComingSoon(false), 3000);
+  }, []);
 
   return (
     <div className="landing">
       {/* Navigation */}
-      <Navbar onConnect={handleConnect} />
+      {/* Coming Soon Toast */}
+      {showComingSoon && (
+        <div className="coming-soon-toast">
+          <span className="toast-icon">🚀</span>
+          <span className="toast-text">Launching Soon! Join our Telegram for early access.</span>
+        </div>
+      )}
+
+      <Header />
 
       {/* Hero Section - 2 Column Split Layout */}
       <main className="hero">
@@ -1290,12 +1236,12 @@ export default function LandingHero() {
 
             {/* CTA Buttons */}
             <div className="hero-cta-row">
-              <button className="cta-button primary" onClick={handleConnect}>
-                <span className="cta-text">Start Trading</span>
-                <span className="cta-arrow">→</span>
+              <button className="cta-button primary" onClick={handleComingSoon}>
+                <span className="cta-text">Coming Soon</span>
+                <span className="cta-arrow">🚀</span>
               </button>
-              <a href="#markets" className="cta-button ghost">
-                <span className="cta-text">View Live Markets</span>
+              <a href="https://t.me/berightbot" target="_blank" rel="noopener noreferrer" className="cta-button ghost">
+                <span className="cta-text">Join Telegram</span>
               </a>
             </div>
 
@@ -1434,7 +1380,7 @@ export default function LandingHero() {
         <TrustSignals />
 
         {/* FINAL CTA - The Close */}
-        <FinalCTA onConnect={handleConnect} />
+        <FinalCTA onConnect={handleComingSoon} />
       </main>
 
       {/* Footer */}
@@ -1483,82 +1429,47 @@ export default function LandingHero() {
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
-           NAVBAR
+           COMING SOON TOAST
            ═══════════════════════════════════════════════════════════════════════ */
 
-        .navbar {
+        .coming-soon-toast {
           position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 50;
-          padding: 0 20px;
-          transition: all 0.3s ease;
-        }
-
-        .navbar.scrolled {
-          background: rgba(10, 10, 11, 0.9);
+          top: 100px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 24px;
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 212, 255, 0.1));
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          border-radius: 16px;
           backdrop-filter: blur(20px);
-          border-bottom: 1px solid var(--color-border);
+          -webkit-backdrop-filter: blur(20px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          z-index: 9999;
+          animation: toastSlideIn 0.3s ease-out;
         }
 
-        .nav-inner {
-          max-width: 1200px;
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 16px 0;
-        }
-
-        .nav-logo {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          text-decoration: none;
-          color: var(--color-text);
-          font-weight: 700;
-          font-size: 20px;
-        }
-
-        .logo-icon {
-          color: var(--color-green);
+        .toast-icon {
           font-size: 24px;
         }
 
-        .nav-links {
-          display: flex;
-          gap: 32px;
-        }
-
-        .nav-link {
-          color: var(--color-text-secondary);
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 500;
-          transition: color 0.2s;
-        }
-
-        .nav-link:hover {
-          color: var(--color-text);
-        }
-
-        .nav-cta {
-          padding: 10px 20px;
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: 10px;
-          color: var(--color-text);
-          font-size: 14px;
+        .toast-text {
+          font-size: 15px;
           font-weight: 600;
-          cursor: pointer;
-          font-family: inherit;
-          transition: all 0.2s;
+          color: var(--color-text);
         }
 
-        .nav-cta:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: var(--color-border-hover);
+        @keyframes toastSlideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -5373,10 +5284,6 @@ export default function LandingHero() {
         }
 
         @media (max-width: 768px) {
-          .nav-links {
-            display: none;
-          }
-
           .hero {
             padding: 80px 16px 40px;
           }
