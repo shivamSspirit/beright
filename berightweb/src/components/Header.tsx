@@ -76,6 +76,7 @@ export default function Header() {
         .logo-text {
           font-weight: 800;
           letter-spacing: -0.5px;
+          padding-left: 4px;
         }
 
         .nav-links {
