@@ -147,7 +147,7 @@ function ComingSoonContent() {
           {/* CTA Buttons */}
           <div className="cs-cta">
             <a
-              href="https://t.me/berightbot"
+              href="https://t.me/mygroupname"
               target="_blank"
               rel="noopener noreferrer"
               className="cta-btn primary"
