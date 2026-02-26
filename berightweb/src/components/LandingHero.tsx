@@ -1152,6 +1152,11 @@ function Footer() {
             <a href="/docs">Documentation</a>
             <a href="/docs/faq">FAQ</a>
           </div>
+          <div className="link-group">
+            <h4>$BERIGHT Token</h4>
+            <a href="https://pump.fun/coin/8ukcrYsyxBjTxw98FG1Hj3PBkbdqzE2CJbP5x2d5pump" target="_blank" rel="noopener noreferrer">Buy on Pump.fun</a>
+            <a href="https://solscan.io/token/8ukcrYsyxBjTxw98FG1Hj3PBkbdqzE2CJbP5x2d5pump" target="_blank" rel="noopener noreferrer">View on Solscan</a>
+          </div>
         </div>
 
         <div className="footer-social">
