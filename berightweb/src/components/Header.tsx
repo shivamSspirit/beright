@@ -28,7 +28,10 @@ export default function Header() {
           </div>
 
           <a href="https://t.me/berightai" target="_blank" rel="noopener noreferrer" className="nav-cta" aria-label="Join Telegram">
-            Join Telegram
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+            </svg>
+            <span>Join Telegram</span>
           </a>
         </div>
       </nav>
@@ -39,14 +42,15 @@ export default function Header() {
           top: 0;
           left: 0;
           right: 0;
-          z-index: 50;
-          padding: 0 20px;
-          transition: all 0.3s ease;
+          z-index: 1000;
+          padding: 0 24px;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .navbar.scrolled {
-          background: rgba(10, 10, 11, 0.9);
+          background: rgba(10, 10, 11, 0.85);
           backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
@@ -56,41 +60,47 @@ export default function Header() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 0;
+          height: 72px;
         }
 
         .nav-logo {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           text-decoration: none;
           color: #fff;
-          font-weight: 700;
-          font-size: 20px;
         }
 
         .logo-icon {
           color: #00FF88;
-          font-size: 24px;
+          font-size: 28px;
+          line-height: 1;
+          display: flex;
+          align-items: center;
         }
 
         .logo-text {
+          font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 22px;
           font-weight: 800;
           letter-spacing: -0.5px;
-          padding-left: 4px;
+          color: #fff;
         }
 
         .nav-links {
           display: flex;
-          gap: 32px;
+          align-items: center;
+          gap: 36px;
         }
 
         .nav-link {
           color: rgba(255, 255, 255, 0.6);
           text-decoration: none;
-          font-size: 14px;
+          font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 15px;
           font-weight: 500;
-          transition: color 0.2s;
+          transition: color 0.2s ease;
+          line-height: 1;
         }
 
         .nav-link:hover {
@@ -99,29 +109,39 @@ export default function Header() {
 
         .nav-link.token {
           color: #00FF88;
-          font-weight: 600;
+          font-weight: 700;
         }
 
         .nav-link.token:hover {
-          color: #00FF88;
-          text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+          text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
         }
 
         .nav-cta {
-          padding: 10px 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 18px;
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 176, 255, 0.1) 100%);
+          border: 1px solid rgba(0, 255, 136, 0.2);
           border-radius: 10px;
           color: #fff;
+          font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
           font-size: 14px;
           font-weight: 600;
           text-decoration: none;
-          transition: all 0.2s;
+          transition: all 0.25s ease;
+          line-height: 1;
         }
 
         .nav-cta:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.15);
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 176, 255, 0.15) 100%);
+          border-color: rgba(0, 255, 136, 0.35);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 20px rgba(0, 255, 136, 0.15);
+        }
+
+        .nav-cta svg {
+          flex-shrink: 0;
         }
 
         @media (max-width: 768px) {
@@ -130,15 +150,30 @@ export default function Header() {
           }
 
           .nav-inner {
-            padding: 12px 0;
+            height: 64px;
           }
 
           .nav-links {
             display: none;
+          }
+
+          .logo-icon {
+            font-size: 24px;
+          }
+
+          .logo-text {
+            font-size: 20px;
+          }
+
+          .nav-cta span {
+            display: none;
+          }
+
+          .nav-cta {
+            padding: 10px;
           }
         }
       `}</style>
     </>
   );
 }
-

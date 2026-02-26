@@ -1363,10 +1363,6 @@ export default function LandingHero() {
             ))}
           </div>
 
-          <button className="see-all-button disabled" disabled>
-            <span>See all markets</span>
-            <span className="button-arrow">→</span>
-          </button>
         </section>
 
         {/* HOW IT WORKS - Horizontal 3-column */}
@@ -2171,49 +2167,6 @@ export default function LandingHero() {
           font-size: 15px;
           font-weight: 700;
           color: var(--color-text);
-        }
-
-        /* See All Button */
-        .see-all-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          width: 100%;
-          padding: 16px;
-          background: transparent;
-          border: 1px solid var(--color-border-hover);
-          border-radius: 12px;
-          color: var(--color-text);
-          font-size: 15px;
-          font-weight: 600;
-          cursor: pointer;
-          font-family: inherit;
-          transition: all 0.2s;
-        }
-
-        .see-all-button:hover {
-          background: rgba(255, 255, 255, 0.03);
-          border-color: var(--color-text-tertiary);
-        }
-
-        .button-arrow {
-          transition: transform 0.2s;
-        }
-
-        .see-all-button:hover .button-arrow {
-          transform: translateX(4px);
-        }
-
-        .see-all-button.disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-          pointer-events: none;
-        }
-
-        .see-all-button.disabled:hover {
-          background: transparent;
-          border-color: var(--color-border-hover);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
