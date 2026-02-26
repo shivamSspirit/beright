@@ -20,6 +20,114 @@ BeRight runs on OpenClaw's AI agent architecture. These principles guide all age
 | `AGENTS.md` | Multi-agent roster and routing |
 | `TOOLS.md` | Skills execution reference |
 
+### OpenClaw 6-Component Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     OPENCLAW ARCHITECTURE                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────┐    ┌─────────┐    ┌──────────┐                │
+│  │ GATEWAY  │───▶│   LLM   │───▶│ PI AGENT │                │
+│  │(Telegram)│    │ (Groq)  │    │ (Skills) │                │
+│  └──────────┘    └─────────┘    └──────────┘                │
+│       │              │              │                        │
+│       │         ┌────┴────┐         │                        │
+│       │         │ MEMORY  │         │                        │
+│       │         │(SOUL.md)│         │                        │
+│       │         └────┬────┘         │                        │
+│       │              │              │                        │
+│       └──────────────┼──────────────┘                        │
+│                      │                                       │
+│              ┌───────┴───────┐                               │
+│              │   HEARTBEAT   │                               │
+│              │  (30min loop) │                               │
+│              └───────────────┘                               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**1. Gateway (The Front Door)** - `skills/telegram.ts`
+- Entry/exit point for all messages
+- Connects to Telegram (could be WhatsApp, Slack, API)
+- Users interact from where they already are
+- BeRight: Long polling via node-telegram-bot-api
+
+**2. LLM (The Brain)** - `lib/llm.ts`, `lib/semanticAgent.ts`
+- Model-agnostic design (swap providers easily)
+- BeRight uses Groq (fast: llama-3.1-8b, smart: llama-3.3-70b)
+- **CRITICAL**: Requires `GROQ_API_KEY` in environment
+- Semantic understanding replaces regex-based intent classification
+
+**3. PI Agent (The Hands)** - `lib/agentSpawner.ts`
+- Executes code and integrates with external systems
+- BeRight: Scout, Analyst, Trader agents
+- Each agent has specific skills (market scanning, research, trading)
+
+**4. Memory (The Personality)** - `lib/cognitiveMemory.ts`
+- **SOUL.md**: Personality, voice, values (injected into every LLM call)
+- **IDENTITY.md**: Capabilities, architecture description
+- **Working Memory**: Per-chat conversation context (30 min TTL)
+- **Episodic Memory**: `memory/episodes.json` - actions + outcomes
+- **User Profiles**: `memory/users.json` - preferences over time
+- Memory persists across sessions - agent remembers you
+
+**5. Cron & Heartbeat (The Pulse)** - `services/heartbeat.ts`
+- Runs every 30 minutes automatically
+- Proactive, not just reactive
+- Monitors markets, detects opportunities, sends alerts
+- Cognitive loop: PERCEIVE → UPDATE BELIEFS → DELIBERATE → ACT → REFLECT
+
+**6. Skills (The Expertise)** - `skills/` folder
+- Prompt templates stored as markdown files
+- Agent reads skill descriptions, picks the right one
+- BeRight skills: research, arbitrage, whale watching, etc.
+- Create new skills via markdown files or natural language
+
+### Semantic Agent Flow (How Messages Are Processed)
+
+```
+User Message
+     │
+     ▼
+┌─────────────────┐
+│ skills/telegram │  Gateway receives message
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ telegramHandler │  Route to handler
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ semanticAgent   │  LLM understands intent (loads SOUL.md)
+│ + Groq LLM      │  Returns: goal, domain, topic, confidence
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ semanticOrch.   │  Routes to appropriate agent
+└────────┬────────┘
+         │
+    ┌────┴────┬──────────┐
+    ▼         ▼          ▼
+┌───────┐ ┌────────┐ ┌────────┐
+│ Scout │ │Analyst │ │ Trader │  Execute skills
+└───────┘ └────────┘ └────────┘
+    │         │          │
+    └────┬────┴──────────┘
+         │
+         ▼
+┌─────────────────┐
+│cognitiveMemory  │  Record episode, update user profile
+└────────┬────────┘
+         │
+         ▼
+    Response sent
+
+```
+
 ### Two-Tier Pattern (ALWAYS FOLLOW)
 
 ```
@@ -83,10 +191,30 @@ PERCEIVE → UPDATE BELIEFS → DELIBERATE → ACT → REFLECT
 
 ### Fixing Common Issues
 
+**Bot returns "Didn't catch that" for everything**:
+→ **FIRST CHECK**: Is `GROQ_API_KEY` set in `.env`? (Most common issue!)
+→ Verify with: `node -e "require('dotenv').config(); console.log(process.env.GROQ_API_KEY ? 'SET' : 'MISSING')"`
+→ If missing, semantic agent fails → falls back to regex → returns generic response
+→ After adding key, restart PM2 with `--update-env` flag
+
+**Semantic agent not working**:
+→ Check `lib/semanticAgent.ts` loads SOUL.md correctly
+→ Verify Groq API returns valid response (check logs for errors)
+→ Test LLM directly: `lib/llm.ts` should return `provider: 'groq'` not `'none'`
+
+**Commands like /trending not recognized**:
+→ Check `skills/telegramHandler.ts` for recognized commands
+→ `/trending` is NOT a command - use `/hot` instead
+→ Unrecognized `/commands` fall to default case → semantic agent
+
+**PM2 doesn't pick up new environment variables**:
+→ Use `pm2 restart <app> --update-env`
+→ Or delete and re-add the process
+
 **Bot doesn't understand context**:
-→ Check `lib/intentClassifier.ts` patterns
-→ Add regex for missing phrases
-→ Test with `classifyIntent()` directly
+→ Check `lib/cognitiveMemory.ts` - working memory per chat
+→ Memory has 30 min TTL - old context expires
+→ Verify `buildMemoryContext()` is called in semantic orchestrator
 
 **Research returns raw data without synthesis**:
 → Ensure `synthesizeResearch()` is called (Tier 2)
@@ -100,8 +228,8 @@ PERCEIVE → UPDATE BELIEFS → DELIBERATE → ACT → REFLECT
 
 **Agent persona feels robotic**:
 → Update SOUL.md with more personality
-→ Check telegramHandler response formatting
-→ Add conversational patterns to intent classifier
+→ Semantic agent loads SOUL.md - verify it's being injected
+→ Check `lib/semanticAgent.ts` → `loadOpenClawContext()`
 
 ---
 
