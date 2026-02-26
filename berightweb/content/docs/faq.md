@@ -6,7 +6,7 @@
 BeRight is a prediction market intelligence platform that aggregates data from multiple platforms (Polymarket, Kalshi, Manifold, Metaculus, Limitless), provides AI-powered analysis, and helps you find profitable opportunities.
 
 ### How do I get started?
-The easiest way is through our Telegram bot. Just open [@berightbot](https://t.me/beright) on Telegram and start asking questions. No signup required.
+The easiest way is through our Telegram bot. Just open [@berightbot](https://t.me/berightai) on Telegram and start asking questions. No signup required.
 
 ### Is BeRight free to use?
 Yes! The Telegram bot and basic features are completely free. Premium features will be available in future updates.
