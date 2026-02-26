@@ -1363,10 +1363,10 @@ export default function LandingHero() {
             ))}
           </div>
 
-          <a href="#" className="see-all-button">
+          <button className="see-all-button disabled" disabled>
             <span>See all markets</span>
             <span className="button-arrow">→</span>
-          </a>
+          </button>
         </section>
 
         {/* HOW IT WORKS - Horizontal 3-column */}
@@ -2203,6 +2203,17 @@ export default function LandingHero() {
 
         .see-all-button:hover .button-arrow {
           transform: translateX(4px);
+        }
+
+        .see-all-button.disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+          pointer-events: none;
+        }
+
+        .see-all-button.disabled:hover {
+          background: transparent;
+          border-color: var(--color-border-hover);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
