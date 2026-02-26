@@ -1136,9 +1136,9 @@ export default function DocsPage() {
         }
 
         .nav-item.active {
-          color: #10B981;
-          background: rgba(16, 185, 129, 0.1);
-          border-left-color: #10B981;
+          color: #00C2FF;
+          background: rgba(0, 194, 255, 0.1);
+          border-left-color: #00C2FF;
           font-weight: 600;
         }
 
@@ -1152,10 +1152,10 @@ export default function DocsPage() {
           display: block;
           width: 100%;
           padding: 12px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 194, 255, 0.1));
-          border: 1px solid rgba(16, 185, 129, 0.2);
+          background: linear-gradient(135deg, rgba(0, 194, 255, 0.15), rgba(0, 194, 255, 0.1));
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 8px;
-          color: #10B981;
+          color: #00C2FF;
           font-size: 14px;
           font-weight: 600;
           text-align: center;
@@ -1164,7 +1164,7 @@ export default function DocsPage() {
         }
 
         .cta-btn:hover {
-          background: rgba(16, 185, 129, 0.2);
+          background: rgba(0, 194, 255, 0.2);
         }
 
         /* Main Content */
@@ -1224,7 +1224,7 @@ export default function DocsPage() {
         .section-subtitle.gradient-text {
           font-size: 20px;
           font-weight: 600;
-          background: linear-gradient(135deg, #10B981, #00C2FF);
+          background: linear-gradient(135deg, #00C2FF, #A78BFA);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -1259,7 +1259,7 @@ export default function DocsPage() {
         .h2-accent {
           width: 4px;
           height: 28px;
-          background: linear-gradient(180deg, #10B981, #00C2FF);
+          background: linear-gradient(180deg, #00C2FF, #A78BFA);
           border-radius: 2px;
         }
 
@@ -1395,7 +1395,7 @@ export default function DocsPage() {
           font-style: italic;
           line-height: 1.6;
           color: rgba(255, 255, 255, 0.9);
-          border-left: 3px solid #10B981;
+          border-left: 3px solid #00C2FF;
           padding-left: 24px;
           margin: 32px 0;
         }
@@ -1418,7 +1418,7 @@ export default function DocsPage() {
         .pillar-number {
           font-size: 32px;
           font-weight: 800;
-          color: #10B981;
+          color: #00C2FF;
           opacity: 0.5;
         }
 
@@ -1442,7 +1442,7 @@ export default function DocsPage() {
         }
 
         .why-now-list strong {
-          color: #10B981;
+          color: #00C2FF;
         }
 
         /* Live Features */
@@ -1484,8 +1484,8 @@ export default function DocsPage() {
         .try-cta {
           margin-top: 40px;
           padding: 32px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 194, 255, 0.05));
-          border: 1px solid rgba(16, 185, 129, 0.2);
+          background: linear-gradient(135deg, rgba(0, 194, 255, 0.1), rgba(167, 139, 250, 0.05));
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 16px;
           text-align: center;
         }
@@ -1495,7 +1495,7 @@ export default function DocsPage() {
           align-items: center;
           gap: 12px;
           padding: 16px 32px;
-          background: linear-gradient(135deg, #10B981, #00D4FF);
+          background: linear-gradient(135deg, #00C2FF, #A78BFA);
           border-radius: 12px;
           color: #000;
           font-size: 16px;
@@ -1506,7 +1506,7 @@ export default function DocsPage() {
 
         .try-btn:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+          box-shadow: 0 8px 24px rgba(0, 194, 255, 0.3);
         }
 
         /* Features Grid */
@@ -1531,9 +1531,9 @@ export default function DocsPage() {
           height: 36px;
           font-size: 14px;
           font-weight: 700;
-          color: #10B981;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.2);
+          color: #00C2FF;
+          background: rgba(0, 194, 255, 0.1);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 8px;
           margin-bottom: 16px;
         }
@@ -1569,7 +1569,7 @@ export default function DocsPage() {
         }
 
         .gateway-card:hover {
-          border-color: rgba(16, 185, 129, 0.3);
+          border-color: rgba(0, 194, 255, 0.3);
           transform: translateY(-2px);
         }
 
@@ -1642,7 +1642,7 @@ export default function DocsPage() {
           content: '•';
           position: absolute;
           left: 0;
-          color: #10B981;
+          color: #00C2FF;
         }
 
         /* Core Features Grid */
@@ -1662,7 +1662,7 @@ export default function DocsPage() {
         }
 
         .core-feature-card:hover {
-          border-color: rgba(16, 185, 129, 0.2);
+          border-color: rgba(0, 194, 255, 0.2);
         }
 
         .feature-top {
@@ -1680,9 +1680,9 @@ export default function DocsPage() {
           height: 36px;
           font-size: 14px;
           font-weight: 700;
-          color: #10B981;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.2);
+          color: #00C2FF;
+          background: rgba(0, 194, 255, 0.1);
+          border: 1px solid rgba(0, 194, 255, 0.2);
           border-radius: 8px;
         }
 
@@ -1739,7 +1739,7 @@ export default function DocsPage() {
           grid-template-columns: 1fr 1fr;
           gap: 40px;
           padding: 40px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(0, 176, 255, 0.05) 100%);
+          background: linear-gradient(135deg, rgba(0, 194, 255, 0.05) 0%, rgba(167, 139, 250, 0.05) 100%);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 20px;
           margin-bottom: 48px;
@@ -1762,8 +1762,8 @@ export default function DocsPage() {
           border-radius: 20px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          background: rgba(16, 185, 129, 0.15);
-          color: #10B981;
+          background: rgba(0, 194, 255, 0.15);
+          color: #00C2FF;
           margin-bottom: 16px;
         }
 
@@ -1799,8 +1799,8 @@ export default function DocsPage() {
           width: 28px;
           height: 28px;
           font-size: 14px;
-          color: #10B981;
-          background: rgba(16, 185, 129, 0.1);
+          color: #00C2FF;
+          background: rgba(0, 194, 255, 0.1);
           border-radius: 6px;
         }
 
@@ -1844,8 +1844,8 @@ export default function DocsPage() {
           padding: 4px 10px;
           border-radius: 20px;
           text-transform: uppercase;
-          background: rgba(16, 185, 129, 0.15);
-          color: #10B981;
+          background: rgba(0, 194, 255, 0.15);
+          color: #00C2FF;
           margin-bottom: 16px;
         }
 
@@ -1945,7 +1945,7 @@ export default function DocsPage() {
         .fc-score .score {
           font-size: 20px;
           font-weight: 700;
-          color: #10B981;
+          color: #00C2FF;
         }
 
         /* Coming Soon Grid */
@@ -2082,11 +2082,11 @@ export default function DocsPage() {
         .command-code {
           min-width: 180px;
           padding: 6px 12px;
-          background: rgba(16, 185, 129, 0.1);
+          background: rgba(0, 194, 255, 0.1);
           border-radius: 6px;
           font-family: 'IBM Plex Mono', monospace;
           font-size: 14px;
-          color: #10B981;
+          color: #00C2FF;
         }
 
         .command-desc {
@@ -2337,7 +2337,7 @@ export default function DocsPage() {
 
         .page-nav-btn:hover {
           background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(16, 185, 129, 0.2);
+          border-color: rgba(0, 194, 255, 0.2);
         }
 
         .page-nav-btn.prev {
@@ -2356,7 +2356,7 @@ export default function DocsPage() {
         .nav-page-title {
           font-size: 15px;
           font-weight: 600;
-          color: #10B981;
+          color: #00C2FF;
         }
 
         /* Footer */
