@@ -235,11 +235,21 @@ export function recordEpisode(episode: Omit<Episode, 'id' | 'timestamp'>): Episo
     timestamp: new Date().toISOString(),
   };
 
-  // Load existing episodes
+  // Load existing episodes (handle both old format {episodes:[]} and new format [])
   let episodes: Episode[] = [];
+  let existingData: { episodes?: Episode[]; lessons?: unknown[]; lastUpdated?: string; totalEpisodes?: number } | Episode[] | null = null;
+
   if (existsSync(EPISODES_FILE)) {
     try {
-      episodes = JSON.parse(readFileSync(EPISODES_FILE, 'utf-8'));
+      existingData = JSON.parse(readFileSync(EPISODES_FILE, 'utf-8'));
+      // Handle old format: { episodes: [], lessons: [], ... }
+      if (existingData && !Array.isArray(existingData) && Array.isArray((existingData as { episodes?: Episode[] }).episodes)) {
+        episodes = (existingData as { episodes: Episode[] }).episodes;
+      }
+      // Handle new format: direct array
+      else if (Array.isArray(existingData)) {
+        episodes = existingData;
+      }
     } catch {
       episodes = [];
     }
@@ -253,8 +263,21 @@ export function recordEpisode(episode: Omit<Episode, 'id' | 'timestamp'>): Episo
     episodes = episodes.slice(-1000);
   }
 
-  // Save
-  writeFileSync(EPISODES_FILE, JSON.stringify(episodes, null, 2));
+  // Save in compatible format (preserve old structure if it existed)
+  let dataToSave: unknown;
+  if (existingData && !Array.isArray(existingData)) {
+    // Preserve old format
+    dataToSave = {
+      ...existingData,
+      episodes,
+      lastUpdated: new Date().toISOString(),
+      totalEpisodes: episodes.length,
+    };
+  } else {
+    // Use new format (direct array)
+    dataToSave = episodes;
+  }
+  writeFileSync(EPISODES_FILE, JSON.stringify(dataToSave, null, 2));
 
   // Update cache
   if (recentEpisodesCache) {
@@ -279,7 +302,16 @@ export function getRecentEpisodes(userId?: string, limit = 10): Episode[] {
   if (!recentEpisodesCache) {
     if (existsSync(EPISODES_FILE)) {
       try {
-        const all = JSON.parse(readFileSync(EPISODES_FILE, 'utf-8')) as Episode[];
+        const data = JSON.parse(readFileSync(EPISODES_FILE, 'utf-8'));
+        // Handle old format: { episodes: [], ... }
+        let all: Episode[];
+        if (data && !Array.isArray(data) && Array.isArray(data.episodes)) {
+          all = data.episodes;
+        } else if (Array.isArray(data)) {
+          all = data;
+        } else {
+          all = [];
+        }
         recentEpisodesCache = all.slice(-MAX_CACHED_EPISODES);
       } catch {
         recentEpisodesCache = [];
