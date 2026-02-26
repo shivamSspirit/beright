@@ -457,6 +457,82 @@ function HowItWorks() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// EARNING OPPORTUNITIES - How You Make Money (Story-driven)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function EarningOpportunities() {
+  const opportunities = [
+    {
+      icon: '⚡',
+      title: 'Arbitrage Alerts',
+      subtitle: 'Risk-free profits',
+      description: 'Polymarket says 65%. Kalshi says 58%. Our AI spots the gap. You pocket the spread.',
+      highlight: '7%+ spreads detected daily',
+      color: 'green',
+    },
+    {
+      icon: '🔄',
+      title: 'Autonomous Loops',
+      subtitle: '24/7 edge detection',
+      description: 'AI agents scan news, social sentiment, and whale movements. You get alerts before the market moves.',
+      highlight: 'Set once, profit forever',
+      color: 'cyan',
+    },
+    {
+      icon: '🎯',
+      title: 'Follow Top Forecasters',
+      subtitle: 'Copy proven winners',
+      description: 'See who has the best Brier score. Mirror their positions. Their research, your returns.',
+      highlight: 'Top 10 avg 74% win rate',
+      color: 'amber',
+    },
+    {
+      icon: '📊',
+      title: 'AI Research Edge',
+      subtitle: 'Know more than the market',
+      description: 'Ask any question. Get synthesized intelligence from news, data, and expert analysis in seconds.',
+      highlight: 'Your personal analyst',
+      color: 'purple',
+    },
+  ];
+
+  return (
+    <section id="earning" className="earning-section">
+      <div className="earning-header">
+        <span className="earning-badge">💰 How You Earn</span>
+        <h2 className="section-title">
+          Four Ways to <span className="gradient-text">Profit</span>
+        </h2>
+        <p className="section-subtitle">BeRight isn't gambling. It's intelligence-driven alpha.</p>
+      </div>
+
+      <div className="earning-grid">
+        {opportunities.map((opp, i) => (
+          <div key={i} className={`earning-card ${opp.color}`} style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="earning-card-icon">{opp.icon}</div>
+            <div className="earning-card-content">
+              <span className="earning-card-subtitle">{opp.subtitle}</span>
+              <h3 className="earning-card-title">{opp.title}</h3>
+              <p className="earning-card-desc">{opp.description}</p>
+              <span className={`earning-card-highlight ${opp.color}`}>{opp.highlight}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Story callout */}
+      <div className="earning-callout">
+        <span className="callout-emoji">🧠</span>
+        <p className="callout-message">
+          <strong>The edge is information.</strong> While others guess, you'll have AI-powered research,
+          real-time arbitrage detection, and access to the best forecasters' signals.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // AI INTELLIGENCE SECTION - BeRight's unique edge
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1302,6 +1378,9 @@ export default function LandingHero() {
 
         {/* HOW IT WORKS - Horizontal 3-column */}
         <HowItWorks />
+
+        {/* EARNING OPPORTUNITIES - How you make money */}
+        <EarningOpportunities />
 
         {/* AI INTELLIGENCE - Edge showcase */}
         <AIIntelligence />
@@ -2216,6 +2295,172 @@ export default function LandingHero() {
         .step-arrow svg {
           width: 100%;
           height: 100%;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           EARNING OPPORTUNITIES SECTION
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        .earning-section {
+          position: relative;
+          z-index: 10;
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 48px 24px;
+        }
+
+        .earning-header {
+          text-align: center;
+          margin-bottom: 40px;
+        }
+
+        .earning-badge {
+          display: inline-block;
+          padding: 8px 16px;
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(255, 184, 0, 0.1) 100%);
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          border-radius: 100px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--color-green);
+          margin-bottom: 16px;
+        }
+
+        .earning-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+          margin-bottom: 32px;
+        }
+
+        .earning-card {
+          display: flex;
+          gap: 16px;
+          padding: 24px;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 16px;
+          transition: all 0.3s ease;
+          animation: fadeUp 0.5s ease-out both;
+        }
+
+        .earning-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .earning-card.green:hover {
+          border-color: rgba(0, 255, 136, 0.4);
+        }
+
+        .earning-card.cyan:hover {
+          border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .earning-card.amber:hover {
+          border-color: rgba(255, 184, 0, 0.4);
+        }
+
+        .earning-card.purple:hover {
+          border-color: rgba(168, 85, 247, 0.4);
+        }
+
+        .earning-card-icon {
+          font-size: 32px;
+          flex-shrink: 0;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 12px;
+        }
+
+        .earning-card-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .earning-card-subtitle {
+          display: block;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: var(--color-text-tertiary);
+          margin-bottom: 4px;
+        }
+
+        .earning-card-title {
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--color-text);
+          margin: 0 0 8px;
+        }
+
+        .earning-card-desc {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          line-height: 1.5;
+          margin: 0 0 12px;
+        }
+
+        .earning-card-highlight {
+          display: inline-block;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          font-family: var(--font-mono);
+        }
+
+        .earning-card-highlight.green {
+          background: rgba(0, 255, 136, 0.1);
+          color: var(--color-green);
+        }
+
+        .earning-card-highlight.cyan {
+          background: rgba(0, 212, 255, 0.1);
+          color: var(--color-cyan);
+        }
+
+        .earning-card-highlight.amber {
+          background: rgba(255, 184, 0, 0.1);
+          color: var(--color-amber);
+        }
+
+        .earning-card-highlight.purple {
+          background: rgba(168, 85, 247, 0.1);
+          color: #A855F7;
+        }
+
+        .earning-callout {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px 24px;
+          background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 212, 255, 0.03) 100%);
+          border: 1px solid rgba(0, 255, 136, 0.15);
+          border-radius: 16px;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        .callout-emoji {
+          font-size: 28px;
+          flex-shrink: 0;
+        }
+
+        .callout-message {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          line-height: 1.6;
+          margin: 0;
+        }
+
+        .callout-message strong {
+          color: var(--color-green);
         }
 
         /* ═══════════════════════════════════════════════════════════════════════
@@ -5183,6 +5428,25 @@ export default function LandingHero() {
         @media (max-width: 768px) {
           .hero {
             padding: 80px 16px 40px;
+          }
+
+          /* Earning Section - Stack on mobile */
+          .earning-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .earning-card {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .earning-card-icon {
+            margin: 0 auto;
+          }
+
+          .earning-callout {
+            flex-direction: column;
+            text-align: center;
           }
 
           /* Hero Split - Stack on mobile */
