@@ -158,9 +158,18 @@ function LeaderboardPeek({ onConnect }: { onConnect: () => void }) {
 
 function FinalCTA({ onConnect }: { onConnect: () => void }) {
   const trustFeatures = [
-    { icon: 'FAST', label: '400ms Finality' },
-    { icon: 'LOW', label: '$0.00025 Fees' },
-    { icon: 'SAFE', label: 'Non-Custodial' },
+    {
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+      label: '400ms Finality'
+    },
+    {
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h8"/></svg>,
+      label: '$0.00025 Fees'
+    },
+    {
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+      label: 'Non-Custodial'
+    },
   ];
 
   return (
@@ -224,7 +233,7 @@ function WhichOneAreYou({ onConnect }: { onConnect: () => void }) {
   const personas = [
     {
       id: 'forecaster',
-      icon: 'F',
+      icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
       title: 'The Forecaster',
       subtitle: 'Skill over luck',
       description: 'You have an edge. A thesis. Years of pattern recognition. You want to monetize what you know, not gamble.',
@@ -235,7 +244,7 @@ function WhichOneAreYou({ onConnect }: { onConnect: () => void }) {
     {
       id: 'whale',
       title: 'The Whale',
-      icon: 'W',
+      icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
       subtitle: 'Capital seeking alpha',
       description: "You have capital but limited time. You want to back the best forecasters and ride their conviction.",
       stats: ['Follow top predictors', 'Copy-trade signals', 'Passive exposure'],
@@ -245,7 +254,7 @@ function WhichOneAreYou({ onConnect }: { onConnect: () => void }) {
     {
       id: 'degen',
       title: 'The Degen',
-      icon: 'D',
+      icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2c1 3 2.5 3.5 3.5 4.5A5 5 0 0117 10c0 2.76-2.24 5-5 5s-5-2.24-5-5c0-1.26.49-2.41 1.3-3.28.22-.23.5-.42.7-.72.5-.77.5-1.77 0-2.5"/><path d="M12 22v-7"/></svg>,
       subtitle: 'Here for the thrill',
       description: "Let's be real—you love the action. You want fast markets, live odds, and that dopamine hit when you're right.",
       stats: ['Quick trades', 'Live markets', 'Instant settlement'],
@@ -291,7 +300,9 @@ function WhichOneAreYou({ onConnect }: { onConnect: () => void }) {
               <ul className="card-stats">
                 {persona.stats.map((stat, i) => (
                   <li key={i} className="stat-item">
-                    <span className={`stat-check ${persona.color}`}>+</span>
+                    <span className={`stat-check ${persona.color}`}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                    </span>
                     <span className="stat-text">{stat}</span>
                   </li>
                 ))}
@@ -322,13 +333,25 @@ function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) 
   const yesPrice = (opp.odds / 100).toFixed(2);
   const noPrice = ((100 - opp.odds) / 100).toFixed(2);
 
-  const categoryConfig: Record<string, { label: string; color: string }> = {
-    crypto: { label: 'BTC', color: 'var(--color-amber)' },
-    politics: { label: 'POL', color: 'var(--color-cyan)' },
-    ai: { label: 'AI', color: '#A855F7' },
-    sports: { label: 'SPT', color: 'var(--color-green)' },
+  const categoryConfig: Record<string, { icon: React.ReactNode; color: string }> = {
+    crypto: {
+      icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
+      color: 'var(--color-amber)'
+    },
+    politics: {
+      icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6"/></svg>,
+      color: 'var(--color-cyan)'
+    },
+    ai: {
+      icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><circle cx="15" cy="10" r="1.5" fill="currentColor"/><path d="M9 16h6"/></svg>,
+      color: '#A855F7'
+    },
+    sports: {
+      icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 014 10 15 15 0 01-4 10 15 15 0 01-4-10 15 15 0 014-10z"/><path d="M2 12h20"/></svg>,
+      color: 'var(--color-green)'
+    },
   };
-  const cat = categoryConfig[opp.category] || { label: 'MKT', color: 'var(--color-text-tertiary)' };
+  const cat = categoryConfig[opp.category] || { icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18 17l-5-5-4 4-3-3"/></svg>, color: 'var(--color-text-tertiary)' };
 
   return (
     <article
@@ -338,7 +361,7 @@ function MarketCard({ opp, index }: { opp: typeof HOT_OPPS[0]; index: number }) 
       {/* Card Header */}
       <div className="card-header">
         <span className="card-category" style={{ color: cat.color }}>
-          {cat.label} {opp.category.charAt(0).toUpperCase() + opp.category.slice(1)}
+          {cat.icon} {opp.category.charAt(0).toUpperCase() + opp.category.slice(1)}
         </span>
         <span className={`card-change ${isUp ? 'up' : 'down'}`}>
           {isUp ? '↑' : '↓'}{Math.abs(opp.change)}%
@@ -463,7 +486,7 @@ function HowItWorks() {
 function EarningOpportunities() {
   const opportunities = [
     {
-      icon: 'ARB',
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
       title: 'Arbitrage Alerts',
       subtitle: 'Risk-free profits',
       description: 'Polymarket says 65%. Kalshi says 58%. Our AI spots the gap. You pocket the spread.',
@@ -471,7 +494,7 @@ function EarningOpportunities() {
       color: 'green',
     },
     {
-      icon: 'LOOP',
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>,
       title: 'Autonomous Loops',
       subtitle: '24/7 edge detection',
       description: 'AI agents scan news, social sentiment, and whale movements. You get alerts before the market moves.',
@@ -479,7 +502,7 @@ function EarningOpportunities() {
       color: 'cyan',
     },
     {
-      icon: 'TOP',
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
       title: 'Follow Top Forecasters',
       subtitle: 'Copy proven winners',
       description: 'See who has the best Brier score. Mirror their positions. Their research, your returns.',
@@ -487,7 +510,7 @@ function EarningOpportunities() {
       color: 'amber',
     },
     {
-      icon: 'AI',
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-3 3"/></svg>,
       title: 'AI Research Edge',
       subtitle: 'Know more than the market',
       description: 'Ask any question. Get synthesized intelligence from news, data, and expert analysis in seconds.',
@@ -522,7 +545,9 @@ function EarningOpportunities() {
 
       {/* Story callout */}
       <div className="earning-callout">
-        <span className="callout-emoji">EDGE</span>
+        <span className="callout-emoji">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 0110 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M12 16v-4M12 8h.01"/></svg>
+        </span>
         <p className="callout-message">
           <strong>The edge is information.</strong> While others guess, you'll have AI-powered research,
           real-time arbitrage detection, and access to the best forecasters' signals.
@@ -542,7 +567,9 @@ function AIIntelligence() {
       <div className="ai-header">
         <span className="ai-badge">BeRight Edge</span>
         <h2 id="ai-title" className="section-title">
-          <span className="title-icon">AI</span>
+          <span className="title-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><circle cx="15" cy="10" r="1.5" fill="currentColor"/><path d="M9 16h6"/></svg>
+          </span>
           AI-Powered Trading
         </h2>
         <p className="section-subtitle">
@@ -568,9 +595,9 @@ function AIIntelligence() {
                   BeRight AI
                 </span>
                 <span className="bubble-text">
-                  <span className="fact-item">DATA: ETF inflows: +$2.1B this week</span>
-                  <span className="fact-item">NEWS: Fed signals rate pause</span>
-                  <span className="fact-item">ALERT: RSI overbought at 78</span>
+                  <span className="fact-item"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-3 3"/></svg> ETF inflows: +$2.1B this week</span>
+                  <span className="fact-item"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/></svg> Fed signals rate pause</span>
+                  <span className="fact-item"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/></svg> RSI overbought at 78</span>
                 </span>
               </div>
             </div>
@@ -635,7 +662,9 @@ function AIIntelligence() {
               <div className="brier-card">
                 <div className="brier-header">
                   <span className="brier-label">Your Brier Score</span>
-                  <span className="brier-info" title="Lower is better. 0 = perfect, 0.25 = random">i</span>
+                  <span className="brier-info" title="Lower is better. 0 = perfect, 0.25 = random">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                  </span>
                 </div>
                 <div className="brier-score">
                   <span className="score-value">0.18</span>
@@ -679,7 +708,9 @@ function AIIntelligence() {
 
       {/* Bottom callout */}
       <div className="ai-callout">
-        <span className="callout-icon">TIP</span>
+        <span className="callout-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1H9a1 1 0 01-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z"/></svg>
+        </span>
         <p className="callout-text">
           <strong>Why this matters:</strong> Most traders lose because they trade on vibes.
           BeRight gives you data, tracks your reasoning, and measures your actual skill.
@@ -718,7 +749,9 @@ function TerminalPreview() {
       <div className="terminal-header">
         <span className="terminal-badge">Pro Terminal</span>
         <h2 id="terminal-title" className="section-title">
-          <span className="title-icon">CMD</span>
+          <span className="title-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 10l4 4-4 4M14 18h4"/></svg>
+          </span>
           BeRight Terminal
         </h2>
         <p className="section-subtitle">
@@ -893,7 +926,9 @@ function MiddleLayerConcept() {
             <div className="side-header">
               <div className="side-icon-wrapper">
                 <div className="icon-ring" />
-                <span className="side-icon">PRO</span>
+                <span className="side-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                </span>
               </div>
               <div className="side-title-group">
                 <span className="side-title">Forecasters</span>
@@ -942,15 +977,21 @@ function MiddleLayerConcept() {
 
             <div className="side-benefits">
               <div className="benefit-item">
-                <span className="benefit-check cyan">+</span>
+                <span className="benefit-check cyan">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
                 <span className="benefit-text">Monetize your forecasting skill</span>
               </div>
               <div className="benefit-item">
-                <span className="benefit-check cyan">+</span>
+                <span className="benefit-check cyan">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
                 <span className="benefit-text">Build verifiable reputation</span>
               </div>
               <div className="benefit-item">
-                <span className="benefit-check cyan">+</span>
+                <span className="benefit-check cyan">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
                 <span className="benefit-text">Attract capital to your picks</span>
               </div>
             </div>
@@ -1032,7 +1073,9 @@ function MiddleLayerConcept() {
             <div className="side-header">
               <div className="side-icon-wrapper">
                 <div className="icon-ring" />
-                <span className="side-icon">CAP</span>
+                <span className="side-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                </span>
               </div>
               <div className="side-title-group">
                 <span className="side-title">Capitalists</span>
@@ -1080,15 +1123,21 @@ function MiddleLayerConcept() {
 
             <div className="side-benefits">
               <div className="benefit-item">
-                <span className="benefit-check green">+</span>
+                <span className="benefit-check green">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
                 <span className="benefit-text">Access top forecaster signals</span>
               </div>
               <div className="benefit-item">
-                <span className="benefit-check green">+</span>
+                <span className="benefit-check green">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
                 <span className="benefit-text">Verified performance data</span>
               </div>
               <div className="benefit-item">
-                <span className="benefit-check green">+</span>
+                <span className="benefit-check green">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </span>
                 <span className="benefit-text">Automated copy-trading</span>
               </div>
             </div>
@@ -1100,7 +1149,9 @@ function MiddleLayerConcept() {
         <div className="callout-glow" />
         <div className="callout-content">
           <div className="callout-icon-wrap">
-            <span className="callout-icon">FAST</span>
+            <span className="callout-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </span>
           </div>
           <div className="callout-text-wrapper">
             <p className="callout-headline">The Prediction Market Alpha Layer</p>
@@ -1121,9 +1172,21 @@ function MiddleLayerConcept() {
 
 function TrustSignals() {
   const features = [
-    { icon: 'FAST', label: '400ms Finality', desc: 'Lightning-fast settlement' },
-    { icon: 'LOW', label: '$0.00025 Fees', desc: 'Near-zero transaction costs' },
-    { icon: 'SAFE', label: 'Non-Custodial', desc: 'Your keys, your funds' },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+      label: '400ms Finality',
+      desc: 'Lightning-fast settlement'
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h8"/></svg>,
+      label: '$0.00025 Fees',
+      desc: 'Near-zero transaction costs'
+    },
+    {
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+      label: 'Non-Custodial',
+      desc: 'Your keys, your funds'
+    },
   ];
 
   return (
@@ -1234,7 +1297,9 @@ export default function LandingHero() {
       {/* Coming Soon Toast */}
       {showComingSoon && (
         <div className="coming-soon-toast">
-          <span className="toast-icon">SOON</span>
+          <span className="toast-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          </span>
           <span className="toast-text">Launching Soon! Join our Telegram for early access.</span>
         </div>
       )}
@@ -1273,7 +1338,9 @@ export default function LandingHero() {
             <div className="hero-cta-row">
               <button className="cta-button primary" onClick={handleComingSoon}>
                 <span className="cta-text">Coming Soon</span>
-                <span className="cta-arrow">-&gt;</span>
+                <span className="cta-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
               </button>
             </div>
 
