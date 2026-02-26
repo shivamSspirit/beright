@@ -345,8 +345,8 @@ export default function ResolutionPage() {
           <Link href="/docs/faq#resolution" className="cta-btn primary">
             Resolution FAQ
           </Link>
-          <a href="https://discord.gg/beright" className="cta-btn secondary" target="_blank" rel="noopener">
-            Ask on Discord
+          <a href="https://t.me/berightaii" className="cta-btn secondary" target="_blank" rel="noopener">
+            Ask on Telegram
           </a>
         </div>
       </section>

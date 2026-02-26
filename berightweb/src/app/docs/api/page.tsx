@@ -605,7 +605,6 @@ export default function APIDocsPage() {
         </div>
         <div className="footer-links">
           <a href="https://x.com/AgentBEright" target="_blank" rel="noopener">Twitter</a>
-          <a href="https://discord.gg/beright" target="_blank" rel="noopener">Discord</a>
           <a href="https://t.me/berightaii" target="_blank" rel="noopener">Telegram</a>
         </div>
       </footer>
