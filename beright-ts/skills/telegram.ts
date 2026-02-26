@@ -11,9 +11,6 @@
  */
 
 import 'dotenv/config';
-import * as https from 'https';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 // Use secure handler instead of raw telegramHandler
 import { secureTelegramHandler, getTierAppropriateHelp } from '../lib/secureHandler';
 import { TelegramMessage } from '../types/response';
@@ -29,32 +26,40 @@ import {
 import { validateLLMConfig } from '../lib/llm';
 import { validateTavilyConfig } from '../lib/tavily';
 
-const execAsync = promisify(exec);
-
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
 /**
- * Make request using curl (most reliable cross-platform)
+ * Make HTTP request using native fetch
+ *
+ * SECURITY: Using native fetch instead of exec(curl) to prevent shell injection.
+ * Shell commands with user input are a critical security vulnerability.
+ * Native fetch has NO shell interaction = NO shell injection possible.
  */
-async function curlRequest(url: string, options: { method?: string; body?: string } = {}): Promise<any> {
-  try {
-    let cmd = `curl -s --max-time 35 "${url}"`;
-    if (options.method === 'POST' && options.body) {
-      // Escape for shell: $ -> \$, " -> \", ` -> \`, \ -> \\
-      const escapedBody = options.body
-        .replace(/\\/g, '\\\\')  // Escape backslashes first
-        .replace(/\$/g, '\\$')   // Escape $ (shell variable)
-        .replace(/`/g, '\\`')    // Escape backticks (command substitution)
-        .replace(/"/g, '\\"');   // Escape double quotes
-      cmd = `curl -s --max-time 35 -X POST -H "Content-Type: application/json" -d "${escapedBody}" "${url}"`;
-    }
+async function httpRequest(url: string, options: { method?: string; body?: string } = {}): Promise<any> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 35000); // 35 second timeout
 
-    const { stdout } = await execAsync(cmd);
-    return JSON.parse(stdout);
+  try {
+    const fetchOptions: RequestInit = {
+      method: options.method || 'GET',
+      signal: controller.signal,
+      headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+      body: options.body,
+    };
+
+    const response = await fetch(url, fetchOptions);
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error('Curl request error:', error instanceof Error ? error.message : error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('Request timeout');
+      return { ok: false, error: 'Request timeout' };
+    }
+    console.error('Request error:', error instanceof Error ? error.message : error);
     return { ok: false, error: 'Request failed' };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -68,7 +73,7 @@ let lockHeartbeatTimer: NodeJS.Timeout | null = null;
  */
 async function sendMessage(chatId: number | string, text: string): Promise<void> {
   try {
-    const result = await curlRequest(`${TELEGRAM_API}/sendMessage`, {
+    const result = await httpRequest(`${TELEGRAM_API}/sendMessage`, {
       method: 'POST',
       body: JSON.stringify({
         chat_id: chatId,
@@ -83,7 +88,7 @@ async function sendMessage(chatId: number | string, text: string): Promise<void>
 
       // Retry without markdown if parsing failed
       if (result.description?.includes('parse')) {
-        await curlRequest(`${TELEGRAM_API}/sendMessage`, {
+        await httpRequest(`${TELEGRAM_API}/sendMessage`, {
           method: 'POST',
           body: JSON.stringify({
             chat_id: chatId,
@@ -103,7 +108,7 @@ async function sendMessage(chatId: number | string, text: string): Promise<void>
  */
 async function getUpdates(): Promise<any[]> {
   try {
-    const data = await curlRequest(
+    const data = await httpRequest(
       `${TELEGRAM_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`
     );
 
@@ -305,7 +310,7 @@ console.log('============================================\n');
 async function testConnection(): Promise<boolean> {
   try {
     console.log('Testing Telegram connection...');
-    const data = await curlRequest(`${TELEGRAM_API}/getMe`);
+    const data = await httpRequest(`${TELEGRAM_API}/getMe`);
     if (!data.ok) {
       console.error('Connection test failed:', data.description || data.error);
       return false;
