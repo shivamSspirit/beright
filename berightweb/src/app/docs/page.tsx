@@ -998,7 +998,6 @@ export default function DocsPage() {
           <div className="footer-links">
             <a href="https://t.me/berightai" target="_blank" rel="noopener noreferrer">Telegram</a>
             <a href="https://x.com/AgentBEright" target="_blank" rel="noopener noreferrer">Twitter</a>
-            <a href="https://pump.fun/coin/8ukcrYsyxBjTxw98FG1Hj3PBkbdqzE2CJbP5x2d5pump" target="_blank" rel="noopener noreferrer">$BERIGHT</a>
           </div>
           <p className="footer-copyright">© 2026 BeRight Protocol</p>
         </footer>
