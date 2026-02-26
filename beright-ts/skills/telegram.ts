@@ -25,6 +25,10 @@ import {
   forceReleaseLock,
 } from '../lib/telegramLock';
 
+// Startup validation
+import { validateLLMConfig } from '../lib/llm';
+import { validateTavilyConfig } from '../lib/tavily';
+
 const execAsync = promisify(exec);
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -278,6 +282,24 @@ console.log('   - Input sanitization');
 console.log('   - Command allowlisting');
 console.log('   - Output filtering');
 console.log('============================================');
+
+// ============================================
+// STARTUP VALIDATION - Check all providers
+// ============================================
+console.log('\nValidating providers...');
+
+const llmStatus = validateLLMConfig();
+const tavilyStatus = validateTavilyConfig();
+
+console.log('');
+if (!llmStatus.valid) {
+  console.warn('⚠️  No LLM providers available - bot will use fallback responses');
+}
+if (!tavilyStatus.valid) {
+  console.warn('⚠️  Tavily not configured - will use DuckDuckGo fallback for search');
+}
+
+console.log('============================================\n');
 
 // Test connection before starting
 async function testConnection(): Promise<boolean> {

@@ -4,10 +4,171 @@
  * Provides web search, content extraction, crawling, and deep research
  * capabilities for accurate, real-time information gathering.
  *
+ * ARCHITECTURE: Graceful Degradation
+ * 1. Tavily API (primary - high quality)
+ * 2. DuckDuckGo Instant Answer (fallback - free, no API key)
+ * 3. Empty results (graceful failure)
+ *
+ * Error Handling:
+ * - Rate limits: Fallback to DuckDuckGo
+ * - Quota exceeded: Fallback to DuckDuckGo
+ * - Network errors: Return empty with warning
+ *
  * API Docs: https://docs.tavily.com
  */
 
 import { tavily, TavilyClient } from '@tavily/core';
+
+// ============================================
+// CONFIGURATION & VALIDATION
+// ============================================
+
+let _startupValidated = false;
+let _tavilyAvailable = false;
+let _tavilyError: string | null = null;
+
+/**
+ * Validate Tavily configuration at startup
+ * Call this once when the app starts
+ */
+export function validateTavilyConfig(): { valid: boolean; error?: string } {
+  const apiKey = process.env.TAVILY_API_KEY;
+
+  if (apiKey) {
+    _tavilyAvailable = true;
+    console.log('[Tavily] ✓ API key configured');
+    _startupValidated = true;
+    return { valid: true };
+  } else {
+    _tavilyAvailable = false;
+    _tavilyError = 'TAVILY_API_KEY not set';
+    console.warn('[Tavily] ✗ API key not configured - will use fallback search');
+    _startupValidated = true;
+    return { valid: false, error: _tavilyError };
+  }
+}
+
+/**
+ * Check if Tavily had a recent error (for circuit breaker pattern)
+ */
+let _lastTavilyError: { time: number; message: string } | null = null;
+const CIRCUIT_BREAKER_MS = 60000; // 1 minute cooldown after errors
+
+function shouldSkipTavily(): boolean {
+  if (!_tavilyAvailable) return true;
+  if (_lastTavilyError && Date.now() - _lastTavilyError.time < CIRCUIT_BREAKER_MS) {
+    console.log(`[Tavily] Circuit breaker active - skipping (${_lastTavilyError.message})`);
+    return true;
+  }
+  return false;
+}
+
+function recordTavilyError(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  _lastTavilyError = { time: Date.now(), message };
+
+  // Detect quota/rate limit errors for longer cooldown
+  if (message.includes('usage limit') || message.includes('rate limit') || message.includes('quota')) {
+    console.warn(`[Tavily] Quota/rate limit hit - circuit breaker engaged for ${CIRCUIT_BREAKER_MS / 1000}s`);
+  }
+}
+
+// ============================================
+// FALLBACK SEARCH (DuckDuckGo)
+// ============================================
+
+interface FallbackSearchResult {
+  title: string;
+  url: string;
+  content: string;
+  score: number;
+}
+
+/**
+ * Fallback search using DuckDuckGo Instant Answer API
+ * Free, no API key required, but limited capabilities
+ */
+async function fallbackSearch(query: string): Promise<{
+  results: FallbackSearchResult[];
+  answer?: string;
+  provider: 'duckduckgo' | 'none';
+}> {
+  try {
+    // DuckDuckGo Instant Answer API (free, no key needed)
+    const encoded = encodeURIComponent(query);
+    const url = `https://api.duckduckgo.com/?q=${encoded}&format=json&no_html=1&skip_disambig=1`;
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'BeRight/1.0' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`DuckDuckGo ${response.status}`);
+    }
+
+    const data = await response.json() as {
+      Abstract?: string;
+      AbstractText?: string;
+      AbstractURL?: string;
+      AbstractSource?: string;
+      RelatedTopics?: Array<{
+        Text?: string;
+        FirstURL?: string;
+      }>;
+      Results?: Array<{
+        Text?: string;
+        FirstURL?: string;
+      }>;
+    };
+
+    const results: FallbackSearchResult[] = [];
+
+    // Extract from abstract
+    if (data.AbstractText && data.AbstractURL) {
+      results.push({
+        title: data.AbstractSource || 'Summary',
+        url: data.AbstractURL,
+        content: data.AbstractText,
+        score: 1.0,
+      });
+    }
+
+    // Extract from results
+    for (const r of (data.Results || [])) {
+      if (r.Text && r.FirstURL) {
+        results.push({
+          title: r.Text.slice(0, 100),
+          url: r.FirstURL,
+          content: r.Text,
+          score: 0.8,
+        });
+      }
+    }
+
+    // Extract from related topics
+    for (const topic of (data.RelatedTopics || []).slice(0, 5)) {
+      if (topic.Text && topic.FirstURL) {
+        results.push({
+          title: topic.Text.slice(0, 100),
+          url: topic.FirstURL,
+          content: topic.Text,
+          score: 0.6,
+        });
+      }
+    }
+
+    console.log(`[Tavily Fallback] DuckDuckGo returned ${results.length} results`);
+
+    return {
+      results,
+      answer: data.AbstractText || undefined,
+      provider: 'duckduckgo',
+    };
+  } catch (error) {
+    console.warn('[Tavily Fallback] DuckDuckGo failed:', error instanceof Error ? error.message : error);
+    return { results: [], provider: 'none' };
+  }
+}
 
 // ============================================
 // TYPES
@@ -27,6 +188,7 @@ export interface TavilySearchResponse {
   answer?: string;  // AI-generated answer when includeAnswer is true
   responseTime: number;
   images?: string[];
+  provider: 'tavily' | 'duckduckgo' | 'none';  // Which provider returned results
 }
 
 export interface TavilyExtractResponse {
@@ -62,6 +224,7 @@ export interface TavilyResearchResponse {
     title: string;
   }>;
   responseTime: number;
+  provider: 'tavily' | 'fallback' | 'none';  // Which provider returned results
 }
 
 // Search depth options
@@ -104,6 +267,11 @@ export function isTavilyConfigured(): boolean {
 /**
  * Search the web using Tavily's AI-powered search
  *
+ * ARCHITECTURE: Graceful Degradation
+ * 1. Try Tavily (primary)
+ * 2. On error, try DuckDuckGo (fallback)
+ * 3. Return empty results (graceful failure)
+ *
  * @param query - Search query
  * @param options - Search configuration
  * @returns Search results with optional AI answer
@@ -128,33 +296,64 @@ export async function tavilySearch(
     days?: number;  // Filter results by recency (1-365 days)
   } = {}
 ): Promise<TavilySearchResponse> {
-  const tvly = getClient();
+  // Validate on first call if not done at startup
+  if (!_startupValidated) {
+    validateTavilyConfig();
+  }
 
   const startTime = Date.now();
 
-  const response = await tvly.search(query, {
-    searchDepth: options.searchDepth || 'basic',
-    topic: options.topic || 'general',
-    maxResults: options.maxResults || 10,
-    includeAnswer: options.includeAnswer ?? true,
-    includeImages: options.includeImages ?? false,
-    includeDomains: options.includeDomains,
-    excludeDomains: options.excludeDomains,
-    days: options.days,
-  }) as any;
+  // Check circuit breaker - skip Tavily if recently failed
+  if (!shouldSkipTavily()) {
+    try {
+      const tvly = getClient();
+
+      const response = await tvly.search(query, {
+        searchDepth: options.searchDepth || 'basic',
+        topic: options.topic || 'general',
+        maxResults: options.maxResults || 10,
+        includeAnswer: options.includeAnswer ?? true,
+        includeImages: options.includeImages ?? false,
+        includeDomains: options.includeDomains,
+        excludeDomains: options.excludeDomains,
+        days: options.days,
+      }) as any;
+
+      return {
+        query,
+        results: (response.results || []).map((r: any) => ({
+          title: r.title || '',
+          url: r.url || '',
+          content: r.content || '',
+          score: r.score || 0,
+          publishedDate: r.publishedDate,
+        })),
+        answer: response.answer,
+        responseTime: Date.now() - startTime,
+        images: response.images?.map((img: any) => typeof img === 'string' ? img : img.url) || [],
+        provider: 'tavily',
+      };
+    } catch (error) {
+      console.warn('[Tavily] Search failed, trying fallback:', error instanceof Error ? error.message : error);
+      recordTavilyError(error);
+    }
+  }
+
+  // Fallback to DuckDuckGo
+  const fallback = await fallbackSearch(query);
 
   return {
     query,
-    results: (response.results || []).map((r: any) => ({
-      title: r.title || '',
-      url: r.url || '',
-      content: r.content || '',
-      score: r.score || 0,
-      publishedDate: r.publishedDate,
+    results: fallback.results.map(r => ({
+      title: r.title,
+      url: r.url,
+      content: r.content,
+      score: r.score,
     })),
-    answer: response.answer,
+    answer: fallback.answer,
     responseTime: Date.now() - startTime,
-    images: response.images?.map((img: any) => typeof img === 'string' ? img : img.url) || [],
+    images: [],
+    provider: fallback.provider === 'duckduckgo' ? 'duckduckgo' : 'none',
   };
 }
 
@@ -351,6 +550,11 @@ export async function tavilyMap(
  * This uses Tavily's research endpoint which performs multi-step
  * research including search, extraction, and synthesis.
  *
+ * ARCHITECTURE: Graceful Degradation
+ * 1. Try Tavily Research API (primary - premium)
+ * 2. Fall back to multiple search queries (Tavily or DuckDuckGo)
+ * 3. Return empty results (graceful failure)
+ *
  * @param topic - Topic to research
  * @returns Comprehensive research report
  *
@@ -360,21 +564,84 @@ export async function tavilyMap(
 export async function tavilyResearch(
   topic: string
 ): Promise<TavilyResearchResponse> {
-  const tvly = getClient();
+  // Validate on first call if not done at startup
+  if (!_startupValidated) {
+    validateTavilyConfig();
+  }
 
   const startTime = Date.now();
 
-  const response = await tvly.research(topic) as any;
+  // Check circuit breaker - skip Tavily if recently failed
+  if (!shouldSkipTavily()) {
+    try {
+      const tvly = getClient();
+      const response = await tvly.research(topic) as any;
 
-  return {
-    topic,
-    report: response.report || response.answer || response.content || '',
-    sources: (response.sources || response.results || []).map((s: any) => ({
-      url: s.url || '',
-      title: s.title || '',
-    })),
-    responseTime: Date.now() - startTime,
-  };
+      return {
+        topic,
+        report: response.report || response.answer || response.content || '',
+        sources: (response.sources || response.results || []).map((s: any) => ({
+          url: s.url || '',
+          title: s.title || '',
+        })),
+        responseTime: Date.now() - startTime,
+        provider: 'tavily',
+      };
+    } catch (error) {
+      console.warn('[Tavily] Research API failed, trying fallback:', error instanceof Error ? error.message : error);
+      recordTavilyError(error);
+    }
+  }
+
+  // Fallback: Use multiple search queries to build a research-like response
+  console.log('[Tavily] Using fallback research (multiple searches)');
+
+  try {
+    // Run multiple searches to gather information
+    const searches = await Promise.all([
+      tavilySearch(`${topic} latest news`, { maxResults: 5 }),
+      tavilySearch(`${topic} analysis`, { maxResults: 5 }),
+      tavilySearch(`${topic} facts`, { maxResults: 5 }),
+    ]);
+
+    // Combine results
+    const allResults = searches.flatMap(s => s.results);
+    const uniqueSources = new Map<string, { url: string; title: string }>();
+
+    for (const r of allResults) {
+      if (!uniqueSources.has(r.url)) {
+        uniqueSources.set(r.url, { url: r.url, title: r.title });
+      }
+    }
+
+    // Build a simple report from the results
+    const contentParts = allResults
+      .filter(r => r.content)
+      .slice(0, 10)
+      .map(r => r.content);
+
+    const report = contentParts.length > 0
+      ? `Research summary for "${topic}":\n\n${contentParts.join('\n\n')}`
+      : `Unable to gather detailed research for "${topic}". Try a more specific query.`;
+
+    return {
+      topic,
+      report,
+      sources: Array.from(uniqueSources.values()).slice(0, 10),
+      responseTime: Date.now() - startTime,
+      provider: 'fallback',
+    };
+  } catch (error) {
+    console.error('[Tavily] Fallback research also failed:', error instanceof Error ? error.message : error);
+
+    return {
+      topic,
+      report: `Research unavailable for "${topic}". The search service is temporarily unavailable. Try again later or use a different query.`,
+      sources: [],
+      responseTime: Date.now() - startTime,
+      provider: 'none',
+    };
+  }
 }
 
 // ============================================
@@ -635,4 +902,5 @@ export default {
   getNewsContext,
   verifyClaim,
   isTavilyConfigured,
+  validateTavilyConfig,
 };
