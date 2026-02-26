@@ -395,6 +395,7 @@ export async function understand(
 
 /**
  * Handle trivial cases without LLM (true O(1) responses)
+ * IMPORTANT: Catches META questions to prevent them being misrouted to market scans
  */
 function handleTrivialCases(message: string): SemanticUnderstanding | null {
   const lower = message.toLowerCase().trim();
@@ -429,6 +430,122 @@ function handleTrivialCases(message: string): SemanticUnderstanding | null {
     };
   }
 
+  // =========================================================================
+  // META QUESTIONS - About BeRight itself (CRITICAL to catch these!)
+  // Without this, they get misrouted to market scans
+  // =========================================================================
+
+  // "who are you" / "who u are" / "who is this" / "what is beright"
+  if (/^(who\s*(are|r|is)\s*(you|u|this|beright)|what\s*(are|is)\s*(you|u|this|beright))[\s?!.,]*$/i.test(lower)) {
+    return {
+      goal: 'LEARN',
+      domain: 'META',
+      interpretation: 'User wants to know what BeRight is',
+      confidence: 1.0,
+      recommendedAgent: 'SELF',
+      agentReasoning: 'Meta question about BeRight identity',
+      suggestedApproach: 'Explain BeRight capabilities',
+      canAnswerDirectly: true,
+      directAnswer: `I'm BeRight - a prediction market intelligence agent.
+
+I help you:
+• Find trending markets (/hot)
+• Spot arbitrage opportunities (/arb)
+• Research any topic (/research <query>)
+• Track your predictions (/predict)
+• Get AI-powered analysis (/intelligence)
+
+What are you interested in predicting?`,
+    };
+  }
+
+  // "what do you do" / "what you do" / "what can you do"
+  if (/^what\s*(do\s*you|you|can\s*you)\s*(do|help|offer)[\s?!.,]*$/i.test(lower)) {
+    return {
+      goal: 'LEARN',
+      domain: 'META',
+      interpretation: 'User wants to know BeRight capabilities',
+      confidence: 1.0,
+      recommendedAgent: 'SELF',
+      agentReasoning: 'Meta question about capabilities',
+      suggestedApproach: 'List capabilities concisely',
+      canAnswerDirectly: true,
+      directAnswer: `I scan prediction markets and give you edge.
+
+**Quick commands:**
+• /hot - Trending markets right now
+• /arb - Cross-platform arbitrage
+• /research <topic> - Deep analysis
+• /predict <question> - Track your forecast
+
+**Ask me anything like:**
+• "What are the odds Trump wins 2028?"
+• "Any good arb opportunities?"
+• "Research Bitcoin 100K"
+
+What interests you?`,
+    };
+  }
+
+  // "help" / "help me" / "i need help"
+  if (/^(help|help\s*me|i\s*need\s*help|how\s*(do|to)\s*(i|you)\s*use)[\s?!.,]*$/i.test(lower)) {
+    return {
+      goal: 'LEARN',
+      domain: 'META',
+      interpretation: 'User needs help',
+      confidence: 1.0,
+      recommendedAgent: 'SELF',
+      agentReasoning: 'Help request',
+      suggestedApproach: 'Show quick start guide',
+      canAnswerDirectly: true,
+      directAnswer: `**Quick Start:**
+
+1. /hot - See what's trending
+2. /research <topic> - Get AI analysis
+3. /predict <question> - Make a prediction
+4. /me - Check your accuracy
+
+**Ask naturally:**
+"What are odds on Fed rate cut?"
+"Any arb opportunities?"
+"Research the next election"
+
+What do you want to explore?`,
+    };
+  }
+
+  // "what are your capabilities" / "features" / "what can u do"
+  if (/^(what\s*(are\s*)?(your|ur)\s*(capabilities|features|skills|abilities)|features|capabilities|what\s*can\s*(u|you)\s*do)[\s?!.,]*$/i.test(lower)) {
+    return {
+      goal: 'LEARN',
+      domain: 'META',
+      interpretation: 'User asking about capabilities',
+      confidence: 1.0,
+      recommendedAgent: 'SELF',
+      agentReasoning: 'Capabilities inquiry',
+      suggestedApproach: 'List key features',
+      canAnswerDirectly: true,
+      directAnswer: `**BeRight capabilities:**
+
+📊 **Market Intelligence**
+• Real-time odds from Polymarket, Kalshi, Manifold
+• Trending markets and volume spikes
+• Whale activity tracking
+
+🔍 **Research**
+• AI-powered analysis on any topic
+• Cross-platform comparison
+• News and sentiment aggregation
+
+💰 **Trading Edge**
+• Arbitrage detection
+• Smart predictions with reasoning
+• Calibration tracking
+
+Try /hot to see trending markets!`,
+    };
+  }
+
   return null;
 }
 
@@ -441,9 +558,36 @@ function createFallbackUnderstanding(message: string): SemanticUnderstanding {
   // Basic keyword detection for fallback
   let goal: UserGoal = 'UNCLEAR';
   let domain: Domain = 'GENERAL';
-  let recommendedAgent: RecommendedAgent = 'SCOUT';
+  let recommendedAgent: RecommendedAgent = 'SELF';
 
-  // Simple heuristics for fallback
+  // =========================================================================
+  // META QUESTIONS - Catch these first to avoid misrouting
+  // =========================================================================
+  if (lower.includes('who are') || lower.includes('who r') || lower.includes('who u') ||
+      lower.includes('what are you') || lower.includes('what r you') ||
+      lower.includes('what do you') || lower.includes('what you do') ||
+      lower.includes('help') || lower.includes('capabilities') || lower.includes('features')) {
+    return {
+      goal: 'LEARN',
+      domain: 'META',
+      interpretation: 'User asking about BeRight (LLM fallback)',
+      confidence: 0.7,
+      recommendedAgent: 'SELF',
+      agentReasoning: 'Meta question about BeRight',
+      suggestedApproach: 'Explain capabilities',
+      canAnswerDirectly: true,
+      directAnswer: `I'm BeRight - prediction market intelligence.
+
+Try:
+• /hot - Trending markets
+• /arb - Arbitrage opportunities
+• /research <topic> - Deep analysis
+
+What do you want to explore?`,
+    };
+  }
+
+  // Simple heuristics for market-related fallback
   if (lower.includes('arb') || lower.includes('spread')) {
     goal = 'DISCOVER_OPPORTUNITIES';
     domain = 'PREDICTION_MARKETS';
