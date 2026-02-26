@@ -26,7 +26,7 @@ export default function Header() {
             <Link href="/docs/faq" className="nav-link" role="menuitem">FAQ</Link>
           </div>
 
-          <a href="https://t.me/mygroupname" target="_blank" rel="noopener noreferrer" className="nav-cta" aria-label="Join Telegram">
+          <a href="https://t.me/beright" target="_blank" rel="noopener noreferrer" className="nav-cta" aria-label="Join Telegram">
             Join Telegram
           </a>
         </div>
