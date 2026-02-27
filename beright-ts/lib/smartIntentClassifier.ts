@@ -208,13 +208,30 @@ export function fastPatternMatch(message: string): SmartIntentResult | null {
     }
   }
 
-  // ARBITRAGE patterns
-  if (/\b(arb|arbitrage|spread|mispriced|price\s*gap)/i.test(lower)) {
-    return {
-      intent: 'ARBITRAGE',
-      confidence: 0.9,
-      reasoning: 'Fast pattern match: arbitrage request',
-    };
+  // ARBITRAGE patterns - but check for negations first!
+  // "no need to arb", "skip arb", "don't want arbitrage" should NOT match
+  const arbMatch = lower.match(/\b(arb|arbitrage|spread|mispriced|price\s*gap)/i);
+  if (arbMatch) {
+    const arbIndex = lower.indexOf(arbMatch[0].toLowerCase());
+    const contextBefore = lower.slice(Math.max(0, arbIndex - 25), arbIndex);
+    const hasNegation = /\b(no|not|don'?t|skip|without|exclude|ignore|avoid)\s+(need\s+)?(to\s+)?$/i.test(contextBefore);
+    const hasContrast = /[,]|but|just|instead|only/.test(contextBefore.slice(-15));
+
+    if (!hasNegation || hasContrast) {
+      return {
+        intent: 'ARBITRAGE',
+        confidence: 0.9,
+        reasoning: 'Fast pattern match: arbitrage request',
+      };
+    }
+    // If negated, check if user wants something else (like hot markets)
+    if (/\b(hot|trending|top|best|popular)\b/i.test(lower)) {
+      return {
+        intent: 'TRENDING',
+        confidence: 0.85,
+        reasoning: 'User wants trending (arb was negated)',
+      };
+    }
   }
 
   // HELP patterns
