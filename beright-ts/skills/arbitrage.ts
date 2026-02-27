@@ -25,6 +25,14 @@ import {
 } from './utils';
 import { formatValidatedArbitrage } from './formatters';
 
+// Market Validator integration (institutional-grade verification)
+import {
+  validateArbitrage,
+  calculateEquivalenceScore,
+  ArbitrageVerification,
+  MarketIdentity,
+} from '../lib/validation/marketValidator';
+
 // Feature flag for V2 system
 const USE_V2_ARBITRAGE = process.env.USE_V2_ARBITRAGE !== 'false';
 
@@ -146,7 +154,27 @@ function calculateArbitrage(
 }
 
 /**
+ * Validate an arbitrage opportunity using institutional-grade checks
+ */
+function validateOpportunity(opp: ArbitrageOpportunity): ArbitrageVerification {
+  const market1: MarketIdentity & { price: number } = {
+    question: opp.marketATitle || opp.topic,
+    platform: opp.platformA,
+    price: opp.priceAYes,
+  };
+
+  const market2: MarketIdentity & { price: number } = {
+    question: opp.marketBTitle || opp.topic,
+    platform: opp.platformB,
+    price: opp.priceBYes,
+  };
+
+  return validateArbitrage(market1, market2);
+}
+
+/**
  * Scan for arbitrage between two platforms
+ * Includes institutional-grade validation to filter false arbitrage
  */
 async function scanPair(
   platformA: Platform,
@@ -166,6 +194,7 @@ async function scanPair(
   console.log(`  Found ${matches.length} potential matches`);
 
   const opportunities: ArbitrageOpportunity[] = [];
+  let falseArbCount = 0;
 
   for (const [ma, mb, similarity] of matches) {
     if (ma.yesPrice === 0 || mb.yesPrice === 0) continue;
@@ -173,7 +202,7 @@ async function scanPair(
     const arb = calculateArbitrage(ma.yesPrice, mb.yesPrice, platformA, platformB);
 
     if (arb && arb.profitPercent >= ARBITRAGE.minSpread) {
-      opportunities.push({
+      const opportunity: ArbitrageOpportunity = {
         topic: ma.title.slice(0, 60),
         platformA: platformA,
         platformB: platformB,
@@ -187,8 +216,28 @@ async function scanPair(
         matchConfidence: similarity,
         volumeA: ma.volume,
         volumeB: mb.volume,
-      });
+      };
+
+      // Institutional-grade validation
+      const validation = validateOpportunity(opportunity);
+
+      if (validation.arbitrageStatus === 'FALSE_ARBITRAGE') {
+        console.log(`  ❌ FALSE ARB: ${ma.title.slice(0, 30)}... - ${validation.reason}`);
+        falseArbCount++;
+        continue;
+      }
+
+      if (validation.arbitrageStatus === 'NEEDS_REVIEW') {
+        // Add validation warning to strategy
+        opportunity.strategy = `⚠️ ${opportunity.strategy} (Needs review: ${validation.reason})`;
+      }
+
+      opportunities.push(opportunity);
     }
+  }
+
+  if (falseArbCount > 0) {
+    console.log(`  Filtered ${falseArbCount} false arbitrage opportunities`);
   }
 
   return opportunities.sort((a, b) => b.profitPercent - a.profitPercent);

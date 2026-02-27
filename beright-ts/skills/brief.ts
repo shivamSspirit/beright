@@ -14,6 +14,16 @@ import { formatPct, formatUsd, timestamp } from './utils';
 import { getCalibrationStats, listPending } from './calibration';
 import { trustBadge } from './formatters';
 
+// Market Validator integration (institutional-grade verification)
+import {
+  validateBrief,
+  formatValidationReport,
+  ValidationReport,
+  MarketToVerify,
+  ArbitrageToVerify,
+  VerificationStatus,
+} from '../lib/validation/marketValidator';
+
 // Trust Engine integration (optional - graceful fallback)
 let dataLayer: any = null;
 try {
@@ -44,6 +54,8 @@ interface MorningBriefData {
     sources: string[];
     warnings: string[];
   };
+  // Institutional-grade validation report (when enabled)
+  validationReport?: ValidationReport;
 }
 
 /**
@@ -158,7 +170,7 @@ export async function generateMorningBrief(userId?: string): Promise<MorningBrie
   }
 
   // Fetch remaining data in parallel
-  const [arbOpportunities, marketMovers, whaleResult] = await Promise.all([
+  let [arbOpportunities, marketMovers, whaleResult] = await Promise.all([
     scanArbitrage().catch(() => []),
     getMarketMovers(10),
     whaleWatch().catch(() => ({ data: [] })),
@@ -198,6 +210,59 @@ export async function generateMorningBrief(userId?: string): Promise<MorningBrie
     warnings: trustEngineResult.warnings || [],
   } : undefined;
 
+  // Run institutional-grade validation (if enabled)
+  let validationReport: ValidationReport | undefined;
+  const ENABLE_VALIDATION = process.env.ENABLE_MARKET_VALIDATION !== 'false';
+
+  if (ENABLE_VALIDATION && hotMarkets.length > 0) {
+    try {
+      console.log('[Brief] Running institutional-grade validation...');
+
+      // Prepare markets for validation
+      const marketsToVerify: MarketToVerify[] = hotMarkets.slice(0, 5).map(m => ({
+        platform: m.platform,
+        marketId: m.marketId || m.url?.split('/').pop() || '',
+        title: m.title,
+        briefPrice: m.yesPrice,
+        url: m.url,
+      }));
+
+      // Prepare arbitrage for validation
+      const arbsToVerify: ArbitrageToVerify[] = arbOpportunities.slice(0, 3).map(arb => ({
+        topic: arb.topic,
+        platform1: arb.platformA,
+        marketId1: arb.marketATitle || '',
+        price1: arb.priceAYes,
+        platform2: arb.platformB,
+        marketId2: arb.marketBTitle || '',
+        price2: arb.priceBYes,
+        question1: arb.marketATitle,
+        question2: arb.marketBTitle,
+      }));
+
+      validationReport = await validateBrief(marketsToVerify, arbsToVerify);
+      console.log(`[Brief] Validation complete: ${validationReport.summary.verified}/${validationReport.summary.totalMarkets} verified, quality score: ${validationReport.dataQualityScore}/100`);
+
+      // Filter out false arbitrage opportunities
+      if (validationReport.arbitrageChecks.length > 0) {
+        const falseArbs = new Set(
+          validationReport.arbitrageChecks
+            .filter(a => a.arbitrageStatus === 'FALSE_ARBITRAGE')
+            .map(a => a.topic)
+        );
+
+        if (falseArbs.size > 0) {
+          console.log(`[Brief] Filtering ${falseArbs.size} false arbitrage opportunities`);
+          arbOpportunities = arbOpportunities.filter(arb =>
+            !falseArbs.has(arb.topic.substring(0, 50))
+          );
+        }
+      }
+    } catch (error) {
+      console.error('[Brief] Validation failed (continuing without):', error);
+    }
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     hotMarkets,
@@ -206,6 +271,7 @@ export async function generateMorningBrief(userId?: string): Promise<MorningBrie
     userStats,
     marketMovers,
     trustData,
+    validationReport,
   };
 }
 
@@ -292,6 +358,21 @@ ${date}
     brief += `Filtered: ${data.trustData.totalFiltered}\n`;
     if (data.trustData.warnings.length > 0) {
       brief += `⚠️ ${data.trustData.warnings[0]}\n`;
+    }
+  }
+
+  // Institutional-grade validation report (when available)
+  if (data.validationReport) {
+    const vr = data.validationReport;
+    const statusIcon = vr.dataQualityScore >= 80 ? '✅' : vr.dataQualityScore >= 50 ? '🟡' : '⚠️';
+    brief += `\n${statusIcon} *VERIFICATION*\n`;
+    brief += `Quality: ${vr.dataQualityScore}/100 | `;
+    brief += `Verified: ${vr.summary.verified}/${vr.summary.totalMarkets}\n`;
+    if (vr.summary.falseArbitrage > 0) {
+      brief += `🚫 ${vr.summary.falseArbitrage} false arb filtered\n`;
+    }
+    if (vr.summary.invalid > 0) {
+      brief += `⚠️ ${vr.summary.invalid} markets with stale data\n`;
     }
   }
 

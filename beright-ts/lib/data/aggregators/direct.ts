@@ -454,7 +454,7 @@ export const directAggregator: MarketAggregator = {
     const queryLower = query.toLowerCase();
     const filtered = result.markets.filter(m =>
       m.title.toLowerCase().includes(queryLower) ||
-      m.question.toLowerCase().includes(queryLower)
+      (m.question || '').toLowerCase().includes(queryLower)
     );
 
     return {
