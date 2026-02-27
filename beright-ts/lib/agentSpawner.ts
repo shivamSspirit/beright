@@ -59,6 +59,149 @@ function generateSpawnId(): string {
   return `spawn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// =============================================================================
+// SMART INTENT DETECTION (Handles negations and context)
+// =============================================================================
+
+/**
+ * Direct negation patterns - keyword must follow closely after negation
+ * These patterns look for "[negation] ... [keyword]" with keyword nearby
+ */
+const DIRECT_NEGATION_PHRASES = [
+  'no need to',
+  'no need for',
+  "don't need",
+  "don't want",
+  'not interested in',
+  'skip the',
+  'skip',
+  'without',
+  'exclude',
+  'ignore',
+  'avoid',
+  'no',
+  'not',
+];
+
+/**
+ * Contrast words that break negation scope
+ * If these appear between negation and keyword, negation doesn't apply
+ */
+const CONTRAST_WORDS = [',', 'but', 'just', 'instead', 'only', 'however', 'rather'];
+
+/**
+ * Intent keywords with their triggers
+ */
+const INTENT_KEYWORDS = {
+  arbitrage: ['arb', 'arbitrage', 'spread', 'price difference'],
+  hot: ['hot', 'trending', 'popular', 'top markets'],
+  news: ['news', 'intel', 'headlines'],
+  whale: ['whale', 'big trades', 'large positions'],
+  research: ['research', 'analyze', 'deep dive'],
+  calibration: ['calibration', 'accuracy', 'brier', 'track record'],
+};
+
+/**
+ * Check if a keyword is negated in the text
+ * Improved: checks for direct negation phrases and respects contrast words
+ */
+function isKeywordNegated(text: string, keyword: string): boolean {
+  const lowerText = text.toLowerCase();
+  const keywordIndex = lowerText.indexOf(keyword.toLowerCase());
+
+  if (keywordIndex === -1) return false;
+
+  // Look at the 25 characters before the keyword for negation
+  const contextStart = Math.max(0, keywordIndex - 25);
+  const contextBefore = lowerText.slice(contextStart, keywordIndex);
+
+  // Check for any direct negation phrase
+  for (const negPhrase of DIRECT_NEGATION_PHRASES) {
+    const negIndex = contextBefore.lastIndexOf(negPhrase);
+    if (negIndex === -1) continue;
+
+    // Found a negation phrase - check if contrast word breaks the scope
+    const textBetween = contextBefore.slice(negIndex + negPhrase.length);
+
+    // If a contrast word appears between negation and keyword, negation doesn't apply
+    const hasContrast = CONTRAST_WORDS.some(cw => textBetween.includes(cw));
+    if (hasContrast) {
+      continue; // This negation doesn't apply to our keyword
+    }
+
+    // Negation is close and no contrast word breaks it
+    console.log(`[Negation] "${negPhrase}" found before "${keyword}" - marking as negated`);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Detect user intent while respecting negations
+ * Returns the intent type or null if no clear intent
+ */
+function detectIntent(task: string): {
+  intent: 'arbitrage' | 'hot' | 'news' | 'whale' | 'research' | 'calibration' | 'search';
+  confidence: number;
+  negatedIntents: string[];
+} {
+  const taskLower = task.toLowerCase();
+  const negatedIntents: string[] = [];
+  let detectedIntent: string | null = null;
+  let confidence = 0;
+
+  // Check each intent type
+  for (const [intentType, keywords] of Object.entries(INTENT_KEYWORDS)) {
+    for (const keyword of keywords) {
+      if (taskLower.includes(keyword)) {
+        if (isKeywordNegated(task, keyword)) {
+          // User explicitly doesn't want this
+          negatedIntents.push(intentType);
+          console.log(`[Intent] "${keyword}" negated in context - skipping ${intentType}`);
+        } else if (!detectedIntent) {
+          // First non-negated match wins
+          detectedIntent = intentType;
+          confidence = 0.8;
+        }
+      }
+    }
+  }
+
+  // If arbitrage was negated but hot was mentioned, prioritize hot
+  if (negatedIntents.includes('arbitrage') && taskLower.includes('hot')) {
+    detectedIntent = 'hot';
+    confidence = 0.9;
+  }
+
+  return {
+    intent: (detectedIntent || 'search') as any,
+    confidence,
+    negatedIntents,
+  };
+}
+
+/**
+ * Smart keyword check that respects negations
+ * Use this instead of simple .includes() for intent detection
+ */
+function wantsIntent(task: string, intentType: keyof typeof INTENT_KEYWORDS): boolean {
+  const detection = detectIntent(task);
+
+  // If this intent was explicitly negated, return false
+  if (detection.negatedIntents.includes(intentType)) {
+    return false;
+  }
+
+  // Check if any keywords match without negation
+  const keywords = INTENT_KEYWORDS[intentType];
+  const taskLower = task.toLowerCase();
+
+  return keywords.some(keyword =>
+    taskLower.includes(keyword) && !isKeywordNegated(task, keyword)
+  );
+}
+
 /**
  * Spawn an agent to handle a task
  *
@@ -209,24 +352,28 @@ async function executeAgentTask(
  * Claude then reasons about this data.
  */
 async function gatherSkillContext(agent: AgentConfig, task: string): Promise<string> {
-  const taskLower = task.toLowerCase();
   const parts: string[] = [];
+
+  // Use smart intent detection that handles negations
+  const detection = detectIntent(task);
+  console.log(`[gatherSkillContext] Intent: ${detection.intent}, Negated: [${detection.negatedIntents.join(', ')}]`);
 
   try {
     if (agent.id === 'scout' || agent.id === 'analyst') {
-      if (taskLower.includes('arb') || taskLower.includes('arbitrage') || taskLower.includes('spread')) {
+      // Use smart intent detection instead of simple keyword matching
+      if (wantsIntent(task, 'arbitrage')) {
         const { arbitrage } = await import('../skills/arbitrage');
         const result = await arbitrage(task);
         parts.push(`ARBITRAGE SCAN:\n${result.text}`);
 
-      } else if (taskLower.includes('hot') || taskLower.includes('trending')) {
+      } else if (wantsIntent(task, 'hot')) {
         const { getHotMarkets } = await import('../skills/markets');
         const markets = await getHotMarkets(10);
         parts.push(`HOT MARKETS (${markets.length}):\n${markets.slice(0, 10).map(m =>
           `- ${m.title || m.question}: YES=${((m.yesPrice || 0.5) * 100).toFixed(0)}% vol=$${m.volume || 0}`
         ).join('\n')}`);
 
-      } else if (taskLower.includes('news') || taskLower.includes('intel')) {
+      } else if (wantsIntent(task, 'news')) {
         const { newsSearch } = await import('../skills/intel');
         const result = await newsSearch(task.replace(/news|intel/gi, '').trim() || 'prediction markets');
         parts.push(`NEWS INTEL:\n${result.text}`);
@@ -241,7 +388,7 @@ async function gatherSkillContext(agent: AgentConfig, task: string): Promise<str
     }
 
     if (agent.id === 'analyst') {
-      if (taskLower.includes('calibration') || taskLower.includes('accuracy')) {
+      if (wantsIntent(task, 'calibration')) {
         const { calibration } = await import('../skills/calibration');
         const result = await calibration();
         parts.push(`CALIBRATION DATA:\n${result.text}`);
@@ -253,7 +400,7 @@ async function gatherSkillContext(agent: AgentConfig, task: string): Promise<str
     }
 
     if (agent.id === 'trader') {
-      if (taskLower.includes('whale')) {
+      if (wantsIntent(task, 'whale')) {
         const { whaleWatch } = await import('../skills/whale');
         const result = await whaleWatch();
         parts.push(`WHALE DATA:\n${result.text}`);
@@ -283,33 +430,37 @@ async function executeScoutTask(
   const { newsSearch, tavilyIntelSearch, financeIntel } = await import('../skills/intel');
   const { isTavilyConfigured } = await import('./tavily');
 
-  // Determine task type from keywords
+  // Use smart intent detection that handles negations
+  const detection = detectIntent(task);
   const taskLower = task.toLowerCase();
   const useTavily = isTavilyConfigured();
 
+  console.log(`[executeScoutTask] Intent: ${detection.intent}, Negated: [${detection.negatedIntents.join(', ')}]`);
+
   let response: SkillResponse;
 
-  if (taskLower.includes('arb') || taskLower.includes('arbitrage') || taskLower.includes('spread')) {
+  // Use smart intent detection instead of simple keyword matching
+  if (wantsIntent(task, 'arbitrage')) {
     // Arbitrage scanning
     const query = extractQuery(task);
     response = await arbitrage(query || undefined);
 
     // Enhance response with scout branding
     response.text = `🔍 *SCOUT SCAN: ARBITRAGE*\n${'─'.repeat(30)}\n\n${response.text}`;
-  } else if (taskLower.includes('hot') || taskLower.includes('trending')) {
-    // Hot markets
+  } else if (wantsIntent(task, 'hot')) {
+    // Hot markets - this now takes priority when user says "hot markets, no arb"
     const markets = await getHotMarkets(10);
     response = {
       text: formatScoutMarkets(markets, 'TRENDING'),
       mood: 'BULLISH' as Mood,
       data: markets,
     };
-  } else if (taskLower.includes('finance') || taskLower.includes('market') || taskLower.includes('stock')) {
-    // Finance news scanning (prefer Tavily)
+  } else if (taskLower.includes('finance') || taskLower.includes('stock')) {
+    // Finance news scanning (prefer Tavily) - narrowed from 'market' to avoid conflicts
     const query = extractQuery(task) || 'market news';
     response = await financeIntel(query);
     response.text = `🔍 *SCOUT SCAN: FINANCE*\n${'─'.repeat(30)}\n\n${response.text}`;
-  } else if (taskLower.includes('news')) {
+  } else if (wantsIntent(task, 'news')) {
     // News scanning (use Tavily if available for better results)
     const query = extractQuery(task) || 'prediction market';
     if (useTavily) {
@@ -358,7 +509,10 @@ async function executeAnalystTask(
   const taskLower = task.toLowerCase();
   let response: SkillResponse;
 
-  if (taskLower.includes('calibration') || taskLower.includes('accuracy')) {
+  // Use smart intent detection that handles negations
+  console.log(`[executeAnalystTask] Task: ${task.slice(0, 50)}...`);
+
+  if (wantsIntent(task, 'calibration')) {
     // Calibration analysis
     response = await calibration();
     response.text = `📊 *ANALYST REPORT: CALIBRATION*\n${'─'.repeat(30)}\n\n${response.text}`;

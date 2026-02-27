@@ -632,21 +632,41 @@ What do you want to explore?`,
 
 /**
  * Route to appropriate handler based on semantic understanding
+ * Now with smarter skill selection based on topic analysis
  */
 export function routeToAgent(understanding: SemanticUnderstanding): {
   primary: RecommendedAgent;
   secondary?: RecommendedAgent;
   skills: string[];
 } {
-  const { goal, domain, recommendedAgent, topic } = understanding;
+  const { goal, domain, recommendedAgent, topic, interpretation } = understanding;
 
   // Determine skills based on understanding
   const skills: string[] = [];
 
+  // Helper to check if user wants a specific type of content
+  // Uses topic and interpretation to make smarter decisions
+  const topicLower = (topic || '').toLowerCase();
+  const interpLower = (interpretation || '').toLowerCase();
+  const contextText = `${topicLower} ${interpLower}`;
+
+  const wantsArbitrage = contextText.includes('arb') || contextText.includes('spread') || contextText.includes('price difference');
+  const wantsHot = contextText.includes('hot') || contextText.includes('trending') || contextText.includes('popular') || contextText.includes('top market');
+  const wantsWhale = contextText.includes('whale') || contextText.includes('big trade') || contextText.includes('large position');
+
   switch (recommendedAgent) {
     case 'SCOUT':
       if (goal === 'DISCOVER_OPPORTUNITIES') {
-        skills.push('arbitrage', 'hot', 'whale');
+        // Be selective about which skills to add based on what user actually wants
+        // Don't blindly add all three skills
+        if (wantsArbitrage) skills.push('arbitrage');
+        if (wantsHot) skills.push('hot');
+        if (wantsWhale) skills.push('whale');
+
+        // If nothing specific detected, default to hot markets (safest general option)
+        if (skills.length === 0) {
+          skills.push('hot', 'search');
+        }
       } else if (goal === 'GET_INFORMATION') {
         skills.push('markets', 'prices');
         if (topic) skills.push('search');
