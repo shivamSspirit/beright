@@ -400,8 +400,19 @@ export async function understand(
 function handleTrivialCases(message: string): SemanticUnderstanding | null {
   const lower = message.toLowerCase().trim();
 
-  // Pure greetings
+  // Pure greetings - respond with personality and invite engagement
   if (/^(hi|hey|hello|gm|gn|yo|sup|hola|howdy)[\s!.,?]*$/i.test(lower)) {
+    // Different responses based on time of day (gm vs gn) or general greeting
+    const isGM = /^gm/i.test(lower);
+    const isGN = /^gn/i.test(lower);
+
+    let greeting = "Hey! Ready to scan some markets?";
+    if (isGM) {
+      greeting = "GM! Markets are moving. Want to see what's hot today?";
+    } else if (isGN) {
+      greeting = "GN! Check /brief in the morning for your daily alpha.";
+    }
+
     return {
       goal: 'CONVERSE',
       domain: 'META',
@@ -411,7 +422,7 @@ function handleTrivialCases(message: string): SemanticUnderstanding | null {
       agentReasoning: 'Simple greeting requires no agent work',
       suggestedApproach: 'Respond with friendly greeting in BeRight voice',
       canAnswerDirectly: true,
-      directAnswer: "Hey. What markets are you watching?",
+      directAnswer: greeting,
     };
   }
 
@@ -543,6 +554,36 @@ What do you want to explore?`,
 • Calibration tracking
 
 Try /hot to see trending markets!`,
+    };
+  }
+
+  // "what are you expert in" / "what you are expert in" / "what's your expertise"
+  // "what do you know" / "what do you specialize in"
+  if (/^(what\s*(are|r)\s*(you|u)\s*(expert|good|specialized?)\s*(in|at)|what\s*(you|u)\s*(are|r)\s*(expert|good)\s*(in|at)|what('?s| is)\s*(your|ur)\s*(expertise|specialty|speciality)|what\s*(do\s*)?(you|u)\s*(know|specialize\s*in))[\s?!.,]*$/i.test(lower)) {
+    return {
+      goal: 'LEARN',
+      domain: 'META',
+      interpretation: 'User asking about expertise',
+      confidence: 1.0,
+      recommendedAgent: 'SELF',
+      agentReasoning: 'Expertise inquiry',
+      suggestedApproach: 'Explain core expertise areas',
+      canAnswerDirectly: true,
+      directAnswer: `I'm an expert in prediction markets and forecasting intelligence.
+
+**My specialties:**
+• 📈 Market scanning across Polymarket, Kalshi, Manifold, Metaculus
+• 🔍 Finding arbitrage opportunities between platforms
+• 🧠 AI-powered research and probability estimation
+• 📊 Tracking calibration and forecast accuracy
+• 🐋 Whale activity and volume spike detection
+
+**I can help you:**
+• Find trending markets in any category (politics, crypto, sports)
+• Spot price discrepancies for arbitrage
+• Research any prediction topic with reasoning
+
+What topic interests you?`,
     };
   }
 
