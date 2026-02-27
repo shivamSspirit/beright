@@ -12,6 +12,15 @@ import { whaleWatch } from './whale';
 import { getMarketMovers, MarketMover } from './priceTracker';
 import { formatPct, formatUsd, timestamp } from './utils';
 import { getCalibrationStats, listPending } from './calibration';
+import { trustBadge } from './formatters';
+
+// Trust Engine integration (optional - graceful fallback)
+let dataLayer: any = null;
+try {
+  dataLayer = require('../lib/data').dataLayer;
+} catch {
+  // Trust Engine not available, will use legacy data
+}
 
 interface MorningBriefData {
   generatedAt: string;
@@ -27,6 +36,14 @@ interface MorningBriefData {
     rank: number | null;
   };
   marketMovers: MarketMover[];
+  // Trust Engine data (when available)
+  trustData?: {
+    dataQualityScore: number;
+    totalValidated: number;
+    totalFiltered: number;
+    sources: string[];
+    warnings: string[];
+  };
 }
 
 /**
@@ -97,13 +114,51 @@ function diversifyMarkets(
  * All data is real — no simulated/mock data
  *
  * Shows DIVERSE markets, not just highest volume
+ * Uses Trust Engine when available for validated data
  */
 export async function generateMorningBrief(userId?: string): Promise<MorningBriefData> {
   console.log('Generating morning brief...');
 
-  // Fetch all data in parallel for speed — all real sources
-  const [allHotMarkets, arbOpportunities, marketMovers, whaleResult] = await Promise.all([
-    getHotMarkets(30), // Get more to diversify
+  // Try Trust Engine first (provides validated data with trust scores)
+  let trustEngineResult: any = null;
+  let allHotMarkets: Market[] = [];
+
+  if (dataLayer) {
+    try {
+      console.log('[Brief] Using Trust Engine for validated data');
+      trustEngineResult = await dataLayer.getHotMarkets(30);
+      // Convert ValidatedMarket to Market format for backward compatibility
+      allHotMarkets = trustEngineResult.markets.map((m: any) => ({
+        platform: m.platform,
+        marketId: m.id,
+        title: m.title,
+        question: m.title,
+        yesPrice: m.yesPrice,
+        noPrice: m.noPrice,
+        yesPct: m.yesPrice * 100,
+        noPct: m.noPrice * 100,
+        volume: m.volume || 0,
+        liquidity: m.liquidity || 0,
+        endDate: m.endDate,
+        status: m.status || 'active',
+        url: m.url,
+        // Add trust data for display
+        trustScore: m.trustScore,
+        trustLevel: m.trustLevel,
+      }));
+      console.log(`[Brief] Trust Engine returned ${allHotMarkets.length} validated markets`);
+    } catch (error) {
+      console.error('[Brief] Trust Engine failed, falling back to legacy:', error);
+    }
+  }
+
+  // Fallback to legacy markets.ts if Trust Engine not available or failed
+  if (allHotMarkets.length === 0) {
+    allHotMarkets = await getHotMarkets(30);
+  }
+
+  // Fetch remaining data in parallel
+  const [arbOpportunities, marketMovers, whaleResult] = await Promise.all([
     scanArbitrage().catch(() => []),
     getMarketMovers(10),
     whaleWatch().catch(() => ({ data: [] })),
@@ -134,6 +189,15 @@ export async function generateMorningBrief(userId?: string): Promise<MorningBrie
     rank,
   };
 
+  // Build trust data summary if Trust Engine was used
+  const trustData = trustEngineResult ? {
+    dataQualityScore: trustEngineResult.dataQualityScore,
+    totalValidated: trustEngineResult.totalValidated,
+    totalFiltered: trustEngineResult.totalFiltered,
+    sources: trustEngineResult.sources,
+    warnings: trustEngineResult.warnings || [],
+  } : undefined;
+
   return {
     generatedAt: new Date().toISOString(),
     hotMarkets,
@@ -141,6 +205,7 @@ export async function generateMorningBrief(userId?: string): Promise<MorningBrie
     whaleAlerts,
     userStats,
     marketMovers,
+    trustData,
   };
 }
 
@@ -173,14 +238,18 @@ ${date}
     }
   }
 
-  // Diversified Markets Section
+  // Diversified Markets Section (with trust indicators when available)
   brief += `\n🔥 *MARKETS TO WATCH*\n`;
   for (const market of data.hotMarkets.slice(0, 4)) {
     const mover = data.marketMovers.find(m => m.title === market.title);
     const changeStr = mover && Math.abs(mover.change24h) > 0.5
       ? ` (${mover.change24h >= 0 ? '+' : ''}${mover.change24h.toFixed(0)}%)`
       : '';
-    brief += `• ${market.title.slice(0, 40)}...\n`;
+    // Add trust badge if available
+    const trustInfo = (market as any).trustLevel
+      ? ` ${trustBadge((market as any).trustLevel)}`
+      : '';
+    brief += `• ${market.title.slice(0, 38)}...${trustInfo}\n`;
     brief += `  📊 ${formatPct(market.yesPrice)}${changeStr}\n`;
   }
 
@@ -215,6 +284,17 @@ ${date}
     brief += `Brier: ${data.userStats.brierScore.toFixed(3)} ${grade} | Acc: ${(data.userStats.accuracy * 100).toFixed(0)}%\n`;
   }
 
+  // Trust Engine Data Quality (when available)
+  if (data.trustData) {
+    brief += `\n📊 *DATA QUALITY*\n`;
+    brief += `Score: ${data.trustData.dataQualityScore}/100 | `;
+    brief += `Validated: ${data.trustData.totalValidated} | `;
+    brief += `Filtered: ${data.trustData.totalFiltered}\n`;
+    if (data.trustData.warnings.length > 0) {
+      brief += `⚠️ ${data.trustData.warnings[0]}\n`;
+    }
+  }
+
   // Call to Action
   brief += `\n💡 /predict <question> <probability> YES|NO\n`;
   brief += `📈 /hot - View trending markets\n`;
@@ -229,6 +309,7 @@ ${date}
 export function formatBriefWeb(data: MorningBriefData): object {
   return {
     generatedAt: data.generatedAt,
+    dataQuality: data.trustData || null,
     sections: {
       hotMarkets: data.hotMarkets.slice(0, 5).map(m => ({
         title: m.title,
@@ -237,6 +318,8 @@ export function formatBriefWeb(data: MorningBriefData): object {
         volume: m.volume,
         url: m.url,
         change24h: data.marketMovers.find(mv => mv.title === m.title)?.change24h || 0,
+        trustScore: (m as any).trustScore || null,
+        trustLevel: (m as any).trustLevel || null,
       })),
       alphaAlerts: data.arbitrageOpportunities.slice(0, 3).map(arb => ({
         type: 'arbitrage',

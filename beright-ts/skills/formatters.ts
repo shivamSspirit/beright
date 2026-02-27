@@ -11,6 +11,7 @@
  */
 
 import { Market, Platform, ArbitrageOpportunity } from '../types/market';
+import { ValidatedMarket, TrustLevel, getTrustIndicator } from '../lib/data/types';
 
 // ============================================
 // SIGNAL INDICATORS
@@ -575,5 +576,192 @@ export function quickList(markets: Market[], title: string): string {
   for (const m of markets.slice(0, 5)) {
     output += `• ${smartTitle(m.title, 35)} *${fmtPct(m.yesPrice)}*\n`;
   }
+  return output;
+}
+
+// ============================================
+// TRUST ENGINE FORMATTERS
+// ============================================
+
+/**
+ * Trust level badge for display
+ */
+export function trustBadge(trustLevel: TrustLevel): string {
+  switch (trustLevel) {
+    case 'verified': return '✅';
+    case 'good': return '🟢';
+    case 'unverified': return '🟡';
+    case 'suspicious': return '🟠';
+    case 'filtered': return '🔴';
+    default: return '⚪';
+  }
+}
+
+/**
+ * Format trust score as compact indicator
+ */
+export function fmtTrust(score: number): string {
+  const indicator = getTrustIndicator(score);
+  return `${indicator.emoji} ${score}`;
+}
+
+/**
+ * Format validated market with trust indicator
+ */
+export function formatValidatedMarket(market: ValidatedMarket, index?: number): string {
+  const badge = trustBadge(market.trustLevel);
+  const freshness = market.isFresh ? '' : ' ⏱️';
+  const shortTitle = shortenTitle(market.title);
+  const pricePct = market.yesPrice * 100;
+
+  let output = '';
+  if (index !== undefined) {
+    output += `${index}. `;
+  }
+
+  output += `${badge} [${market.platform.toUpperCase()}]${freshness}\n`;
+  output += `   ${shortTitle}\n`;
+  output += `   YES: ${pricePct.toFixed(0)}%  |  Trust: ${market.trustScore}/100\n`;
+
+  if (market.volume && market.volume > 0) {
+    output += `   Vol: $${fmtVol(market.volume)}`;
+  }
+
+  if (market.validation.warnings.length > 0) {
+    output += `\n   ⚠️ ${market.validation.warnings[0]}`;
+  }
+
+  return output;
+}
+
+/**
+ * Format trending validated markets with trust indicators
+ */
+export function formatTrendingValidated(markets: ValidatedMarket[]): string {
+  if (markets.length === 0) {
+    return 'No trending markets found.';
+  }
+
+  let output = `🔥 *HOT MOVERS* (Trust Validated)\n${'━'.repeat(40)}\n`;
+  output += `\n_Data validated via Trust Engine_\n\n`;
+
+  for (let i = 0; i < Math.min(markets.length, 8); i++) {
+    const m = markets[i];
+    const badge = trustBadge(m.trustLevel);
+    const shortTitle = shortenTitle(m.title);
+    const pricePct = m.yesPrice * 100;
+    const catEmoji = CATEGORY_EMOJIS[detectCategory(m.title)] || '';
+
+    // Momentum indicator
+    let momentumIcon = '📊';
+    let momentumText = '';
+    if (pricePct > 65) {
+      momentumIcon = '📈';
+      momentumText = ' ⬆️ BULLISH';
+    } else if (pricePct < 35) {
+      momentumIcon = '📉';
+      momentumText = ' ⬇️ BEARISH';
+    } else {
+      momentumIcon = '⚖️';
+      momentumText = ' CONTESTED';
+    }
+
+    // Volume signal
+    let volSignal = '';
+    if (m.volume && m.volume > 1000000) volSignal = '🔥🔥🔥';
+    else if (m.volume && m.volume > 100000) volSignal = '🔥🔥';
+    else if (m.volume && m.volume > 10000) volSignal = '🔥';
+
+    output += `\n${momentumIcon} *${shortTitle}* ${badge}\n`;
+    output += `   ${pricePct.toFixed(0)}% YES${momentumText}\n`;
+    output += `   Trust: ${m.trustScore}/100 ${catEmoji}`;
+    if (m.volume && m.volume > 0) {
+      output += `  •  $${fmtVol(m.volume)} ${volSignal}`;
+    }
+    output += '\n';
+
+    // Link
+    if (m.url) {
+      output += `   🔗 [Trade on ${m.platform}](${m.url})\n`;
+    }
+  }
+
+  output += `\n${'━'.repeat(40)}\n`;
+  output += `💡 Trust Levels: ✅ Verified | 🟢 Good | 🟡 Unverified | 🟠 Suspicious\n`;
+  output += `• /arb - Find validated arbitrage\n`;
+  output += `• /trust <market> - View trust details`;
+
+  return output;
+}
+
+/**
+ * Format data quality summary
+ */
+export function formatDataQuality(result: {
+  totalFetched: number;
+  totalValidated: number;
+  totalFiltered: number;
+  dataQualityScore: number;
+  sources: string[];
+  warnings: string[];
+}): string {
+  let output = `📊 *DATA QUALITY REPORT*\n${'─'.repeat(30)}\n\n`;
+
+  output += `Fetched: ${result.totalFetched} markets\n`;
+  output += `Validated: ${result.totalValidated} markets\n`;
+  output += `Filtered: ${result.totalFiltered} markets\n`;
+  output += `Quality Score: ${result.dataQualityScore}/100\n`;
+  output += `Sources: ${result.sources.join(', ')}\n`;
+
+  if (result.warnings.length > 0) {
+    output += `\n⚠️ *Warnings:*\n`;
+    for (const warning of result.warnings.slice(0, 3)) {
+      output += `• ${warning}\n`;
+    }
+  }
+
+  return output;
+}
+
+/**
+ * Format validated arbitrage opportunity
+ */
+export function formatValidatedArbitrage(opportunities: Array<{
+  marketA: ValidatedMarket;
+  marketB: ValidatedMarket;
+  spread: number;
+  spreadPct: number;
+  strategy: string;
+  trustScore: number;
+  warnings: string[];
+}>): string {
+  if (opportunities.length === 0) {
+    return `✅ *NO VALIDATED ARBITRAGE*\n\nMarkets are efficiently priced. All spreads are within normal range or failed trust validation.`;
+  }
+
+  let output = `🎯 *VALIDATED ARBITRAGE*\n${'━'.repeat(40)}\n`;
+  output += `_Trust Engine verified - high confidence_\n\n`;
+
+  for (let i = 0; i < Math.min(5, opportunities.length); i++) {
+    const opp = opportunities[i];
+    const trustBadgeA = trustBadge(opp.marketA.trustLevel);
+    const trustBadgeB = trustBadge(opp.marketB.trustLevel);
+
+    output += `💰 *${opp.spreadPct.toFixed(1)}% SPREAD*\n`;
+    output += `${smartTitle(opp.marketA.title, 38)}\n`;
+    output += `${trustBadgeA} ${opp.marketA.platform} ${(opp.marketA.yesPrice * 100).toFixed(1)}%`;
+    output += ` vs ${trustBadgeB} ${opp.marketB.platform} ${(opp.marketB.yesPrice * 100).toFixed(1)}%\n`;
+    output += `Trust: ${opp.trustScore}/100\n`;
+    output += `_${opp.strategy}_\n`;
+
+    if (opp.warnings.length > 0) {
+      output += `⚠️ ${opp.warnings[0]}\n`;
+    }
+    output += '\n';
+  }
+
+  output += `${'━'.repeat(40)}\n`;
+  output += `⚠️ Always verify resolution rules before trading`;
+
   return output;
 }

@@ -369,3 +369,619 @@ When creating a pitch deck, output each slide with:
 5. **Visual suggestions** (images, charts, mockups to include)
 
 Make content punchy, investor-ready, and emotionally compelling.
+
+---
+
+## Prediction Market APIs Reference (VERIFIED - Feb 2026)
+
+This section contains verified API endpoints for prediction market data. **DO NOT search the internet for these again** - this is the authoritative reference.
+
+### Quick Reference Table
+
+| Platform | Auth Required | Real Money | Data Quality | Best For |
+|----------|---------------|------------|--------------|----------|
+| Polymarket | ❌ None | ✅ Crypto | ⭐⭐⭐⭐⭐ | Politics, crypto, sports |
+| Kalshi | ❌ None (reads) | ✅ USD | ⭐⭐⭐⭐⭐ | Regulated US events |
+| Manifold | ❌ None | ⚠️ Play-money | ⭐⭐⭐⭐ | Wide topic variety |
+| PolyRouter | ✅ Free key | ✅ Aggregated | ⭐⭐⭐⭐⭐ | Unified multi-platform |
+| Metaculus | ✅ Free key | ❌ No | ⭐⭐⭐⭐ | Long-range forecasts |
+| Limitless | ❌ None (reads) | ✅ USDC | ⭐⭐⭐⭐ | Crypto price predictions |
+
+---
+
+### 🟢 NO API KEY REQUIRED
+
+#### 1. Polymarket (Real Money - Crypto)
+
+**Documentation**: https://docs.polymarket.com/market-data/overview
+
+```
+Base URLs:
+- Markets/Events: https://gamma-api.polymarket.com
+- Orderbooks/Prices: https://clob.polymarket.com
+- Trades/Analytics: https://data-api.polymarket.com
+
+Auth: NONE for all read endpoints
+Rate Limit: Generous, no strict limit documented
+```
+
+**Verified Endpoints:**
+```typescript
+// Get active markets sorted by volume
+GET https://gamma-api.polymarket.com/markets?closed=false&limit=30&order=volume&ascending=false
+
+// Get specific market
+GET https://gamma-api.polymarket.com/markets/{conditionId}
+
+// Get events (groups of markets)
+GET https://gamma-api.polymarket.com/events?closed=false&limit=20
+
+// Price history
+GET https://gamma-api.polymarket.com/prices-history?market={conditionId}
+
+// Get trades
+GET https://data-api.polymarket.com/trades?market={conditionId}
+```
+
+**Response Format (markets):**
+```json
+{
+  "id": "0x123...",
+  "question": "Will X happen by Y date?",
+  "slug": "market-slug",
+  "outcomePrices": "[\"0.65\", \"0.35\"]",  // YES, NO prices as JSON string
+  "volume": "1234567.89",
+  "liquidity": "50000",
+  "closed": false,
+  "end_date_iso": "2026-12-31T00:00:00Z"
+}
+```
+
+**Code Example:**
+```typescript
+const POLYMARKET_API = 'https://gamma-api.polymarket.com';
+
+async function getPolymarketMarkets(limit = 20) {
+  const res = await fetch(
+    `${POLYMARKET_API}/markets?closed=false&limit=${limit}&order=volume&ascending=false`
+  );
+  const data = await res.json();
+
+  return data.map(m => {
+    const prices = JSON.parse(m.outcomePrices || '["0.5","0.5"]');
+    return {
+      id: m.id,
+      question: m.question,
+      yesPrice: parseFloat(prices[0]),
+      noPrice: parseFloat(prices[1]),
+      volume: parseFloat(m.volume) || 0,
+      url: `https://polymarket.com/event/${m.slug}`
+    };
+  });
+}
+```
+
+---
+
+#### 2. Kalshi (Real Money - USD, CFTC Regulated)
+
+**Documentation**: https://docs.kalshi.com
+
+```
+Base URL: https://api.elections.kalshi.com/trade-api/v2
+
+Auth: NONE for market data reads (auth needed for trading)
+Rate Limit: Not strictly documented for public endpoints
+```
+
+**Verified Endpoints:**
+```typescript
+// Get open markets
+GET https://api.elections.kalshi.com/trade-api/v2/markets?limit=30&status=open
+
+// Get specific market
+GET https://api.elections.kalshi.com/trade-api/v2/markets/{ticker}
+
+// Get market orderbook
+GET https://api.elections.kalshi.com/trade-api/v2/markets/{ticker}/orderbook
+
+// Get events
+GET https://api.elections.kalshi.com/trade-api/v2/events?limit=20&status=open
+
+// Get series (categories)
+GET https://api.elections.kalshi.com/trade-api/v2/series
+```
+
+**Response Format (markets):**
+```json
+{
+  "markets": [
+    {
+      "ticker": "INXD-26MAR28-B5100",
+      "title": "S&P 500 above 5100 on Mar 28?",
+      "subtitle": "Closes Mar 28, 2026",
+      "yes_bid": 65,      // In cents (0-100)
+      "yes_ask": 67,
+      "no_bid": 33,
+      "no_ask": 35,
+      "last_price": 66,
+      "volume": 15420,
+      "volume_24h": 3200,
+      "open_interest": 8500,
+      "status": "open",
+      "expiration_time": "2026-03-28T16:00:00Z"
+    }
+  ],
+  "cursor": "next_page_token"
+}
+```
+
+**Code Example:**
+```typescript
+const KALSHI_API = 'https://api.elections.kalshi.com/trade-api/v2';
+
+async function getKalshiMarkets(limit = 20) {
+  const res = await fetch(`${KALSHI_API}/markets?limit=${limit}&status=open`);
+  const { markets } = await res.json();
+
+  return markets.map(m => ({
+    id: m.ticker,
+    question: m.title,
+    // Prices are in CENTS (0-100), convert to decimal
+    yesPrice: ((m.yes_bid + m.yes_ask) / 2) / 100,
+    noPrice: ((m.no_bid + m.no_ask) / 2) / 100,
+    spread: (m.yes_ask - m.yes_bid) / 100,
+    volume: m.volume,
+    url: `https://kalshi.com/markets/${m.ticker.toLowerCase()}`
+  }));
+}
+```
+
+**Important Notes:**
+- Prices are in CENTS (0-100), not decimals - divide by 100
+- `yes_bid`/`yes_ask` = buy/sell prices for YES shares
+- Volume is in number of contracts, not dollars
+
+---
+
+#### 3. Manifold Markets (Play Money + Sweepstakes)
+
+**Documentation**: https://docs.manifold.markets/api
+
+```
+Base URL: https://api.manifold.markets/v0
+
+Auth: NONE for all GET endpoints
+Rate Limit: 500 requests/minute per IP
+```
+
+**Verified Endpoints:**
+```typescript
+// Search markets (best endpoint for discovery)
+GET https://api.manifold.markets/v0/search-markets?term=&limit=20&sort=liquidity&filter=open
+
+// Get specific market by ID
+GET https://api.manifold.markets/v0/market/{marketId}
+
+// Get specific market by slug
+GET https://api.manifold.markets/v0/slug/{username}/{slug}
+
+// Get all markets (paginated)
+GET https://api.manifold.markets/v0/markets?limit=100
+
+// Get bets on a market
+GET https://api.manifold.markets/v0/bets?marketId={id}&limit=100
+
+// WebSocket for real-time updates
+WSS wss://api.manifold.markets/ws
+```
+
+**Search Parameters:**
+- `term`: Search query (empty = all)
+- `sort`: `score`, `liquidity`, `newest`, `close-date`
+- `filter`: `open`, `closed`, `resolved`, `all`
+- `limit`: Max 1000
+
+**Response Format (search-markets):**
+```json
+[
+  {
+    "id": "abc123",
+    "question": "Will AI pass the Turing test by 2030?",
+    "probability": 0.42,
+    "volume": 125000,
+    "totalLiquidity": 15000,
+    "closeTime": 1893456000000,  // Unix ms
+    "isResolved": false,
+    "creatorUsername": "johndoe",
+    "slug": "will-ai-pass-turing-test",
+    "url": "https://manifold.markets/johndoe/will-ai-pass-turing-test"
+  }
+]
+```
+
+**Code Example:**
+```typescript
+const MANIFOLD_API = 'https://api.manifold.markets/v0';
+
+async function searchManifold(query: string, limit = 20) {
+  const url = `${MANIFOLD_API}/search-markets?term=${encodeURIComponent(query)}&limit=${limit}&sort=liquidity&filter=open`;
+  const data = await fetch(url).then(r => r.json());
+
+  return data.map(m => ({
+    id: m.id,
+    question: m.question,
+    yesPrice: m.probability,  // Already decimal 0-1
+    noPrice: 1 - m.probability,
+    volume: m.volume,
+    liquidity: m.totalLiquidity,
+    url: m.url || `https://manifold.markets/${m.creatorUsername}/${m.slug}`
+  }));
+}
+```
+
+---
+
+### 🟡 API KEY REQUIRED (Free to Get)
+
+#### 4. PolyRouter (Aggregator - All Platforms)
+
+**Documentation**: https://docs.polyrouter.io
+
+```
+Base URL: https://api-v2.polyrouter.io
+
+Auth: X-API-Key header (free key from dashboard)
+Rate Limit: 100 requests/minute (free tier)
+```
+
+**Get API Key**: Sign up at polyrouter.io → Dashboard → Copy API key
+
+**Supported Platforms:**
+- polymarket, kalshi, manifold, limitless, prophetx, novig, sxbet
+
+**Verified Endpoints:**
+```typescript
+// Get markets from specific platform
+GET https://api-v2.polyrouter.io/markets?platform=polymarket&limit=20
+
+// Get markets from all platforms
+GET https://api-v2.polyrouter.io/markets?limit=50
+
+// List NFL games
+GET https://api-v2.polyrouter.io/list-games?league=nfl&limit=10
+
+// Get odds for specific game
+// Game ID format: {AwayTeam}v{HomeTeam}{YYYYMMDD}@{LEAGUE}
+GET https://api-v2.polyrouter.io/games/{gameId}
+```
+
+**Headers:**
+```typescript
+{
+  "X-API-Key": "pk_your_key_here",
+  "Content-Type": "application/json"
+}
+```
+
+**Response Format:**
+```json
+{
+  "pagination": {
+    "total": 100,
+    "limit": 20,
+    "has_more": true,
+    "next_cursor": "WzMsW1swLDEsM11dXQ"
+  },
+  "markets": [
+    {
+      "id": "123456",
+      "platform": "polymarket",
+      "platform_id": "0x...",
+      "question": "Will X happen?",
+      "yes_price": 0.65,
+      "no_price": 0.35,
+      "volume": 500000,
+      "liquidity": 25000,
+      "end_date": "2026-12-31T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Code Example:**
+```typescript
+const POLYROUTER_API = 'https://api-v2.polyrouter.io';
+const API_KEY = process.env.POLYROUTER_API_KEY;
+
+async function getPolyRouterMarkets(platform = 'polymarket', limit = 20) {
+  const res = await fetch(
+    `${POLYROUTER_API}/markets?platform=${platform}&limit=${limit}`,
+    { headers: { 'X-API-Key': API_KEY } }
+  );
+  const { markets } = await res.json();
+  return markets;
+}
+```
+
+**Environment Variable:**
+```bash
+# .env
+POLYROUTER_API_KEY=pk_your_key_here
+```
+
+---
+
+#### 5. Metaculus (Long-Range Forecasting)
+
+**Documentation**: https://www.metaculus.com/api/
+
+```
+Base URL: https://www.metaculus.com/api2
+
+Auth: Authorization: Token YOUR_TOKEN
+Rate Limit: Not strictly documented
+```
+
+**Get API Key**: Create free account → Profile → API Token
+
+**Verified Endpoints:**
+```typescript
+// Get open forecast questions
+GET https://www.metaculus.com/api2/questions/?format=json&limit=20&status=open&type=forecast&order_by=-activity
+
+// Get specific question
+GET https://www.metaculus.com/api2/questions/{id}/
+
+// Get predictions on a question
+GET https://www.metaculus.com/api2/questions/{id}/predictions/
+```
+
+**Headers:**
+```typescript
+{
+  "Authorization": "Token your_token_here"
+}
+```
+
+**Response Format:**
+```json
+{
+  "results": [
+    {
+      "id": 12345,
+      "title": "Will humans land on Mars by 2035?",
+      "community_prediction": {
+        "full": { "q2": 0.35 },  // Median prediction
+        "y": 0.35
+      },
+      "number_of_predictions": 1500,
+      "active": true,
+      "resolve_time": "2035-12-31T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Code Example:**
+```typescript
+const METACULUS_API = 'https://www.metaculus.com/api2';
+const TOKEN = process.env.METACULUS_TOKEN;
+
+async function getMetaculusQuestions(limit = 20) {
+  const res = await fetch(
+    `${METACULUS_API}/questions/?format=json&limit=${limit}&status=open&type=forecast`,
+    { headers: { 'Authorization': `Token ${TOKEN}` } }
+  );
+  const { results } = await res.json();
+
+  return results.map(q => ({
+    id: q.id,
+    question: q.title,
+    probability: q.community_prediction?.full?.q2 || 0.5,
+    forecasters: q.number_of_predictions,
+    url: `https://www.metaculus.com/questions/${q.id}`
+  }));
+}
+```
+
+**Environment Variable:**
+```bash
+# .env
+METACULUS_TOKEN=your_token_here
+```
+
+---
+
+#### 6. Limitless Exchange (Real Money - USDC on Base L2)
+
+**Documentation**: https://api.limitless.exchange/api-v1
+
+```
+Base URL: https://api.limitless.exchange
+WebSocket: wss://ws.limitless.exchange (namespace: /markets)
+
+Auth: NONE for public market/orderbook endpoints
+Rate Limit: 2 concurrent requests, 300ms between calls
+Max Limit: 25 per request (limit param max is 25)
+USDC Decimals: 6 (so 1000000 = $1.00)
+```
+
+**Verified Endpoints:**
+```typescript
+// ===== MARKETS (Public - No Auth) =====
+
+// Get all active markets (CORRECT - not /markets)
+GET /markets/active
+GET /markets/active?limit=20&page=1&sortBy=newest
+GET /markets/active?tradeType=clob  // amm | clob | group
+GET /markets/active?categoryId=5
+
+// Get market count per category
+GET /markets/categories/count
+
+// Get slugs/tickers for all active markets
+GET /markets/active/slugs
+
+// Get full market details
+GET /markets/{addressOrSlug}
+
+// Search markets
+GET /markets/search?query=bitcoin&limit=10
+
+// ===== ORDERBOOK & PRICES (Public) =====
+
+// Current orderbook with bids/asks
+GET /markets/{slug}/orderbook
+
+// Historical price data
+GET /markets/{slug}/historical-price?interval=1d
+// intervals: 1h, 6h, 1d, 1w, 1m, all
+
+// Recent market events (trades, orders)
+GET /markets/{slug}/events?page=1&limit=20
+
+// ===== PORTFOLIO (Public for any wallet) =====
+
+// Positions for any wallet address
+GET /portfolio/{walletAddress}/positions
+
+// Traded volume for any user
+GET /portfolio/{walletAddress}/traded-volume
+
+// P&L chart for any user
+GET /portfolio/{walletAddress}/pnl-chart
+```
+
+**Orderbook Response Format:**
+```json
+{
+  "adjustedMidpoint": 0.75,
+  "bids": [{ "price": 0.74, "size": 150 }],
+  "asks": [{ "price": 0.76, "size": 100 }],
+  "lastTradePrice": 0.75,
+  "maxSpread": 0.05,
+  "minSize": 1,
+  "tokenId": "196332..."
+}
+```
+
+**Market Response Format:**
+```json
+{
+  "slug": "btc-above-100k-dec-31",
+  "title": "Bitcoin above $100k by Dec 31?",
+  "address": "0x...",
+  "deadline": 1735689600,
+  "prices": [0.65, 0.35],
+  "volume": "125000.50",
+  "liquidity": "50000",
+  "positionIds": ["123...", "456..."],
+  "venue": {
+    "exchange": "0x...",
+    "adapter": "0x..."
+  }
+}
+```
+
+**Code Example:**
+```typescript
+const LIMITLESS_API = 'https://api.limitless.exchange';
+
+async function getLimitlessMarkets(limit = 20) {
+  // IMPORTANT: Use /markets/active, not /markets
+  const res = await fetch(
+    `${LIMITLESS_API}/markets/active?limit=${limit}&sortBy=newest`
+  );
+  const markets = await res.json();
+
+  return markets.map(m => ({
+    id: m.slug,
+    question: m.title,
+    yesPrice: m.prices?.[0] || 0.5,
+    noPrice: m.prices?.[1] || 0.5,
+    volume: parseFloat(m.volume) || 0,
+    deadline: new Date(m.deadline * 1000),
+    url: `https://limitless.exchange/markets/${m.slug}`
+  }));
+}
+
+async function getOrderbook(slug: string) {
+  const res = await fetch(`${LIMITLESS_API}/markets/${slug}/orderbook`);
+  return res.json();
+  // Returns: { adjustedMidpoint, bids, asks, lastTradePrice }
+}
+
+async function searchMarkets(query: string) {
+  const res = await fetch(
+    `${LIMITLESS_API}/markets/search?query=${encodeURIComponent(query)}&limit=10`
+  );
+  return res.json();
+}
+```
+
+**WebSocket (Real-time):**
+```typescript
+import { io } from 'socket.io-client';
+
+const socket = io('wss://ws.limitless.exchange', { path: '/markets' });
+
+// Subscribe to live orderbook updates
+socket.emit('subscribe_market_prices', {
+  marketSlugs: ['btc-above-100k-dec-31']
+});
+
+// Subscribe to position updates (requires auth)
+socket.emit('subscribe_positions', { account: '0x...' });
+```
+
+**Important Notes:**
+- Use `/markets/active` NOT `/markets` (returns 404)
+- USDC amounts have 6 decimals (1000000 = $1.00)
+- `deadline` is Unix timestamp in seconds
+- `positionIds` array contains YES and NO token IDs
+- For CLOB orders, cache `venue.exchange` and `venue.adapter` from market details
+
+---
+
+### ⚠️ APIs with Issues (As of Feb 2026)
+
+#### PMXT (Open Source Aggregator)
+- **Status**: SSL/TLS errors
+- **URL**: https://pmxt.fly.dev
+- **Note**: Server-side certificate issues, not reliable
+
+#### DFlow (Kalshi Mirror)
+- **Status**: Working but prefer direct Kalshi API
+- **URL**: https://dev-prediction-markets-api.dflow.net/api/v1
+- **Note**: Use direct Kalshi API instead for most reliable data
+
+---
+
+### BeRight Implementation
+
+The Trust Engine uses these APIs in this priority order:
+
+```typescript
+// lib/data/aggregators/index.ts
+const AGGREGATOR_PRIORITY = [
+  directAggregator,    // Polymarket + Kalshi + Manifold (FREE, no auth)
+  pmxtAggregator,      // Backup aggregator
+  polyRouterAggregator // PolyRouter (needs API key)
+];
+```
+
+**Required Environment Variables:**
+```bash
+# .env (minimum for basic functionality)
+POLYROUTER_API_KEY=pk_...    # Optional but recommended
+
+# Optional for extended coverage
+METACULUS_TOKEN=...          # For long-range forecasts
+```
+
+**Data Quality by Platform (Vanderbilt Study):**
+- Polymarket: 67% historical accuracy
+- Kalshi: 78% historical accuracy
+- Manifold: Play-money, use for sentiment only
+- Metaculus: Best for long-horizon questions (1+ year out)

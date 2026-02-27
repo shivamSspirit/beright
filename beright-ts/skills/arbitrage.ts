@@ -23,12 +23,24 @@ import {
   confidenceEmoji,
   timestamp,
 } from './utils';
+import { formatValidatedArbitrage } from './formatters';
 
 // Feature flag for V2 system
 const USE_V2_ARBITRAGE = process.env.USE_V2_ARBITRAGE !== 'false';
 
+// Feature flag for Trust Engine arbitrage
+const USE_TRUST_ENGINE = process.env.USE_TRUST_ENGINE !== 'false';
+
 // Import V2 system
 import { arbitrageV2 } from './arbitrageV2';
+
+// Trust Engine integration (optional - graceful fallback)
+let dataLayer: any = null;
+try {
+  dataLayer = require('../lib/data').dataLayer;
+} catch {
+  // Trust Engine not available
+}
 
 /**
  * Match markets between two platforms by similarity
@@ -277,11 +289,55 @@ The spread is your edge - but act fast!
 /**
  * Main arbitrage skill function
  *
- * Uses V2 production-grade system by default.
- * Falls back to legacy if V2 fails or is disabled.
+ * Priority order:
+ * 1. Trust Engine (validated arbitrage with trust scores)
+ * 2. V2 system (production-grade with strict validation)
+ * 3. Legacy (fallback)
  */
 export async function arbitrage(query?: string): Promise<SkillResponse> {
-  // Try V2 system first (production-grade with strict validation)
+  // Try Trust Engine first (validated arbitrage with trust scores)
+  if (USE_TRUST_ENGINE && dataLayer) {
+    try {
+      console.log('[Arbitrage] Using Trust Engine for validated arbitrage');
+      const validatedOpportunities = await dataLayer.findArbitrage(query, 0.03);
+
+      if (validatedOpportunities.length > 0) {
+        const text = formatValidatedArbitrage(validatedOpportunities);
+        return {
+          text,
+          mood: 'ALERT',
+          data: validatedOpportunities,
+        };
+      }
+
+      // No opportunities found via Trust Engine
+      return {
+        text: `
+🎯 *VALIDATED ARBITRAGE SCAN*
+
+✅ No opportunities found above 3% threshold.
+
+Trust Engine scanned:
+• All aggregated platforms
+• Applied 6 validation checks
+• Filtered low-quality data
+
+This is normal - arbitrage opportunities are rare and get captured quickly.
+
+Try again later or search for specific topics:
+/arb bitcoin
+/arb election
+`,
+        mood: 'NEUTRAL',
+        data: [],
+      };
+    } catch (error) {
+      console.error('[Arbitrage] Trust Engine failed, falling back:', error);
+      // Fall through to V2
+    }
+  }
+
+  // Try V2 system (production-grade with strict validation)
   if (USE_V2_ARBITRAGE) {
     try {
       console.log('[Arbitrage] Using V2 production-grade scanner');
