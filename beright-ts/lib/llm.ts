@@ -2,9 +2,10 @@
  * LLM Client for BeRight Protocol
  *
  * ARCHITECTURE: Fallback Chain
- * 1. Groq (free, fast, 14,400 req/day)
- * 2. Anthropic (paid, high quality)
- * 3. None (graceful degradation)
+ * 1. Gemini (PRIMARY - 1M tokens/min, 1500 req/day, 1M context)
+ * 2. Groq (backup - 14,400 req/day, fast)
+ * 3. Anthropic (paid, high quality)
+ * 4. None (graceful degradation)
  *
  * Uses native fetch — no extra packages required.
  */
@@ -23,11 +24,18 @@ export interface LLMRequest {
 export interface LLMResponse {
   text: string;
   tokensUsed: number;
-  provider: 'groq' | 'anthropic' | 'none';
+  provider: 'gemini' | 'groq' | 'anthropic' | 'none';
   model: string;
 }
 
 // Model mappings per provider
+// Gemini models: https://ai.google.dev/gemini-api/docs/models/gemini
+// Free tier: 15 RPM, 1M tokens/min, 1500 req/day
+const GEMINI_MODELS = {
+  fast: 'gemini-2.0-flash',           // Latest, best performance, fast
+  smart: 'gemini-1.5-pro-latest',     // Best quality, 2M context, complex reasoning
+};
+
 const GROQ_MODELS = {
   fast: 'llama-3.1-8b-instant',       // ~600 tok/sec, lightweight
   smart: 'llama-3.3-70b-versatile',   // ~300 tok/sec, GPT-4 quality
@@ -43,7 +51,7 @@ const ANTHROPIC_MODELS = {
 // ============================================================================
 
 let _startupValidated = false;
-let _availableProviders: Array<'groq' | 'anthropic'> = [];
+let _availableProviders: Array<'gemini' | 'groq' | 'anthropic'> = [];
 
 /**
  * Validate LLM configuration at startup
@@ -53,26 +61,32 @@ export function validateLLMConfig(): { valid: boolean; providers: string[]; erro
   const errors: string[] = [];
   _availableProviders = [];
 
+  const geminiKey = secrets.getGeminiApiKey();
   const groqKey = secrets.getGroqApiKey();
   const anthropicKey = secrets.getAnthropicApiKey();
 
+  // Gemini is PRIMARY (1M tokens/min, 1500 req/day, 1M context window)
+  if (geminiKey) {
+    _availableProviders.push('gemini');
+    console.log('[LLM] ✓ Gemini API key configured (PRIMARY - gemini-2.0-flash)');
+  } else {
+    errors.push('GEMINI_API_KEY not set');
+  }
+
+  // Groq as backup (14,400 req/day free)
   if (groqKey) {
     _availableProviders.push('groq');
-    console.log('[LLM] ✓ Groq API key configured');
-  } else {
-    errors.push('GROQ_API_KEY not set');
+    console.log('[LLM] ✓ Groq API key configured (backup)');
   }
 
   if (anthropicKey) {
     _availableProviders.push('anthropic');
-    console.log('[LLM] ✓ Anthropic API key configured');
-  } else {
-    errors.push('ANTHROPIC_API_KEY not set');
+    console.log('[LLM] ✓ Anthropic API key configured (backup)');
   }
 
   if (_availableProviders.length === 0) {
     console.error('[LLM] ✗ NO LLM PROVIDERS CONFIGURED - Bot will return fallback responses');
-    console.error('[LLM] Set GROQ_API_KEY or ANTHROPIC_API_KEY in .env');
+    console.error('[LLM] Set GEMINI_API_KEY in .env (free: https://aistudio.google.com)');
   } else {
     console.log(`[LLM] Provider chain: ${_availableProviders.join(' → ')}`);
   }
@@ -86,12 +100,66 @@ export function validateLLMConfig(): { valid: boolean; providers: string[]; erro
 }
 
 // ============================================================================
-// MAIN LLM FUNCTION WITH FALLBACK CHAIN
+// RETRY LOGIC WITH EXPONENTIAL BACKOFF
+// ============================================================================
+
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 500;
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label: string,
+  retries = MAX_RETRIES
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      // Don't retry on auth errors (wrong API key)
+      if (lastError.message.includes('401') || lastError.message.includes('403')) {
+        console.error(`[LLM] ${label} auth error (not retrying): ${lastError.message}`);
+        throw lastError;
+      }
+
+      // Don't retry if we're out of attempts
+      if (attempt === retries) {
+        console.error(`[LLM] ${label} failed after ${retries} attempts: ${lastError.message}`);
+        throw lastError;
+      }
+
+      // Exponential backoff: 500ms, 1000ms, 2000ms
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      console.warn(`[LLM] ${label} attempt ${attempt} failed, retrying in ${delay}ms: ${lastError.message}`);
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
+// ============================================================================
+// MAIN LLM FUNCTION WITH RETRY + FALLBACK CHAIN
 // ============================================================================
 
 /**
- * Call LLM with automatic fallback chain
- * Tries: Groq → Anthropic → returns empty
+ * Call LLM with automatic retry and fallback chain
+ * Architecture: Gemini (with retry) → Groq (with retry) → Anthropic (with retry) → failure
+ *
+ * Gemini is primary because:
+ * - 1M tokens/min free tier
+ * - 1M context window (best for complex tasks)
+ * - High quality responses
+ *
+ * IMPORTANT: If LLM fails, we return provider='none'.
+ * Callers should NOT use regex fallback - they should tell user honestly.
  */
 export async function llmChat(req: LLMRequest): Promise<LLMResponse> {
   const { system, user, maxTokens = 1024, temperature = 0.3, quality = 'smart' } = req;
@@ -101,29 +169,125 @@ export async function llmChat(req: LLMRequest): Promise<LLMResponse> {
     validateLLMConfig();
   }
 
-  // Try Groq first (free, fast)
+  // Try Gemini first (PRIMARY - Google, 1M context, high quality)
+  const geminiKey = secrets.getGeminiApiKey();
+  if (geminiKey) {
+    try {
+      return await withRetry(
+        () => callGemini({ system, user, maxTokens, temperature, quality, apiKey: geminiKey }),
+        'Gemini'
+      );
+    } catch (err) {
+      console.warn('[LLM] Gemini exhausted, trying Groq fallback');
+    }
+  }
+
+  // Fallback to Groq (fast, generous free tier)
   const groqKey = secrets.getGroqApiKey();
   if (groqKey) {
     try {
-      return await callGroq({ system, user, maxTokens, temperature, quality, apiKey: groqKey });
+      return await withRetry(
+        () => callGroq({ system, user, maxTokens, temperature, quality, apiKey: groqKey }),
+        'Groq'
+      );
     } catch (err) {
-      console.warn('[LLM] Groq failed, trying fallback:', err instanceof Error ? err.message : err);
+      console.warn('[LLM] Groq exhausted, trying Anthropic fallback');
     }
   }
 
-  // Fallback to Anthropic
+  // Fallback to Anthropic with retry
   const anthropicKey = secrets.getAnthropicApiKey();
   if (anthropicKey) {
     try {
-      return await callAnthropic({ system, user, maxTokens, temperature, quality, apiKey: anthropicKey });
+      return await withRetry(
+        () => callAnthropic({ system, user, maxTokens, temperature, quality, apiKey: anthropicKey }),
+        'Anthropic'
+      );
     } catch (err) {
-      console.warn('[LLM] Anthropic failed:', err instanceof Error ? err.message : err);
+      console.error('[LLM] Anthropic also exhausted');
     }
   }
 
-  // All providers failed
-  console.error('[LLM] All providers failed. Set GROQ_API_KEY or ANTHROPIC_API_KEY.');
+  // All providers failed - return honest failure
+  // IMPORTANT: Callers must handle this gracefully, NOT use regex fallback
+  console.error('[LLM] ALL PROVIDERS FAILED. Check API keys and rate limits.');
   return { text: '', tokensUsed: 0, provider: 'none', model: 'none' };
+}
+
+// ============================================================================
+// GEMINI PROVIDER (Google AI)
+// ============================================================================
+
+async function callGemini(opts: {
+  system: string;
+  user: string;
+  maxTokens: number;
+  temperature: number;
+  quality: 'fast' | 'smart';
+  apiKey: string;
+}): Promise<LLMResponse> {
+  const model = GEMINI_MODELS[opts.quality];
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${opts.apiKey}`;
+
+  // Gemini uses a different format - combine system + user into contents
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: `${opts.system}\n\nUser: ${opts.user}` }
+          ]
+        }
+      ],
+      generationConfig: {
+        maxOutputTokens: opts.maxTokens,
+        temperature: opts.temperature,
+      },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Gemini ${res.status}: ${body}`);
+  }
+
+  const data = await res.json() as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{ text?: string }>;
+      };
+    }>;
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      totalTokenCount?: number;
+    };
+  };
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const tokensUsed = data.usageMetadata?.totalTokenCount ?? 0;
+
+  // Debug: log if response is empty or suspiciously short
+  if (!text || text.length < 10) {
+    console.warn(`[LLM] Gemini returned empty/short response. Candidates: ${JSON.stringify(data.candidates?.length)}, Model: ${model}`);
+  }
+
+  return {
+    text,
+    tokensUsed,
+    provider: 'gemini',
+    model,
+  };
 }
 
 // ============================================================================
@@ -238,8 +402,11 @@ async function callAnthropic(opts: {
 
 /**
  * Get the currently active LLM provider(s)
+ * Returns the primary provider based on configuration priority
  */
-export function getActiveLLMProvider(): 'groq' | 'anthropic' | 'none' {
+export function getActiveLLMProvider(): 'gemini' | 'groq' | 'anthropic' | 'none' {
+  // Gemini is primary (1M context, high quality)
+  if (secrets.getGeminiApiKey()) return 'gemini';
   if (secrets.getGroqApiKey()) return 'groq';
   if (secrets.getAnthropicApiKey()) return 'anthropic';
   return 'none';
@@ -248,7 +415,7 @@ export function getActiveLLMProvider(): 'groq' | 'anthropic' | 'none' {
 /**
  * Get all available providers
  */
-export function getAvailableProviders(): Array<'groq' | 'anthropic'> {
+export function getAvailableProviders(): Array<'gemini' | 'groq' | 'anthropic'> {
   if (!_startupValidated) validateLLMConfig();
   return _availableProviders;
 }

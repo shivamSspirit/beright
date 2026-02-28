@@ -82,6 +82,14 @@ async function fetchSubreddit(
     });
 
     if (!response.ok) {
+      // Handle specific Reddit error codes
+      if (response.status === 403) {
+        console.warn(`[Reddit] r/${subreddit} access denied (may be private or rate limited)`);
+      } else if (response.status === 429) {
+        console.warn('[Reddit] Rate limit hit - add delay between requests');
+      } else if (response.status === 404) {
+        console.warn(`[Reddit] r/${subreddit} not found - may be banned or renamed`);
+      }
       throw new Error(`Reddit API error: ${response.status}`);
     }
 

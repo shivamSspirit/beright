@@ -69,6 +69,12 @@ export async function searchTwitter(
     });
 
     if (!response.ok) {
+      // Handle specific Tavily error codes
+      if (response.status === 429 || response.status === 432) {
+        console.warn('[Twitter] Tavily rate limit hit - will use cached data if available');
+      } else if (response.status === 401 || response.status === 403) {
+        console.warn('[Twitter] Tavily auth error - check TAVILY_API_KEY is valid');
+      }
       throw new Error(`Tavily API error: ${response.status}`);
     }
 

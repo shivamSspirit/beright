@@ -141,18 +141,55 @@ function routeMessage(text: string): string {
 
   // MVP commands (handled directly in main handler)
   if (lower.startsWith('/brief')) return 'COMMANDER';
+  if (lower.startsWith('/morning')) return 'COMMANDER';
+  if (lower.startsWith('/daily')) return 'COMMANDER';
   if (lower.startsWith('/hot')) return 'COMMANDER';
+  if (lower.startsWith('/trending')) return 'COMMANDER';
+  if (lower.startsWith('/top')) return 'COMMANDER';
   if (lower.startsWith('/alpha')) return 'COMMANDER';
+  if (lower.startsWith('/edge')) return 'COMMANDER';
+  if (lower.startsWith('/opportunities')) return 'COMMANDER';
   if (lower.startsWith('/predict')) return 'COMMANDER';
+  if (lower.startsWith('/smartpredict')) return 'COMMANDER';
+  if (lower.startsWith('/sp')) return 'COMMANDER';
   if (lower.startsWith('/me')) return 'COMMANDER';
   if (lower.startsWith('/leaderboard')) return 'COMMANDER';
+  if (lower.startsWith('/rankings')) return 'COMMANDER';
   if (lower.startsWith('/calibration')) return 'COMMANDER';
+  if (lower.startsWith('/brier')) return 'COMMANDER';
+  if (lower.startsWith('/accuracy')) return 'COMMANDER';
+  if (lower.startsWith('/learnings')) return 'COMMANDER';
+  if (lower.startsWith('/lessons')) return 'COMMANDER';
+  if (lower.startsWith('/recs')) return 'COMMANDER';
+  if (lower.startsWith('/pnl')) return 'COMMANDER';
+  if (lower.startsWith('/profit')) return 'COMMANDER';
+  if (lower.startsWith('/loss')) return 'COMMANDER';
+  if (lower.startsWith('/portfolio')) return 'COMMANDER';
+  if (lower.startsWith('/pos')) return 'COMMANDER';
+  if (lower.startsWith('/quote')) return 'COMMANDER';
+  if (lower.startsWith('/price')) return 'COMMANDER';
+  if (lower.startsWith('/help')) return 'COMMANDER';
+  if (lower.startsWith('/start')) return 'COMMANDER';
+  if (lower.startsWith('/commands')) return 'COMMANDER';
+  if (lower.startsWith('/settings')) return 'COMMANDER';
+  if (lower.startsWith('/config')) return 'COMMANDER';
+  if (lower.startsWith('/preferences')) return 'COMMANDER';
+  if (lower.startsWith('/follow')) return 'COMMANDER';
+  if (lower.startsWith('/unfollow')) return 'COMMANDER';
+  if (lower.startsWith('/signals')) return 'COMMANDER';
+  if (lower.startsWith('/subscribe')) return 'COMMANDER';
+  if (lower.startsWith('/unsubscribe')) return 'COMMANDER';
+  if (lower.startsWith('/alerts')) return 'COMMANDER';
+  if (lower.startsWith('/alert')) return 'COMMANDER';
 
   // Explicit commands
   if (lower.startsWith('/research')) return 'RESEARCH';
+  if (lower.startsWith('/study')) return 'RESEARCH';
   if (lower.startsWith('/arb-monitor')) return 'ARBITRAGE';
   if (lower.startsWith('/arb-subscribe')) return 'ARBITRAGE';
   if (lower.startsWith('/arb-unsubscribe')) return 'ARBITRAGE';
+  if (lower.startsWith('/arbitrage')) return 'ARBITRAGE';
+  if (lower.startsWith('/spread')) return 'ARBITRAGE';
   if (lower.startsWith('/arb')) return 'ARBITRAGE';
   if (lower.startsWith('/agent')) return 'PROACTIVE_AGENT';
   if (lower.startsWith('/poster')) return 'COMMANDER';
@@ -2833,12 +2870,12 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
 
     // Handle specific commands
     if (lower === '/start') return handleStart();
-    if (lower === '/help') return handleHelp();
-    if (lower === '/brief') return await handleBrief();
+    if (lower === '/help' || lower === '/commands') return handleHelp();
+    if (lower === '/brief' || lower === '/morning' || lower === '/daily') return await handleBrief();
     if (lower === '/closing' || lower === '/expiring') return await handleClosing();
 
-    // /hot - save context for follow-up questions
-    if (lower === '/hot') {
+    // /hot, /trending, /top - save context for follow-up questions
+    if (lower === '/hot' || lower === '/trending' || lower === '/top') {
       const response = await handleHot();
       // Save context with market data for follow-up queries
       const marketData = response.data as Array<{ title: string; platform: string; url: string }> | undefined;
@@ -2854,8 +2891,8 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
       return response;
     }
 
-    // /alpha - save context for follow-up questions
-    if (lower === '/alpha') {
+    // /alpha, /edge, /opportunities - save context for follow-up questions
+    if (lower === '/alpha' || lower === '/edge' || lower === '/opportunities') {
       const response = await handleAlpha();
       const marketData = response.data as Array<{ title: string; platform: string; url: string }> | undefined;
       if (marketData) {
@@ -3217,8 +3254,10 @@ Or search for markets first:
           return unsubscribeFromArb(telegramId || '');
         }
 
-        // Quick scan for /arb command - use the real-time monitor
-        const query = extractQuery(text, '/arb') || '';
+        // Quick scan for /arb, /arbitrage, /spread command - use the real-time monitor
+        let query = extractQuery(text, '/arb') || '';
+        if (!query) query = extractQuery(text, '/arbitrage') || '';
+        if (!query) query = extractQuery(text, '/spread') || '';
 
         // If no query, run quick scan from monitor (faster, uses registry)
         if (!query) {

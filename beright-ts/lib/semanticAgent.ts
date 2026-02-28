@@ -311,21 +311,26 @@ Given a user message, provide a COMPLETE semantic understanding. Think step by s
    - "What is BeRight?": Yes
    - Complex analysis: No, needs agent work
 
-Respond ONLY with valid JSON matching this schema:
+CRITICAL: Respond with ONLY valid JSON. No markdown, no explanations, just the JSON object.
+Do NOT include any text before or after the JSON.
+Do NOT use newlines inside string values - use spaces instead.
+Use double quotes for all strings. Use null (not "null") for missing values.
+
+Schema:
 {
   "goal": "USER_GOAL",
   "domain": "DOMAIN",
   "topic": "extracted topic or null",
-  "platforms": ["platform1", "platform2"] or null,
+  "platforms": ["platform1", "platform2"],
   "timeframe": "time context or null",
-  "interpretation": "One sentence: what user means",
-  "confidence": 0.0-1.0,
-  "ambiguities": ["what's unclear"] or null,
+  "interpretation": "One sentence what user means",
+  "confidence": 0.85,
+  "ambiguities": ["unclear item"],
   "recommendedAgent": "AGENT",
   "agentReasoning": "Why this agent",
   "suggestedApproach": "What BeRight should do",
-  "canAnswerDirectly": true/false,
-  "directAnswer": "Direct response if trivial, else null"
+  "canAnswerDirectly": true,
+  "directAnswer": "Direct response if trivial else null"
 }`;
 }
 
@@ -365,18 +370,67 @@ export async function understand(
 
     // Check if LLM available
     if (response.provider === 'none') {
-      console.warn('[SemanticAgent] No LLM available, using fallback');
+      console.error('[SemanticAgent] LLM unavailable - cannot understand natural language without LLM');
+      // Return honest failure - don't pretend to understand with regex
+      return createLLMFailureResponse();
+    }
+
+    // Parse JSON response with robust extraction and sanitization
+    // LLMs sometimes return text before/after JSON, or use markdown code blocks
+    let jsonStr: string | null = null;
+
+    // Strategy 1: Extract JSON from markdown code block (```json ... ```)
+    const codeBlockMatch = response.text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1];
+    }
+
+    // Strategy 2: Find the outermost complete JSON object
+    if (!jsonStr) {
+      // Find first { and last } to extract JSON
+      const firstBrace = response.text.indexOf('{');
+      const lastBrace = response.text.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = response.text.slice(firstBrace, lastBrace + 1);
+      }
+    }
+
+    if (!jsonStr) {
+      console.warn('[SemanticAgent] No JSON found in LLM response:', response.text.slice(0, 200));
+      // Use fallback understanding instead of complete failure
       return createFallbackUnderstanding(message);
     }
 
-    // Parse JSON response
-    const jsonMatch = response.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn('[SemanticAgent] No JSON in response, using fallback');
-      return createFallbackUnderstanding(message);
-    }
+    // Sanitize JSON: Fix common LLM output issues
+    jsonStr = jsonStr
+      // Remove control characters (but preserve JSON structure)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      // Fix literal newlines in strings (common LLM issue)
+      .replace(/\n(?=[^"]*"[^"]*$)/gm, '\\n')
+      // Fix unquoted keys: { goal: -> { "goal":
+      .replace(/{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '{"$1":')
+      .replace(/,\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, ',"$1":');
 
-    const parsed = JSON.parse(jsonMatch[0]) as SemanticUnderstanding;
+    let parsed: SemanticUnderstanding;
+    try {
+      parsed = JSON.parse(jsonStr) as SemanticUnderstanding;
+    } catch (jsonError) {
+      console.warn('[SemanticAgent] JSON parse failed, attempting recovery:', jsonError);
+      // Try more aggressive cleanup
+      try {
+        const cleanedJson = jsonStr
+          .replace(/,\s*}/g, '}')  // Remove trailing commas
+          .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
+          .replace(/'/g, '"')      // Replace single quotes with double
+          .replace(/:\s*'([^']*)'/g, ':"$1"')  // Fix 'value' to "value"
+          .replace(/:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])/g, ':"$1"$2'); // Fix unquoted values
+        parsed = JSON.parse(cleanedJson) as SemanticUnderstanding;
+      } catch {
+        console.warn('[SemanticAgent] JSON recovery failed, using fallback:', response.text.slice(0, 100));
+        // Use fallback understanding instead of honest failure for better UX
+        return createFallbackUnderstanding(message);
+      }
+    }
 
     const elapsed = Date.now() - startTime;
     console.log(`[SemanticAgent] Understood: "${message.slice(0, 40)}..." → ${parsed.goal}/${parsed.domain}/${parsed.recommendedAgent} (${Math.round(parsed.confidence * 100)}%) in ${elapsed}ms`);
@@ -385,8 +439,33 @@ export async function understand(
 
   } catch (error) {
     console.error('[SemanticAgent] Error:', error);
-    return createFallbackUnderstanding(message);
+    // On error, return honest failure - don't fake understanding
+    return createLLMFailureResponse();
   }
+}
+
+/**
+ * Return honest response when LLM fails
+ * This tells the user we couldn't understand, rather than faking it with regex
+ */
+function createLLMFailureResponse(): SemanticUnderstanding {
+  return {
+    goal: 'CONVERSE',
+    domain: 'META',
+    interpretation: 'LLM unavailable - cannot process natural language',
+    confidence: 0,  // Zero confidence because we DIDN'T understand
+    recommendedAgent: 'SELF',
+    agentReasoning: 'LLM failed - returning honest error to user',
+    suggestedApproach: 'Tell user to try again',
+    canAnswerDirectly: true,
+    directAnswer: `I'm having trouble understanding right now. My AI brain is temporarily unavailable.
+
+Please try:
+• Using a command: /hot, /arb, /research <topic>
+• Trying again in a moment
+
+Sorry for the inconvenience!`,
+  };
 }
 
 // ============================================================================
@@ -401,7 +480,8 @@ function handleTrivialCases(message: string): SemanticUnderstanding | null {
   const lower = message.toLowerCase().trim();
 
   // Pure greetings - respond with personality and invite engagement
-  if (/^(hi|hey|hello|gm|gn|yo|sup|hola|howdy)[\s!.,?]*$/i.test(lower)) {
+  // Includes "whatsup", "what's up", "wassup", etc.
+  if (/^(hi|hey|hello|gm|gn|yo|sup|hola|howdy|whatsup|what'?s?\s*up|wassup|wazzup|hiya|heya)[\s!.,?]*$/i.test(lower)) {
     // Different responses based on time of day (gm vs gn) or general greeting
     const isGM = /^gm/i.test(lower);
     const isGN = /^gn/i.test(lower);
@@ -591,15 +671,52 @@ What topic interests you?`,
 }
 
 /**
+ * Extract likely topic from message for fallback routing
+ */
+function extractFallbackTopic(message: string): string | undefined {
+  const lower = message.toLowerCase();
+
+  // Common prediction market topics
+  const topicPatterns = [
+    // Crypto
+    { pattern: /\b(bitcoin|btc)\b/i, topic: 'bitcoin' },
+    { pattern: /\b(ethereum|eth)\b/i, topic: 'ethereum' },
+    { pattern: /\b(solana|sol)\b/i, topic: 'solana' },
+    { pattern: /\bcrypto\b/i, topic: 'crypto' },
+    // Politics
+    { pattern: /\btrump\b/i, topic: 'trump' },
+    { pattern: /\bbiden\b/i, topic: 'biden' },
+    { pattern: /\belection\b/i, topic: 'election' },
+    // Economics
+    { pattern: /\b(fed|fomc|rate cut|rate hike)\b/i, topic: 'federal reserve' },
+    { pattern: /\binflation\b/i, topic: 'inflation' },
+    // Tech
+    { pattern: /\b(ai|artificial intelligence|openai|gpt)\b/i, topic: 'AI' },
+  ];
+
+  for (const { pattern, topic } of topicPatterns) {
+    if (pattern.test(lower)) return topic;
+  }
+
+  // Extract quoted text as topic
+  const quoted = message.match(/"([^"]+)"|'([^']+)'/);
+  if (quoted) return quoted[1] || quoted[2];
+
+  return undefined;
+}
+
+/**
  * Fallback when LLM is unavailable
+ * Enhanced with better keyword detection and topic extraction
  */
 function createFallbackUnderstanding(message: string): SemanticUnderstanding {
   const lower = message.toLowerCase();
+  const topic = extractFallbackTopic(message);
 
   // Basic keyword detection for fallback
-  let goal: UserGoal = 'UNCLEAR';
-  let domain: Domain = 'GENERAL';
-  let recommendedAgent: RecommendedAgent = 'SELF';
+  let goal: UserGoal = 'GET_INFORMATION';  // Default to info-seeking, not UNCLEAR
+  let domain: Domain = 'PREDICTION_MARKETS';  // Default to our core domain
+  let recommendedAgent: RecommendedAgent = 'SCOUT';  // Default to Scout for data
 
   // =========================================================================
   // META QUESTIONS - Catch these first to avoid misrouting
@@ -628,41 +745,76 @@ What do you want to explore?`,
     };
   }
 
-  // Simple heuristics for market-related fallback
-  if (lower.includes('arb') || lower.includes('spread')) {
+  // =========================================================================
+  // SMART KEYWORD DETECTION - Improved routing
+  // =========================================================================
+
+  // Arbitrage/spread detection - high priority
+  if (lower.includes('arb') || lower.includes('spread') || lower.includes('difference between')) {
     goal = 'DISCOVER_OPPORTUNITIES';
-    domain = 'PREDICTION_MARKETS';
-    recommendedAgent = 'SCOUT';
-  } else if (lower.includes('think') || lower.includes('analysis') || lower.includes('predict')) {
-    goal = 'GET_ANALYSIS';
-    domain = 'PREDICTION_MARKETS';
-    recommendedAgent = 'ANALYST';
-  } else if (lower.includes('hot') || lower.includes('trending') || lower.includes('moving')) {
-    goal = 'DISCOVER_OPPORTUNITIES';
-    domain = 'PREDICTION_MARKETS';
-    recommendedAgent = 'SCOUT';
-  } else if (lower.includes('buy') || lower.includes('sell') || lower.includes('trade')) {
-    goal = 'TAKE_ACTION';
-    domain = 'PREDICTION_MARKETS';
-    recommendedAgent = 'TRADER';
-  } else if (lower.includes('what is') || lower.includes('how does') || lower.includes('explain')) {
-    goal = 'LEARN';
-    domain = 'PREDICTION_MARKETS';
-    recommendedAgent = 'SELF';
-  } else if (lower.includes('polymarket') || lower.includes('kalshi') || lower.includes('odds') || lower.includes('market')) {
-    goal = 'GET_INFORMATION';
-    domain = 'PREDICTION_MARKETS';
     recommendedAgent = 'SCOUT';
   }
+  // Analysis/research requests - route to Analyst
+  else if (lower.includes('research') || lower.includes('analysis') || lower.includes('analyze') ||
+           lower.includes('deep dive') || lower.includes('investigate')) {
+    goal = 'GET_ANALYSIS';
+    recommendedAgent = 'ANALYST';
+  }
+  // Opinion/prediction requests - route to Analyst
+  else if (lower.includes('think') || lower.includes('predict') || lower.includes('opinion') ||
+           lower.includes('forecast') || lower.includes('probability')) {
+    goal = 'GET_ANALYSIS';
+    recommendedAgent = 'ANALYST';
+  }
+  // Hot/trending - Scout
+  else if (lower.includes('hot') || lower.includes('trending') || lower.includes('moving') ||
+           lower.includes('popular') || lower.includes('top market')) {
+    goal = 'DISCOVER_OPPORTUNITIES';
+    recommendedAgent = 'SCOUT';
+  }
+  // Trading intent - Trader
+  else if (lower.includes('buy') || lower.includes('sell') || lower.includes('trade') ||
+           lower.includes('position') || lower.includes('portfolio')) {
+    goal = 'TAKE_ACTION';
+    recommendedAgent = 'TRADER';
+  }
+  // Educational/learning
+  else if (lower.includes('what is') || lower.includes('how does') || lower.includes('explain') ||
+           lower.includes('learn') || lower.includes('teach')) {
+    goal = 'LEARN';
+    recommendedAgent = 'SELF';
+  }
+  // Brief/morning brief - Scout
+  else if (lower.includes('brief') || lower.includes('morning') || lower.includes('summary') ||
+           lower.includes('update')) {
+    goal = 'GET_INFORMATION';
+    recommendedAgent = 'SCOUT';
+  }
+  // Platform mentions or general market queries - Scout
+  else if (lower.includes('polymarket') || lower.includes('kalshi') || lower.includes('manifold') ||
+           lower.includes('odds') || lower.includes('market') || lower.includes('price')) {
+    goal = 'GET_INFORMATION';
+    recommendedAgent = 'SCOUT';
+  }
+  // Links/URL requests - Scout (user asking for market links)
+  else if (lower.includes('link') || lower.includes('url') || lower.includes('where') ||
+           lower.includes('platform')) {
+    goal = 'GET_INFORMATION';
+    recommendedAgent = 'SCOUT';
+  }
+
+  // Calculate confidence based on how well we matched
+  const confidence = topic ? 0.65 : 0.5;  // Higher if we found a topic
 
   return {
     goal,
     domain,
-    interpretation: 'Fallback understanding (LLM unavailable)',
-    confidence: 0.4,
+    topic,  // Include extracted topic
+    interpretation: `Fallback understanding: ${goal.toLowerCase().replace(/_/g, ' ')} about ${topic || 'general markets'}`,
+    confidence,
     recommendedAgent,
-    agentReasoning: 'Keyword-based fallback routing',
-    suggestedApproach: 'Use basic keyword matching to route request',
+    agentReasoning: `Keyword-based routing to ${recommendedAgent}`,
+    suggestedApproach: `Use ${recommendedAgent} agent to handle ${topic || 'request'}`,
     canAnswerDirectly: false,
   };
 }

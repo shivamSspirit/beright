@@ -173,10 +173,10 @@ export async function logPrediction(
   return logDecision({
     v: 1,
     t: 'PREDICTION',
-    q: question.slice(0, 80),
+    q: (question || 'unknown').slice(0, 80),
     consensus: probability,
     action: `PREDICT_${direction}`,
-    conf: Math.round(confidence),
+    conf: Math.round(confidence || 0),
     brier: brierScore,
     ts: Math.floor(Date.now() / 1000),
   });
@@ -195,10 +195,10 @@ export async function logArbitrage(
   return logDecision({
     v: 1,
     t: 'ARBITRAGE',
-    q: topic.slice(0, 80),
-    spread,
+    q: (topic || 'unknown').slice(0, 80),
+    spread: spread || 0,
     action,
-    conf: Math.round(confidence),
+    conf: Math.round(confidence || 0),
     brier: brierScore,
     ts: Math.floor(Date.now() / 1000),
   });
