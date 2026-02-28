@@ -30,12 +30,47 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.EC2IPV4 }}" ]; then
+            echo "ERROR: EC2IPV4 secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2USER }}" ]; then
+            echo "ERROR: EC2USER secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.EC2SSHKEY }}" ]; then
+            echo "ERROR: EC2SSHKEY secret is not set"
+            exit 1
+          fi
+          echo "All required secrets are configured"
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2SSHKEY }}" > ~/.ssh/ec2_key
           chmod 600 ~/.ssh/ec2_key
-          ssh-keyscan -H ${{ secrets.EC2IPV4 }} >> ~/.ssh/known_hosts
+          # Add host key with timeout and retry
+          for i in 1 2 3; do
+            echo "Attempt $i: Scanning SSH host key..."
+            if ssh-keyscan -T 10 -H ${{ secrets.EC2IPV4 }} >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "Successfully added host key"
+              break
+            fi
+            if [ $i -eq 3 ]; then
+              echo "WARNING: ssh-keyscan failed after 3 attempts, using StrictHostKeyChecking=no"
+              echo "Host ${{ secrets.EC2IPV4 }}" >> ~/.ssh/config
+              echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+              echo "  UserKnownHostsFile /dev/null" >> ~/.ssh/config
+            fi
+            sleep 5
+          done
+
+      - name: Test SSH connectivity
+        run: |
+          ssh -i ~/.ssh/ec2_key -o ConnectTimeout=10 -o BatchMode=yes \
+            ${{ secrets.EC2USER }}@${{ secrets.EC2IPV4 }} "echo 'SSH connection successful'"
 
       - name: Sync code to EC2
         run: |
@@ -46,7 +81,7 @@ jobs:
             --exclude '.env' \
             --exclude 'memory' \
             --exclude '.git' \
-            -e "ssh -i ~/.ssh/ec2_key" \
+            -e "ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no" \
             ./ ${{ secrets.EC2USER }}@${{ secrets.EC2IPV4 }}:/opt/beright/
 
       - name: Build and restart on EC2
