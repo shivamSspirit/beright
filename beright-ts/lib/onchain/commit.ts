@@ -1,7 +1,9 @@
 /**
  * BeRight On-Chain Commit
  *
- * Commit predictions to Solana blockchain via Memo Program
+ * Commit predictions to Solana blockchain via:
+ * 1. Memo Program (immutable timestamped log)
+ * 2. Calibration Program (structured Brier tracking)
  */
 
 import {
@@ -17,6 +19,7 @@ import { Direction, MemoTxResult, BrierInput } from './types';
 import { calculateBrierScore } from './memo';
 import { getSigner, SolanaSigner } from '../signer';
 import { secrets } from '../secrets';
+import { recordPredictionOnChain, CalibrationCommitResult } from './calibration';
 
 /**
  * Get Solana connection via signer
@@ -46,7 +49,56 @@ function createMemoInstruction(memo: string, signer: PublicKey): TransactionInst
 }
 
 /**
- * Commit a prediction on-chain
+ * Commit a prediction to a specific network connection
+ * (Used internally by commitPredictionWithCalibration to ensure same network)
+ */
+async function commitPredictionToNetwork(
+  connection: Connection,
+  userPubkey: string,
+  marketId: string,
+  probability: number,
+  direction: Direction
+): Promise<MemoTxResult> {
+  try {
+    const wallet = getWalletKeypair();
+
+    // Format the memo
+    const memo = formatPredictionMemo(userPubkey, marketId, probability, direction);
+    console.log('Committing prediction memo:', memo);
+
+    // Create transaction
+    const transaction = new Transaction().add(
+      createMemoInstruction(memo, wallet.publicKey)
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet.publicKey;
+
+    // Send and confirm
+    const signature = await sendAndConfirmTransaction(connection, transaction, [wallet], {
+      commitment: 'confirmed',
+    });
+
+    console.log('Prediction committed:', signature);
+
+    return {
+      success: true,
+      signature,
+      explorerUrl: `https://solscan.io/tx/${signature}?cluster=devnet`,
+    };
+  } catch (error: any) {
+    console.error('Failed to commit prediction:', error);
+    return {
+      success: false,
+      error: error.message || 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Commit a prediction on-chain (Memo only - legacy)
  *
  * @param userPubkey - User's public key (for tracking, not signing)
  * @param marketId - Market identifier
@@ -93,6 +145,102 @@ export async function commitPrediction(
   } catch (error: any) {
     console.error('Failed to commit prediction:', error);
     return {
+      success: false,
+      error: error.message || 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Commit a prediction on-chain with full calibration tracking
+ *
+ * Hybrid approach:
+ * 1. First sends Memo transaction (immutable timestamped log)
+ * 2. Then records to Calibration program (structured Brier tracking)
+ *
+ * Both transactions go to the same network (devnet by default for calibration).
+ *
+ * @param userPubkey - User's public key (for tracking)
+ * @param marketId - Market identifier
+ * @param probability - Predicted probability (0-1)
+ * @param direction - YES or NO
+ * @param category - Market category (0-255, default 0)
+ * @returns Combined result with both transaction signatures
+ */
+export async function commitPredictionWithCalibration(
+  userPubkey: string,
+  marketId: string,
+  probability: number,
+  direction: Direction,
+  category: number = 0
+): Promise<CalibrationCommitResult> {
+  const wallet = getWalletKeypair();
+
+  // Import calibration connection to use same network for both
+  const { getCalibrationConnection } = await import('./calibration');
+  const calibrationConnection = getCalibrationConnection();
+
+  try {
+    // Step 1: Send Memo transaction first (immutable commitment)
+    // Use calibration connection to ensure same network
+    const memoResult = await commitPredictionToNetwork(
+      calibrationConnection,
+      userPubkey,
+      marketId,
+      probability,
+      direction
+    );
+
+    if (!memoResult.success || !memoResult.signature) {
+      return {
+        memoTx: '',
+        success: false,
+        error: memoResult.error || 'Memo transaction failed',
+        forecasterPda: '',
+      };
+    }
+
+    console.log('Memo committed, now recording to calibration program...');
+
+    // Step 2: Record to Calibration program
+    try {
+      const calibrationTx = await recordPredictionOnChain(
+        marketId,
+        probability,
+        direction,
+        memoResult.signature,
+        category
+      );
+
+      // Get forecaster PDA for response
+      const { deriveForecasterPda } = await import('./calibration');
+      const [forecasterPda] = deriveForecasterPda(wallet.publicKey);
+
+      return {
+        memoTx: memoResult.signature,
+        calibrationTx,
+        forecasterPda: forecasterPda.toBase58(),
+        success: true,
+      };
+    } catch (calibrationError: any) {
+      // Memo succeeded but calibration failed - still return partial success
+      console.error('Calibration recording failed (memo succeeded):', calibrationError);
+
+      const { deriveForecasterPda } = await import('./calibration');
+      const [forecasterPda] = deriveForecasterPda(wallet.publicKey);
+
+      return {
+        memoTx: memoResult.signature,
+        forecasterPda: forecasterPda.toBase58(),
+        success: true, // Memo succeeded, which is the critical part
+        error: `Calibration failed: ${calibrationError.message}`,
+      };
+    }
+  } catch (error: any) {
+    console.error('Failed to commit prediction with calibration:', error);
+    return {
+      memoTx: '',
+      forecasterPda: '',
       success: false,
       error: error.message || 'Unknown error',
     };

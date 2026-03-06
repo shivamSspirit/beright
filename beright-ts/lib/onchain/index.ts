@@ -1,10 +1,12 @@
 /**
  * BeRight On-Chain Module
  *
- * On-chain prediction tracking via Solana Memo Program
+ * On-chain prediction tracking via:
+ * - Solana Memo Program (immutable timestamped logs)
+ * - Calibration Program (structured Brier tracking)
  *
  * Usage:
- *   import { commitPrediction, resolvePrediction, verifyPrediction } from '../lib/onchain';
+ *   import { commitPredictionWithCalibration, getForecasterStats } from '../lib/onchain';
  */
 
 // Types
@@ -26,12 +28,39 @@ export {
 // Commit functions
 export {
   commitPrediction,
+  commitPredictionWithCalibration,
   resolvePrediction,
   batchCommitPredictions,
   getWalletBalance,
   estimateMemoTransactionCost,
   getConnection,
 } from './commit';
+
+// Calibration program functions
+export {
+  CALIBRATION_PROGRAM_ID,
+  getCalibrationProgram,
+  getCalibrationConnection,
+  setUseDevnet,
+  deriveForecasterPda,
+  derivePredictionPda,
+  isForecasterInitialized,
+  initializeForecaster,
+  recordPredictionOnChain,
+  getForecasterStats,
+  resolvePredictionOnChain,
+  getPredictionRecord,
+  getForecasterPredictions,
+  recordPredictionWithTracking,
+} from './calibration';
+
+// Calibration types
+export type {
+  ForecasterStats,
+  PredictionRecord,
+  CalibrationCommitResult,
+  FullPredictionCommitResult,
+} from './calibration';
 
 // Verification functions
 export {

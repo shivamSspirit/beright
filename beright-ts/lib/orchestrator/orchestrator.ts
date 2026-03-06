@@ -93,7 +93,7 @@ export class CommandOrchestrator {
   /**
    * Add a pre-execution hook
    */
-  addPreHook(hook: OrchestratorHooks['pre'][number]): void {
+  addPreHook(hook: NonNullable<OrchestratorHooks['pre']>[number]): void {
     this.hooks.pre = this.hooks.pre || [];
     this.hooks.pre.push(hook);
   }
@@ -101,7 +101,7 @@ export class CommandOrchestrator {
   /**
    * Add a post-execution hook
    */
-  addPostHook(hook: OrchestratorHooks['post'][number]): void {
+  addPostHook(hook: NonNullable<OrchestratorHooks['post']>[number]): void {
     this.hooks.post = this.hooks.post || [];
     this.hooks.post.push(hook);
   }
@@ -109,7 +109,7 @@ export class CommandOrchestrator {
   /**
    * Add an error hook
    */
-  addErrorHook(hook: OrchestratorHooks['onError'][number]): void {
+  addErrorHook(hook: NonNullable<OrchestratorHooks['onError']>[number]): void {
     this.hooks.onError = this.hooks.onError || [];
     this.hooks.onError.push(hook);
   }

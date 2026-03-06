@@ -128,7 +128,7 @@ export const meHandler: CommandHandler<MeResult> = {
 
     try {
       // Get user ID from context
-      const telegramId = context.chatId?.toString() || 'anonymous';
+      const telegramId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Get calibration stats
       const calibration = getCalibrationStats();

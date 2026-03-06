@@ -15,9 +15,13 @@ import {
   updatePredictionResolutionTx,
 } from '../../../lib/db';
 import {
-  commitPrediction as commitOnChain,
+  commitPredictionWithCalibration,
   resolvePrediction as resolveOnChain,
 } from '../../../lib/onchain/commit';
+import {
+  resolvePredictionOnChain,
+  getForecasterPredictions,
+} from '../../../lib/onchain/calibration';
 
 // For now, we'll also support file-based predictions for local dev
 import { addPrediction, listPending, getCalibrationStats } from '../../../skills/calibration';
@@ -137,24 +141,27 @@ export async function POST(request: NextRequest) {
         resolves_at: null,
       });
 
-      // Commit prediction on-chain (non-blocking - prediction saved even if on-chain fails)
+      // Commit prediction on-chain with calibration tracking
       let onChainResult = null;
       try {
         const userPubkey = walletAddress || `telegram:${telegramId}`;
         const chainMarketId = marketId || question.substring(0, 50);
 
-        onChainResult = await commitOnChain(
+        onChainResult = await commitPredictionWithCalibration(
           userPubkey,
           chainMarketId,
           probability,
-          direction as 'YES' | 'NO'
+          direction as 'YES' | 'NO',
+          0 // category
         );
 
-        // If successful, update prediction with tx signature
-        if (onChainResult.success && onChainResult.signature) {
-          await updatePredictionOnChain(prediction.id, onChainResult.signature, true);
-          (prediction as any).on_chain_tx = onChainResult.signature;
+        // If successful, update prediction with tx signatures
+        if (onChainResult.success && onChainResult.memoTx) {
+          await updatePredictionOnChain(prediction.id, onChainResult.memoTx, true);
+          (prediction as any).on_chain_tx = onChainResult.memoTx;
           (prediction as any).on_chain_confirmed = true;
+          (prediction as any).calibration_tx = onChainResult.calibrationTx;
+          (prediction as any).forecaster_pda = onChainResult.forecasterPda;
         }
       } catch (onChainError) {
         console.error('On-chain commit failed (prediction still saved):', onChainError);
@@ -165,8 +172,12 @@ export async function POST(request: NextRequest) {
         prediction,
         onChain: onChainResult ? {
           committed: onChainResult.success,
-          signature: onChainResult.signature,
-          explorerUrl: onChainResult.explorerUrl,
+          memoTx: onChainResult.memoTx,
+          calibrationTx: onChainResult.calibrationTx,
+          forecasterPda: onChainResult.forecasterPda,
+          explorerUrl: onChainResult.memoTx
+            ? `https://solscan.io/tx/${onChainResult.memoTx}?cluster=devnet`
+            : undefined,
           error: onChainResult.error,
         } : null,
       }, { status: 201 });

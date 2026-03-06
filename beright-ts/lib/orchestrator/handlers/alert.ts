@@ -62,8 +62,8 @@ export const alertHandler: CommandHandler<AlertResult> = {
     const startTime = Date.now();
 
     try {
-      const userId = context.chatId?.toString() || 'anonymous';
-      const rawMessage = context.rawMessage || '';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
+      const rawMessage = context.message?.text || '';
       const args = rawMessage.replace(/^\/alert\s*/i, '').trim();
 
       // List alerts if no args

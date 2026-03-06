@@ -1,0 +1,27 @@
+[package]
+name = "calibration"
+version = "0.1.0"
+description = "BeRight Forecaster Calibration Tracking Program"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "calibration"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "0.32"
+# Compression dependencies temporarily disabled for build compatibility
+# spl-account-compression = "0.4.0"
+# spl-noop = "0.2.1"
+
+[dev-dependencies]
+# solana-program-test = "~1.18"
+# solana-sdk = "~1.18"

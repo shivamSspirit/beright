@@ -71,7 +71,7 @@ export const intelligenceHandler: CommandHandler<IntelligenceResult> = {
 
     try {
       const args = context.arguments || [];
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       if (args.length === 0) {
         return {

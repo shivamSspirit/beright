@@ -1,8 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features
-  experimental: {
-    serverComponentsExternalPackages: ['@solana/web3.js'],
+  // External packages for server components (moved from experimental in Next.js 16)
+  serverExternalPackages: ['@solana/web3.js'],
+
+  // Turbopack config with root set for monorepo
+  turbopack: {
+    root: require('path').resolve(__dirname, '..'),
   },
 
   // Configure webpack for Node.js modules used in skills

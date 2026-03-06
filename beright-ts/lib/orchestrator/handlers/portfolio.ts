@@ -95,7 +95,7 @@ export const portfolioHandler: CommandHandler<PortfolioResult> = {
 
     try {
       // Get user ID from context
-      const telegramId = context.chatId?.toString() || 'anonymous';
+      const telegramId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Refresh prices first
       await refreshPositionPrices(telegramId);

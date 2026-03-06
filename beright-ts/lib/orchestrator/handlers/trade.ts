@@ -57,7 +57,7 @@ export const tradeHandler: CommandHandler<TradeResult> = {
 
     try {
       // Check authentication
-      if (!context.user?.id) {
+      if (!context.userId) {
         return {
           success: false,
           error: {
@@ -236,7 +236,7 @@ export const tradeHandler: CommandHandler<TradeResult> = {
 
       // Execute trade using existing skill
       const skillResponse = await executeTrade(
-        context.user.id,
+        context.userId,
         ticker,
         side,
         amountUsd,

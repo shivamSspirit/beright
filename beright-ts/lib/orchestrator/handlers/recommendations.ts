@@ -80,7 +80,7 @@ export const recommendationsHandler: CommandHandler<RecommendationsResult> = {
     const startTime = Date.now();
 
     try {
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Get recommendations
       const recs = await getRecommendations(userId);

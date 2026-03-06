@@ -15,6 +15,7 @@ import { SkillResponse } from '../types/index';
 import { calculateBrier } from '../lib/reputation';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getForecasterStats, ForecasterStats } from '../lib/onchain/calibration';
 
 export interface Prediction {
   id: string;
@@ -47,6 +48,7 @@ interface CalibrationStats {
     type: 'win' | 'loss' | 'none';
     best: number;
   };
+  onChainVerified?: boolean;  // true if stats include on-chain calibration data
 }
 
 interface CalibrationBucket {
@@ -167,9 +169,21 @@ export function resolvePrediction(
 }
 
 /**
- * Calculate calibration statistics
+ * Try to fetch on-chain stats (non-blocking)
  */
-export function getCalibrationStats(): CalibrationStats {
+async function fetchOnChainStats(): Promise<ForecasterStats | null> {
+  try {
+    return await getForecasterStats();
+  } catch (error) {
+    console.warn('[Calibration] On-chain stats unavailable:', error);
+    return null;
+  }
+}
+
+/**
+ * Calculate calibration statistics (with optional on-chain data)
+ */
+export function getCalibrationStats(onChainStats?: ForecasterStats | null): CalibrationStats {
   const predictions = loadPredictions();
   const resolved = predictions.filter(p => p.outcome !== undefined);
   const pending = predictions.filter(p => p.outcome === undefined);
@@ -271,20 +285,32 @@ export function getCalibrationStats(): CalibrationStats {
     }
   }
 
+  // Merge with on-chain stats if available (on-chain takes precedence for Brier)
+  const finalBrier = onChainStats?.avgBrierScore ?? overallBrier;
+  const finalAccuracy = onChainStats?.accuracy ?? accuracy;
+  const finalStreak = onChainStats
+    ? {
+        current: onChainStats.streakCorrect,
+        type: onChainStats.streakCorrect > 0 ? 'win' as const : 'none' as const,
+        best: onChainStats.maxStreakCorrect,
+      }
+    : {
+        current: currentStreak,
+        type: streakType,
+        best: bestStreak,
+      };
+
   return {
-    totalPredictions: predictions.length,
-    resolvedPredictions: resolved.length,
+    totalPredictions: Math.max(predictions.length, onChainStats?.totalPredictions ?? 0),
+    resolvedPredictions: Math.max(resolved.length, onChainStats?.resolvedPredictions ?? 0),
     pendingPredictions: pending.length,
-    overallBrierScore: overallBrier,
-    accuracy,
+    overallBrierScore: finalBrier,
+    accuracy: finalAccuracy,
     calibrationByBucket: buckets.filter(b => b.predictions > 0),
     performanceByPlatform: platformStats,
     performanceByTag: tagStats,
-    streak: {
-      current: currentStreak,
-      type: streakType,
-      best: bestStreak,
-    },
+    streak: finalStreak,
+    onChainVerified: !!onChainStats,
   };
 }
 
@@ -306,9 +332,12 @@ function getGrade(brierScore: number): { grade: string; emoji: string; descripti
 function formatCalibrationReport(stats: CalibrationStats): string {
   const grade = getGrade(stats.overallBrierScore);
 
+  const onChainBadge = stats.onChainVerified ? '⛓️ ON-CHAIN VERIFIED' : '📝 Local Tracking';
+
   let report = `
 🎯 BERIGHT CALIBRATION REPORT
 ${'='.repeat(50)}
+${onChainBadge}
 
 ${grade.emoji} GRADE: ${grade.grade} - ${grade.description}
 
@@ -367,7 +396,10 @@ ${stats.overallBrierScore < 0.2
  * Main calibration skill function
  */
 export async function calibration(): Promise<SkillResponse> {
-  const stats = getCalibrationStats();
+  // Try to fetch on-chain stats (non-blocking)
+  const onChainStats = await fetchOnChainStats();
+
+  const stats = getCalibrationStats(onChainStats);
   const text = formatCalibrationReport(stats);
 
   return {

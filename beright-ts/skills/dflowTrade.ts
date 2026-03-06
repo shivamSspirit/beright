@@ -1,18 +1,24 @@
 /**
- * DFlow Trading Skill for Telegram
- * Allows users to trade DFlow markets directly from Telegram
+ * DFlow Trading Skill
+ *
+ * Core trading functionality for DFlow prediction markets.
+ * Gateway-agnostic: can be called from Telegram, Web, API, Discord, etc.
  *
  * Features:
- * - /wallet - Create or view wallet
- * - /dflow <query> - Search DFlow markets
- * - /trade <ticker> <YES|NO> <amount> - Place a trade
- * - /positions - View current positions
+ * - Wallet management (create, view, balance)
+ * - Market search and discovery
+ * - Trade execution with smart routing (DFlow vs Jupiter)
+ * - Position tracking (on-chain)
+ *
+ * Smart Routing:
+ * - Compares DFlow direct vs Jupiter aggregator
+ * - Picks best execution price automatically
+ * - Optional Jito MEV protection
+ *
+ * @author BeRight Protocol
  */
 
-import { Keypair, Connection, VersionedTransaction, PublicKey } from '@solana/web3.js';
-import * as bs58 from 'bs58';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Connection } from '@solana/web3.js';
 import { SkillResponse } from '../types/index';
 import {
   getDFlowClient,
@@ -23,119 +29,57 @@ import {
   DFlowEvent,
   DFlowMarket,
 } from '../lib/dflow';
+import {
+  getDFlowExecutor,
+  executeDFlowTrade,
+  executeSmartTrade,
+  getSmartQuote,
+} from '../lib/dflow/executor';
+import {
+  getTelegramWalletStore,
+  getWalletBalance as fetchWalletBalance,
+  KeypairWallet,
+} from '../lib/dflow/wallet';
+import {
+  getPositionSummary,
+  formatPositionSummaryTelegram,
+} from '../lib/dflow/positions';
 import { formatUsd, formatPct } from './utils';
-
-// Memory directory for wallet storage
-const MEMORY_DIR = path.join(process.cwd(), 'memory');
-const WALLETS_FILE = path.join(MEMORY_DIR, 'telegram_wallets.json');
-
-// Solana RPC
-const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 // ============================================
 // WALLET MANAGEMENT
 // ============================================
 
-interface TelegramWallet {
-  telegramId: string;
-  publicKey: string;
-  encryptedSecretKey: string; // Base58 encoded
-  createdAt: string;
-}
-
-function loadWallets(): Record<string, TelegramWallet> {
-  try {
-    if (fs.existsSync(WALLETS_FILE)) {
-      return JSON.parse(fs.readFileSync(WALLETS_FILE, 'utf-8'));
-    }
-  } catch (error) {
-    console.error('Error loading wallets:', error);
-  }
-  return {};
-}
-
-function saveWallets(wallets: Record<string, TelegramWallet>): void {
-  try {
-    if (!fs.existsSync(MEMORY_DIR)) {
-      fs.mkdirSync(MEMORY_DIR, { recursive: true });
-    }
-    fs.writeFileSync(WALLETS_FILE, JSON.stringify(wallets, null, 2));
-  } catch (error) {
-    console.error('Error saving wallets:', error);
-  }
-}
+// Wallet store - persists wallets by user ID (works for any gateway)
+const walletStore = getTelegramWalletStore();
 
 /**
  * Get or create wallet for Telegram user
  */
 export function getOrCreateWallet(telegramId: string): { publicKey: string; isNew: boolean } {
-  const wallets = loadWallets();
-
-  // Check if wallet exists
-  if (wallets[telegramId]) {
-    return { publicKey: wallets[telegramId].publicKey, isNew: false };
-  }
-
-  // Generate new keypair
-  const keypair = Keypair.generate();
-  const wallet: TelegramWallet = {
-    telegramId,
-    publicKey: keypair.publicKey.toBase58(),
-    encryptedSecretKey: bs58.encode(keypair.secretKey),
-    createdAt: new Date().toISOString(),
-  };
-
-  wallets[telegramId] = wallet;
-  saveWallets(wallets);
-
-  console.log(`Created new wallet for Telegram user ${telegramId}: ${wallet.publicKey}`);
-  return { publicKey: wallet.publicKey, isNew: true };
+  const { wallet, isNew } = walletStore.getOrCreate(telegramId);
+  return { publicKey: wallet.publicKey.toBase58(), isNew };
 }
 
 /**
- * Get keypair for signing transactions
+ * Get keypair wallet for a user
  */
-function getKeypair(telegramId: string): Keypair | null {
-  const wallets = loadWallets();
-  const wallet = wallets[telegramId];
-
-  if (!wallet) return null;
-
-  try {
-    const secretKey = bs58.decode(wallet.encryptedSecretKey);
-    return Keypair.fromSecretKey(secretKey);
-  } catch (error) {
-    console.error('Error decoding wallet:', error);
-    return null;
-  }
+function getWallet(telegramId: string): KeypairWallet | null {
+  return walletStore.get(telegramId);
 }
 
 /**
- * Get wallet balance
+ * Get wallet balance (now uses real token lookup)
  */
-async function getWalletBalance(publicKey: string): Promise<{ sol: number; usdc: number }> {
-  try {
-    const connection = new Connection(SOLANA_RPC);
-    const pubkey = new PublicKey(publicKey);
-
-    // Get SOL balance
-    const solBalance = await connection.getBalance(pubkey);
-
-    // Get USDC balance (simplified - would need token account lookup)
-    // For now return 0, full implementation would use getTokenAccountsByOwner
-
-    return {
-      sol: solBalance / 1e9,
-      usdc: 0, // TODO: Implement USDC balance lookup
-    };
-  } catch (error) {
-    console.error('Error getting balance:', error);
-    return { sol: 0, usdc: 0 };
-  }
+async function getWalletBalanceForUser(publicKey: string): Promise<{ sol: number; usdc: number }> {
+  const executor = getDFlowExecutor();
+  const connection = executor.getConnection();
+  const balance = await fetchWalletBalance(connection, publicKey);
+  return { sol: balance.sol, usdc: balance.usdc };
 }
 
 // ============================================
-// TELEGRAM COMMAND HANDLERS
+// SKILL HANDLERS (Gateway-Agnostic)
 // ============================================
 
 /**
@@ -143,7 +87,7 @@ async function getWalletBalance(publicKey: string): Promise<{ sol: number; usdc:
  */
 export async function handleWallet(telegramId: string): Promise<SkillResponse> {
   const { publicKey, isNew } = getOrCreateWallet(telegramId);
-  const balance = await getWalletBalance(publicKey);
+  const balance = await getWalletBalanceForUser(publicKey);
 
   if (isNew) {
     return {
@@ -250,18 +194,34 @@ ${'─'.repeat(35)}
 }
 
 /**
- * Handle /trade command - Place a DFlow trade
+ * Handle trade - Place a DFlow trade with smart routing
+ *
+ * Smart routing compares:
+ * - DFlow direct execution
+ * - Jupiter aggregator
+ *
+ * Picks the best price automatically.
+ *
+ * @param userId - User identifier (Telegram ID, wallet address, etc.)
+ * @param ticker - Market ticker
+ * @param side - YES or NO
+ * @param amountUsd - Amount in USD
+ * @param options - Optional: useSmartRouting (default true), preferVenue
  */
 export async function handleTrade(
-  telegramId: string,
+  userId: string,
   ticker: string,
   side: 'YES' | 'NO',
-  amountUsd: number
+  amountUsd: number,
+  options?: {
+    useSmartRouting?: boolean;
+    preferVenue?: 'dflow' | 'jupiter';
+  }
 ): Promise<SkillResponse> {
   try {
     // Get user wallet
-    const keypair = getKeypair(telegramId);
-    if (!keypair) {
+    const wallet = getWallet(userId);
+    if (!wallet) {
       return {
         text: `You don't have a wallet yet! Use /wallet to create one.`,
         mood: 'ERROR',
@@ -277,82 +237,92 @@ export async function handleTrade(
       };
     }
 
-    // Get token mints
+    // Check if market is initialized
     const usdcAccount = market.accounts?.[USDC_MINT];
-    if (!usdcAccount?.yesMint || !usdcAccount?.noMint) {
+    if (!usdcAccount?.yesMint || !usdcAccount?.noMint || !usdcAccount?.isInitialized) {
       return {
         text: `Market ${ticker} is not initialized for trading yet.`,
         mood: 'ERROR',
       };
     }
 
-    const outputMint = side === 'YES' ? usdcAccount.yesMint : usdcAccount.noMint;
-    const amountLamports = Math.floor(amountUsd * 1e6); // USDC has 6 decimals
+    // Execute trade with smart routing (DFlow vs Jupiter)
+    const result = await executeSmartTrade(
+      market,
+      side,
+      amountUsd,
+      wallet.getKeypair(),
+      {
+        slippageBps: 100, // 1% slippage
+        useSmartRouting: options?.useSmartRouting ?? true,
+        preferVenue: options?.preferVenue,
+        includeJupiter: true,
+      }
+    );
 
-    // Get order transaction from DFlow
-    const client = getDFlowClient();
-    const orderResponse = await client.getOrder({
-      inputMint: USDC_MINT,
-      outputMint,
-      amount: amountLamports,
-      userPublicKey: keypair.publicKey.toBase58(),
-      slippageBps: 100, // 1% slippage
-    });
+    if (!result.success) {
+      // Handle specific errors
+      if (result.error?.includes('insufficient')) {
+        return {
+          text: `Insufficient balance. Please fund your wallet first:\n/wallet`,
+          mood: 'ERROR',
+        };
+      }
 
-    if (!orderResponse.transaction) {
       return {
-        text: `Failed to get trade transaction. Please try again.`,
+        text: `Trade failed: ${result.error}\n\nMake sure you have enough USDC in your wallet.`,
         mood: 'ERROR',
       };
     }
 
-    // Decode and sign transaction
-    const txBuffer = Buffer.from(orderResponse.transaction, 'base64');
-    const transaction = VersionedTransaction.deserialize(txBuffer);
-    transaction.sign([keypair]);
+    // Calculate expected output from details
+    const inputAmount = result.details?.inputAmount
+      ? parseFloat(result.details.inputAmount)
+      : amountUsd;
+    const outputAmount = result.details?.outputAmount
+      ? parseFloat(result.details.outputAmount)
+      : amountUsd / 0.5; // Fallback estimate
+    const effectivePrice = inputAmount / outputAmount;
 
-    // Send transaction
-    const connection = new Connection(SOLANA_RPC);
-    const signature = await connection.sendTransaction(transaction, {
-      skipPreflight: false,
-      preflightCommitment: 'confirmed',
-    });
+    // Show routing info
+    const routeInfo = result.route === 'jupiter'
+      ? '🔀 Routed via Jupiter (better price)'
+      : '⚡ Direct DFlow execution';
 
-    // Calculate expected output
-    const expectedTokens = parseInt(orderResponse.outAmount) / 1e6;
-    const effectivePrice = amountUsd / expectedTokens;
+    const savingsInfo = result.routingInfo?.savingsPct && result.routingInfo.savingsPct > 0.001
+      ? `\n*Savings:* ${(result.routingInfo.savingsPct * 100).toFixed(2)}% vs alternative`
+      : '';
 
     return {
       text: `
-✅ *TRADE SUBMITTED*
+✅ *TRADE EXECUTED*
 ${'─'.repeat(35)}
 
 *Market:* ${market.title.slice(0, 40)}
 *Side:* ${side}
 *Amount:* $${amountUsd.toFixed(2)} USDC
-*Expected:* ~${expectedTokens.toFixed(2)} ${side} tokens
+*Received:* ~${outputAmount.toFixed(2)} ${side} tokens
 *Price:* $${effectivePrice.toFixed(4)}/token
 
-*Transaction:*
-\`${signature.slice(0, 20)}...\`
+${routeInfo}${savingsInfo}
 
-[View on Solscan](https://solscan.io/tx/${signature})
+*Transaction:*
+\`${result.signature?.slice(0, 20)}...\`
+
+[View on Solscan](https://solscan.io/tx/${result.signature})
 
 /positions - Check your positions
 `,
       mood: 'BULLISH',
-      data: { signature, orderResponse },
+      data: {
+        signature: result.signature,
+        details: result.details,
+        route: result.route,
+        routingInfo: result.routingInfo,
+      },
     };
   } catch (error: any) {
     console.error('Trade error:', error);
-
-    // Handle specific errors
-    if (error.message?.includes('insufficient')) {
-      return {
-        text: `Insufficient balance. Please fund your wallet first:\n/wallet`,
-        mood: 'ERROR',
-      };
-    }
 
     return {
       text: `Trade failed: ${error.message || error}\n\nMake sure you have enough USDC in your wallet.`,
@@ -362,7 +332,87 @@ ${'─'.repeat(35)}
 }
 
 /**
+ * Get trade quote with routing comparison (no execution)
+ *
+ * Shows user which route would be used and potential savings.
+ */
+export async function handleQuote(
+  userId: string,
+  ticker: string,
+  side: 'YES' | 'NO',
+  amountUsd: number
+): Promise<SkillResponse> {
+  try {
+    const wallet = getWallet(userId);
+    const walletAddress = wallet?.publicKey.toBase58() || 'simulation';
+
+    const market = await getDFlowMarket(ticker);
+    if (!market) {
+      return {
+        text: `Market not found: ${ticker}`,
+        mood: 'ERROR',
+      };
+    }
+
+    const routing = await getSmartQuote(market, side, amountUsd, walletAddress);
+
+    const dflow = routing.quotes.dflow;
+    const jupiter = routing.quotes.jupiter;
+
+    let text = `
+📊 *TRADE QUOTE*
+${'─'.repeat(35)}
+
+*Market:* ${market.title.slice(0, 40)}
+*Side:* ${side}
+*Amount:* $${amountUsd.toFixed(2)} USDC
+
+`;
+
+    if (dflow) {
+      text += `*DFlow Direct:*
+  Output: ${dflow.outputAmount.toFixed(2)} tokens
+  Price: $${dflow.effectivePrice.toFixed(4)}/token
+  Impact: ${(dflow.priceImpact * 100).toFixed(2)}%
+
+`;
+    }
+
+    if (jupiter) {
+      text += `*Jupiter Route:*
+  Output: ${jupiter.outputAmount.toFixed(2)} tokens
+  Price: $${jupiter.effectivePrice.toFixed(4)}/token
+  Impact: ${(jupiter.priceImpact * 100).toFixed(2)}%
+  Path: ${jupiter.route.join(' → ')}
+
+`;
+    }
+
+    const recommended = routing.recommended === 'jupiter' ? '🔀 Jupiter' : '⚡ DFlow';
+    text += `${'─'.repeat(35)}
+*Recommended:* ${recommended}
+*Reason:* ${routing.reason}
+${routing.savingsPct > 0.001 ? `*Savings:* ${(routing.savingsPct * 100).toFixed(2)}%` : ''}
+
+/trade ${ticker} ${side} ${amountUsd} - Execute trade
+`;
+
+    return {
+      text,
+      mood: 'NEUTRAL',
+      data: routing,
+    };
+  } catch (error: any) {
+    return {
+      text: `Quote failed: ${error.message}`,
+      mood: 'ERROR',
+    };
+  }
+}
+
+/**
  * Handle /positions command - View DFlow positions
+ * Now uses lib/dflow/positions for real on-chain tracking
  */
 export async function handlePositions(telegramId: string): Promise<SkillResponse> {
   const { publicKey, isNew } = getOrCreateWallet(telegramId);
@@ -374,22 +424,46 @@ export async function handlePositions(telegramId: string): Promise<SkillResponse
     };
   }
 
-  // TODO: Implement position fetching using DFlow API
-  // Would need to scan wallet for outcome tokens and match to markets
+  try {
+    // Fetch real positions from on-chain
+    const executor = getDFlowExecutor();
+    const connection = executor.getConnection();
+    const summary = await getPositionSummary(connection, publicKey);
 
-  return {
-    text: `
-📊 *YOUR POSITIONS*
+    if (summary.positions.length === 0) {
+      return {
+        text: `
+*YOUR POSITIONS*
 ${'─'.repeat(35)}
 
 Wallet: \`${publicKey.slice(0, 8)}...${publicKey.slice(-4)}\`
 
-*Coming soon:* Position tracking and P&L
+*Balances:*
+◎ SOL: ${summary.balance.sol.toFixed(4)}
+💵 USDC: ${summary.balance.usdc.toFixed(2)}
 
-For now, use /wallet to check balances
+No open positions found.
+
+/dflow - Search markets
+/trade <ticker> YES|NO <amount> - Place trade
 `,
-    mood: 'NEUTRAL',
-  };
+        mood: 'NEUTRAL',
+      };
+    }
+
+    // Use the formatted summary from positions module
+    return {
+      text: formatPositionSummaryTelegram(summary),
+      mood: summary.totalValue > 0 ? 'BULLISH' : 'NEUTRAL',
+      data: summary,
+    };
+  } catch (error: any) {
+    console.error('Position fetch error:', error);
+    return {
+      text: `Error fetching positions: ${error.message}\n\nWallet: \`${publicKey.slice(0, 8)}...${publicKey.slice(-4)}\``,
+      mood: 'ERROR',
+    };
+  }
 }
 
 /**

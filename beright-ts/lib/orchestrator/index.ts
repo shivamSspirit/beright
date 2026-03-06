@@ -24,7 +24,6 @@ export { dflowSearchHandler } from './handlers/dflowSearch';
 export { quoteHandler } from './handlers/quote';
 export { tradeHandler } from './handlers/trade';
 export { positionsHandler } from './handlers/positions';
-export { semanticHandler } from './handlers/semantic';
 
 // Portfolio & Analytics handlers
 export { portfolioHandler } from './handlers/portfolio';

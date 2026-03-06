@@ -26,6 +26,7 @@ import {
 import { validateLLMConfig } from '../lib/llm';
 import { validateTavilyConfig } from '../lib/tavily';
 
+
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
@@ -69,15 +70,62 @@ let isRunning = true;
 let lockHeartbeatTimer: NodeJS.Timeout | null = null;
 
 /**
+ * Sanitize markdown to ensure balanced entities
+ * Telegram requires ALL markdown entities to be properly closed
+ */
+function sanitizeMarkdown(text: string): string {
+  // Balance paired markdown characters
+  const pairs = [
+    { char: '*', regex: /\*/g },   // Bold
+    { char: '_', regex: /_/g },    // Italic
+    { char: '`', regex: /`/g },    // Code
+    { char: '~', regex: /~/g },    // Strikethrough
+  ];
+
+  let result = text;
+
+  for (const { char, regex } of pairs) {
+    const matches = result.match(regex);
+    if (matches && matches.length % 2 !== 0) {
+      // Odd number of chars = unbalanced, remove the last one
+      const lastIndex = result.lastIndexOf(char);
+      result = result.slice(0, lastIndex) + result.slice(lastIndex + 1);
+    }
+  }
+
+  // Fix unbalanced link brackets [text](url)
+  // Count [ and ] - if unequal, escape them
+  const openBrackets = (result.match(/\[/g) || []).length;
+  const closeBrackets = (result.match(/\]/g) || []).length;
+  if (openBrackets !== closeBrackets) {
+    // Escape all brackets if unbalanced
+    result = result.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+  }
+
+  // Fix unbalanced parentheses in markdown links
+  // This is tricky - look for ]( patterns and ensure ) follows
+  const linkPattern = /\]\([^)]*$/;
+  if (linkPattern.test(result)) {
+    // Unclosed link URL - add closing paren
+    result = result + ')';
+  }
+
+  return result;
+}
+
+/**
  * Send a message to a Telegram chat
  */
 async function sendMessage(chatId: number | string, text: string): Promise<void> {
   try {
+    // Pre-sanitize markdown to prevent parse errors
+    const sanitizedText = sanitizeMarkdown(text);
+
     const result = await httpRequest(`${TELEGRAM_API}/sendMessage`, {
       method: 'POST',
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        text: sanitizedText,
         parse_mode: 'Markdown',
         disable_web_page_preview: true,
       }),
@@ -87,15 +135,20 @@ async function sendMessage(chatId: number | string, text: string): Promise<void>
       console.error('Failed to send message:', result.description || result.error);
 
       // Retry without markdown if parsing failed
-      if (result.description?.includes('parse')) {
-        await httpRequest(`${TELEGRAM_API}/sendMessage`, {
+      if (result.description?.includes('parse') || result.description?.includes('entity')) {
+        console.log('Retrying without markdown formatting...');
+        const plainResult = await httpRequest(`${TELEGRAM_API}/sendMessage`, {
           method: 'POST',
           body: JSON.stringify({
             chat_id: chatId,
-            text: text.replace(/[*_`\[\]]/g, ''),
+            text: text.replace(/[*_`~\[\]()\\]/g, ''),  // Strip all markdown chars
             disable_web_page_preview: true,
           }),
         });
+
+        if (!plainResult.ok) {
+          console.error('Plain text send also failed:', plainResult.description);
+        }
       }
     }
   } catch (error) {

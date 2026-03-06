@@ -219,10 +219,20 @@ async function fetchPolymarket(query?: string, limit = 15): Promise<Market[]> {
         const titleLower = m.title.toLowerCase();
         // Match if any search term appears in title (word boundary preferred)
         return uniqueTerms.some(term => {
+          // Skip invalid terms (empty, or containing special regex chars that would break)
+          if (!term || term.length < 2) return false;
+
           // For short terms (3-4 chars), require word boundary to avoid false positives
           if (term.length <= 4) {
-            const regex = new RegExp(`\\b${term}\\b`, 'i');
-            return regex.test(titleLower);
+            // Escape special regex characters to prevent "Unterminated group" errors
+            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+              const regex = new RegExp(`\\b${escapedTerm}\\b`, 'i');
+              return regex.test(titleLower);
+            } catch {
+              // If regex still fails, fall back to includes
+              return titleLower.includes(term);
+            }
           }
           return titleLower.includes(term);
         });

@@ -178,7 +178,7 @@ export const quoteHandler: CommandHandler<QuoteResult> = {
       }
 
       // Get user ID for quote (simulation if not authenticated)
-      const userId = context.user?.id || 'simulation';
+      const userId = context.userId || 'simulation';
 
       // Get quote using existing skill
       const skillResponse = await getQuote(userId, ticker, side, amountUsd);

@@ -15,7 +15,7 @@ import { SkillResponse } from '../types/index';
 import { searchEvents, getMarket, DFlowMarket, DFlowEvent } from '../lib/dflow/api';
 import { getIntelligence } from './intelligence';
 import { db, supabase } from '../lib/supabase/client';
-import { commitPrediction } from '../lib/onchain/commit';
+import { commitPredictionWithCalibration } from '../lib/onchain/commit';
 import { getMarketWatcher } from '../services/marketWatcher';
 import { textSimilarity } from './utils';
 
@@ -41,6 +41,8 @@ interface SmartPredictResult {
     direction: 'YES' | 'NO';
     marketTicker?: string;
     onChainTx?: string;
+    calibrationTx?: string;
+    forecasterPda?: string;
   };
   matchedMarket?: MarketMatch;
   intelligence?: {
@@ -192,19 +194,29 @@ export async function smartPredict(
       marketTicker: matchedMarket?.ticker,
     };
 
-    // 4. Commit to on-chain
+    // 4. Commit to on-chain with calibration tracking
     try {
       const user = await db.users.getById(userId);
-      const chainResult = await commitPrediction(
+      const chainResult = await commitPredictionWithCalibration(
         user?.wallet_address || userId,
         matchedMarket?.ticker || prediction.market_id || question.slice(0, 30),
         probability,
-        direction
+        direction,
+        0 // category - could be mapped from market type later
       );
 
-      if (chainResult.success && chainResult.signature) {
-        await db.predictions.addOnChainTx(prediction.id, chainResult.signature);
-        result.prediction.onChainTx = chainResult.signature;
+      if (chainResult.success && chainResult.memoTx) {
+        await db.predictions.addOnChainTx(prediction.id, chainResult.memoTx);
+        result.prediction.onChainTx = chainResult.memoTx;
+
+        // Add calibration info to result
+        if (chainResult.calibrationTx) {
+          result.prediction.calibrationTx = chainResult.calibrationTx;
+          result.prediction.forecasterPda = chainResult.forecasterPda;
+          console.log(`[SmartPredict] Calibration tx: ${chainResult.calibrationTx}`);
+        } else if (chainResult.error) {
+          console.warn(`[SmartPredict] Calibration partial: ${chainResult.error}`);
+        }
       }
     } catch (chainError) {
       console.warn('[SmartPredict] On-chain commit failed:', chainError);

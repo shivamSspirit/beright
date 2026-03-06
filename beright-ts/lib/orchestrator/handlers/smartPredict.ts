@@ -66,7 +66,7 @@ export const smartPredictHandler: CommandHandler<SmartPredictResult> = {
 
     try {
       const args = context.arguments || [];
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // If no args or just a query, search for markets
       if (args.length === 0) {

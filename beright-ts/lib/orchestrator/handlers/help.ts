@@ -12,7 +12,8 @@ import {
   CommandResult,
 } from '../types';
 import { registerHandler } from './registry';
-import { getVisibleRoutes, getRoutesByCategory, Route } from '../../router/routes.config';
+import { getVisibleRoutes, getRoutesByCategory } from '../../router/routes.config';
+import type { Route } from '../../router/types';
 
 // =============================================================================
 // TYPES
@@ -74,7 +75,7 @@ function getCategoryDisplayName(category: string): string {
 function routeToCommandInfo(route: Route): CommandInfo {
   return {
     command: route.patterns[0] || `/${route.id}`,
-    description: route.description,
+    description: route.description || 'No description available',
     examples: route.examples,
     tier: route.tier,
   };
@@ -106,7 +107,7 @@ export const helpHandler: CommandHandler<HelpResult> = {
     const startTime = Date.now();
 
     try {
-      const rawMessage = context.rawMessage || '';
+      const rawMessage = context.message?.text || '';
       const args = rawMessage.replace(/^\/(help|start|commands)\s*/i, '').trim();
 
       // Get all visible routes

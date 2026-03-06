@@ -70,7 +70,7 @@ export const hotMarketsHandler: CommandHandler<HotMarketsResult> = {
         liquidity: m.liquidity || 0,
         closeDate: m.endDate ? new Date(m.endDate) : undefined,
         url: m.url,
-        ticker: m.marketId,
+        ticker: m.marketId || undefined,
         category: detectCategory(m.title || ''),
       }));
 

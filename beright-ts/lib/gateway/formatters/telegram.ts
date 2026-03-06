@@ -179,20 +179,20 @@ export class TelegramFormatter implements Formatter {
         return this.formatAlert(result, context);
 
       case 'whale':
-        return this.formatWhale(result, context);
+        return this.formatWhaleResult(result, context);
 
       case 'arbitrage':
-        return this.formatArbitrage(result, context);
+        return this.formatArbitrageResult(result, context);
 
       case 'subscribe':
-        return this.formatSubscribe(result, context);
+        return this.formatSubscribeResult(result, context);
 
       // System handlers
       case 'help':
-        return this.formatHelp(result, context);
+        return this.formatHelpResult(result, context);
 
       case 'settings':
-        return this.formatSettings(result, context);
+        return this.formatSettingsResult(result, context);
 
       case 'semantic':
         // Semantic responses come pre-formatted from the semantic orchestrator
@@ -1559,6 +1559,8 @@ export class TelegramFormatter implements Formatter {
         probability: number;
         marketTicker?: string;
         onChainTx?: string;
+        calibrationTx?: string;
+        forecasterPda?: string;
       };
       matchedMarket?: {
         ticker: string;
@@ -1582,8 +1584,14 @@ export class TelegramFormatter implements Formatter {
     text += `🎯 Direction: ${data.prediction.direction}\n`;
     text += `📈 Probability: ${(data.prediction.probability * 100).toFixed(0)}%\n`;
 
+    // Show on-chain transaction info
     if (data.prediction.onChainTx) {
-      text += `⛓️ On-Chain: \`${data.prediction.onChainTx.slice(0, 12)}...\`\n`;
+      text += `\n⛓️ *ON-CHAIN COMMITMENT*\n`;
+      text += `Memo TX: \`${data.prediction.onChainTx.slice(0, 12)}...\`\n`;
+      if (data.prediction.calibrationTx) {
+        text += `Calibration TX: \`${data.prediction.calibrationTx.slice(0, 12)}...\`\n`;
+        text += `[View on Solscan](https://solscan.io/tx/${data.prediction.calibrationTx}?cluster=devnet)\n`;
+      }
     }
 
     if (data.matchedMarket) {
@@ -2458,7 +2466,7 @@ export class TelegramFormatter implements Formatter {
   /**
    * Format whale result
    */
-  private formatWhale(result: CommandResult, _context: CommandContext): FormattedResponse {
+  private formatWhaleResult(result: CommandResult, _context: CommandContext): FormattedResponse {
     const data = result.data as {
       timestamp: string;
       mode: 'scan' | 'check' | 'add';
@@ -2551,9 +2559,9 @@ export class TelegramFormatter implements Formatter {
   }
 
   /**
-   * Format arbitrage result
+   * Format arbitrage result from CommandResult
    */
-  private formatArbitrage(result: CommandResult, _context: CommandContext): FormattedResponse {
+  private formatArbitrageResult(result: CommandResult, _context: CommandContext): FormattedResponse {
     const data = result.data as {
       timestamp: string;
       query?: string;
@@ -2623,7 +2631,7 @@ export class TelegramFormatter implements Formatter {
   /**
    * Format subscribe result
    */
-  private formatSubscribe(result: CommandResult, _context: CommandContext): FormattedResponse {
+  private formatSubscribeResult(result: CommandResult, _context: CommandContext): FormattedResponse {
     const data = result.data as {
       timestamp: string;
       action: 'subscribe' | 'unsubscribe' | 'update' | 'status';
@@ -2730,7 +2738,7 @@ export class TelegramFormatter implements Formatter {
   /**
    * Format help result
    */
-  private formatHelp(result: CommandResult, _context: CommandContext): FormattedResponse {
+  private formatHelpResult(result: CommandResult, _context: CommandContext): FormattedResponse {
     const data = result.data as {
       timestamp: string;
       mode: 'overview' | 'category' | 'command';
@@ -2842,7 +2850,7 @@ export class TelegramFormatter implements Formatter {
   /**
    * Format settings result
    */
-  private formatSettings(result: CommandResult, _context: CommandContext): FormattedResponse {
+  private formatSettingsResult(result: CommandResult, _context: CommandContext): FormattedResponse {
     const data = result.data as {
       timestamp: string;
       action: 'view' | 'update';

@@ -73,7 +73,7 @@ export const positionsHandler: CommandHandler<PositionsResult> = {
 
     try {
       // Check authentication
-      if (!context.user?.id) {
+      if (!context.userId) {
         return {
           success: false,
           error: {
@@ -97,7 +97,7 @@ export const positionsHandler: CommandHandler<PositionsResult> = {
       }
 
       // Get or create wallet to get public key
-      const { publicKey, isNew } = getOrCreateWallet(context.user.id);
+      const { publicKey, isNew } = getOrCreateWallet(context.userId);
 
       if (isNew) {
         return {
@@ -126,7 +126,7 @@ export const positionsHandler: CommandHandler<PositionsResult> = {
       }
 
       // Get positions using existing skill
-      const skillResponse = await getPositions(context.user.id);
+      const skillResponse = await getPositions(context.userId);
 
       if (skillResponse.mood === 'ERROR') {
         return {

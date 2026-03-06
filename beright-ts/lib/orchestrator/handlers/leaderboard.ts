@@ -109,7 +109,7 @@ export const leaderboardHandler: CommandHandler<LeaderboardResult> = {
 
     try {
       // Get current user ID
-      const currentUserId = context.chatId?.toString() || 'anonymous';
+      const currentUserId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Parse category from arguments
       const categoryArg = context.arguments?.[0]?.toLowerCase();

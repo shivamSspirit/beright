@@ -449,6 +449,361 @@ data: {"type":"WHALE","wallet":"8yKZ...","action":"BUY YES","amount":"$45,000"}`
 }`,
     },
   },
+
+  // ============ V2 API ENDPOINTS ============
+
+  // V2 Analyst
+  {
+    id: 'v2-analyst',
+    method: 'POST',
+    path: '/api/v2/analyst',
+    title: 'Superforecaster Analysis',
+    description: 'Get AI-powered superforecaster analysis for any market. Uses structured reasoning with base rates, evidence weighting, and calibrated probability estimates.',
+    category: 'V2 - Analyst',
+    params: [
+      { name: 'marketId', type: 'string', required: true, description: 'Market ID to analyze' },
+      { name: 'question', type: 'string', required: false, description: 'Or provide a custom question' },
+      { name: 'depth', type: 'string', required: false, description: 'Analysis depth: quick, standard, deep (default: standard)' },
+      { name: 'includeNews', type: 'boolean', required: false, description: 'Include recent news analysis (default: true)' },
+    ],
+    response: 'Structured analysis with probability estimate and reasoning chain',
+    example: {
+      request: `curl -X POST "https://beright.io/api/v2/analyst" \\
+  -H "Content-Type: application/json" \\
+  -d '{"marketId": "btc-100k-march"}'`,
+      response: `{
+  "market": {
+    "id": "btc-100k-march",
+    "question": "Bitcoin above $100K by March 2026?"
+  },
+  "analysis": {
+    "modelProbability": 0.68,
+    "marketProbability": 0.72,
+    "edge": -0.04,
+    "confidence": 0.75,
+    "reasoning": {
+      "baseRate": {
+        "estimate": 0.55,
+        "source": "Historical Q1 BTC performance"
+      },
+      "evidence": [
+        { "item": "ETF inflows at record highs", "impact": "bullish" },
+        { "item": "Fed dovish pivot signals", "impact": "bullish" },
+        { "item": "Mining difficulty ATH", "impact": "neutral" }
+      ],
+      "contrarian": "Excessive bullish sentiment often precedes corrections"
+    },
+    "recommendation": "HOLD"
+  },
+  "generatedAt": "2026-02-28T10:30:00Z"
+}`,
+    },
+  },
+
+  // V2 Execution Quote
+  {
+    id: 'v2-execution-quote',
+    method: 'GET',
+    path: '/api/v2/execution/quote',
+    title: 'Get Execution Quote',
+    description: 'Get best execution quote across all platforms (Polymarket, Kalshi, DFlow). Returns optimal routing with expected slippage and fees.',
+    category: 'V2 - Execution',
+    params: [
+      { name: 'marketId', type: 'string', required: true, description: 'Unified market ID' },
+      { name: 'side', type: 'string', required: true, description: 'Trade side: YES or NO' },
+      { name: 'amount', type: 'number', required: true, description: 'Trade amount in USD' },
+    ],
+    response: 'Execution quote with best route and price breakdown',
+    example: {
+      request: 'curl "https://beright.io/api/v2/execution/quote?marketId=btc-100k&side=YES&amount=500"',
+      response: `{
+  "quote": {
+    "id": "quote_abc123",
+    "marketId": "btc-100k",
+    "side": "YES",
+    "amount": 500,
+    "bestRoute": {
+      "platform": "kalshi",
+      "price": 0.72,
+      "shares": 694.44,
+      "fees": 2.50,
+      "slippage": 0.002
+    },
+    "alternativeRoutes": [
+      {
+        "platform": "polymarket",
+        "price": 0.73,
+        "shares": 684.93,
+        "fees": 0,
+        "slippage": 0.005
+      }
+    ],
+    "totalCost": 502.50,
+    "expectedValue": 694.44,
+    "breakeven": 0.724,
+    "expiresAt": "2026-02-28T10:35:00Z"
+  }
+}`,
+    },
+  },
+
+  // V2 Execution
+  {
+    id: 'v2-execution',
+    method: 'POST',
+    path: '/api/v2/execution',
+    title: 'Execute Trade',
+    description: 'Execute a trade using the smart order router. Supports Kalshi, Polymarket, and DFlow (Solana). Requires authentication.',
+    category: 'V2 - Execution',
+    params: [
+      { name: 'quoteId', type: 'string', required: false, description: 'Quote ID from /quote endpoint' },
+      { name: 'marketId', type: 'string', required: true, description: 'Market to trade' },
+      { name: 'side', type: 'string', required: true, description: 'Trade side: YES or NO' },
+      { name: 'amount', type: 'number', required: true, description: 'Trade amount in USD' },
+      { name: 'platform', type: 'string', required: false, description: 'Force specific platform (optional)' },
+      { name: 'limitPrice', type: 'number', required: false, description: 'Limit price (optional)' },
+    ],
+    response: 'Execution result with transaction details',
+    example: {
+      request: `curl -X POST "https://beright.io/api/v2/execution" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{"marketId": "btc-100k", "side": "YES", "amount": 500}'`,
+      response: `{
+  "execution": {
+    "id": "exec_xyz789",
+    "status": "filled",
+    "marketId": "btc-100k",
+    "side": "YES",
+    "platform": "kalshi",
+    "shares": 694.44,
+    "avgPrice": 0.72,
+    "totalCost": 502.50,
+    "fees": 2.50,
+    "txHash": "0x...",
+    "executedAt": "2026-02-28T10:30:05Z"
+  }
+}`,
+    },
+  },
+
+  // V2 Portfolio
+  {
+    id: 'v2-portfolio',
+    method: 'GET',
+    path: '/api/v2/portfolio',
+    title: 'Portfolio Summary',
+    description: 'Get cross-platform portfolio summary including positions across Polymarket, Kalshi, and DFlow.',
+    category: 'V2 - Portfolio',
+    params: [
+      { name: 'userId', type: 'string', required: false, description: 'User ID (uses authenticated user if not provided)' },
+    ],
+    response: 'Portfolio summary with positions and P&L',
+    example: {
+      request: 'curl "https://beright.io/api/v2/portfolio" -H "Authorization: Bearer YOUR_API_KEY"',
+      response: `{
+  "portfolio": {
+    "totalValue": 12340.50,
+    "totalCost": 10000.00,
+    "unrealizedPnL": 2340.50,
+    "realizedPnL": 1250.00,
+    "pnlPercent": 23.4,
+    "platforms": {
+      "kalshi": { "value": 5200, "positions": 8 },
+      "polymarket": { "value": 4800, "positions": 5 },
+      "dflow": { "value": 2340, "positions": 3 }
+    },
+    "positions": 16,
+    "winRate": 67.2,
+    "lastUpdated": "2026-02-28T10:30:00Z"
+  }
+}`,
+    },
+  },
+
+  // V2 Positions
+  {
+    id: 'v2-positions',
+    method: 'GET',
+    path: '/api/v2/positions',
+    title: 'Open Positions',
+    description: 'Get all open positions across platforms with real-time P&L.',
+    category: 'V2 - Portfolio',
+    params: [
+      { name: 'platform', type: 'string', required: false, description: 'Filter by platform: kalshi, polymarket, dflow' },
+      { name: 'status', type: 'string', required: false, description: 'Filter by status: open, closed, all (default: open)' },
+      { name: 'limit', type: 'number', required: false, description: 'Max results (default: 50)' },
+    ],
+    response: 'Array of positions with current prices and P&L',
+    example: {
+      request: 'curl "https://beright.io/api/v2/positions?status=open" -H "Authorization: Bearer YOUR_API_KEY"',
+      response: `{
+  "positions": [
+    {
+      "id": "pos_123",
+      "marketId": "btc-100k-march",
+      "question": "Bitcoin above $100K by March 2026?",
+      "platform": "kalshi",
+      "side": "YES",
+      "shares": 500,
+      "avgCost": 0.68,
+      "currentPrice": 0.72,
+      "value": 360.00,
+      "cost": 340.00,
+      "pnl": 20.00,
+      "pnlPercent": 5.88,
+      "openedAt": "2026-02-20T14:30:00Z"
+    }
+  ],
+  "count": 16,
+  "totalValue": 12340.50
+}`,
+    },
+  },
+
+  // V2 Performance
+  {
+    id: 'v2-performance',
+    method: 'GET',
+    path: '/api/v2/portfolio/performance',
+    title: 'Performance History',
+    description: 'Get historical P&L performance with daily/weekly/monthly breakdowns.',
+    category: 'V2 - Portfolio',
+    params: [
+      { name: 'period', type: 'string', required: false, description: 'Time period: 7d, 30d, 90d, 1y, all (default: 30d)' },
+      { name: 'granularity', type: 'string', required: false, description: 'Data granularity: daily, weekly, monthly (default: daily)' },
+    ],
+    response: 'Performance history with charts and metrics',
+    example: {
+      request: 'curl "https://beright.io/api/v2/portfolio/performance?period=30d"',
+      response: `{
+  "performance": {
+    "period": "30d",
+    "startValue": 10000.00,
+    "endValue": 12340.50,
+    "pnl": 2340.50,
+    "pnlPercent": 23.4,
+    "sharpeRatio": 1.85,
+    "maxDrawdown": -8.2,
+    "winRate": 67.2,
+    "history": [
+      { "date": "2026-02-01", "value": 10000, "pnl": 0 },
+      { "date": "2026-02-02", "value": 10120, "pnl": 120 },
+      { "date": "2026-02-28", "value": 12340, "pnl": 2340 }
+    ],
+    "byCategory": {
+      "crypto": { "pnl": 1500, "trades": 25 },
+      "politics": { "pnl": 600, "trades": 12 },
+      "sports": { "pnl": 240, "trades": 8 }
+    }
+  }
+}`,
+    },
+  },
+
+  // V2 Risk
+  {
+    id: 'v2-risk',
+    method: 'GET',
+    path: '/api/v2/risk',
+    title: 'Risk Metrics',
+    description: 'Get portfolio risk analysis including concentration, correlation, and drawdown metrics.',
+    category: 'V2 - Risk',
+    params: [],
+    response: 'Risk metrics and alerts',
+    example: {
+      request: 'curl "https://beright.io/api/v2/risk" -H "Authorization: Bearer YOUR_API_KEY"',
+      response: `{
+  "risk": {
+    "overallScore": 65,
+    "level": "moderate",
+    "metrics": {
+      "concentration": {
+        "topPosition": 18.5,
+        "topCategory": 42.0,
+        "herfindahl": 0.15
+      },
+      "correlation": {
+        "avgPairwise": 0.35,
+        "cryptoExposure": 0.62
+      },
+      "drawdown": {
+        "current": -2.1,
+        "max30d": -8.2,
+        "max90d": -12.5
+      },
+      "volatility": {
+        "daily": 2.8,
+        "weekly": 6.2
+      }
+    },
+    "alerts": [
+      {
+        "type": "concentration",
+        "severity": "warning",
+        "message": "Crypto exposure at 62% - consider diversifying"
+      }
+    ],
+    "recommendations": [
+      "Consider reducing BTC-100K position size",
+      "Add uncorrelated political markets for diversification"
+    ]
+  }
+}`,
+    },
+  },
+
+  // V2 Signals Stream
+  {
+    id: 'v2-signals-stream',
+    method: 'GET',
+    path: '/api/v2/signals/stream',
+    title: 'V2 Signals Stream (SSE)',
+    description: 'Real-time signal stream with whale activity, arbitrage opportunities, price momentum, and news catalysts.',
+    category: 'V2 - Real-time',
+    params: [
+      { name: 'types', type: 'string', required: false, description: 'Filter by signal types (comma-separated): WHALE_BET, ARB_OPPORTUNITY, PRICE_MOMENTUM, NEWS_CATALYST, VOLUME_SPIKE' },
+      { name: 'minConfidence', type: 'number', required: false, description: 'Minimum confidence threshold (0-1, default: 0.5)' },
+    ],
+    response: 'SSE stream of trading signals',
+    example: {
+      request: 'curl -N "https://beright.io/api/v2/signals/stream?types=WHALE_BET,ARB_OPPORTUNITY"',
+      response: `event: connected
+data: {"status":"connected","detectors":6,"timestamp":"2026-02-28T10:30:00Z"}
+
+event: signal
+data: {
+  "type": "WHALE_BET",
+  "confidence": 0.85,
+  "urgency": "high",
+  "title": "🐋 $25.4K YES on Bitcoin above $100K",
+  "market": { "id": "btc-100k", "platform": "kalshi" },
+  "data": {
+    "wallet": "7xKZ...",
+    "amount": 25400,
+    "direction": "YES",
+    "isSmartMoney": true
+  }
+}
+
+event: signal
+data: {
+  "type": "ARB_OPPORTUNITY",
+  "confidence": 0.92,
+  "urgency": "critical",
+  "title": "💰 8.5% arb on Fed rate decision",
+  "market": { "id": "fed-march-cut" },
+  "data": {
+    "spread": 8.5,
+    "buyPlatform": "kalshi",
+    "sellPlatform": "polymarket"
+  }
+}
+
+event: heartbeat
+data: {"timestamp":"2026-02-28T10:30:30Z"}`,
+    },
+  },
 ];
 
 const CATEGORIES = [...new Set(API_ENDPOINTS.map(ep => ep.category))];

@@ -60,7 +60,7 @@ export const compareHandler: CommandHandler<CompareResult> = {
 
     try {
       // Get user ID from context
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Get comparison report
       const report = await compareUserPredictions(userId);

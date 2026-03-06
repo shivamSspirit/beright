@@ -43,7 +43,7 @@ export const walletHandler: CommandHandler<WalletResult> = {
 
     try {
       // Get user ID
-      const userId = context.chatId?.toString() || context.user?.id;
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || context.userId;
 
       if (!userId) {
         return {

@@ -51,7 +51,7 @@ export const pnlHandler: CommandHandler<PnlResult> = {
 
     try {
       // Get user ID from context
-      const telegramId = context.chatId?.toString() || 'anonymous';
+      const telegramId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Parse days from arguments (default 7)
       const daysArg = context.arguments?.[0];

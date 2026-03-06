@@ -36,6 +36,8 @@ export interface PredictResult {
     probability: number;
     marketTicker?: string;
     onChainTx?: string;
+    calibrationTx?: string;
+    forecasterPda?: string;
   };
   matchedMarket?: MarketMatch;
   alternatives?: MarketMatch[];
@@ -87,7 +89,7 @@ export const predictHandler: CommandHandler<PredictResult> = {
       const probability = parseFloat(args[1]) / 100; // Convert 65 -> 0.65
       const direction = args[2].toUpperCase() as 'YES' | 'NO';
       const reasoning = args.slice(3).join(' ') || undefined;
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Validate inputs
       if (isNaN(probability) || probability < 0.01 || probability > 0.99) {
@@ -137,7 +139,36 @@ export const predictHandler: CommandHandler<PredictResult> = {
         throw new Error('Prediction failed - no data returned');
       }
 
-      const data = response.data;
+      // Type assertion for the prediction response data
+      const data = response.data as {
+        prediction?: {
+          id?: string;
+          onChainTx?: string;
+          calibrationTx?: string;
+          forecasterPda?: string;
+        };
+        matchedMarket?: {
+          ticker: string;
+          title: string;
+          yesPrice: number;
+          noPrice: number;
+          similarity: number;
+          closeTime?: string;
+        };
+        alternatives?: Array<{
+          ticker: string;
+          title: string;
+          yesPrice: number;
+          noPrice: number;
+          similarity: number;
+          closeTime?: string;
+        }>;
+        intelligence?: {
+          baseRate: number;
+          recommendedRange: { low: number; high: number };
+          biasWarnings: string[];
+        };
+      };
 
       const result: PredictResult = {
         timestamp: new Date().toISOString(),
@@ -148,6 +179,8 @@ export const predictHandler: CommandHandler<PredictResult> = {
           probability,
           marketTicker: data.matchedMarket?.ticker,
           onChainTx: data.prediction?.onChainTx,
+          calibrationTx: data.prediction?.calibrationTx,
+          forecasterPda: data.prediction?.forecasterPda,
         },
         matchedMarket: data.matchedMarket ? {
           ticker: data.matchedMarket.ticker,

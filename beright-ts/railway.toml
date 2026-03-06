@@ -1,0 +1,22 @@
+# Railway Deployment Configuration
+# Deploy: railway up
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Environment variables to set in Railway dashboard:
+# - TELEGRAM_BOT_TOKEN
+# - GROQ_API_KEY
+# - GEMINI_API_KEY (optional)
+# - ANTHROPIC_API_KEY (optional)
+# - TAVILY_API_KEY (optional)
+# - SUPABASE_URL (optional)
+# - SUPABASE_SERVICE_KEY (optional)

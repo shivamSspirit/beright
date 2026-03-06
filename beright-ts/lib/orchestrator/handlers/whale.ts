@@ -75,7 +75,7 @@ export const whaleHandler: CommandHandler<WhaleResult> = {
     const startTime = Date.now();
 
     try {
-      const rawMessage = context.rawMessage || '';
+      const rawMessage = context.message?.text || '';
       const args = rawMessage.replace(/^\/whale\s*/i, '').trim();
 
       // Check specific wallet: /whale check <address>
@@ -84,11 +84,17 @@ export const whaleHandler: CommandHandler<WhaleResult> = {
         const address = checkMatch[1];
         const response = await checkWallet(address);
 
+        // Type assertion for response data
+        const walletData = response.data as {
+          balance?: { sol: number; usdc: number };
+          txs?: any[]
+        } | undefined;
+
         // Parse wallet data from response
         const walletInfo: WalletInfo = {
           address,
-          balance: response.data?.balance || null,
-          recentTransactions: (response.data?.txs || [])
+          balance: walletData?.balance || null,
+          recentTransactions: (walletData?.txs || [])
             .filter((tx: any) => tx)
             .slice(0, 5)
             .map((tx: any) => ({

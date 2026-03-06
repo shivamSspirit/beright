@@ -59,7 +59,7 @@ export const arbitrageHandler: CommandHandler<ArbitrageResult> = {
 
     try {
       // Parse query from args
-      const rawMessage = context.rawMessage || '';
+      const rawMessage = context.message?.text || '';
       const query = rawMessage.replace(/^\/(arb|arbitrage|spread)\s*/i, '').trim() || undefined;
 
       // Run arbitrage scan

@@ -77,7 +77,7 @@ export const feedbackHandler: CommandHandler<FeedbackResult> = {
     const startTime = Date.now();
 
     try {
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
 
       // Generate feedback report
       const report = await generateFeedback(userId);

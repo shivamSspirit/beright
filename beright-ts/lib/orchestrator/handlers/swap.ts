@@ -85,7 +85,7 @@ export const swapHandler: CommandHandler<SwapResult> = {
       const amount = parseFloat(amountStr) || 0;
 
       // Check for --execute flag
-      const shouldExecute = context.rawMessage?.includes('--execute') ||
+      const shouldExecute = context.message?.text?.includes('--execute') ||
                             context.params.execute === true;
 
       // Validate inputs

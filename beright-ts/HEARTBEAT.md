@@ -3,17 +3,48 @@
 *This file is read by the OpenClaw heartbeat mechanism every 30 minutes.*
 *The agent uses this to determine what needs attention.*
 
+**Last Updated:** 2026-02-28T18:39:02.076Z
+**System Health:** ACTIVE
+
 ## Current Focus
 
 No active goals. Consider generating proactive opportunities.
 
-## Pending Signals (0)
+## Pending Signals (3)
 
-No pending signals.
+- [volume_surge] Will Mark Cuban be the Democratic Presidential nom... (strength: 100%)
+- [volume_surge] Will Jon Stewart be the Democratic Presidential no... (strength: 100%)
+- [volume_surge] Will Gretchen Whitmer be the Democratic Presidenti... (strength: 100%)
 
 ## Active Goals (0)
 
 No active goals.
+
+## Heartbeat Metrics
+
+| Metric | Value |
+|--------|-------|
+| Total Scans | 112 |
+| Arbs Found | 111 |
+| Pro Arb Alerts | 0 |
+| Whale Alerts | 0 |
+| Cognitive Cycles | 115 |
+| Signal Alerts | 0 |
+| Builder Runs | 58 |
+
+## Calibration
+
+- **Brier Score:** 0.000 (Good)
+- **Accuracy:** 0.0%
+- **Predictions:** 0
+
+## Goal Statistics
+
+- Total Created: 0
+- Achieved: 0
+- Failed: 0
+- Abandoned: 0
+- Current Active: 0
 
 ## Instructions for Heartbeat
 
@@ -57,25 +88,24 @@ Generate an alert (don't return HEARTBEAT_OK) if:
 
 ### Scout Agent
 - Role: Fast market scanning, arbitrage detection
-- Status: idle
-- Current Goals: 0
+- Status: active
+- Last Scan: 2026-02-28T18:38:06.303Z
 
 ### Analyst Agent
 - Role: Deep research, probability estimation
-- Status: idle
-- Current Goals: 0
+- Status: active
+- Last Run: 2026-02-28T18:38:09.055Z
 
 ### Trader Agent
 - Role: Trade execution, risk management
 - Status: idle
-- Current Goals: 0
+- Last Check: never
 
-### Orchestrator
-- Role: Coordination, planning, conflict resolution
-- Status: idle
-- Current Goals: 0
+### Builder Agent
+- Role: Autonomous code generation
+- Status: active
+- Last Build: 2026-02-28T18:32:09.267Z
 
 ---
 
-*Updated automatically by the cognitive loop.*
-*Last update: (will be populated by system)*
+*Updated automatically by the heartbeat system.*

@@ -67,9 +67,10 @@ export const subscribeHandler: CommandHandler<SubscribeResult> = {
     const startTime = Date.now();
 
     try {
-      const userId = context.chatId?.toString() || 'anonymous';
-      const username = context.user?.username;
-      const rawMessage = context.rawMessage || '';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
+      // Username is not available in the gateway context, use userId instead
+      const username = context.userId || undefined;
+      const rawMessage = context.message?.text || '';
 
       // Check if this is an unsubscribe command
       const isUnsubscribe = rawMessage.toLowerCase().startsWith('/unsubscribe');

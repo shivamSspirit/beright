@@ -73,7 +73,7 @@ export const learningsHandler: CommandHandler<LearningsResult> = {
     const startTime = Date.now();
 
     try {
-      const userId = context.chatId?.toString() || 'anonymous';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
       const limit = context.arguments?.[0] ? parseInt(context.arguments[0]) : 50;
 
       // Generate learning report

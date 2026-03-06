@@ -59,8 +59,8 @@ export const settingsHandler: CommandHandler<SettingsResult> = {
     const startTime = Date.now();
 
     try {
-      const userId = context.chatId?.toString() || 'anonymous';
-      const rawMessage = context.rawMessage || '';
+      const userId = context.userId || context.gatewayContext?.chatId?.toString() || 'anonymous';
+      const rawMessage = context.message?.text || '';
       const args = rawMessage.replace(/^\/(settings|config|preferences)\s*/i, '').trim();
 
       // Get current profile
