@@ -12,6 +12,7 @@ import { DataFabricProvider } from '../types';
 import { polymarketProvider } from './polymarket';
 import { kalshiProvider } from './kalshi';
 import { manifoldProvider } from './manifold';
+import { jupiterProvider } from './jupiter';
 
 // =============================================================================
 // PROVIDER REGISTRY
@@ -24,6 +25,7 @@ export const providers: Record<DataPlatform, DataFabricProvider | null> = {
   polymarket: polymarketProvider,
   kalshi: kalshiProvider,
   manifold: manifoldProvider,
+  jupiter: jupiterProvider,  // Aggregates Polymarket + Kalshi on Solana
   // Not yet implemented - will be added
   limitless: null,
   metaculus: null,
@@ -95,3 +97,4 @@ export async function checkAllProvidersHealth(): Promise<Record<DataPlatform, bo
 export { polymarketProvider } from './polymarket';
 export { kalshiProvider } from './kalshi';
 export { manifoldProvider } from './manifold';
+export { jupiterProvider } from './jupiter';

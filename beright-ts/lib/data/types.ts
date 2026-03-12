@@ -29,7 +29,8 @@ export type DataPlatform =
   | 'sxbet'
   | 'myriad'
   | 'baozi'
-  | 'probable';
+  | 'probable'
+  | 'jupiter';  // Jupiter Prediction Markets (aggregates Polymarket + Kalshi on Solana)
 
 /**
  * Data source type - where the data came from
@@ -476,6 +477,15 @@ export const PLATFORM_CONFIGS: Record<DataPlatform, PlatformConfig> = {
     hasOrderbook: false,
     apiLatencyMs: 150,
     accuracy: 0.70,
+  },
+  jupiter: {
+    name: 'jupiter',
+    displayName: 'Jupiter Prediction',
+    fee: 0,              // Zero payout fees - winners get full $1/contract
+    hasWebSocket: false, // REST API only for now
+    hasOrderbook: true,  // Has full orderbook via keeper network
+    apiLatencyMs: 100,   // Solana-based, fast
+    accuracy: 0.75,      // Aggregates Polymarket + Kalshi
   },
 };
 

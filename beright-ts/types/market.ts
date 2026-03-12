@@ -3,7 +3,7 @@
  * Standardized interfaces for prediction market data
  */
 
-export type Platform = 'polymarket' | 'kalshi' | 'limitless' | 'manifold' | 'metaculus';
+export type Platform = 'polymarket' | 'kalshi' | 'limitless' | 'manifold' | 'metaculus' | 'jupiter';
 
 /**
  * On-chain data for tokenized markets (Solana SPL tokens)

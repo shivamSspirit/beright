@@ -431,6 +431,192 @@ export const TRADER_TOOLS: TraderTool[] = [
     },
   },
   {
+    name: 'execute_jupiter_trade',
+    description: 'Execute a trade via Jupiter Prediction Markets (Solana). Jupiter aggregates Polymarket + Kalshi with zero payout fees. Returns unsigned transaction for wallet signing. Use when user wants to trade on Jupiter or wants best execution on Solana.',
+    parameters: {
+      type: 'object',
+      properties: {
+        marketId: { type: 'string', description: 'Jupiter market ID to trade' },
+        direction: { type: 'string', description: 'Trade direction: YES or NO' },
+        amountUsd: { type: 'number', description: 'Amount to trade in USD' },
+        walletPubkey: { type: 'string', description: 'User Solana wallet public key' },
+      },
+      required: ['marketId', 'direction', 'amountUsd', 'walletPubkey'],
+    },
+    execute: async (params) => {
+      const { createOrder, getMarket, microUsdToUsd } = await import('../../lib/jupiter/prediction');
+
+      // First get market info
+      const marketResponse = await getMarket(params.marketId);
+      if (!marketResponse.success || !marketResponse.data) {
+        return {
+          success: false,
+          error: `Market not found: ${params.marketId}`,
+        };
+      }
+
+      const market = marketResponse.data;
+      const price = params.direction === 'YES'
+        ? microUsdToUsd(market.pricing.buyYesPriceUsd)
+        : microUsdToUsd(market.pricing.buyNoPriceUsd);
+
+      // Create order (returns unsigned transaction)
+      const orderResponse = await createOrder({
+        marketId: params.marketId,
+        side: params.direction as 'YES' | 'NO',
+        amountUsd: params.amountUsd,
+        userPubkey: params.walletPubkey,
+      });
+
+      if (!orderResponse.success || !orderResponse.data) {
+        return {
+          success: false,
+          error: orderResponse.error || 'Failed to create Jupiter order',
+        };
+      }
+
+      const order = orderResponse.data;
+      const contracts = parseInt(order.order.contracts);
+      const totalCost = microUsdToUsd(order.order.totalCostUsd);
+
+      return {
+        success: true,
+        requiresWalletSign: true,
+        trade: {
+          market: market.title,
+          marketId: params.marketId,
+          provider: market.provider, // 'polymarket' or 'kalshi'
+          direction: params.direction,
+          amount: `$${params.amountUsd.toFixed(2)}`,
+          price: `${(price * 100).toFixed(1)}¢`,
+          contracts: contracts,
+          totalCost: `$${totalCost.toFixed(2)}`,
+        },
+        transaction: {
+          base64: order.transaction,
+          blockhash: order.txMeta.blockhash,
+          lastValidBlockHeight: order.txMeta.lastValidBlockHeight,
+        },
+        orderDetails: {
+          orderPubkey: order.order.orderPubkey,
+          positionPubkey: order.order.positionPubkey,
+        },
+        benefits: [
+          'Zero payout fees - winners get full $1/contract',
+          'On-chain settlement on Solana',
+          'Aggregated Polymarket + Kalshi liquidity',
+        ],
+        note: 'Sign this transaction with your Solana wallet to execute the trade.',
+        warning: order.warning,
+      };
+    },
+  },
+  {
+    name: 'get_jupiter_positions',
+    description: 'Get user positions on Jupiter Prediction Markets. Shows open positions, P&L, and claimable winnings. Use when user asks about their Jupiter positions or wants to claim winnings.',
+    parameters: {
+      type: 'object',
+      properties: {
+        walletPubkey: { type: 'string', description: 'User Solana wallet public key' },
+      },
+      required: ['walletPubkey'],
+    },
+    execute: async (params) => {
+      const { getPositions, getPortfolioSummary, microUsdToUsd } = await import('../../lib/jupiter/prediction');
+
+      // Get positions
+      const positionsResponse = await getPositions(params.walletPubkey);
+      if (!positionsResponse.success) {
+        return {
+          success: false,
+          error: positionsResponse.error || 'Failed to fetch Jupiter positions',
+        };
+      }
+
+      // Get portfolio summary
+      const summaryResponse = await getPortfolioSummary(params.walletPubkey);
+
+      const positions = (positionsResponse.data || []).map(p => ({
+        positionPubkey: p.positionPubkey,
+        marketId: p.marketId,
+        marketTitle: p.marketTitle || 'Unknown Market',
+        side: p.isYes ? 'YES' : 'NO',
+        contracts: parseInt(p.contracts),
+        avgPrice: `${(microUsdToUsd(p.avgPriceUsd) * 100).toFixed(1)}¢`,
+        currentValue: p.valueUsd ? `$${microUsdToUsd(p.valueUsd).toFixed(2)}` : 'N/A',
+        pnl: p.pnlUsd ? `${microUsdToUsd(p.pnlUsd) >= 0 ? '+' : ''}$${microUsdToUsd(p.pnlUsd).toFixed(2)}` : 'N/A',
+        pnlPercent: p.pnlPercent || 'N/A',
+        claimable: p.claimable,
+        claimed: p.claimed,
+      }));
+
+      const claimablePositions = positions.filter(p => p.claimable && !p.claimed);
+
+      return {
+        success: true,
+        wallet: params.walletPubkey.slice(0, 8) + '...',
+        summary: summaryResponse.success && summaryResponse.data ? {
+          totalValue: `$${microUsdToUsd(summaryResponse.data.totalValueUsd).toFixed(2)}`,
+          totalPnl: `$${microUsdToUsd(summaryResponse.data.totalPnlUsd).toFixed(2)}`,
+          totalPnlPercent: summaryResponse.data.totalPnlPercent,
+          openPositions: summaryResponse.data.openPositions,
+          claimablePositions: summaryResponse.data.claimablePositions,
+        } : null,
+        positions,
+        claimable: {
+          count: claimablePositions.length,
+          positions: claimablePositions,
+          note: claimablePositions.length > 0
+            ? 'Use claim_jupiter_winnings to claim your winnings!'
+            : 'No claimable positions',
+        },
+      };
+    },
+  },
+  {
+    name: 'claim_jupiter_winnings',
+    description: 'Claim winnings from resolved Jupiter positions. Returns unsigned transaction for wallet signing. Use when user wants to claim winnings from a winning position.',
+    parameters: {
+      type: 'object',
+      properties: {
+        positionPubkey: { type: 'string', description: 'Position public key to claim' },
+        walletPubkey: { type: 'string', description: 'User Solana wallet public key' },
+      },
+      required: ['positionPubkey', 'walletPubkey'],
+    },
+    execute: async (params) => {
+      const { claimWinnings, microUsdToUsd } = await import('../../lib/jupiter/prediction');
+
+      const response = await claimWinnings(params.positionPubkey, params.walletPubkey);
+
+      if (!response.success || !response.data) {
+        return {
+          success: false,
+          error: response.error || 'Failed to create claim transaction',
+        };
+      }
+
+      const claim = response.data;
+      const winnings = microUsdToUsd(claim.claim.winningsUsd);
+
+      return {
+        success: true,
+        requiresWalletSign: true,
+        claim: {
+          positionPubkey: claim.claim.positionPubkey,
+          contracts: parseInt(claim.claim.contracts),
+          winnings: `$${winnings.toFixed(2)}`,
+        },
+        transaction: {
+          base64: claim.transaction,
+          blockhash: claim.txMeta.blockhash,
+          lastValidBlockHeight: claim.txMeta.lastValidBlockHeight,
+        },
+        note: 'Sign this transaction with your Solana wallet to claim your winnings. Zero payout fees - you get the full amount!',
+      };
+    },
+  },
+  {
     name: 'set_alert',
     description: 'Set a price alert for a market. Get notified when a market hits a target price. Use when user wants to be alerted when price reaches a certain level.',
     parameters: {
@@ -556,8 +742,18 @@ You have access to execution tools:
 - find_best_price: Best execution venue for a trade
 - check_risk: Portfolio risk and exposure analysis
 - execute_trade: Place trades with execution mode (standard/fast/jito)
+- execute_jupiter_trade: Trade on Jupiter Prediction (zero fees, aggregated liquidity)
+- get_jupiter_positions: View Jupiter positions and claimable winnings
+- claim_jupiter_winnings: Claim winnings from resolved Jupiter positions
 - set_alert: Price alerts
 - get_execution_stats: Fast execution engine stats and latency metrics
+
+JUPITER PREDICTION MARKETS:
+Jupiter aggregates Polymarket + Kalshi liquidity on Solana with:
+- Zero payout fees (winners get full $1/contract)
+- On-chain settlement
+- Single API for both platforms
+Use Jupiter for best execution when user wants to trade on Solana.
 
 HOW TO RESPOND:
 1. Understand the trading action requested

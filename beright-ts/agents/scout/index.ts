@@ -50,6 +50,7 @@ export const SCOUT_CONFIG = {
     manifold: 'https://api.manifold.markets/v0',
     limitless: 'https://api.limitless.exchange',
     metaculus: 'https://www.metaculus.com/api2',
+    jupiter: 'https://api.jup.ag/prediction/v1',  // Aggregates Polymarket + Kalshi on Solana
   },
 
   // Thresholds
@@ -178,6 +179,62 @@ export const SCOUT_TOOLS: ScoutTool[] = [
       return await whaleWatch();
     },
   },
+  {
+    name: 'get_jupiter_markets',
+    description: 'Get prediction markets from Jupiter (aggregated Polymarket + Kalshi liquidity on Solana). Best for finding markets with real on-chain liquidity, zero payout fees. Use when user asks about Jupiter markets, Solana prediction markets, or wants aggregated Polymarket/Kalshi data.',
+    parameters: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'Optional category filter: crypto, sports, politics, economics, entertainment, science, technology, world' },
+        limit: { type: 'number', description: 'Maximum number of markets to return (default: 20)' },
+      },
+    },
+    execute: async (params) => {
+      const { getHotEvents, getActiveMarkets } = await import('../../lib/jupiter/prediction');
+
+      // Fetch hot events with markets
+      const response = await getHotEvents(params.limit || 20);
+
+      if (!response.success || !response.data) {
+        return { error: response.error || 'Failed to fetch Jupiter markets', markets: [] };
+      }
+
+      // Flatten markets from events
+      const markets: Array<{
+        marketId: string;
+        title: string;
+        yesPrice: number;
+        noPrice: number;
+        volume: number;
+        provider: string;
+        status: string;
+      }> = [];
+
+      for (const event of response.data) {
+        if (event.markets) {
+          for (const market of event.markets) {
+            const { microUsdToUsd } = await import('../../lib/jupiter/types');
+            markets.push({
+              marketId: market.marketId,
+              title: market.title,
+              yesPrice: microUsdToUsd(market.pricing.buyYesPriceUsd),
+              noPrice: microUsdToUsd(market.pricing.buyNoPriceUsd),
+              volume: market.pricing.volume ? parseFloat(market.pricing.volume) : 0,
+              provider: market.provider, // 'polymarket' or 'kalshi'
+              status: market.status,
+            });
+          }
+        }
+      }
+
+      return {
+        markets: markets.slice(0, params.limit || 20),
+        count: markets.length,
+        source: 'jupiter',
+        note: 'Zero payout fees - winners get full $1/contract',
+      };
+    },
+  },
 ];
 
 // ============================================================================
@@ -198,6 +255,7 @@ You have access to tools that fetch REAL data from REAL APIs:
 - get_news: Market-moving intelligence
 - get_tokenized_markets: On-chain tradeable (Solana)
 - track_whales: Large position tracking
+- get_jupiter_markets: Jupiter aggregated markets (Polymarket + Kalshi on Solana, zero fees)
 
 HOW TO RESPOND:
 1. Understand what the user wants (in natural language)
@@ -211,7 +269,7 @@ RESPONSE FORMAT:
 - Show prices as percentages (e.g., "YES: 65%")
 - Show volume in human-readable format ($10K, $1.2M)
 - Flag high-volume markets (🔴 >$100K, 🟡 >$10K, 🟢 <$10K)
-- Platform emojis: 🟣 Polymarket, 🔵 Kalshi, 🟡 Manifold, 🟢 Limitless, 🔴 Metaculus
+- Platform emojis: 🟣 Polymarket, 🔵 Kalshi, 🟡 Manifold, 🟢 Limitless, 🔴 Metaculus, 🪐 Jupiter
 
 EXAMPLES OF USER QUERIES YOU HANDLE:
 - "find me the hot market opportunity in the current prediction market"
@@ -221,6 +279,7 @@ EXAMPLES OF USER QUERIES YOU HANDLE:
 - "compare Bitcoin ETF approval odds"
 - "what news could move markets today"
 - "show me tokenized markets I can trade on Solana"
+- "show me Jupiter markets" (aggregated Polymarket + Kalshi with zero fees)
 
 You are autonomous. You understand natural language. You decide what to do.
 
@@ -453,13 +512,14 @@ Respond with just the synthesized message, no JSON or extra formatting.`;
 // HELPERS
 // ============================================================================
 
-function getPlatformEmoji(platform: Platform): string {
-  const emojis: Record<Platform, string> = {
+function getPlatformEmoji(platform: Platform | 'jupiter'): string {
+  const emojis: Record<string, string> = {
     polymarket: '🟣',
     kalshi: '🔵',
     manifold: '🟡',
     limitless: '🟢',
     metaculus: '🔴',
+    jupiter: '🪐',
   };
   return emojis[platform] || '⚪';
 }
