@@ -34,7 +34,8 @@ interface PortfolioData {
   }>;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+// Use relative path - Next.js rewrites will proxy to backend
+const BACKEND_URL = '';
 
 /**
  * PortfolioPanel - Bloomberg-style portfolio overview

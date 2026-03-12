@@ -2,6 +2,12 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import {
+  extractReferralCode,
+  storeReferralAttribution,
+  getReferralAttribution,
+  generateReferralCode,
+} from '@/lib/referral';
 
 interface UserProfile {
   id: string;
@@ -36,6 +42,7 @@ interface UserContextType {
   linkTelegram: (telegramId: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshUser: () => Promise<void>; // Alias for refreshProfile
+  referralCode: string | null; // User's own referral code
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -45,6 +52,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { wallets } = useWallets();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Track referral on initial page load
+  useEffect(() => {
+    const refCode = extractReferralCode();
+    if (refCode) {
+      storeReferralAttribution(refCode);
+    }
+  }, []);
 
   // Get wallet address - prioritize external wallets over embedded wallets
   // External wallets: Phantom, Backpack, Solflare, etc.
@@ -106,6 +121,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       const API_BASE = ''; // Use relative paths for Next.js rewrites
 
+      // Get referral attribution if exists
+      const referralAttribution = getReferralAttribution();
+
       // Try to get existing profile
       const res = await fetch(`${API_BASE}/api/users/profile`, {
         method: 'POST',
@@ -115,6 +133,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           walletAddress,
           email: privyUser?.email?.address,
           phone: privyUser?.phone?.number,
+          referredBy: referralAttribution?.code || null,
         }),
       });
 
@@ -204,6 +223,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Generate user's own referral code
+  const referralCode = walletAddress ? generateReferralCode(walletAddress) : null;
+
   return (
     <UserContext.Provider
       value={{
@@ -216,6 +238,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         linkTelegram,
         refreshProfile,
         refreshUser: refreshProfile, // Alias
+        referralCode,
       }}
     >
       {children}

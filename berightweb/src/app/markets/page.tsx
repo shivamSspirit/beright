@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useBackendStatus } from '@/hooks/useMarkets';
 import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData } from '@/lib/api';
-import BottomNav from '@/components/BottomNav';
 import TradingModal from '@/components/TradingModal';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -816,8 +815,6 @@ export default function MarketsPage() {
           </>
         )}
       </main>
-
-      <BottomNav />
 
       {/* Trading Modal */}
       {tradingMarket && tradingMarket.dflow && (

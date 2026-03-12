@@ -294,6 +294,58 @@ function extractQuery(text: string, command: string): string {
 }
 
 /**
+ * Expand short queries into more useful research questions
+ * Short tokens like "sol", "btc", "eth" need context for better research
+ */
+function expandResearchQuery(query: string): string {
+  const trimmed = query.trim();
+
+  // If already long enough, return as-is
+  if (trimmed.length >= 10) return trimmed;
+
+  // Token/ticker expansions
+  const tokenExpansions: Record<string, string> = {
+    'sol': 'Solana SOL prediction markets and price forecasts',
+    'btc': 'Bitcoin BTC prediction markets and price forecasts',
+    'eth': 'Ethereum ETH prediction markets and price forecasts',
+    'xrp': 'Ripple XRP prediction markets and price forecasts',
+    'doge': 'Dogecoin DOGE prediction markets and price forecasts',
+    'trump': 'Donald Trump prediction markets and election odds',
+    'biden': 'Joe Biden prediction markets and political odds',
+    'fed': 'Federal Reserve interest rate prediction markets',
+    'ai': 'Artificial Intelligence AI prediction markets and forecasts',
+    'nvidia': 'Nvidia stock prediction markets and price forecasts',
+    'apple': 'Apple stock prediction markets and price forecasts',
+    'google': 'Google Alphabet prediction markets and forecasts',
+    'tesla': 'Tesla prediction markets and price forecasts',
+    'war': 'War and conflict prediction markets and geopolitical odds',
+    'crypto': 'Cryptocurrency prediction markets and price forecasts',
+    'stocks': 'Stock market prediction markets and forecasts',
+    'election': 'Election prediction markets and political odds',
+    'weather': 'Weather and climate prediction markets',
+    'sports': 'Sports betting and prediction markets',
+    'nba': 'NBA basketball prediction markets and odds',
+    'nfl': 'NFL football prediction markets and odds',
+    'mlb': 'MLB baseball prediction markets and odds',
+    'f1': 'Formula 1 racing prediction markets and odds',
+  };
+
+  const lowerQuery = trimmed.toLowerCase();
+
+  // Check for exact match first
+  if (tokenExpansions[lowerQuery]) {
+    return tokenExpansions[lowerQuery];
+  }
+
+  // For short queries (< 10 chars), add context
+  if (trimmed.length < 10) {
+    return `${trimmed} prediction markets forecasts and odds`;
+  }
+
+  return trimmed;
+}
+
+/**
  * Detect if text looks like a legitimate market/topic query
  * vs random text, greetings, or system requests
  */
@@ -3212,8 +3264,12 @@ Or search for markets first:
       case 'RESEARCH': {
         // Spawn analyst agent for deep research
         if (lower.startsWith('/odds')) {
-          const query = extractQuery(text, '/odds');
-          if (!query) return { text: 'Usage: /odds <topic>', mood: 'NEUTRAL' };
+          const rawQuery = extractQuery(text, '/odds');
+          if (!rawQuery) return { text: 'Usage: /odds <topic>', mood: 'NEUTRAL' };
+
+          // Expand short queries like "sol" into useful search terms
+          const query = expandResearchQuery(rawQuery);
+          console.log(`[Odds] Expanded "${rawQuery}" → "${query}"`);
 
           const task: AgentTask = {
             agentId: 'analyst',
@@ -3225,8 +3281,12 @@ Or search for markets first:
           return result.response;
         }
 
-        const query = extractQuery(text, '/research');
-        if (!query) return { text: 'Usage: /research <market or topic>', mood: 'NEUTRAL' };
+        const rawQuery = extractQuery(text, '/research');
+        if (!rawQuery) return { text: 'Usage: /research <market or topic>', mood: 'NEUTRAL' };
+
+        // Expand short queries like "sol" into useful research questions
+        const query = expandResearchQuery(rawQuery);
+        console.log(`[Research] Expanded "${rawQuery}" → "${query}"`);
 
         const task: AgentTask = {
           agentId: 'analyst',

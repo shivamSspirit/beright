@@ -1,14 +1,20 @@
-// PM2 Ecosystem Configuration for BeRight
-// Usage: pm2 start ecosystem.config.js
+/**
+ * PM2 Ecosystem Configuration - Local Development
+ *
+ * Usage: pm2 start ecosystem.config.js
+ *
+ * For Railway deployment, see: beright-ts/RAILWAY.md
+ * Railway uses: beright-ts/ecosystem.railway.config.cjs
+ */
 
 module.exports = {
   apps: [
     // Main API Server (Next.js on port 3001)
     {
-      name: 'beright-api',
+      name: 'api',
       cwd: './beright-ts',
       script: 'npm',
-      args: 'start',
+      args: 'run start:local',
       env: {
         NODE_ENV: 'production',
         PORT: 3001
@@ -24,7 +30,7 @@ module.exports = {
 
     // Telegram Bot (long-running)
     {
-      name: 'telegram-bot',
+      name: 'telegram',
       cwd: './beright-ts',
       script: 'npx',
       args: 'ts-node skills/telegram.ts',
@@ -41,12 +47,12 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     },
 
-    // Heartbeat Agent (runs every 5 minutes)
+    // Heartbeat Agent (cognitive loop - 30 min interval)
     {
       name: 'heartbeat',
       cwd: './beright-ts',
       script: 'npx',
-      args: 'ts-node skills/heartbeat.ts loop 300',
+      args: 'ts-node skills/heartbeat.ts loop 1800',
       env: {
         NODE_ENV: 'production'
       },
@@ -59,103 +65,5 @@ module.exports = {
       out_file: './logs/heartbeat-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     },
-
-    // Builder Agent (autonomous development - optional)
-    {
-      name: 'builder',
-      cwd: './beright-ts',
-      script: 'npx',
-      args: 'ts-node skills/buildLoop.ts loop 1800',
-      env: {
-        NODE_ENV: 'production'
-      },
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      restart_delay: 30000,
-      max_restarts: 3,
-      error_file: './logs/builder-error.log',
-      out_file: './logs/builder-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    },
-
-    // Colosseum Agent (forum engagement - every 3 minutes)
-    {
-      name: 'colosseum-agent',
-      cwd: './beright-ts',
-      script: 'npx',
-      args: 'ts-node --transpile-only skills/colosseumAgent.ts loop 180',
-      env: {
-        NODE_ENV: 'production',
-        TS_NODE_TRANSPILE_ONLY: 'true'
-      },
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      restart_delay: 10000,
-      max_restarts: 5,
-      error_file: './logs/colosseum-error.log',
-      out_file: './logs/colosseum-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    },
-
-    // Agent Poster (intelligent forum posting - every 3 minutes)
-    {
-      name: 'agent-poster',
-      cwd: './beright-ts',
-      script: 'npx',
-      args: 'ts-node --transpile-only skills/agentPoster.ts loop 180',
-      env: {
-        NODE_ENV: 'production',
-        TS_NODE_TRANSPILE_ONLY: 'true'
-      },
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      restart_delay: 10000,
-      max_restarts: 5,
-      error_file: './logs/poster-error.log',
-      out_file: './logs/poster-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    },
-
-    // Autonomous Orchestrator (optional - runs all autonomous services)
-    {
-      name: 'orchestrator',
-      cwd: './beright-ts',
-      script: 'npx',
-      args: 'ts-node services/autonomousOrchestrator.ts start',
-      env: {
-        NODE_ENV: 'production'
-      },
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      restart_delay: 60000,
-      max_restarts: 3,
-      error_file: './logs/orchestrator-error.log',
-      out_file: './logs/orchestrator-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    },
-
-    // Autonomous Paper Trader (24/7 market scanning & trading)
-    {
-      name: 'autonomous-trader',
-      cwd: './beright-ts',
-      script: 'npx',
-      args: 'ts-node services/autonomousTrader.ts',
-      env: {
-        NODE_ENV: 'production'
-      },
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      restart_delay: 10000,
-      max_restarts: 10,
-      max_memory_restart: '500M',
-      error_file: './logs/trader-error.log',
-      out_file: './logs/trader-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    }
   ]
 };

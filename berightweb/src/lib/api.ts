@@ -211,8 +211,26 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      const errorMessage = error.message || error.error || `API error: ${response.status}`;
+      // Try to get error details from response
+      let errorMessage = `API error: ${response.status}`;
+      try {
+        const errorBody = await response.json();
+        // Try multiple common error fields
+        errorMessage = errorBody.message || errorBody.error || errorBody.text || errorMessage;
+        // If it's the generic gateway error, provide more context
+        if (errorMessage === 'Failed to process message') {
+          errorMessage = 'Request processing failed. The backend may be experiencing issues.';
+        }
+      } catch {
+        // JSON parsing failed - try text
+        try {
+          const textBody = await response.text();
+          if (textBody) errorMessage = textBody.slice(0, 200);
+        } catch {
+          // Couldn't get any error details
+          errorMessage = `Server error (${response.status}). Please try again.`;
+        }
+      }
 
       // Check if error message indicates rate limiting
       if (errorMessage.toLowerCase().includes('rate limit')) {
@@ -229,10 +247,18 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
       throw error;
     }
 
-    if (error instanceof Error && error.message.includes('fetch')) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Backend not reachable. Make sure beright-ts is running on port 3001.');
     }
-    throw error;
+
+    // Re-throw Error instances as-is
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    // Wrap unknown errors
+    throw new Error(String(error) || 'An unexpected error occurred');
   }
 }
 
@@ -609,6 +635,105 @@ export async function checkBackendHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ============ AGENT API v2 ============
+// Direct access to the new BeRight Agent System (Scout, Analyst, Trader, Orchestrator)
+
+export interface AgentResponse {
+  success: boolean;
+  data: {
+    text: string;
+    mood: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'EDUCATIONAL' | 'ERROR';
+    agent?: string;
+    agentEmoji?: string;
+    metadata?: Record<string, unknown>;
+  };
+  session?: {
+    id: string;
+    messageCount: number;
+  };
+  meta?: {
+    processingTimeMs: number;
+    timestamp: string;
+  };
+  error?: string;
+}
+
+export interface AgentInfo {
+  success: boolean;
+  data: {
+    version: string;
+    architecture: string;
+    agents: Record<string, {
+      id: string;
+      name: string;
+      emoji: string;
+      role: string;
+      purpose: string;
+      tools: string[];
+      available: boolean;
+    }>;
+    toolCounts: {
+      scout: number;
+      analyst: number;
+      trader: number;
+      total: number;
+    };
+    activeSessions: number;
+    capabilities: string[];
+    exampleQueries: string[];
+  };
+}
+
+/**
+ * Send a message to the BeRight Agent System
+ * Routes through Orchestrator → Scout/Analyst/Trader
+ */
+export async function sendToAgent(
+  message: string,
+  options?: {
+    sessionId?: string;
+    userId?: string;
+    agent?: 'scout' | 'analyst' | 'trader';
+  }
+): Promise<AgentResponse> {
+  return apiFetch('/api/v2/agent', {
+    method: 'POST',
+    body: JSON.stringify({
+      message,
+      sessionId: options?.sessionId,
+      userId: options?.userId,
+      agent: options?.agent,
+    }),
+  });
+}
+
+/**
+ * Get agent system info and capabilities
+ */
+export async function getAgentInfo(): Promise<AgentInfo> {
+  return apiFetch('/api/v2/agent');
+}
+
+/**
+ * Get session history
+ */
+export async function getAgentSession(sessionId: string): Promise<{
+  success: boolean;
+  data: {
+    sessionId: string;
+    exists: boolean;
+    messageCount: number;
+    messages: Array<{
+      role: 'user' | 'agent';
+      content: string;
+      agent?: string;
+      timestamp: number;
+    }>;
+  };
+}> {
+  return apiFetch(`/api/v2/agent?sessionId=${sessionId}`);
 }
 
 // ============ UNIFIED GATEWAY API ============
@@ -1490,4 +1615,483 @@ export function transformMarketToPrediction(market: ApiMarket): Prediction {
 // Transform multiple markets
 export function transformMarkets(markets: ApiMarket[]): Prediction[] {
   return markets.map(transformMarketToPrediction);
+}
+
+// ============ V2 MARKETS API ============
+// Modern market data endpoints with better caching and normalization
+
+export interface V2Market {
+  id: string;
+  platform: Platform;
+  title: string;
+  question: string;
+  yesPrice: number;
+  noPrice: number;
+  yesPct: number;
+  noPct: number;
+  volume: number;
+  volume24h?: number;
+  liquidity: number;
+  openInterest?: number;
+  endDate: string | null;
+  status: 'active' | 'closed' | 'resolved';
+  url: string;
+  category?: string;
+  tags?: string[];
+}
+
+export interface V2MarketsResponse {
+  success: boolean;
+  data: {
+    markets: V2Market[];
+    count: number;
+    platforms: Platform[];
+  };
+  meta: {
+    timestamp: string;
+    cached: boolean;
+  };
+}
+
+/**
+ * Get markets from V2 API (better caching, unified format)
+ */
+export async function getV2Markets(options?: {
+  platform?: Platform;
+  category?: string;
+  limit?: number;
+  offset?: number;
+  sort?: 'volume' | 'liquidity' | 'newest' | 'closing';
+}): Promise<V2MarketsResponse> {
+  const params = new URLSearchParams();
+  if (options?.platform) params.set('platform', options.platform);
+  if (options?.category) params.set('category', options.category);
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.offset) params.set('offset', String(options.offset));
+  if (options?.sort) params.set('sort', options.sort);
+
+  return apiFetch(`/api/v2/markets?${params}`);
+}
+
+/**
+ * Get a single market by ID
+ */
+export async function getV2Market(marketId: string): Promise<{
+  success: boolean;
+  data: V2Market | null;
+  meta: { timestamp: string };
+}> {
+  return apiFetch(`/api/v2/markets/${encodeURIComponent(marketId)}`);
+}
+
+/**
+ * Get trending markets (high momentum)
+ */
+export async function getTrendingMarkets(options?: {
+  limit?: number;
+  platform?: Platform;
+}): Promise<{
+  success: boolean;
+  data: {
+    markets: Array<V2Market & {
+      momentum: number;
+      priceChange24h: number;
+      volumeChange24h: number;
+    }>;
+  };
+  meta: { timestamp: string };
+}> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.platform) params.set('platform', options.platform);
+
+  return apiFetch(`/api/v2/markets/trending?${params}`);
+}
+
+// ============ V2 EXECUTION API ============
+// Trade execution across platforms
+
+export interface ExecutionQuote {
+  marketId: string;
+  platform: Platform;
+  side: 'YES' | 'NO';
+  size: number;
+  price: number;
+  estimatedCost: number;
+  estimatedFees: number;
+  slippage: number;
+  executionMode: 'market' | 'limit' | 'twap';
+  expiresAt: string;
+}
+
+export interface ExecutionResult {
+  orderId: string;
+  status: 'pending' | 'filled' | 'partial' | 'cancelled' | 'failed';
+  marketId: string;
+  platform: Platform;
+  side: 'YES' | 'NO';
+  size: number;
+  filledSize: number;
+  avgPrice: number;
+  fees: number;
+  timestamp: string;
+  txSignature?: string;
+}
+
+export interface PlatformBalance {
+  platform: Platform;
+  total: number;
+  available: number;
+  locked: number;
+  currency: string;
+}
+
+/**
+ * Get execution quote for a trade
+ */
+export async function getExecutionQuote(params: {
+  marketId: string;
+  platform: Platform;
+  side: 'YES' | 'NO';
+  size: number;
+}): Promise<{
+  success: boolean;
+  data: {
+    quote: ExecutionQuote;
+    riskCheck: {
+      approved: boolean;
+      warnings: string[];
+    };
+  };
+}> {
+  const queryParams = new URLSearchParams({
+    marketId: params.marketId,
+    platform: params.platform,
+    side: params.side,
+    size: String(params.size),
+  });
+  return apiFetch(`/api/v2/execution/quote?${queryParams}`);
+}
+
+/**
+ * Execute a trade
+ */
+export async function executeTrade(params: {
+  marketId: string;
+  platform: Platform;
+  side: 'YES' | 'NO';
+  size: number;
+  price?: number;
+  type?: 'market' | 'limit';
+}): Promise<{
+  success: boolean;
+  data: {
+    execution: ExecutionResult;
+  };
+  error?: string;
+}> {
+  return apiFetch('/api/v2/execution', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * Get balances across all platforms
+ */
+export async function getExecutionBalances(): Promise<{
+  success: boolean;
+  data: {
+    balances: PlatformBalance[];
+    total: number;
+    available: number;
+  };
+}> {
+  return apiFetch('/api/v2/execution/balances');
+}
+
+/**
+ * Get execution status
+ */
+export async function getExecutionStatus(): Promise<{
+  success: boolean;
+  data: {
+    status: 'online' | 'degraded' | 'offline';
+    platforms: Record<Platform, {
+      connected: boolean;
+      latencyMs: number;
+    }>;
+    recentExecutions: ExecutionResult[];
+  };
+}> {
+  return apiFetch('/api/v2/execution');
+}
+
+// ============ V2 RISK SIZING API ============
+// Kelly criterion and optimal position sizing
+
+export interface RiskSizingResult {
+  suggestedSize: number;
+  maxSize: number;
+  kelly: {
+    fullKelly: number;
+    halfKelly: number;
+    quarterKelly: number;
+    suggestedFraction: number;
+  };
+  edge: number;
+  expectedValue: number;
+  reasoning: string;
+}
+
+/**
+ * Get optimal position size
+ */
+export async function getOptimalSize(params: {
+  probability: number;
+  marketPrice: number;
+  confidence: number;
+  bankroll?: number;
+}): Promise<{
+  success: boolean;
+  data: RiskSizingResult;
+}> {
+  return apiFetch('/api/v2/risk/sizing', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * Check if trade passes risk limits
+ */
+export async function checkTradeRisk(params: {
+  marketId: string;
+  platform: Platform;
+  side: 'YES' | 'NO';
+  size: number;
+  price?: number;
+  probability?: number;
+  confidence?: number;
+}): Promise<{
+  success: boolean;
+  data: {
+    approved: boolean;
+    warnings: string[];
+    violations: string[];
+    suggestedSize?: number;
+    reasoning: string;
+  };
+}> {
+  return apiFetch('/api/v2/risk', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * Update risk configuration
+ */
+export async function updateRiskConfig(config: {
+  maxPositionSize?: number;
+  maxTotalExposure?: number;
+  maxDailyLoss?: number;
+  maxDrawdownPct?: number;
+  kellyFraction?: number;
+  minEdgeForTrade?: number;
+  minConfidenceForTrade?: number;
+}): Promise<{
+  success: boolean;
+  data: {
+    config: Record<string, number>;
+    message: string;
+  };
+}> {
+  return apiFetch('/api/v2/risk', {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  });
+}
+
+// ============ RESEARCH API ============
+// Superforecaster methodology research
+
+export interface ResearchReport {
+  topic: string;
+  question: string;
+  analysis: {
+    baseRate: number;
+    adjustments: Array<{
+      factor: string;
+      direction: 'up' | 'down';
+      magnitude: number;
+      reasoning: string;
+    }>;
+    finalProbability: number;
+    confidence: 'low' | 'medium' | 'high';
+  };
+  evidence: {
+    supporting: string[];
+    opposing: string[];
+  };
+  sources: Array<{
+    title: string;
+    url: string;
+    relevance: number;
+  }>;
+  marketComparison?: {
+    platform: Platform;
+    currentPrice: number;
+    edge: number;
+  }[];
+  generatedAt: string;
+}
+
+/**
+ * Request deep research analysis
+ */
+export async function requestResearch(topic: string): Promise<{
+  success: boolean;
+  data: ResearchReport;
+}> {
+  return apiFetch('/api/research', {
+    method: 'POST',
+    body: JSON.stringify({ topic }),
+  });
+}
+
+/**
+ * Get cached research (if available)
+ */
+export async function getResearch(topic: string): Promise<{
+  success: boolean;
+  data: ResearchReport | null;
+  cached: boolean;
+}> {
+  return apiFetch(`/api/research?topic=${encodeURIComponent(topic)}`);
+}
+
+// ============ FORECASTERS API ============
+// Top forecasters leaderboard
+
+export interface Forecaster {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  brierScore: number;
+  accuracy: number;
+  predictions: number;
+  resolvedPredictions: number;
+  streak: number;
+  rank: number;
+  onChainCount: number;
+  walletAddress?: string;
+  expertise?: string[];
+}
+
+/**
+ * Get top forecasters leaderboard
+ */
+export async function getForecasters(options?: {
+  limit?: number;
+  sortBy?: 'brier' | 'accuracy' | 'predictions' | 'streak';
+  timeframe?: '7d' | '30d' | '90d' | 'all';
+}): Promise<{
+  success: boolean;
+  data: {
+    forecasters: Forecaster[];
+    count: number;
+  };
+}> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.timeframe) params.set('timeframe', options.timeframe);
+
+  return apiFetch(`/api/forecasters?${params}`);
+}
+
+// ============ CRON/PROACTIVE API ============
+// Proactive agent triggers (internal use)
+
+/**
+ * Trigger proactive agent scan
+ */
+export async function triggerProactiveScan(): Promise<{
+  success: boolean;
+  data: {
+    triggered: boolean;
+    lastRun: string;
+    nextRun: string;
+  };
+}> {
+  return apiFetch('/api/cron', { method: 'POST' });
+}
+
+// ============ HEALTH API ============
+
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  version: string;
+  uptime: number;
+  services: {
+    database: boolean;
+    redis: boolean;
+    llm: boolean;
+    markets: boolean;
+  };
+  timestamp: string;
+}
+
+/**
+ * Get backend health status
+ */
+export async function getHealthStatus(): Promise<HealthStatus> {
+  return apiFetch('/api/health');
+}
+
+/**
+ * Get V2 API health
+ */
+export async function getV2Health(): Promise<{
+  success: boolean;
+  data: {
+    status: string;
+    services: Record<string, boolean>;
+    latency: Record<string, number>;
+  };
+}> {
+  return apiFetch('/api/v2/health');
+}
+
+// ============ COMBINED TERMINAL DATA ============
+// Helper to fetch all terminal data in one call
+
+export interface TerminalData {
+  markets: ApiMarket[];
+  arbitrage: ApiArbitrage[];
+  portfolio: any;
+  risk: any;
+  connected: boolean;
+}
+
+/**
+ * Fetch all terminal data in parallel
+ */
+export async function fetchTerminalData(): Promise<TerminalData> {
+  const [marketsRes, arbRes, portfolioRes, riskRes] = await Promise.all([
+    getHotMarkets(20).catch(() => ({ markets: [], count: 0 })),
+    getArbitrageOpportunities().catch(() => ({ opportunities: [], scannedAt: '' })),
+    apiFetch('/api/v2/portfolio').catch(() => ({ success: false, data: null })),
+    apiFetch('/api/v2/risk').catch(() => ({ success: false, data: null })),
+  ]);
+
+  return {
+    markets: marketsRes.markets || [],
+    arbitrage: arbRes.opportunities || [],
+    portfolio: (portfolioRes as any)?.data || null,
+    risk: (riskRes as any)?.data || null,
+    connected: true,
+  };
 }

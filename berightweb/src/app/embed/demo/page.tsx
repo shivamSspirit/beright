@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { Copy, Check, Code, ExternalLink, Settings } from 'lucide-react';
 import EmbedWidget, { generateEmbedCode } from '@/components/EmbedWidget';
 import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
 
 export default function EmbedDemoPage() {
   const [marketId, setMarketId] = useState('btc-150k');
@@ -242,7 +241,6 @@ export default function EmbedDemoPage() {
         </motion.div>
       </div>
 
-      <BottomNav />
     </div>
   );
 }

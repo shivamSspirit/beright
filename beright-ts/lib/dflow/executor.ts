@@ -7,6 +7,12 @@
  * - Terminal/Web trading
  * - Autonomous agents
  *
+ * Now with fast execution support:
+ * - Connection pooling with keep-alive
+ * - Pre-fetched blockhash
+ * - JITO bundle submission
+ * - Microsecond latency tracking
+ *
  * @author BeRight Protocol
  */
 
@@ -19,6 +25,10 @@ import {
   Commitment,
 } from '@solana/web3.js';
 import { getDFlowClient, USDC_MINT, DFlowMarket, DFlowOrderResponse } from '../dflow';
+import { getFastConnectionPool, initializeFastConnection } from '../execution/fastConnection';
+import { getJitoBundleSubmitter } from '../execution/jitoBundle';
+import { getLatencyTracker, formatMicroseconds } from '../execution/latencyTracker';
+import { EXECUTION_CONFIG } from '../../config/execution';
 
 // =============================================================================
 // CONFIGURATION
@@ -41,6 +51,27 @@ export interface ExecutorConfig {
   commitment?: Commitment;
   skipPreflight?: boolean;
   maxRetries?: number;
+  // Fast execution options
+  useFastConnection?: boolean;
+  useJito?: boolean;
+  jitoTipLamports?: number;
+  trackLatency?: boolean;
+}
+
+export type ExecutionMode = 'standard' | 'fast' | 'jito';
+
+export interface FastExecutionResult extends ExecutionResult {
+  latency?: {
+    quoteMs: number;
+    signMs: number;
+    submitMs: number;
+    confirmMs: number;
+    totalMs: number;
+  };
+  jitoBundle?: {
+    bundleId: string;
+    tipLamports: number;
+  };
 }
 
 export interface TradeParams {
@@ -213,6 +244,143 @@ export class DFlowExecutor {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Execution failed',
+      };
+    }
+  }
+
+  /**
+   * Execute a trade with fast execution mode
+   * Uses connection pooling, JITO bundles, and latency tracking
+   */
+  async executeFast(
+    params: TradeParams,
+    keypair: Keypair,
+    options: {
+      useJito?: boolean;
+      jitoTipLamports?: number;
+      trackLatency?: boolean;
+    } = {}
+  ): Promise<FastExecutionResult> {
+    const tracker = getLatencyTracker();
+    const trackLatency = options.trackLatency ?? true;
+
+    if (trackLatency) {
+      tracker.reset();
+      tracker.start('total');
+    }
+
+    try {
+      // Initialize fast connection pool if needed
+      const pool = getFastConnectionPool();
+      if (!pool.getStats().isInitialized) {
+        await initializeFastConnection();
+      }
+
+      // Get quote with timing
+      if (trackLatency) tracker.start('quote');
+      const quoteResult = await this.getQuote(params, keypair.publicKey.toBase58());
+      const quoteUs = trackLatency ? tracker.end('quote') : 0;
+
+      if (!quoteResult.success || !quoteResult.quote) {
+        if (trackLatency) tracker.end('total');
+        return {
+          success: false,
+          error: quoteResult.error || 'Failed to get quote',
+        };
+      }
+
+      const { quote } = quoteResult;
+
+      if (!quote.transaction) {
+        if (trackLatency) tracker.end('total');
+        return {
+          success: false,
+          error: 'No transaction returned from DFlow API',
+        };
+      }
+
+      // Decode and sign transaction with timing
+      if (trackLatency) tracker.start('sign');
+      const txBuffer = Buffer.from(quote.transaction, 'base64');
+      const transaction = VersionedTransaction.deserialize(txBuffer);
+      transaction.sign([keypair]);
+      const signUs = trackLatency ? tracker.end('sign') : 0;
+
+      // Submit transaction with timing
+      if (trackLatency) tracker.start('submit');
+      let signature: string;
+      let jitoBundle: { bundleId: string; tipLamports: number } | undefined;
+
+      if (options.useJito && EXECUTION_CONFIG.jito.enabled) {
+        // Submit via JITO bundle
+        const jitoSubmitter = getJitoBundleSubmitter();
+        const tipLamports = options.jitoTipLamports || EXECUTION_CONFIG.jito.defaultTipLamports;
+
+        const bundleResult = await jitoSubmitter.submitBundle([transaction], {
+          tipLamports,
+          waitForConfirmation: false,
+        });
+
+        signature = bundleResult.signature;
+        jitoBundle = {
+          bundleId: bundleResult.bundleId,
+          tipLamports,
+        };
+
+        console.log(`[DFlowExecutor] JITO bundle submitted: ${bundleResult.bundleId}`);
+      } else {
+        // Submit via fast connection pool (skipPreflight for speed)
+        signature = await pool.sendVersionedTransaction(transaction, {
+          skipPreflight: true,
+          preflightCommitment: this.config.commitment,
+          maxRetries: 0,
+        });
+      }
+      const submitUs = trackLatency ? tracker.end('submit') : 0;
+
+      console.log(`[DFlowExecutor] Fast TX submitted: ${signature.slice(0, 20)}...`);
+
+      // Confirm transaction with timing
+      if (trackLatency) tracker.start('confirm');
+      const confirmation = await pool.confirmTransaction(signature, 30_000);
+      const confirmUs = trackLatency ? tracker.end('confirm') : 0;
+      const totalUs = trackLatency ? tracker.end('total') : 0;
+
+      console.log(
+        `[DFlowExecutor] Fast execution: ` +
+          `quote=${formatMicroseconds(quoteUs)}, ` +
+          `sign=${formatMicroseconds(signUs)}, ` +
+          `submit=${formatMicroseconds(submitUs)}, ` +
+          `confirm=${formatMicroseconds(confirmUs)}, ` +
+          `total=${formatMicroseconds(totalUs)}`
+      );
+
+      return {
+        success: confirmation.confirmed,
+        signature,
+        error: confirmation.confirmed ? undefined : (confirmation.err || 'Transaction not confirmed'),
+        details: {
+          inputAmount: quote.inAmount,
+          outputAmount: quote.outAmount,
+          priceImpact: quote.priceImpactPct,
+          executionMode: options.useJito ? 'fast:jito' : 'fast:direct',
+          confirmedAt: confirmation.confirmed ? new Date() : undefined,
+        },
+        latency: trackLatency ? {
+          quoteMs: quoteUs / 1000,
+          signMs: signUs / 1000,
+          submitMs: submitUs / 1000,
+          confirmMs: confirmUs / 1000,
+          totalMs: totalUs / 1000,
+        } : undefined,
+        jitoBundle,
+      };
+    } catch (error) {
+      if (trackLatency) tracker.end('total');
+      console.error('[DFlowExecutor] Fast execution failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Fast execution failed',
       };
     }
   }
@@ -494,6 +662,38 @@ export async function getDFlowQuote(
   return executor.getQuote(
     { market, side, amountUsdc, slippageBps },
     walletAddress
+  );
+}
+
+/**
+ * Fast trade execution with connection pooling and JITO
+ * Target: Millisecond execution times
+ */
+export async function executeFastDFlowTrade(
+  market: DFlowMarket,
+  side: 'YES' | 'NO',
+  amountUsdc: number,
+  keypair: Keypair,
+  options?: {
+    slippageBps?: number;
+    useJito?: boolean;
+    jitoTipLamports?: number;
+  }
+): Promise<FastExecutionResult> {
+  const executor = getDFlowExecutor();
+  return executor.executeFast(
+    {
+      market,
+      side,
+      amountUsdc,
+      slippageBps: options?.slippageBps,
+    },
+    keypair,
+    {
+      useJito: options?.useJito,
+      jitoTipLamports: options?.jitoTipLamports,
+      trackLatency: true,
+    }
   );
 }
 

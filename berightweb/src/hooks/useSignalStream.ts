@@ -34,7 +34,8 @@ interface UseSignalStreamReturn {
 }
 
 const MAX_SIGNALS = 50;
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Use relative path - Next.js rewrites will proxy to backend
+const API_BASE = '';
 
 export function useSignalStream(): UseSignalStreamReturn {
   const [signals, setSignals] = useState<LiveSignal[]>([]);

@@ -1,0 +1,170 @@
+/**
+ * Badge Component Styles
+ * Uses design tokens from tokens.css
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE BADGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIZES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sm {
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--text-2xs);
+}
+
+.md {
+  padding: var(--space-1) var(--space-2-5);
+  font-size: var(--text-xs);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Default - Neutral */
+.default {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+/* Primary - Brand green */
+.primary {
+  background: var(--color-primary-dim);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Success - Green */
+.success {
+  background: var(--color-yes-dim);
+  color: var(--color-yes);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Warning - Amber */
+.warning {
+  background: var(--color-amber-dim);
+  color: var(--color-amber);
+  border: 1px solid rgba(255, 149, 0, 0.3);
+}
+
+/* Danger - Red */
+.danger {
+  background: var(--color-no-dim);
+  color: var(--color-no);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+/* Info - Cyan */
+.info {
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+  border: 1px solid rgba(0, 194, 255, 0.3);
+}
+
+/* AI - Purple */
+.ai {
+  background: var(--color-ai-dim);
+  color: var(--color-ai);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+/* Fire - Trending orange */
+.fire {
+  background: var(--color-fire-dim);
+  color: var(--color-fire);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+/* Gold - Achievements */
+.gold {
+  background: var(--color-gold-dim);
+  color: var(--color-gold);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DOT INDICATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.withDot {
+  padding-left: var(--space-2);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Pulse animation for dot */
+.pulse .dot {
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOVER STATES (for interactive badges)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.badge[role="button"]:hover,
+.badge[tabindex]:hover {
+  cursor: pointer;
+  filter: brightness(1.1);
+}
+
+.primary[role="button"]:hover,
+.primary[tabindex]:hover {
+  box-shadow: 0 0 12px var(--color-primary-glow);
+}
+
+.success[role="button"]:hover,
+.success[tabindex]:hover {
+  box-shadow: 0 0 12px var(--color-yes-glow);
+}
+
+.danger[role="button"]:hover,
+.danger[tabindex]:hover {
+  box-shadow: 0 0 12px var(--color-no-glow);
+}
+
+.info[role="button"]:hover,
+.info[tabindex]:hover {
+  box-shadow: 0 0 12px var(--color-accent-glow);
+}
+
+.ai[role="button"]:hover,
+.ai[tabindex]:hover {
+  box-shadow: 0 0 12px var(--color-ai-glow);
+}

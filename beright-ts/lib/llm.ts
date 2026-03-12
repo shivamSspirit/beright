@@ -2,10 +2,11 @@
  * LLM Client for BeRight Protocol
  *
  * ARCHITECTURE: Fallback Chain
- * 1. Gemini (PRIMARY - 1M tokens/min, 1500 req/day, 1M context)
- * 2. Groq (backup - 14,400 req/day, fast)
- * 3. Anthropic (paid, high quality)
- * 4. None (graceful degradation)
+ * 1. Mistral (PRIMARY - fast, high quality, generous API limits)
+ * 2. Gemini (backup - 1M tokens/min, 1500 req/day, 1M context)
+ * 3. Groq (backup - 14,400 req/day, fast)
+ * 4. Anthropic (paid, high quality)
+ * 5. None (graceful degradation)
  *
  * Uses native fetch — no extra packages required.
  */
@@ -24,11 +25,17 @@ export interface LLMRequest {
 export interface LLMResponse {
   text: string;
   tokensUsed: number;
-  provider: 'gemini' | 'groq' | 'anthropic' | 'none';
+  provider: 'mistral' | 'gemini' | 'groq' | 'anthropic' | 'none';
   model: string;
 }
 
 // Model mappings per provider
+// Mistral models: https://docs.mistral.ai/getting-started/models/
+const MISTRAL_MODELS = {
+  fast: 'mistral-small-latest',       // Fast, efficient, cost-effective
+  smart: 'mistral-large-latest',      // Best quality, advanced reasoning
+};
+
 // Gemini models: https://ai.google.dev/gemini-api/docs/models/gemini
 // Free tier: 15 RPM, 1M tokens/min, 1500 req/day
 const GEMINI_MODELS = {
@@ -51,7 +58,7 @@ const ANTHROPIC_MODELS = {
 // ============================================================================
 
 let _startupValidated = false;
-let _availableProviders: Array<'gemini' | 'groq' | 'anthropic'> = [];
+let _availableProviders: Array<'mistral' | 'gemini' | 'groq' | 'anthropic'> = [];
 
 /**
  * Validate LLM configuration at startup
@@ -61,16 +68,23 @@ export function validateLLMConfig(): { valid: boolean; providers: string[]; erro
   const errors: string[] = [];
   _availableProviders = [];
 
+  const mistralKey = secrets.getMistralApiKey();
   const geminiKey = secrets.getGeminiApiKey();
   const groqKey = secrets.getGroqApiKey();
   const anthropicKey = secrets.getAnthropicApiKey();
 
-  // Gemini is PRIMARY (1M tokens/min, 1500 req/day, 1M context window)
+  // Mistral is PRIMARY (fast, high quality, generous limits)
+  if (mistralKey) {
+    _availableProviders.push('mistral');
+    console.log('[LLM] ✓ Mistral API key configured (PRIMARY - mistral-large-latest)');
+  } else {
+    errors.push('MISTRAL_API_KEY not set');
+  }
+
+  // Gemini as backup (1M tokens/min, 1500 req/day, 1M context window)
   if (geminiKey) {
     _availableProviders.push('gemini');
-    console.log('[LLM] ✓ Gemini API key configured (PRIMARY - gemini-2.0-flash)');
-  } else {
-    errors.push('GEMINI_API_KEY not set');
+    console.log('[LLM] ✓ Gemini API key configured (backup)');
   }
 
   // Groq as backup (14,400 req/day free)
@@ -86,7 +100,7 @@ export function validateLLMConfig(): { valid: boolean; providers: string[]; erro
 
   if (_availableProviders.length === 0) {
     console.error('[LLM] ✗ NO LLM PROVIDERS CONFIGURED - Bot will return fallback responses');
-    console.error('[LLM] Set GEMINI_API_KEY in .env (free: https://aistudio.google.com)');
+    console.error('[LLM] Set MISTRAL_API_KEY in .env (get from: https://console.mistral.ai/)');
   } else {
     console.log(`[LLM] Provider chain: ${_availableProviders.join(' → ')}`);
   }
@@ -151,12 +165,13 @@ async function withRetry<T>(
 
 /**
  * Call LLM with automatic retry and fallback chain
- * Architecture: Gemini (with retry) → Groq (with retry) → Anthropic (with retry) → failure
+ * Architecture: Mistral (with retry) → Gemini (with retry) → Groq (with retry) → Anthropic (with retry) → failure
  *
- * Gemini is primary because:
- * - 1M tokens/min free tier
- * - 1M context window (best for complex tasks)
+ * Mistral is primary because:
+ * - Fast response times
  * - High quality responses
+ * - Generous API limits
+ * - Good at reasoning and context understanding
  *
  * IMPORTANT: If LLM fails, we return provider='none'.
  * Callers should NOT use regex fallback - they should tell user honestly.
@@ -169,7 +184,20 @@ export async function llmChat(req: LLMRequest): Promise<LLMResponse> {
     validateLLMConfig();
   }
 
-  // Try Gemini first (PRIMARY - Google, 1M context, high quality)
+  // Try Mistral first (PRIMARY - fast, high quality)
+  const mistralKey = secrets.getMistralApiKey();
+  if (mistralKey) {
+    try {
+      return await withRetry(
+        () => callMistral({ system, user, maxTokens, temperature, quality, apiKey: mistralKey }),
+        'Mistral'
+      );
+    } catch (err) {
+      console.warn('[LLM] Mistral exhausted, trying Gemini fallback');
+    }
+  }
+
+  // Fallback to Gemini (Google, 1M context, high quality)
   const geminiKey = secrets.getGeminiApiKey();
   if (geminiKey) {
     try {
@@ -212,6 +240,56 @@ export async function llmChat(req: LLMRequest): Promise<LLMResponse> {
   // IMPORTANT: Callers must handle this gracefully, NOT use regex fallback
   console.error('[LLM] ALL PROVIDERS FAILED. Check API keys and rate limits.');
   return { text: '', tokensUsed: 0, provider: 'none', model: 'none' };
+}
+
+// ============================================================================
+// MISTRAL PROVIDER
+// ============================================================================
+
+async function callMistral(opts: {
+  system: string;
+  user: string;
+  maxTokens: number;
+  temperature: number;
+  quality: 'fast' | 'smart';
+  apiKey: string;
+}): Promise<LLMResponse> {
+  const model = MISTRAL_MODELS[opts.quality];
+
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${opts.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: opts.system },
+        { role: 'user', content: opts.user },
+      ],
+      max_tokens: opts.maxTokens,
+      temperature: opts.temperature,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Mistral ${res.status}: ${body}`);
+  }
+
+  const data = await res.json() as {
+    choices: Array<{ message: { content: string } }>;
+    usage: { total_tokens: number };
+    model: string;
+  };
+
+  return {
+    text: data.choices[0]?.message?.content ?? '',
+    tokensUsed: data.usage?.total_tokens ?? 0,
+    provider: 'mistral',
+    model: data.model ?? model,
+  };
 }
 
 // ============================================================================
@@ -404,8 +482,9 @@ async function callAnthropic(opts: {
  * Get the currently active LLM provider(s)
  * Returns the primary provider based on configuration priority
  */
-export function getActiveLLMProvider(): 'gemini' | 'groq' | 'anthropic' | 'none' {
-  // Gemini is primary (1M context, high quality)
+export function getActiveLLMProvider(): 'mistral' | 'gemini' | 'groq' | 'anthropic' | 'none' {
+  // Mistral is primary (fast, high quality)
+  if (secrets.getMistralApiKey()) return 'mistral';
   if (secrets.getGeminiApiKey()) return 'gemini';
   if (secrets.getGroqApiKey()) return 'groq';
   if (secrets.getAnthropicApiKey()) return 'anthropic';
@@ -415,7 +494,7 @@ export function getActiveLLMProvider(): 'gemini' | 'groq' | 'anthropic' | 'none'
 /**
  * Get all available providers
  */
-export function getAvailableProviders(): Array<'gemini' | 'groq' | 'anthropic'> {
+export function getAvailableProviders(): Array<'mistral' | 'gemini' | 'groq' | 'anthropic'> {
   if (!_startupValidated) validateLLMConfig();
   return _availableProviders;
 }

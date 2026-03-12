@@ -9,7 +9,8 @@ import * as path from 'path';
 import { SkillResponse } from '../types/response';
 import { timestamp } from './utils';
 
-const MEMORY_DIR = path.join(__dirname, '..', 'memory');
+// Use process.cwd() instead of __dirname for Next.js compatibility
+const MEMORY_DIR = path.join(process.cwd(), 'memory');
 const CONVERSATIONS_FILE = path.join(MEMORY_DIR, 'conversations.json');
 const LEARNINGS_FILE = path.join(MEMORY_DIR, 'learnings.json');
 

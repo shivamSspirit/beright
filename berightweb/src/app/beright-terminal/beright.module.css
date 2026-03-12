@@ -1,0 +1,849 @@
+/**
+ * BeRight Terminal v3 - Clean Professional Trading Terminal
+ *
+ * Design: Minimalist black terminal with green accents
+ * Fonts: Inter (UI) + JetBrains Mono (data)
+ * Colors: Using unified brand colors from tokens.css
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CSS VARIABLES - Terminal theme (extends global tokens)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Background - Terminal uses darker bg */
+  --br-bg: #000000;
+  --br-bg-panel: #050505;
+  --br-bg-elevated: #0a0a0a;
+
+  /* Borders */
+  --br-border: rgba(255, 255, 255, 0.1);
+  --br-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Primary Colors - UNIFIED with brand tokens */
+  --br-green: var(--color-primary, #10B981);
+  --br-cyan: var(--color-accent, #00C2FF);
+  --br-red: var(--color-no, #F43F5E);
+  --br-white: #ffffff;
+
+  /* Text */
+  --br-text: #ffffff;
+  --br-text-dim: #7a7a7a;
+  --br-text-muted: #4a4a4a;
+
+  /* Fonts - Use global tokens */
+  --br-font-ui: var(--font-sans, 'Inter', sans-serif);
+  --br-font-mono: var(--font-mono, 'JetBrains Mono', monospace);
+
+  /* Shadows - UNIFIED with brand green */
+  --br-glow-green: 0 0 8px rgba(16, 185, 129, 0.4);
+  --br-glow-cyan: 0 0 8px rgba(0, 194, 255, 0.4);
+  --br-glow-red: 0 0 8px rgba(244, 63, 94, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.terminalPage {
+  /* Account for BottomNav (72px) on all screen sizes */
+  height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
+  background: var(--br-bg);
+  background-image:
+    radial-gradient(circle at 70% 40%, rgba(0, 255, 65, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 30% 80%, rgba(0, 255, 65, 0.02) 0%, transparent 40%);
+  color: var(--br-text);
+  font-family: var(--br-font-ui);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOP BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--br-border);
+  flex-shrink: 0;
+}
+
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--br-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--br-green);
+  text-shadow: var(--br-glow-green);
+}
+
+/* Navigation Pill */
+.navPill {
+  display: inline-flex;
+  background: var(--br-white);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.navItem {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+  font-family: var(--br-font-ui);
+}
+
+.navItem:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.navItemActive {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+/* System Mode Badge */
+.systemMode {
+  font-family: var(--br-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--br-text-dim);
+}
+
+/* Pulse Indicator */
+.pulseIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pulseActive {
+  background: var(--br-green);
+  box-shadow: var(--br-glow-green);
+  animation: pulse 2s infinite;
+}
+
+.pulseIdle {
+  background: var(--br-text-dim);
+}
+
+.pulseAlert {
+  background: var(--br-red);
+  box-shadow: var(--br-glow-red);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: var(--br-glow-green); }
+  50% { opacity: 0.4; box-shadow: 0 0 2px var(--br-green); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN GRID - THREE COLUMN LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  flex: 1;
+  min-height: 0; /* Critical for nested flex/grid overflow */
+  overflow: hidden;
+}
+
+.panel {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-right: 1px solid var(--br-border);
+}
+
+.panelLast {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-right: none;
+}
+
+.panelChat {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--br-border);
+  min-height: 0; /* Critical for nested flex overflow */
+  height: 100%;
+}
+
+.panelHeader {
+  font-size: 14px;
+  color: var(--br-text-dim);
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--br-border);
+  padding-bottom: 8px;
+}
+
+.panelLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panelBadge {
+  font-family: var(--br-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--br-green);
+  text-shadow: var(--br-glow-green);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGENT FLEET
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.agentList {
+  list-style: none;
+  margin: 0 0 40px 0;
+  padding: 0;
+}
+
+.agentItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--br-border);
+  font-size: 14px;
+}
+
+.agentCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--br-white);
+  color: #000000;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.agentInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.agentName {
+  font-weight: 500;
+  margin-bottom: 2px;
+  color: var(--br-text);
+}
+
+.agentRole {
+  font-size: 11px;
+  color: var(--br-text-dim);
+  font-family: var(--br-font-mono);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RISK EXPOSURE BARS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.riskSection {
+  margin-top: auto;
+}
+
+.riskItem {
+  margin-bottom: 16px;
+}
+
+.riskLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+  font-family: var(--br-font-mono);
+}
+
+.riskLabel {
+  color: var(--br-text-dim);
+}
+
+.riskValue {
+  font-weight: 500;
+}
+
+.riskValueGreen {
+  color: var(--br-green);
+  text-shadow: var(--br-glow-green);
+}
+
+.riskValueCyan {
+  color: var(--br-cyan);
+}
+
+.riskValueRed {
+  color: var(--br-red);
+}
+
+.riskBarBg {
+  width: 100%;
+  height: 4px;
+  background: var(--br-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.riskBarFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.riskBarGreen {
+  background: var(--br-green);
+}
+
+.riskBarCyan {
+  background: var(--br-cyan);
+}
+
+.riskBarRed {
+  background: var(--br-red);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARKET TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.marketTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--br-font-mono);
+  font-size: 13px;
+}
+
+.marketTable th {
+  text-align: left;
+  color: var(--br-text-dim);
+  font-weight: 400;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--br-border);
+  font-family: var(--br-font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.marketTable th:not(:first-child) {
+  text-align: right;
+}
+
+.marketTable td {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--br-border-subtle);
+}
+
+.marketTable td:not(:first-child) {
+  text-align: right;
+}
+
+.marketTable tr {
+  transition: background 0.15s ease;
+}
+
+.marketTable tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.marketId {
+  font-weight: 700;
+  color: var(--br-text);
+}
+
+.marketProb {
+  font-weight: 500;
+}
+
+.probGreen {
+  color: var(--br-green);
+  text-shadow: var(--br-glow-green);
+}
+
+.probCyan {
+  color: var(--br-cyan);
+}
+
+.probRed {
+  color: var(--br-red);
+}
+
+.probNeutral {
+  color: var(--br-text);
+}
+
+.marketVol {
+  color: var(--br-text-dim);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PORTFOLIO / PNL DISPLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pnlBlock {
+  margin-bottom: 32px;
+}
+
+.pnlLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--br-text-dim);
+}
+
+.pnlValue {
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  margin: 8px 0;
+  font-family: var(--br-font-ui);
+  color: var(--br-text);
+}
+
+.pnlChange {
+  font-family: var(--br-font-mono);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--br-green);
+  text-shadow: var(--br-glow-green);
+}
+
+.pnlChangeNegative {
+  color: var(--br-red);
+  text-shadow: var(--br-glow-red);
+}
+
+.pnlPercent {
+  opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIGNAL FEED
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.signalFeed {
+  font-family: var(--br-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.signalItem {
+  padding-left: 12px;
+  border-left: 2px solid var(--br-border);
+  opacity: 0.8;
+}
+
+.signalItemFirst {
+  padding-left: 12px;
+  border-left: 2px solid var(--br-green);
+  opacity: 1;
+}
+
+.signalTime {
+  color: var(--br-text-dim);
+  margin-right: 8px;
+}
+
+.signalType {
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.signalTypeExec {
+  color: var(--br-green);
+  text-shadow: var(--br-glow-green);
+}
+
+.signalTypeAnalysis {
+  color: var(--br-cyan);
+}
+
+.signalTypeScout {
+  color: var(--br-text);
+}
+
+.signalTypeSys {
+  color: var(--br-text-dim);
+}
+
+.signalMessage {
+  color: var(--br-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CLI INPUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cliWrapper {
+  background: var(--br-bg-panel);
+  border-top: 1px solid var(--br-border);
+  padding: 16px 24px;
+  font-family: var(--br-font-mono);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1023px) {
+  .cliWrapper {
+    padding: 14px 16px;
+  }
+}
+
+.cliPrompt {
+  color: var(--br-green);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.cliInput {
+  background: transparent;
+  border: none;
+  color: var(--br-text);
+  font-family: var(--br-font-mono);
+  font-size: 14px;
+  flex: 1;
+  outline: none;
+  caret-color: var(--br-green);
+}
+
+.cliInput::placeholder {
+  color: var(--br-text-dim);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FULL PAGE VIEWS (MARKETS, AGENTS, LOGS)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fullPageView {
+  padding: 32px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fullPageHeader {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--br-text-dim);
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--br-border);
+  padding-bottom: 8px;
+}
+
+/* Agents Page */
+.agentCard {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--br-border);
+  border-radius: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.agentCardLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agentCardInfo h3 {
+  font-weight: 600;
+  color: var(--br-text);
+  margin: 0 0 4px 0;
+  font-size: 14px;
+}
+
+.agentCardInfo span {
+  font-size: 11px;
+  color: var(--br-text-dim);
+}
+
+.agentCardRight {
+  text-align: right;
+}
+
+.agentStatus {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.agentStatusActive {
+  color: var(--br-green);
+}
+
+.agentStatusIdle {
+  color: var(--br-text-dim);
+}
+
+.agentStats {
+  font-size: 11px;
+  color: var(--br-text-dim);
+}
+
+/* Logs Page */
+.logsList {
+  font-family: var(--br-font-mono);
+  font-size: 12px;
+}
+
+.logRow {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--br-border-subtle);
+  display: flex;
+  gap: 16px;
+}
+
+.logTime {
+  color: var(--br-text-dim);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.logLevel {
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.logLevelInfo {
+  color: var(--br-green);
+}
+
+.logLevelAnalysis {
+  color: var(--br-cyan);
+}
+
+.logLevelWarn {
+  color: var(--br-red);
+}
+
+.logLevelSys {
+  color: var(--br-text-dim);
+}
+
+.logMessage {
+  color: var(--br-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING / CONNECT STATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.loadingScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  background: var(--br-bg);
+  gap: 24px;
+}
+
+.loadingText {
+  color: var(--br-cyan);
+  font-family: var(--br-font-mono);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.connectScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  background: var(--br-bg);
+  background-image:
+    radial-gradient(circle at 70% 40%, rgba(0, 255, 65, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 30% 80%, rgba(0, 255, 65, 0.02) 0%, transparent 40%);
+  gap: 24px;
+  padding: 20px;
+}
+
+.connectLogo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.connectLogoText {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #F1F5F9;
+  font-family: Inter, -apple-system, sans-serif;
+}
+
+.connectText {
+  color: var(--br-text-dim);
+  text-align: center;
+  font-size: 14px;
+}
+
+.connectButton {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, var(--br-cyan) 0%, var(--br-green) 100%);
+  border: none;
+  border-radius: 4px;
+  color: #000;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: var(--br-font-ui);
+  transition: all 0.2s ease;
+}
+
+.connectButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 255, 65, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1200px) {
+  .mainGrid {
+    grid-template-columns: 240px 1fr 280px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel:first-child,
+  .panelLast {
+    display: none;
+  }
+
+  .panel:nth-child(2) {
+    border-right: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .topBar {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .topBarRight {
+    display: none;
+  }
+
+  .navItem {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .cliWrapper {
+    padding: 12px 16px;
+  }
+
+  .fullPageView {
+    padding: 16px;
+  }
+
+  .pnlValue {
+    font-size: 32px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fadeIn {
+  animation: fadeIn 0.3s ease;
+}
+
+.slideUp {
+  animation: slideUp 0.3s ease;
+}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import { usePrivy } from '@privy-io/react-auth';
+import BrandLogo from './BrandLogo';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -27,7 +28,7 @@ export default function Header() {
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="nav-inner">
           <Link href="/" className="nav-logo" aria-label="BeRight Home">
-            <span className="logo-icon">◉</span>
+            <BrandLogo size={32} />
             <span className="logo-text">BeRight</span>
           </Link>
 
@@ -117,18 +118,10 @@ export default function Header() {
         .nav-logo {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           text-decoration: none;
           color: #F1F5F9;
           line-height: 1;
-        }
-
-        .logo-icon {
-          color: #00C2FF;
-          font-size: 26px;
-          line-height: 1;
-          display: inline-block;
-          vertical-align: middle;
         }
 
         .logo-text {
@@ -295,10 +288,6 @@ export default function Header() {
 
           .nav-links {
             display: none;
-          }
-
-          .logo-icon {
-            font-size: 22px;
           }
 
           .logo-text {

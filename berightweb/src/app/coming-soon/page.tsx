@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMING SOON PAGE - Premium Locked State
@@ -110,7 +111,7 @@ function ComingSoonContent() {
       {/* Header */}
       <header className="cs-header">
         <Link href="/" className="cs-logo">
-          <span className="logo-icon">◉</span>
+          <BrandLogo size={32} />
           <span className="logo-text">BeRight</span>
         </Link>
       </header>

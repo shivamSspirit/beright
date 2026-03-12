@@ -1,5 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+/* ========================================
+   BeRight Design System
+   ======================================== */
 
+/* Fonts - Standardized to Inter + JetBrains Mono */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Design Tokens - Single source of truth */
+@import '../styles/tokens.css';
+@import '../styles/breakpoints.css';
+
+/* Tailwind */
 @import "tailwindcss";
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -65,61 +75,59 @@
 
 :root {
   /* ══════════════════════════════════════════════════════════════
-     PREMIUM NAVY THEME - Inspired by Linear, Vercel, Uniswap
+     LEGACY ALIASES - Map old variable names to new tokens
+     These maintain backward compatibility with existing code.
+     New code should use --color-* variables from tokens.css
      ══════════════════════════════════════════════════════════════ */
 
-  /* Core Backgrounds - Deep Navy */
-  --bg-void: #080C14;
-  --bg-deep: #0D1117;
-  --bg-elevated: #121929;
+  /* Background Aliases */
+  --bg-void: var(--color-bg-void);
+  --bg-deep: var(--color-bg-deep);
+  --bg-elevated: var(--color-bg-surface);
 
-  /* Card Backgrounds - Navy Tones */
-  --card-bg: #161E2E;
+  /* Card Aliases */
+  --card-bg: var(--color-bg-elevated);
   --card-bg-gradient: linear-gradient(145deg, #1A2435, #141C2A);
-  --card-border: rgba(30, 58, 95, 0.2);
+  --card-border: var(--color-border);
 
-  /* Glass Morphism - Cool Navy */
-  --glass-bg: rgba(15, 23, 36, 0.96);
-  --glass-border: rgba(56, 189, 248, 0.125);
+  /* Glass Morphism */
+  --glass-bg: var(--color-glass-bg);
+  --glass-border: var(--color-glass-border);
 
-  /* YES/NO Colors - Refined */
-  --yes: #10B981;
-  --yes-glow: rgba(16, 185, 129, 0.4);
-  --yes-subtle: rgba(16, 185, 129, 0.12);
-  --no: #F43F5E;
-  --no-glow: rgba(244, 63, 94, 0.4);
-  --no-subtle: rgba(244, 63, 94, 0.12);
+  /* YES/NO Aliases */
+  --yes: var(--color-yes);
+  --yes-glow: var(--color-yes-glow);
+  --yes-subtle: var(--color-yes-dim);
+  --no: var(--color-no);
+  --no-glow: var(--color-no-glow);
+  --no-subtle: var(--color-no-dim);
 
-  /* Primary Accent - Electric Teal/Blue */
-  --accent: #00C2FF;
-  --accent-glow: rgba(0, 194, 255, 0.4);
-  --accent-subtle: rgba(0, 194, 255, 0.12);
+  /* Accent Aliases */
+  --accent: var(--color-accent);
+  --accent-glow: var(--color-accent-glow);
+  --accent-subtle: var(--color-accent-dim);
 
-  /* AI Purple - Soft Violet */
-  --ai: #A78BFA;
-  --ai-glow: rgba(167, 139, 250, 0.4);
-  --ai-subtle: rgba(167, 139, 250, 0.12);
+  /* AI Purple Aliases */
+  --ai: var(--color-ai);
+  --ai-glow: var(--color-ai-glow);
+  --ai-subtle: var(--color-ai-dim);
 
-  /* Text Hierarchy - Slate Greys */
-  --text-primary: #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --text-ghost: #475569;
+  /* Text Aliases */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --text-ghost: var(--color-text-ghost);
 
-  /* Fire/Streak Color */
-  --fire: #FB923C;
+  /* Other Color Aliases */
+  --fire: var(--color-fire);
+  --gold: var(--color-gold);
 
-  /* Gold/Achievement */
-  --gold: #FBBF24;
+  /* Typography - UPDATED to Inter */
+  --font-display: var(--font-sans);
+  --font-mono: var(--font-mono);
 
-  /* Typography */
-  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
-  --font-mono: 'DM Mono', monospace;
-
-  /* Spacing */
-  --card-radius: 24px;
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-top: env(safe-area-inset-top, 0px);
+  /* Component Aliases */
+  --card-radius: var(--radius-2xl);
 }
 
 * {
@@ -794,7 +802,7 @@ body::before {
 }
 
 .safe-bottom {
-  padding-bottom: calc(80px + var(--safe-area-bottom));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + var(--space-4));
 }
 
 .line-clamp-2 {
@@ -2527,4 +2535,187 @@ body::before {
   .swipe-card-v3 .trade-btn:active {
     transform: scale(0.95);
   }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   GLOBAL POLISH & INTERACTIONS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default focus for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(0, 255, 178, 0.3);
+  color: var(--color-text-primary);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Button reset with interaction feedback */
+button {
+  cursor: pointer;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Link interaction */
+a {
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+/* Image optimization */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Smooth opacity transitions for loading states */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Shimmer animation for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Tap highlight color for mobile */
+* {
+  -webkit-tap-highlight-color: rgba(0, 255, 178, 0.1);
+}
+
+/* Safe area padding utilities */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Bottom navigation spacer */
+.bottom-nav-spacer {
+  height: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Visually hidden (screen reader only) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

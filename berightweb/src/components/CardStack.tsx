@@ -4,9 +4,9 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { animated, useSpring, useTransition, config } from '@react-spring/web';
 import { AnimatePresence } from 'framer-motion';
 import SwipeCard from './SwipeCard';
-import AIFactCheckModal from './AIFactCheckModal';
-import TradingModal from './TradingModal';
 import ConnectWalletPrompt from './ConnectWalletPrompt';
+// Note: AIFactCheckModal and TradingModal are no longer used
+// Trading is now handled inline via TradingSheet in SwipeCard
 import { Prediction, DFlowData } from '@/lib/types';
 import { useUser } from '@/context/UserContext';
 import confetti from 'canvas-confetti';
@@ -224,18 +224,7 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
   const [results, setResults] = useState<PredictionResult[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<PredictionResult | null>(null);
-
-  // AI Fact-Check Modal state
-  const [showFactCheck, setShowFactCheck] = useState(false);
-  const [pendingSwipe, setPendingSwipe] = useState<{
-    prediction: Prediction;
-    direction: 'yes' | 'no';
-  } | null>(null);
-
-  // Trading Modal state
-  const [showTrading, setShowTrading] = useState(false);
-  const [tradingPrediction, setTradingPrediction] = useState<Prediction | null>(null);
-  const [tradingSide, setTradingSide] = useState<'YES' | 'NO'>('YES');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Connect Wallet Prompt state (rendered at CardStack level for proper z-index)
   const [showConnectPrompt, setShowConnectPrompt] = useState(false);
@@ -264,89 +253,51 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
 
   const isComplete = currentIndex >= predictions.length;
 
-  // Handle initial swipe - show fact-check modal instead of immediately processing
+  // Handle swipe completion (called after card flies out)
   const handleSwipe = useCallback(
     (direction: 'left' | 'right', prediction: Prediction) => {
-      // Store the pending swipe and show fact-check modal
-      setPendingSwipe({
-        prediction,
-        direction: direction === 'right' ? 'yes' : 'no',
-      });
-      setShowFactCheck(true);
-
-      // Small confetti on initial swipe
-      const colors = direction === 'right' ? ['#10B981', '#10B981'] : ['#F43F5E', '#F43F5E'];
-      confetti({
-        particleCount: 20,
-        spread: 40,
-        origin: { x: direction === 'right' ? 0.75 : 0.25, y: 0.5 },
-        colors,
-        gravity: 0.8,
-        scalar: 0.7,
-      });
+      // Card has flown out - the actual result handling happens in handleTradeComplete
     },
     []
   );
 
-  // Handle fact-check confirmation - proceed to trading
-  const handleFactCheckConfirm = useCallback(
-    (finalChoice: 'yes' | 'no') => {
-      if (!pendingSwipe) return;
+  // Handle trade completion from SwipeCard's inline TradingSheet
+  const handleTradeComplete = useCallback(
+    (prediction: Prediction, side: 'YES' | 'NO', traded: boolean) => {
 
-      setShowFactCheck(false);
+      // Record the result
+      const result: PredictionResult = {
+        prediction,
+        direction: side === 'YES' ? 'yes' : 'no',
+        timestamp: new Date(),
+        factChecked: true,
+        traded,
+      };
 
-      // Check if this market supports trading (has DFlow tokens)
-      const canTrade = pendingSwipe.prediction.dflow?.tokens?.isInitialized;
+      setResults((prev) => [...prev, result]);
+      setLastResult(result);
+      setShowResult(true);
 
-      if (canTrade) {
-        // Show trading modal
-        setTradingPrediction(pendingSwipe.prediction);
-        setTradingSide(finalChoice === 'yes' ? 'YES' : 'NO');
-        setShowTrading(true);
-      } else {
-        // No trading available - just record the prediction
-        finalizePrediction(pendingSwipe.prediction, finalChoice, true, false);
+      // Move to next card after a brief delay
+      setTimeout(() => {
+        setCurrentIndex((prev) => prev + 1);
+      }, 100);
+
+      // Celebration confetti if traded
+      if (traded) {
+        const colors = side === 'YES' ? ['#10B981', '#34D399'] : ['#F43F5E', '#FB7185'];
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { x: 0.5, y: 0.5 },
+          colors,
+          gravity: 0.8,
+          scalar: 0.9,
+        });
       }
     },
-    [pendingSwipe]
+    []
   );
-
-  // Handle fact-check skip - just move to next card without recording
-  const handleFactCheckSkip = useCallback(() => {
-    setShowFactCheck(false);
-    setPendingSwipe(null);
-    setCurrentIndex((prev) => prev + 1);
-  }, []);
-
-  // Handle fact-check close
-  const handleFactCheckClose = useCallback(() => {
-    setShowFactCheck(false);
-    setPendingSwipe(null);
-  }, []);
-
-  // Handle trading modal close
-  // tradeCompleted: true if user actually made a trade, false if they just closed/skipped
-  const handleTradingClose = useCallback((tradeCompleted: boolean = false) => {
-    setShowTrading(false);
-
-    if (pendingSwipe) {
-      if (tradeCompleted) {
-        // User actually traded - show the result
-        finalizePrediction(
-          pendingSwipe.prediction,
-          tradingSide === 'YES' ? 'yes' : 'no',
-          true,
-          true
-        );
-      } else {
-        // User closed without trading - just move to next card silently
-        setCurrentIndex((prev) => prev + 1);
-      }
-    }
-
-    setTradingPrediction(null);
-    setPendingSwipe(null);
-  }, [pendingSwipe, tradingSide]);
 
   // Finalize and record the prediction
   const finalizePrediction = useCallback(
@@ -362,7 +313,6 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
       setResults((prev) => [...prev, result]);
       setLastResult(result);
       setShowResult(true);
-      setPendingSwipe(null);
 
       // Big celebration confetti
       const colors = direction === 'yes' ? ['#10B981', '#10B981', '#10B981'] : ['#F43F5E', '#F43F5E', '#F43F5E'];
@@ -388,10 +338,6 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
     setResults([]);
     setLastResult(null);
     setShowResult(false);
-    setShowFactCheck(false);
-    setShowTrading(false);
-    setPendingSwipe(null);
-    setTradingPrediction(null);
   }, []);
 
   // Handle skip - just move to next card without any action
@@ -400,7 +346,6 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
   }, []);
 
   // Track if we're transitioning between cards for smoother reveal
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const lastIndex = useRef(currentIndex);
 
   // Detect when we're moving to next card
@@ -448,39 +393,14 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
               onSwipe={handleSwipe}
               onSkip={handleSkip}
               onConnectWallet={handleConnectWallet}
-              isTop={index === 0 && !showFactCheck && !showTrading && !isTransitioning}
+              onTradeComplete={handleTradeComplete}
+              isTop={index === 0 && !isTransitioning}
               stackIndex={index}
             />
           ))}
         </div>
       ) : (
         <CompletionScreen results={results} onReset={handleReset} />
-      )}
-
-      {/* AI Fact-Check Modal */}
-      {pendingSwipe && (
-        <AIFactCheckModal
-          prediction={pendingSwipe.prediction}
-          userChoice={pendingSwipe.direction}
-          isOpen={showFactCheck}
-          onConfirm={handleFactCheckConfirm}
-          onSkip={handleFactCheckSkip}
-          onClose={handleFactCheckClose}
-        />
-      )}
-
-      {/* Trading Modal */}
-      {tradingPrediction && (
-        <TradingModal
-          prediction={{
-            id: tradingPrediction.id,
-            question: tradingPrediction.question,
-            marketOdds: tradingPrediction.marketOdds,
-            dflow: tradingPrediction.dflow,
-          }}
-          isOpen={showTrading}
-          onClose={handleTradingClose}
-        />
       )}
 
       {/* Result Overlay */}
@@ -511,9 +431,11 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
         .card-stack-container {
           position: relative;
           width: 100%;
+          max-width: 360px;
+          margin: 0 auto;
           height: calc(100dvh - 56px - 72px - 56px - 32px);
           min-height: 320px;
-          max-height: 520px;
+          max-height: 580px;
         }
 
         .card-stack-inner {
@@ -605,9 +527,9 @@ export default function CardStack({ predictions, onComplete }: CardStackProps) {
         /* ─── DESKTOP (1024px+) ─── */
         @media (min-width: 1024px) {
           .card-stack-container {
-            height: 480px;
-            min-height: 420px;
-            max-height: 520px;
+            height: 560px;
+            min-height: 480px;
+            max-height: 600px;
           }
         }
 

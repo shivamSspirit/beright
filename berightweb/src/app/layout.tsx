@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import PageLoader from "@/components/PageLoader";
+import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
   title: "BeRight - Human vs AI Predictions",
@@ -50,7 +51,10 @@ export default function RootLayout({
       </head>
       <body className="antialiased" suppressHydrationWarning>
         <PageLoader />
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <BottomNav />
+        </Providers>
       </body>
     </html>
   );

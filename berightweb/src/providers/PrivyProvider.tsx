@@ -42,10 +42,10 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
           },
         },
 
-        // Appearance - dark theme with green accent
+        // Appearance - dark theme with brand green accent
         appearance: {
           theme: 'dark',
-          accentColor: '#00E676',
+          accentColor: '#10B981',
           showWalletLoginFirst: true,
           logo: '/logo.jpg',
           walletChainType: 'solana-only',

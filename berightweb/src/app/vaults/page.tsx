@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import BottomNav from '@/components/BottomNav';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES (mirrored from beright-ts)
@@ -372,7 +371,6 @@ export default function VaultsPage() {
         )}
       </AnimatePresence>
 
-      <BottomNav />
 
       <style jsx>{`
         .vaults-page {

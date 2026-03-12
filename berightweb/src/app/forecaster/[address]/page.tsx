@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
 import { useUser } from '@/context/UserContext';
 
 interface ForecasterProfile {
@@ -172,7 +171,6 @@ export default function ForecasterProfilePage() {
         <div className="flex items-center justify-center py-20">
           <Loader2 size={32} className="animate-spin text-[var(--ai-primary)]" />
         </div>
-        <BottomNav />
       </div>
     );
   }
@@ -187,7 +185,6 @@ export default function ForecasterProfilePage() {
           <p className="text-[var(--text-muted)] mb-6">This address hasn't made any predictions yet.</p>
           <Link href="/leaderboard" className="btn-primary inline-block">View Leaderboard</Link>
         </div>
-        <BottomNav />
       </div>
     );
   }
@@ -365,7 +362,6 @@ export default function ForecasterProfilePage() {
         </div>
       </div>
 
-      <BottomNav />
     </div>
   );
 }

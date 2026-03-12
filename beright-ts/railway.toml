@@ -1,22 +1,45 @@
-# Railway Deployment Configuration
-# Deploy: railway up
+# Railway Configuration for BeRight Agents
+# ==========================================
+# Deploy with: railway up
+# Or link repo and auto-deploy on push
 
 [build]
-builder = "nixpacks"
-buildCommand = "npm install && npm run build"
+# Use custom Dockerfile for multi-service deployment
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npm start"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+# Number of instances (1 is fine for monolithic PM2 setup)
+numReplicas = 1
 
-# Environment variables to set in Railway dashboard:
-# - TELEGRAM_BOT_TOKEN
-# - GROQ_API_KEY
-# - GEMINI_API_KEY (optional)
-# - ANTHROPIC_API_KEY (optional)
-# - TAVILY_API_KEY (optional)
-# - SUPABASE_URL (optional)
-# - SUPABASE_SERVICE_KEY (optional)
+# Health check (120s for PM2 + Next.js cold start)
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+
+# Graceful shutdown
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[deploy.resources]
+# Railway Pro plan resources
+# Adjust based on your plan limits
+memory = "1Gi"
+cpu = "1"
+
+[[volumes]]
+# Persistent storage for memory, logs, and state
+# Mount at /data - survives redeploys
+source = "beright-data"
+target = "/data"
+
+[env]
+# Port MUST be 8080 for Railway
+PORT = "8080"
+NODE_ENV = "production"
+
+# PM2 config
+PM2_HOME = "/data/.pm2"
+
+# State directories (persistent via volume)
+BERIGHT_STATE_DIR = "/data/state"
+BERIGHT_MEMORY_DIR = "/data/memory"
+BERIGHT_LOGS_DIR = "/data/logs"

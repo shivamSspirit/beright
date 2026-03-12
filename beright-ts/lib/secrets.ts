@@ -38,10 +38,13 @@ export interface SecretsConfig {
   // Anthropic
   anthropicApiKey?: string;
 
+  // Mistral (primary LLM)
+  mistralApiKey?: string;
+
   // Groq (backup LLM - free)
   groqApiKey?: string;
 
-  // Gemini (primary LLM - Google)
+  // Gemini (backup LLM - Google)
   geminiApiKey?: string;
 
   // Tavily (social search)
@@ -115,10 +118,13 @@ class SecretsManager {
     // Anthropic
     this.config.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
+    // Mistral (primary)
+    this.config.mistralApiKey = process.env.MISTRAL_API_KEY;
+
     // Groq (backup)
     this.config.groqApiKey = process.env.GROQ_API_KEY;
 
-    // Gemini (primary)
+    // Gemini (backup)
     this.config.geminiApiKey = process.env.GEMINI_API_KEY;
 
     // Tavily
@@ -219,6 +225,14 @@ class SecretsManager {
   }
 
   /**
+   * Get Mistral API key
+   */
+  getMistralApiKey(): string | undefined {
+    this.ensureInitialized();
+    return this.config.mistralApiKey;
+  }
+
+  /**
    * Get Groq API key
    */
   getGroqApiKey(): string | undefined {
@@ -302,6 +316,7 @@ class SecretsManager {
       supabase: !!(this.config.supabaseUrl && this.config.supabaseAnonKey),
       telegram: !!this.config.telegramBotToken,
       anthropic: !!this.config.anthropicApiKey,
+      mistral: !!this.config.mistralApiKey,
       groq: !!this.config.groqApiKey,
       gemini: !!this.config.geminiApiKey,
       tavily: !!this.config.tavilyApiKey,

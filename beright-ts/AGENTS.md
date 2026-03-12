@@ -19,6 +19,7 @@ BeRight operates as a **Multi-Agent Orchestrator** with specialized agents for d
 | **Trader** | claude-sonnet-4-5 | Trade execution, risk mgmt | 5/hr, 20/day | No |
 | **Builder** | claude-opus-4-5 | Autonomous code generation | 3/hr, 20/day | Yes |
 | **Poster** | claude-sonnet-4-5 | Forum engagement | 3/hr, 10/day | Yes |
+| **xDegen** | claude-sonnet-4-5 | X/Twitter alpha posting | 3/hr, 10/day | Optional |
 
 ---
 
@@ -150,6 +151,55 @@ BeRight operates as a **Multi-Agent Orchestrator** with specialized agents for d
 
 ---
 
+### xDegen Agent
+
+**Model:** claude-sonnet-4-5 | **Temperature:** 0.7 | **Max Tokens:** 1024
+
+**Role:** Autonomous X/Twitter posting agent (like AIXBT for prediction markets)
+
+**Capabilities:**
+- Alpha signal posts (arbitrage, hot markets, mispriced bets)
+- Educational content (Brier scores, calibration, prediction markets 101)
+- Narrative content (AI agents, Solana speed, BeRight vs competitors)
+- Thread generation for deeper engagement
+- Scheduled posting for optimal timing
+- Real-time market data integration
+
+**Tools:** generate_alpha_post, post_to_twitter, get_market_alpha, check_post_status, generate_thread, schedule_post
+
+**Rate Limits:**
+- 3/hour, 10 posts/day
+- 20 min cooldown between posts
+- Optional auto-posting mode
+
+**Content Templates:**
+- `asymmetry` - The undervalued opportunity narrative
+- `arbitrageAlert` - Real-time arb opportunities with data
+- `hotMarket` - Trending markets with insights
+- `educationHook` - Educational content for engagement
+- `aiNarrative` - AI agent meta positioning
+- `contrarian` - Provocative takes that drive engagement
+- `winHighlight` - Social proof from user wins
+- `challenge` - Engagement bait challenges
+
+**Voice Guidelines:**
+- Sharp, confident, data-driven
+- Bloomberg meets Degen culture
+- Numbers over hype
+- Always include $BERIGHT or beright.fun
+- No cringe ("wen moon", "lfg", "wagmi")
+
+**Environment Variables:**
+```
+TWITTER_API_KEY=...
+TWITTER_API_SECRET=...
+TWITTER_ACCESS_TOKEN=...
+TWITTER_ACCESS_SECRET=...
+XDEGEN_AUTO_POST=true/false
+```
+
+---
+
 ## Command Routing
 
 | Command | Agent | Description |
@@ -169,6 +219,10 @@ BeRight operates as a **Multi-Agent Orchestrator** with specialized agents for d
 | `/improve` | Builder | Suggest improvements |
 | `/post` | Poster | Create forum post |
 | `/engage` | Poster | Forum engagement cycle |
+| `/xpost [type]` | xDegen | Generate and post to X/Twitter |
+| `/tweet [topic]` | xDegen | Generate alpha tweet |
+| `/thread [topic]` | xDegen | Generate multi-tweet thread |
+| `/xstatus` | xDegen | Check posting rate limits |
 
 ---
 
@@ -177,7 +231,7 @@ BeRight operates as a **Multi-Agent Orchestrator** with specialized agents for d
 Only these agents can be spawned:
 
 ```
-scout, analyst, trader, builder, poster
+scout, analyst, trader, builder, poster, xdegen
 ```
 
 ---
@@ -196,6 +250,7 @@ scout, analyst, trader, builder, poster
 - Analyst: Max 3 concurrent goals
 - Trader: Max 2 concurrent goals
 - Builder: Max 2 concurrent goals
+- xDegen: Max 3 concurrent goals (posts queued)
 
 ---
 

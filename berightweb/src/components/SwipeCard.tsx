@@ -13,6 +13,7 @@ interface SwipeCardProps {
   onSwipe: (direction: 'left' | 'right', prediction: Prediction) => void;
   onSkip?: (prediction: Prediction) => void;
   onConnectWallet?: () => void;
+  onTradeComplete?: (prediction: Prediction, side: 'YES' | 'NO', traded: boolean) => void;
   isTop: boolean;
   stackIndex: number;
 }
@@ -350,6 +351,463 @@ function TradingChart({
 }
 
 // ============================================
+// TRADING SHEET - Bottom Sheet for Trading
+// ============================================
+
+function TradingSheet({
+  prediction,
+  isVisible,
+  direction,
+  onConfirm,
+  onClose,
+}: {
+  prediction: Prediction;
+  isVisible: boolean;
+  direction: 'left' | 'right' | null;
+  onConfirm: (traded: boolean) => void;
+  onClose: () => void;
+}) {
+  const [amount, setAmount] = useState(5);
+  const [isTrading, setIsTrading] = useState(false);
+
+  const side = direction === 'right' ? 'YES' : 'NO';
+  const isYes = direction === 'right';
+
+  const yesPrice = prediction.dflow?.yesBid ?? prediction.marketOdds / 100;
+  const noPrice = prediction.dflow?.noBid ?? (100 - prediction.marketOdds) / 100;
+  const selectedPrice = isYes ? yesPrice : noPrice;
+  const selectedPct = isYes ? prediction.marketOdds : 100 - prediction.marketOdds;
+
+  // Calculate potential payout
+  const potentialPayout = amount / selectedPrice;
+  const potentialProfit = potentialPayout - amount;
+
+  // Check if trading is available
+  const canTrade = prediction.dflow?.tokens?.isInitialized;
+
+  // Spring animation for sheet
+  const sheetSpring = useSpring({
+    transform: isVisible ? 'translateX(-50%) translateY(0%)' : 'translateX(-50%) translateY(100%)',
+    opacity: isVisible ? 1 : 0,
+    config: { tension: 300, friction: 30 },
+  });
+
+  const backdropSpring = useSpring({
+    opacity: isVisible ? 1 : 0,
+    config: { tension: 400, friction: 35 },
+  });
+
+  // Don't render on server
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !isVisible) return null;
+
+  const handleTrade = async () => {
+    setIsTrading(true);
+    // TODO: Integrate actual DFlow trading here
+    // For now, simulate a short delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsTrading(false);
+    onConfirm(true);
+  };
+
+  const handleSkip = () => {
+    onConfirm(false);
+  };
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <animated.div
+        className="trading-sheet-backdrop"
+        style={{ opacity: backdropSpring.opacity }}
+        onClick={onClose}
+      />
+
+      {/* Trading Sheet */}
+      <animated.div
+        className="trading-sheet"
+        style={{
+          transform: sheetSpring.transform,
+          opacity: sheetSpring.opacity,
+        }}
+      >
+        {/* Handle */}
+        <div className="ts-handle" onClick={onClose}>
+          <div className="ts-handle-bar" />
+        </div>
+
+        {/* Direction Badge */}
+        <div className={`ts-direction ${isYes ? 'yes' : 'no'}`}>
+          <span className="ts-direction-icon">{isYes ? '✓' : '✕'}</span>
+          <span className="ts-direction-label">You're betting {side}</span>
+        </div>
+
+        {/* Question */}
+        <p className="ts-question">{prediction.question}</p>
+
+        {/* Price Display */}
+        <div className="ts-price-section">
+          <div className={`ts-price-box ${isYes ? 'yes' : 'no'}`}>
+            <span className="ts-price-label">{side} Price</span>
+            <span className="ts-price-value">{Math.round(selectedPrice * 100)}¢</span>
+            <span className="ts-price-pct">{selectedPct}% chance</span>
+          </div>
+        </div>
+
+        {/* Amount Selector */}
+        <div className="ts-amount-section">
+          <span className="ts-amount-label">Amount (USDC)</span>
+          <div className="ts-amount-buttons">
+            {[5, 10, 25, 50, 100].map(val => (
+              <button
+                key={val}
+                className={`ts-amount-btn ${amount === val ? 'active' : ''}`}
+                onClick={() => setAmount(val)}
+              >
+                ${val}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Potential Returns */}
+        <div className="ts-returns">
+          <div className="ts-return-row">
+            <span>You pay</span>
+            <span className="ts-return-value">${amount.toFixed(2)}</span>
+          </div>
+          <div className="ts-return-row">
+            <span>Potential return</span>
+            <span className="ts-return-value highlight">${potentialPayout.toFixed(2)}</span>
+          </div>
+          <div className="ts-return-row profit">
+            <span>Potential profit</span>
+            <span className="ts-return-value profit">+${potentialProfit.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="ts-actions">
+          <button className="ts-btn ts-btn-skip" onClick={handleSkip}>
+            Skip Trade
+          </button>
+          <button
+            className={`ts-btn ts-btn-trade ${isYes ? 'yes' : 'no'}`}
+            onClick={handleTrade}
+            disabled={!canTrade || isTrading}
+          >
+            {isTrading ? 'Trading...' : canTrade ? `Confirm ${side}` : 'Trading Unavailable'}
+          </button>
+        </div>
+
+        {/* DFlow Link */}
+        {!canTrade && (
+          <p className="ts-dflow-note">
+            <a href="https://dflow.net/proof" target="_blank" rel="noopener noreferrer">
+              Verify wallet at DFlow
+            </a> to enable trading
+          </p>
+        )}
+      </animated.div>
+
+      <style jsx global>{`
+        .trading-sheet-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          z-index: 9998;
+        }
+
+        .trading-sheet {
+          position: fixed;
+          bottom: 0;
+          left: 50%;
+          width: calc(100% - 16px);
+          max-width: 340px;
+          background: linear-gradient(180deg, #1a1a22 0%, #0d0d12 100%);
+          border-radius: 24px 24px 0 0;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: none;
+          padding: 0 16px 24px;
+          padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+          z-index: 9999;
+          font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+          box-shadow: 0 -10px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        .ts-handle {
+          display: flex;
+          justify-content: center;
+          padding: 12px 0 16px;
+          cursor: pointer;
+        }
+
+        .ts-handle-bar {
+          width: 40px;
+          height: 4px;
+          background: rgba(255, 255, 255, 0.25);
+          border-radius: 4px;
+        }
+
+        .ts-direction {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 20px;
+          border-radius: 16px;
+          margin-bottom: 16px;
+        }
+
+        .ts-direction.yes {
+          background: rgba(16, 185, 129, 0.15);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .ts-direction.no {
+          background: rgba(244, 63, 94, 0.15);
+          border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .ts-direction-icon {
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .ts-direction.yes .ts-direction-icon { color: #10B981; }
+        .ts-direction.no .ts-direction-icon { color: #F43F5E; }
+
+        .ts-direction-label {
+          font-size: 18px;
+          font-weight: 600;
+          color: #fff;
+        }
+
+        .ts-question {
+          font-size: 14px;
+          line-height: 1.5;
+          color: rgba(255, 255, 255, 0.7);
+          text-align: center;
+          margin: 0 0 20px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .ts-price-section {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+
+        .ts-price-box {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 16px 32px;
+          border-radius: 16px;
+          min-width: 160px;
+        }
+
+        .ts-price-box.yes {
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .ts-price-box.no {
+          background: rgba(244, 63, 94, 0.1);
+          border: 1px solid rgba(244, 63, 94, 0.25);
+        }
+
+        .ts-price-label {
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          margin-bottom: 4px;
+        }
+
+        .ts-price-value {
+          font-size: 36px;
+          font-weight: 800;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .ts-price-box.yes .ts-price-value { color: #10B981; }
+        .ts-price-box.no .ts-price-value { color: #F43F5E; }
+
+        .ts-price-pct {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 2px;
+        }
+
+        .ts-amount-section {
+          margin-bottom: 20px;
+        }
+
+        .ts-amount-label {
+          display: block;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          margin-bottom: 10px;
+          text-align: center;
+        }
+
+        .ts-amount-buttons {
+          display: flex;
+          gap: 8px;
+          justify-content: center;
+        }
+
+        .ts-amount-btn {
+          padding: 10px 16px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'JetBrains Mono', monospace;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .ts-amount-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .ts-amount-btn.active {
+          background: rgba(0, 194, 255, 0.15);
+          border-color: rgba(0, 194, 255, 0.4);
+          color: #00C2FF;
+        }
+
+        .ts-returns {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 12px;
+          padding: 14px;
+          margin-bottom: 20px;
+        }
+
+        .ts-return-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 6px 0;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .ts-return-row.profit {
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          margin-top: 6px;
+          padding-top: 10px;
+        }
+
+        .ts-return-value {
+          font-weight: 600;
+          font-family: 'JetBrains Mono', monospace;
+          color: #fff;
+        }
+
+        .ts-return-value.highlight {
+          color: #00C2FF;
+        }
+
+        .ts-return-value.profit {
+          color: #10B981;
+        }
+
+        .ts-actions {
+          display: flex;
+          gap: 12px;
+        }
+
+        .ts-btn {
+          flex: 1;
+          padding: 16px;
+          border-radius: 14px;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: none;
+        }
+
+        .ts-btn-skip {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .ts-btn-skip:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .ts-btn-trade {
+          flex: 2;
+        }
+
+        .ts-btn-trade.yes {
+          background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+          color: #000;
+        }
+
+        .ts-btn-trade.no {
+          background: linear-gradient(135deg, #F43F5E 0%, #DC2626 100%);
+          color: #fff;
+        }
+
+        .ts-btn-trade:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .ts-btn-trade:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .ts-dflow-note {
+          text-align: center;
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.4);
+          margin-top: 12px;
+        }
+
+        .ts-dflow-note a {
+          color: #00C2FF;
+          text-decoration: none;
+        }
+
+        .ts-dflow-note a:hover {
+          text-decoration: underline;
+        }
+      `}</style>
+    </>,
+    document.body
+  );
+}
+
+// ============================================
 // MARKET DETAIL DRAWER - Bottom Sheet Design
 // ============================================
 
@@ -366,7 +824,7 @@ function MarketDetailDrawer({
 }) {
   // Spring animation for drawer slide-up (use vh units for reliable positioning)
   const drawerSpring = useSpring({
-    transform: isVisible ? 'translateY(0vh)' : 'translateY(100vh)',
+    transform: isVisible ? 'translateX(-50%) translateY(0vh)' : 'translateX(-50%) translateY(100vh)',
     opacity: isVisible ? 1 : 0,
     config: { tension: 300, friction: 30 },
   });
@@ -651,19 +1109,17 @@ function MarketDetailDrawer({
         .drawer-container {
           position: fixed;
           bottom: 0;
-          left: 0;
-          right: 0;
-          margin: 0 auto;
-          width: 100%;
-          max-width: 500px;
+          left: 50%;
+          width: calc(100% - 16px);
+          max-width: 340px;
           min-height: 50vh;
           max-height: 80vh;
           background: linear-gradient(180deg, #1a1a22 0%, #0d0d12 100%);
           border-radius: 24px 24px 0 0;
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-bottom: none;
-          padding: 0 20px 28px;
-          padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+          padding: 0 16px 24px;
+          padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
           overflow-y: auto;
           z-index: 9999;
           font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1364,31 +1820,23 @@ function MarketDetailDrawer({
         }
 
         /* Desktop adjustments */
-        @media (min-width: 768px) {
-          .drawer-container {
-            max-width: 460px;
-          }
-
-          .price-value {
-            font-size: 42px;
-          }
-
-          .ai-badge-value {
-            font-size: 36px;
-          }
-        }
+        /* Mobile-first: keep drawer at mobile width on all screens */
       `}</style>
     </>,
     document.body
   );
 }
 
-export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet, isTop, stackIndex }: SwipeCardProps) {
+export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet, onTradeComplete, isTop, stackIndex }: SwipeCardProps) {
   const { isAuthenticated } = useUser();
   const [pressed, setPressed] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [showTooltips, setShowTooltips] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+
+  // Trading sheet state - shows when user swipes
+  const [showTradingSheet, setShowTradingSheet] = useState(false);
+  const [pendingDirection, setPendingDirection] = useState<'left' | 'right' | null>(null);
 
   const mock = useMemo(() => {
     const h = prediction.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -1417,6 +1865,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
   const noOp = isTop ? x.to(v => Math.min(1, Math.max(0, -v / 80) ** 2)) : 0;
   const glow = isTop ? x.to(v => Math.min(1, Math.abs(v) / 150)) : 0;
 
+  // Actually fly out the card (called after trading sheet interaction)
   const flyOut = useCallback((dir: number) => {
     if (navigator.vibrate) navigator.vibrate([5, 15, 5]);
     api.start({
@@ -1429,6 +1878,41 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
     });
   }, [api, onSwipe, prediction]);
 
+  // Show trading sheet instead of flying out immediately
+  const showTradingOnSwipe = useCallback((dir: 'left' | 'right') => {
+    if (navigator.vibrate) navigator.vibrate(10);
+    setPendingDirection(dir);
+    setShowTradingSheet(true);
+  }, []);
+
+  // Handle trading sheet confirmation
+  const handleTradingConfirm = useCallback((traded: boolean) => {
+    if (!pendingDirection) return;
+    const side = pendingDirection === 'right' ? 'YES' : 'NO';
+
+    // Close the sheet
+    setShowTradingSheet(false);
+
+    // Notify parent about trade completion
+    if (onTradeComplete) {
+      onTradeComplete(prediction, side as 'YES' | 'NO', traded);
+    }
+
+    // Fly out the card
+    const dir = pendingDirection === 'right' ? 1 : -1;
+    setTimeout(() => flyOut(dir), 100);
+
+    setPendingDirection(null);
+  }, [pendingDirection, prediction, onTradeComplete, flyOut]);
+
+  // Handle trading sheet close without trading
+  const handleTradingClose = useCallback(() => {
+    setShowTradingSheet(false);
+    setPendingDirection(null);
+    // Reset card position
+    api.start({ x: 0, y: 0, rotate: 0, scale: 1 });
+  }, [api]);
+
   const bind = useDrag(
     ({ down, movement: [mx, my], velocity: [vx], direction: [dx], first, last }) => {
       if (!isAuthenticated) {
@@ -1438,12 +1922,17 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         return;
       }
 
+      // Don't allow dragging while trading sheet is open
+      if (showTradingSheet) return;
+
       if (first) setPressed(true);
       if (last) setPressed(false);
       const trigger = vx > 0.3 || Math.abs(mx) > 80;
-      const dir = dx > 0 ? 1 : -1;
+      // Use mx (displacement) not dx (instantaneous direction) for reliable swipe detection
+      const swipeDir = mx > 0 ? 'right' : 'left';
       if (!down && trigger && Math.abs(mx) > 40) {
-        flyOut(dir);
+        // Show trading sheet instead of flying out
+        showTradingOnSwipe(swipeDir);
       } else {
         api.start({
           x: down ? mx : 0,
@@ -1455,22 +1944,21 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         });
       }
     },
-    { filterTaps: true, pointer: { touch: true }, enabled: isTop, rubberband: true }
+    { filterTaps: true, pointer: { touch: true }, enabled: isTop && !showTradingSheet, rubberband: true }
   );
 
   const vote = useCallback((dir: 'left' | 'right') => {
-    if (!isTop) return;
+    if (!isTop || showTradingSheet) return;
 
     if (!isAuthenticated) {
       if (onConnectWallet) onConnectWallet();
       return;
     }
 
-    const d = dir === 'right' ? 1 : -1;
+    // Show trading sheet instead of flying out
     if (navigator.vibrate) navigator.vibrate(10);
-    api.start({ x: d * -15, scale: 1.03, config: { tension: 600, friction: 20 } });
-    setTimeout(() => flyOut(d), 60);
-  }, [isTop, api, flyOut, isAuthenticated, onConnectWallet]);
+    showTradingOnSwipe(dir);
+  }, [isTop, showTradingSheet, isAuthenticated, onConnectWallet, showTradingOnSwipe]);
 
   const skip = useCallback(() => {
     if (!isTop || !onSkip) return;
@@ -1526,6 +2014,15 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         isVisible={tooltipsVisible}
         mock={mock}
         onClose={() => setShowTooltips(false)}
+      />
+
+      {/* Trading Sheet - Shows on swipe */}
+      <TradingSheet
+        prediction={prediction}
+        isVisible={showTradingSheet}
+        direction={pendingDirection}
+        onConfirm={handleTradingConfirm}
+        onClose={handleTradingClose}
       />
 
       <animated.div
@@ -1714,10 +2211,13 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         .swipe-card-wrapper,
         .swipe-card-stack {
           position: absolute;
-          left: 6px;
-          right: 6px;
           top: 0;
           bottom: 0;
+          left: 0;
+          right: 0;
+          margin: 0 auto;
+          width: calc(100% - 16px);
+          max-width: 340px !important;
           touch-action: none;
           z-index: 30;
         }
@@ -2141,18 +2641,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           .sc-price-explain-text { font-size: 9px; }
         }
 
-        @media (min-width: 400px) {
-          .swipe-card-wrapper,
-          .swipe-card-stack {
-            left: 10px;
-            right: 10px;
-          }
-          .sc-hero { min-height: 180px; }
-          .sc-hero-question { font-size: 18px; }
-          .sc-text-question { font-size: 20px; }
-          .sc-trade-price { font-size: 20px; }
-          .sc-trade-chart { height: 32px; }
-        }
+        /* Note: swipe-card-wrapper max-width is defined at the top for mobile-first */
 
         @media (min-width: 440px) {
           .sc-hero { min-height: 200px; }
