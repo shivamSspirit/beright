@@ -6,17 +6,53 @@
 
 ## The Opportunity
 
-### Current State (March 2025)
-- Prediction market volume: **$5.89B/week** (Kalshi $2.86B, Polymarket $2.50B)
-- Paradigm + Sequoia backing Kalshi at $11B valuation
-- **95% of DeFi composability hasn't been built yet**
+### Current State (March 2026)
+
+**Prediction Market Volume:**
+- Weekly volume: **$5.89B** (week of March 2-8, 2026)
+- February 2026: **$17.9B combined** (Kalshi $9.9B, Polymarket $7.9B)
+- Up from under $2B/month in August 2025 → **9x growth in 6 months**
+
+**Market Share Battle:**
+- Kalshi: 53% of volume, leads in sports ($1.99B) and revenue ($1.5B annualized)
+- Polymarket: 47% of volume, leads in transactions (80.7M vs 70.8M in Feb)
+- Both exploring **$20B valuations** (up from $11B for Kalshi in 2025)
+
+**Category Breakdown:**
+- Sports: $3.01B/week (largest)
+- Crypto: $982M/week (5-15 min up/down contracts dominate)
+- Politics: $574M/week (Polymarket dominates)
+
+**Key Developments:**
+- Polymarket acquired QCEX for $112M → CFTC-licensed US re-entry
+- Jupiter integrated Polymarket (Feb 2026) → Solana-native prediction markets
+- Jupiter raised $35M from ParaFi, has $2.35B TVL
+- Chainlink oracles power 5-15 min crypto markets on Jupiter
+
+Sources: [DeFi Rate](https://defirate.com/prediction-markets/), [CoinDesk](https://www.coindesk.com/markets/2026/02/02/jupiter-brings-polymarket-to-solana-and-lands-usd35-million-investment-deal/), [DailyCoin](https://dailycoin.com/prediction-markets-soar-kalshi-and-polymarket-could-be-worth-20b-soon/)
+
+### Solana DeFi Context (March 2026)
+
+**Ecosystem Scale:**
+- Solana DeFi TVL: **$11.5B** (Dec 2025)
+- Lending markets: $3.6B
+- Meteora: $1B+ TVL, $300M daily volume
+- Jupiter: $2.35B TVL, $650M annualized fees
+
+**Yield Infrastructure:**
+- Sanctum INF: **6.42% APY** (Jan 2026), peaks above 20% during high volume
+- JitoSOL: 5.89% APY, $2B+ TVL (largest LST)
+- Meteora Dynamic Vaults: Auto-lend to Kamino/Marginfi/Solend
+
+Sources: [Sanctum](https://sanctum.so/blog/best-solana-yield-2026-staking-vs-defi), [Meteora Review](https://dexrank.com/reviews/meteora-dex), [Eco Guide](https://eco.com/support/en/articles/13225733-top-10-defi-apps-on-solana-in-2026-complete-guide)
 
 ### BeRight's Edge
+
 We have what others don't:
-1. **On-chain Brier scores** (portable reputation)
-2. **Calibration program** (verifiable track record)
+1. **On-chain Brier scores** (portable reputation) - no competitor has this
+2. **Calibration program** (verifiable track record on Solana)
 3. **Vault infrastructure** (timelock, guardian, rate-limiting)
-4. **Tournament mechanics** (Meteora DAMM v2)
+4. **Tournament mechanics** (Meteora DAMM v2 integration)
 
 The missing piece: **turning reputation into yield**.
 
@@ -28,13 +64,23 @@ The missing piece: **turning reputation into yield**.
 
 ### Why This Wins
 
-| Competitor Narrative | BeRight Narrative |
-|---------------------|-------------------|
-| "Bet on outcomes" | "Invest in forecasters" |
-| "Gamble on elections" | "Stake on calibrated skill" |
-| "Speculate on prices" | "Earn yield on accuracy" |
+| Current Market | BeRight Differentiator |
+|----------------|------------------------|
+| Polymarket/Kalshi: "Bet on outcomes" | "Invest in forecasters" |
+| 5-min crypto bets: "Gamble on price" | "Stake on calibrated skill" |
+| GambleFi: "House always wins" | "Skilled forecasters win" |
 
 This is **Bloomberg Terminal meets Yearn** — skilled forecasters become fund managers, delegators earn yield on their edge.
+
+### Market Gap
+
+From research:
+> "Vitalik Buterin warns prediction markets are drifting into pure gambling with 5-minute crypto bets."
+
+BeRight is the **anti-gambling** play:
+- Not 5-min bets → Long-term forecasting skill
+- Not speculation → Calibrated probability estimates
+- Not luck → Verifiable Brier score track records
 
 ---
 
@@ -58,8 +104,8 @@ This is **Bloomberg Terminal meets Yearn** — skilled forecasters become fund m
 │                    COMPOSABILITY LAYER                          │
 │                                                                 │
 │   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐          │
-│   │  Meteora    │   │  Kamino     │   │  Marinade   │          │
-│   │  DAMM/DLMM  │   │  Multiply   │   │  mSOL       │          │
+│   │  Meteora    │   │  Kamino     │   │  Sanctum    │          │
+│   │  DAMM/DLMM  │   │  Multiply   │   │  INF Pool   │          │
 │   └─────────────┘   └─────────────┘   └─────────────┘          │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -85,14 +131,13 @@ This is **Bloomberg Terminal meets Yearn** — skilled forecasters become fund m
 
 ### What's Needed 🔨
 
-**1. Reputation Tokens (Non-Transferable)**
+**1. Reputation Score Formula**
 ```
 SKILL = f(Brier, Accuracy, SampleSize, Consistency)
 
-// Composite score already exists in DB:
 composite_score = weighted_avg([
-  brier_weight * (1 - avg_brier),
-  accuracy_weight * accuracy,
+  brier_weight * (1 - avg_brier),      // Lower Brier = better
+  accuracy_weight * accuracy,           // Higher accuracy = better
   confidence_weight * calibration_quality,
   volume_weight * log(resolved_predictions)
 ])
@@ -104,7 +149,7 @@ composite_score = weighted_avg([
 | Rookie | Any | 10+ | Basic tracking |
 | Verified | < 0.25 | 20+ | Create token |
 | Elite | < 0.18 | 50+ | Create vault |
-| Super | < 0.12 | 100+ | Higher caps |
+| Super | < 0.12 | 100+ | Higher caps, index inclusion |
 
 ---
 
@@ -132,7 +177,7 @@ Each verified forecaster can create a **staking pool** where:
 ```
 - Open-ended
 - Continuous deposits/withdrawals (with timelock)
-- Idle capital earns yield via Sanctum INF
+- Idle capital earns yield via Sanctum INF (~6-9% APY)
 - Forecaster takes trades, P&L reflected in NAV
 ```
 
@@ -143,12 +188,13 @@ Each verified forecaster can create a **staking pool** where:
 - Passive exposure to forecasting alpha
 ```
 
-### Meteora Integration (DAMM v2)
+### Meteora Integration
 
-We use Meteora's Dynamic AMM for:
-1. **Forecaster Token LP**: TOKEN/USDC pools
-2. **Tournament Entry**: LP tokens represent shares
-3. **Price Discovery**: Bonding curves for forecaster tokens
+Meteora is Solana's leading liquidity infrastructure ($1B+ TVL, $300M daily volume):
+
+**DLMM Pools**: Dynamic fee adjustment based on volatility
+**Dynamic Vaults**: Auto-lend idle capital to Kamino/Marginfi/Solend
+**MET Token**: Governance + staking rewards (launched Oct 2025)
 
 ```typescript
 // Existing in lib/token/forecasterToken.ts:
@@ -161,7 +207,6 @@ We use Meteora's Dynamic AMM for:
 
 **1. StakingPool Program** (new Solana program)
 ```rust
-// Account structure
 pub struct StakingPool {
     pub forecaster: Pubkey,
     pub base_token: Pubkey,     // USDC mint
@@ -172,18 +217,9 @@ pub struct StakingPool {
     pub performance_fee_bps: u16,
     pub management_fee_bps: u16,
     pub high_water_mark: f64,   // For performance fee
-    pub last_harvest: i64,
     pub min_lock_period: i64,   // Withdrawal delay
     pub max_capacity: u64,      // Reputation-gated
 }
-
-// Instructions
-- initialize_pool(forecaster, fees, lock_period)
-- deposit(amount) -> shares
-- request_withdrawal(shares) -> pending
-- process_withdrawal(pending_id) -> tokens
-- update_nav(new_nav, proof) // Oracle or on-chain calc
-- harvest_fees()
 ```
 
 **2. Reputation-Weighted Capacity**
@@ -197,11 +233,6 @@ max_capacity = $100K × 5.0 = $500K
 max_capacity = $100K × 0.5 = $50K
 ```
 
-**3. Withdrawal Queue**
-- Prevent bank runs with timelock (from vault program)
-- Per-epoch rate limits
-- Guardian approval for large withdrawals
-
 ---
 
 ## Layer 3: Yield (The Hook)
@@ -209,18 +240,19 @@ max_capacity = $100K × 0.5 = $50K
 ### Yield Sources
 
 **Source 1: Prediction P&L**
-- Forecaster makes predictions on Polymarket/Kalshi/Jupiter
+- Forecaster trades on Jupiter Prediction Markets (Polymarket/Kalshi via Solana)
+- Zero bridging needed (Jupiter integration live Feb 2026)
 - Winning trades increase NAV
-- Losing trades decrease NAV
 - Net alpha = forecaster's edge
 
-**Source 2: Idle Capital Yield (Sanctum INF)**
+**Source 2: Idle Capital Yield**
 ```
 Tournament deposits → 70% active trading
-                    → 30% Sanctum INF (4-5% APY)
+                    → 30% Sanctum INF
 
-// Already spec'd in tournament service:
-"Idle capital during tournament routes to Sanctum INF for yield"
+Sanctum INF APY: 6.42% base, peaks >20%
+- Holds basket of LSTs (JitoSOL, mSOL, etc.)
+- Earns staking yield + swap fees
 ```
 
 **Source 3: Trading Fees**
@@ -230,7 +262,7 @@ Tournament deposits → 70% active trading
 
 **Source 4: Protocol Revenue Share**
 - Platform takes 20% performance fee
-- Distributed to governance token holders (future)
+- Future: distributed to $BERIGHT holders
 
 ### Yield Accounting
 
@@ -241,37 +273,43 @@ NAV per Share = Total Pool Value / Total Shares
 
 Delegator Return = (Exit NAV - Entry NAV) / Entry NAV
 
-// After fees:
-Net Return = Gross Return - Performance Fee - Management Fee
+// Example:
+Deposit: $10,000 at NAV = $1.00 (10,000 shares)
+Exit: NAV = $1.15 after 30 days
+Gross Return: 15%
+Performance Fee: 15% × 20% = 3%
+Net Return: 12%
 ```
 
 ---
 
 ## Layer 4: Composability (The Moat)
 
-### Why This Matters
+### Why Jupiter Integration Changes Everything
 
-From the research:
-> "Outcome tokens are composable. They can be collateralized, lent, used as LP positions, bridged, or wrapped."
+Jupiter's Polymarket integration (Feb 2026) means:
+- **No bridging** — trade prediction markets natively on Solana
+- **Solana speed** — 400ms finality vs Polygon's 2s
+- **Unified liquidity** — Jupiter's $2.35B TVL accessible
+- **Chainlink oracles** — 5-15 min markets secured
 
-BeRight can do the same with **reputation tokens** and **pool shares**.
+BeRight becomes the **reputation layer** on top of Jupiter prediction markets.
 
 ### Composability Plays
 
 **1. Brier Score as Collateral**
 ```
 - Verified forecaster has Brier = 0.15
-- This represents proven edge
-- Can borrow against future earnings
-- Protocol: Kamino / Solend integration
+- Represents proven edge → can borrow against future earnings
+- Integration: Kamino / Marginfi
 ```
 
 **2. Pool Shares as LP**
 ```
-- Forecaster vault shares = ERC-20 equivalent
-- Can be traded on Jupiter
-- Can be used in Meteora DLMM
-- Creates secondary market for forecaster alpha
+- Forecaster vault shares = SPL tokens
+- Tradeable on Jupiter
+- Can LP in Meteora DLMM pools
+- Secondary market for forecaster alpha
 ```
 
 **3. Index Products**
@@ -279,13 +317,12 @@ BeRight can do the same with **reputation tokens** and **pool shares**.
 - "Top 10 Forecasters by Brier" index
 - Rebalances quarterly
 - Single token exposure to forecasting alpha
-- Similar to: DeFi Pulse Index
 ```
 
 **4. Structured Products**
 ```
 - Principal-protected vault
-- 90% in stables earning yield
+- 90% in Sanctum INF (6-9% APY)
 - 10% in top forecaster pools
 - Capped downside, uncapped upside
 ```
@@ -304,7 +341,7 @@ BeRight can do the same with **reputation tokens** and **pool shares**.
 - [ ] StakingPool program (Anchor)
 - [ ] Deposit/withdrawal with timelock
 - [ ] Reputation-weighted capacity limits
-- [ ] NAV calculation + oracle
+- [ ] Jupiter Prediction Markets integration
 
 ### Phase 3: Yield Mechanics (Weeks 5-6)
 - [ ] Performance fee (high-water mark)
@@ -320,22 +357,22 @@ BeRight can do the same with **reputation tokens** and **pool shares**.
 
 ---
 
-## Competitive Moats
+## Competitive Positioning
 
-### vs Polymarket
-- Polymarket = prediction market (bet on outcomes)
-- BeRight = reputation market (invest in forecasters)
-- We're the **yield layer** on top of their volume
+### vs Polymarket/Kalshi Direct
+- They are **prediction markets** (bet on outcomes)
+- We are **reputation markets** (invest in forecasters)
+- We're the yield layer on top of their volume
 
-### vs Azuro
-- Azuro = sports betting infrastructure
-- BeRight = forecasting talent infrastructure
-- We're for **skill**, not luck
+### vs Jupiter Prediction Markets
+- Jupiter provides **infrastructure** (trading, oracles)
+- We provide **reputation + capital layer** (who to follow, how to stake)
+- Complementary, not competitive
 
-### vs GambleFi (Rollbit, etc.)
-- GambleFi = house always wins
-- BeRight = skilled forecasters win
-- We're **aligned with users**, not against them
+### vs GambleFi (5-min crypto bets)
+- They enable **gambling** (random outcomes)
+- We enable **skill investing** (calibrated forecasters)
+- Different market, different users
 
 ---
 
@@ -345,27 +382,27 @@ BeRight can do the same with **reputation tokens** and **pool shares**.
 
 **Utility**:
 1. Governance (fee parameters, tier thresholds)
-2. Fee discounts (stake $BERIGHT for reduced fees)
+2. Fee discounts (stake for reduced fees)
 3. Revenue share (stake to earn protocol fees)
-4. Index weight (token holders vote on index composition)
+4. Index weight (token holders vote on composition)
 
 **Distribution**:
 - 40% Community (airdrops, incentives)
 - 25% Team (4-year vest)
 - 20% Treasury (DAO-controlled)
-- 15% Investors (if applicable)
+- 15% Investors
 
-**Emission Schedule**:
+**Emission**:
 - Forecasters earn $BERIGHT for accurate predictions
 - Delegators earn $BERIGHT for staking
 - Early adopters earn bonus multipliers
 
 ---
 
-## Key Metrics to Track
+## Key Metrics
 
 ### Forecaster Metrics
-- Brier score (primary)
+- Brier score (primary calibration metric)
 - Sharpe ratio (risk-adjusted returns)
 - Max drawdown (worst peak-to-trough)
 - Consistency (Brier variance over time)
@@ -386,24 +423,24 @@ BeRight can do the same with **reputation tokens** and **pool shares**.
 
 ## Open Questions
 
-1. **Oracle for NAV**: How to trustlessly update pool NAV from off-chain prediction outcomes?
+1. **Oracle for NAV**: How to trustlessly update pool NAV?
    - Option A: Merkle proof of resolved predictions
-   - Option B: Optimistic oracle (UMA-style)
-   - Option C: Chainlink Functions
+   - Option B: Chainlink Functions (Jupiter uses this)
+   - Option C: Optimistic oracle (UMA-style)
 
-2. **Cross-Platform**: How to track forecaster performance across Polymarket, Kalshi, Jupiter?
-   - Current: Manual tracking via Data Fabric
-   - Future: Standardized market ID hashing
+2. **Cross-Platform Tracking**: Jupiter aggregates Polymarket+Kalshi, but how to unify market IDs?
+   - Current: Data Fabric with manual mapping
+   - Future: Standardized event hashing
 
-3. **Sybil Resistance**: How to prevent forecasters from gaming Brier scores?
-   - Minimum stake per prediction
+3. **Sybil Resistance**: Prevent Brier score gaming
+   - Minimum stake per prediction ($10+)
    - Time-weighted scoring
    - Anomaly detection
 
-4. **Regulatory**: Are staking pools securities?
-   - Likely need legal review
-   - May need KYC for large deposits
-   - Structure matters
+4. **Regulatory**: Staking pools and securities law
+   - Need legal review
+   - KYC for large deposits
+   - Structure matters (utility vs investment)
 
 ---
 
@@ -411,10 +448,14 @@ BeRight can do the same with **reputation tokens** and **pool shares**.
 
 BeRight Forecaster Network = **reputation layer + staking layer + yield layer**
 
-- **Forecasters**: Build track record → Create pools → Earn fees
-- **Delegators**: Stake on skill → Earn yield → Exit anytime
-- **Platform**: Takes cut → Grows ecosystem → Distributes to token holders
+Built for the March 2026 market where:
+- Prediction markets hit $18B/month volume
+- Jupiter brings Polymarket to Solana
+- Sanctum INF enables 6-9% APY on idle capital
+- Meteora provides $1B+ liquidity infrastructure
 
-The narrative: **"Yield on accuracy, not speculation."**
+**The narrative**: "Yield on accuracy, not speculation."
 
-This is the Bloomberg Terminal for forecasting — where skill is tradeable, reputation is portable, and alpha is accessible.
+**The moat**: On-chain Brier scores — no one else has portable, verifiable forecaster reputation.
+
+**The opportunity**: Be the Bloomberg Terminal for forecasting — where skill is tradeable, reputation is portable, and alpha is accessible.
