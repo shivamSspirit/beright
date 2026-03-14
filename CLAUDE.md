@@ -67,44 +67,129 @@ Use `/compact` for long sessions. Track progress in CURRENT_TASK.md:
 
 ---
 
-## OpenClaw Architecture
+## V2 Agent Architecture (Current)
 
-### Core Files
-| File | Purpose |
-|------|---------|
-| SOUL.md | Personality, voice, values |
-| HEARTBEAT.md | Dynamic status, goals (auto-updated) |
-| MEMORY.md | Lessons, episodic memory |
+### System Overview
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      ORCHESTRATOR                           │
+│            (Intent classification → Agent routing)          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┬───────────┐
+        ▼                  ▼                  ▼           ▼
+   ┌─────────┐      ┌──────────┐      ┌────────┐   ┌─────────┐
+   │ SCOUT   │      │ ANALYST  │      │ TRADER │   │ XDEGEN  │
+   │Speed+   │      │  Deep    │      │Execute │   │ Social  │
+   │Breadth  │      │Research  │      │  Risk  │   │ Content │
+   └────┬────┘      └────┬─────┘      └───┬────┘   └────┬────┘
+        │                │                │             │
+        └────────────────┴────────────────┴─────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │ DATA FABRIC │
+                    │  (Unified)  │
+                    └──────┬──────┘
+                           │
+     ┌─────────┬───────────┼───────────┬──────────┐
+     ▼         ▼           ▼           ▼          ▼
+ Polymarket  Kalshi    Manifold   Limitless   Jupiter
+```
+
+### Agent Details
+
+| Agent | Model | Temp | Tools | Purpose |
+|-------|-------|------|-------|---------|
+| **Scout** | Sonnet | 0.3 | 8 | Quick scans, arb detection, hot markets |
+| **Analyst** | Opus | 0.4 | 6 | Deep research, probability estimates |
+| **Trader** | Sonnet | 0.1 | 6 | Execution, Kelly sizing, risk checks |
+| **xDegen** | Sonnet | 0.7 | 6 | Twitter/X content, alpha posts |
+| **Orchestrator** | Sonnet | 0.3 | - | Routes to correct agent |
+
+### Agent Tools
+
+**Scout**: `get_hot_markets`, `search_markets`, `find_arbitrage`, `compare_odds`, `get_news`, `get_tokenized_markets`, `track_whales`, `get_jupiter_markets`
+
+**Analyst**: `research_market`, `estimate_probability`, `gather_evidence`, `find_base_rate`, `compare_prices`, `check_calibration`
+
+**Trader**: `get_positions`, `calculate_size`, `find_best_price`, `check_risk`, `execute_trade`, `set_alert`
+
+**xDegen**: `generate_alpha_post`, `post_to_twitter`, `get_market_alpha`, `check_post_status`, `generate_thread`, `schedule_post`
 
 ### Message Flow
 ```
-Telegram → telegramHandler → semanticAgent (Groq) → Scout/Analyst/Trader → Response
+Telegram/API
+    │
+    ▼
+┌─────────────────┐
+│ Secure Handler  │ → Rate limit, sanitize, tier check
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│ Telegram Handler│ → Command matching, context
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│ Intent Classify │ → SCAN / RESEARCH / EXECUTE / SOCIAL
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│ Agent Execution │ → LLM + Tools + Synthesis
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  Data Fabric    │ → Unified market data (cached, deduped)
+└─────────────────┘
 ```
 
 ### Two-Tier Pattern
 ```
-Tier 1 (fast, free): Fetch data, calculate, aggregate
-Tier 2 (LLM): Synthesize, reason, estimate probabilities
+Tier 1 (fast, deterministic): Fetch APIs, calculate metrics, cache
+Tier 2 (LLM reasoning): Synthesize, estimate probabilities, rank
 ```
 **Rule**: Always Tier 1 first. LLM only when reasoning needed.
 
-### Agent Routing
-| Agent | When |
-|-------|------|
-| Scout | Quick scans, trends, arb detection |
-| Analyst | Deep research, probability, synthesis |
-| Trader | Execution, risk, position sizing |
+### Key Directories
 
-### Cognitive Loop (every 30 min)
-PERCEIVE → UPDATE BELIEFS → DELIBERATE → ACT → REFLECT
+| Directory | Purpose |
+|-----------|---------|
+| `/agents/` | Scout, Analyst, Trader, xDegen, Orchestrator |
+| `/lib/dataFabric/` | Unified market data layer |
+| `/lib/orchestrator/` | 40 command handlers |
+| `/lib/execution/` | Trade routing, Jito bundles, Jupiter |
+| `/lib/onchain/` | Solana Brier score commits |
+| `/services/` | 7 remaining: risk, execution, routing |
+| `/skills/` | Legacy skills (still used by telegramHandler) |
+
+### Services (Remaining 7)
+
+| Service | Purpose |
+|---------|---------|
+| `smartOrderRouter` | Routes orders to best venue |
+| `riskManager` | Kelly sizing, exposure limits |
+| `tradeExecutionLayer` | Transaction building, MEV |
+| `strategyFramework` | Strategy templates |
+| `paperTradingEngine` | Simulation/backtesting |
+| `marketWatcher` | Real-time monitoring |
+| `notificationDelivery` | Alert distribution |
+
+### Caching Strategy
+
+| Layer | TTL | Purpose |
+|-------|-----|---------|
+| Data Fabric | 30s markets, 10s detail | Minimize API calls |
+| Quote Cache | 5s | Prevent stale prices |
+| Chat Context | 10m | Conversation continuity |
+| Session Cache | 30m | Web API state |
 
 ### Common Issues
+
 | Problem | Fix |
 |---------|-----|
-| "Didn't catch that" for everything | Check GROQ_API_KEY in .env |
-| PM2 ignores new env vars | `pm2 restart <app> --update-env` |
-| No synthesis, just raw data | Ensure Tier 2 synthesizeResearch() called |
-| Working memory lost | 30 min TTL - check cognitiveMemory.ts |
+| Agent not responding | Check ANTHROPIC_API_KEY in .env |
+| Stale market data | Data Fabric cache (30s TTL) |
+| No synthesis | Ensure Tier 2 agent called, not just skill |
+| Rate limited | Check user tier in channelSecurity |
 
 ---
 
@@ -133,9 +218,9 @@ PERCEIVE → UPDATE BELIEFS → DELIBERATE → ACT → REFLECT
 | Polymarket | None | Crypto | Politics, sports |
 | Kalshi | None (reads) | USD | Regulated US events |
 | Manifold | None | Play-money | Wide variety |
-| PolyRouter | Free key | Aggregated | Multi-platform |
-| Metaculus | Free key | No | Long-range forecasts |
+| Jupiter | None | Solana | Aggregated Poly+Kalshi (ZERO fees) |
 | Limitless | None | USDC | Crypto price predictions |
+| Metaculus | Free key | No | Long-range forecasts |
 
 ### Polymarket (No Auth)
 ```
@@ -193,6 +278,22 @@ GET /markets/{slug}/orderbook
 GET /markets/search?query=bitcoin&limit=10
 
 Notes: USDC has 6 decimals, deadline is Unix seconds
+```
+
+### Jupiter Prediction Markets (No Auth)
+```
+Base: https://api.jup.ag/prediction/v1
+
+GET /events                    # All active prediction events
+GET /events/{eventId}          # Event details
+GET /events/{eventId}/orderbook
+POST /orders                   # Place order (requires wallet signature)
+
+Key Benefits:
+- Aggregates Polymarket + Kalshi markets
+- ZERO payout fees (vs 2% on native platforms)
+- Native Solana wallet integration
+- SOL/USDC settlement
 ```
 
 ### Code Examples
