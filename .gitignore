@@ -47,8 +47,7 @@ credentials.json
 
 # Internal docs (not for public repo)
 MVP_REQUIREMENTS.md
-CLAUDE.md
-**/CLAUDE.md
+# Note: CLAUDE.md files are tracked (project context for Claude Code)
 beright-ts/MVP_PROGRESS.md
 beright-ts/MVP_REFINED.md
 beright-ts/mvptrack.md
