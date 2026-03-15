@@ -563,7 +563,9 @@ export default function LeaderboardPage() {
                 <span className={styles.rowName}>
                   {getDisplayName(entry)}
                   {entry.isOnChainVerified && (
-                    <Shield size={12} style={{ marginLeft: '4px', color: '#10B981' }} title={`On-chain verified (Brier: ${entry.brierScore?.toFixed(3)})`} />
+                    <span title={`On-chain verified (Brier: ${entry.brierScore?.toFixed(3)})`}>
+                      <Shield size={12} style={{ marginLeft: '4px', color: '#10B981' }} />
+                    </span>
                   )}
                 </span>
               </div>
