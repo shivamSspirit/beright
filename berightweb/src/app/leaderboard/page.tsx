@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useLeaderboard, useBackendStatus } from '@/hooks/useMarkets';
+import { useLeaderboard, useOnChainLeaderboard, useBackendStatus } from '@/hooks/useMarkets';
 import { useUser } from '@/context/UserContext';
-import { ChevronLeft, MoreVertical, Layers } from 'lucide-react';
+import { ChevronLeft, MoreVertical, Layers, Shield } from 'lucide-react';
 import styles from './leaderboard.module.css';
 import { computeLeague, computeLevel, computeLeagueFromAccuracy, getXpToNextLeague } from '@/lib/leagues';
 import { formatCurrency, formatAddress } from '@/lib/format';
@@ -28,6 +28,11 @@ interface LeaderboardEntry {
   change: number | null;
   league?: string;
   predictions?: number;
+  // On-chain fields
+  isOnChainVerified?: boolean;
+  brierScore?: number;
+  tier?: string;
+  grade?: string;
 }
 
 type MetricTab = 'PROFIT' | 'STREAK' | 'ALPHA';
@@ -105,6 +110,7 @@ const demoAvatars = [
 export default function LeaderboardPage() {
   const { user, walletAddress, referralCode } = useUser();
   const { data } = useLeaderboard({ limit: 50 });
+  const { forecasters: onChainForecasters, network, loading: onChainLoading } = useOnChainLeaderboard();
 
   // Mobile state
   const [activeTab, setActiveTab] = useState<MetricTab>('ALPHA');
@@ -114,20 +120,68 @@ export default function LeaderboardPage() {
   const [activeMetric, setActiveMetric] = useState<DesktopMetric>('Profit');
   const [activeTime, setActiveTime] = useState<DesktopTime>('This Month');
 
-  // Transform API data - no mock fallback, real data only
-  const leaderboardData: LeaderboardEntry[] = (data?.leaderboard || []).map((entry: any, index: number) => ({
-    rank: entry.rank || index + 1,
-    username: entry.username || entry.displayName || formatAddress(entry.walletAddress || ''),
-    walletAddress: entry.walletAddress,
-    avatar: demoAvatars[index % demoAvatars.length],
-    profit: entry.profit ? formatCurrency(entry.profit, { compact: true, showSign: true }) : '-',
-    accuracy: entry.accuracy || 0,
-    streak: entry.streak || 0,
-    trend: entry.change > 0 ? 'up' : entry.change < 0 ? 'down' : 'neutral',
-    change: entry.change || null,
-    league: computeLeagueFromAccuracy(entry.accuracy || 0),
-    predictions: entry.predictions || 0,
-  }));
+  // Merge on-chain data with API data, prioritizing on-chain verified forecasters
+  const leaderboardData: LeaderboardEntry[] = useMemo(() => {
+    // First, map on-chain forecasters (these are verified on-chain)
+    const onChainEntries: LeaderboardEntry[] = onChainForecasters.map((forecaster, index) => ({
+      rank: forecaster.rank || index + 1,
+      username: forecaster.displayName || formatAddress(forecaster.walletAddress),
+      walletAddress: forecaster.walletAddress,
+      avatar: demoAvatars[index % demoAvatars.length],
+      profit: '-', // On-chain doesn't track profit
+      accuracy: forecaster.accuracy || 0,
+      streak: forecaster.streak || 0,
+      trend: 'neutral' as const,
+      change: null,
+      league: forecaster.tier?.toUpperCase() || 'UNRANKED',
+      predictions: forecaster.totalPredictions || 0,
+      // On-chain specific fields
+      isOnChainVerified: true,
+      brierScore: forecaster.brierScore,
+      tier: forecaster.tier,
+      grade: forecaster.grade,
+    }));
+
+    // Then, map API data (off-chain)
+    const apiEntries: LeaderboardEntry[] = (data?.leaderboard || []).map((entry: any, index: number) => {
+      // Check if this wallet is already in on-chain data
+      const onChainMatch = onChainForecasters.find(f =>
+        f.walletAddress?.toLowerCase() === entry.walletAddress?.toLowerCase()
+      );
+
+      return {
+        rank: entry.rank || index + 1,
+        username: entry.username || entry.displayName || formatAddress(entry.walletAddress || ''),
+        walletAddress: entry.walletAddress,
+        avatar: demoAvatars[(onChainEntries.length + index) % demoAvatars.length],
+        profit: entry.profit ? formatCurrency(entry.profit, { compact: true, showSign: true }) : '-',
+        accuracy: onChainMatch?.accuracy || entry.accuracy || 0,
+        streak: onChainMatch?.streak || entry.streak || 0,
+        trend: entry.change > 0 ? 'up' : entry.change < 0 ? 'down' : 'neutral',
+        change: entry.change || null,
+        league: onChainMatch?.tier?.toUpperCase() || computeLeagueFromAccuracy(entry.accuracy || 0),
+        predictions: onChainMatch?.totalPredictions || entry.predictions || 0,
+        isOnChainVerified: !!onChainMatch,
+        brierScore: onChainMatch?.brierScore,
+        tier: onChainMatch?.tier,
+        grade: onChainMatch?.grade,
+      };
+    });
+
+    // If we have on-chain data, prioritize it; otherwise use API data
+    if (onChainEntries.length > 0) {
+      // Filter out API entries that are already in on-chain
+      const uniqueApiEntries = apiEntries.filter(api =>
+        !onChainForecasters.some(f => f.walletAddress?.toLowerCase() === api.walletAddress?.toLowerCase())
+      );
+
+      // Combine and re-rank
+      const combined = [...onChainEntries, ...uniqueApiEntries];
+      return combined.map((entry, index) => ({ ...entry, rank: index + 1 }));
+    }
+
+    return apiEntries;
+  }, [data?.leaderboard, onChainForecasters]);
 
   // User stats (using shared league utilities) - no fake defaults
   const userRank = user?.rank || data?.userRank || 0;
@@ -166,6 +220,21 @@ export default function LeaderboardPage() {
             <span className={styles.logoText}>BeRight</span>
           </Link>
           <span className={styles.version}>V.2.04</span>
+          {onChainForecasters.length > 0 && (
+            <span style={{
+              marginLeft: '8px',
+              padding: '2px 8px',
+              background: network === 'mainnet' ? '#10B981' : '#6366F1',
+              color: 'white',
+              borderRadius: '4px',
+              fontSize: '10px',
+              fontWeight: 600,
+              textTransform: 'uppercase'
+            }}>
+              <Shield size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+              {network}
+            </span>
+          )}
         </div>
         <div className={styles.headerFilters}>
           <div className={styles.filterRow}>
@@ -491,9 +560,18 @@ export default function LeaderboardPage() {
                     <span>{entry.initials || entry.username?.charAt(0) || '?'}</span>
                   )}
                 </div>
-                <span className={styles.rowName}>{getDisplayName(entry)}</span>
+                <span className={styles.rowName}>
+                  {getDisplayName(entry)}
+                  {entry.isOnChainVerified && (
+                    <Shield size={12} style={{ marginLeft: '4px', color: '#10B981' }} title={`On-chain verified (Brier: ${entry.brierScore?.toFixed(3)})`} />
+                  )}
+                </span>
               </div>
-              <div className={styles.rowProfit}>{entry.profit}</div>
+              <div className={styles.rowProfit}>
+                {entry.isOnChainVerified && entry.brierScore !== undefined
+                  ? `B: ${entry.brierScore.toFixed(3)}`
+                  : entry.profit}
+              </div>
               <div className={`${styles.rowAccuracy} ${styles.hideTablet}`}>{entry.accuracy}%</div>
               <div className={`${styles.rowStreak} ${styles.hideTablet}`}>{entry.streak > 0 ? `${entry.streak}W` : '-'}</div>
               <div className={`${styles.rowChange} ${entry.trend === 'up' ? styles.changeUp : entry.trend === 'down' ? styles.changeDown : styles.changeNeutral}`}>
@@ -532,11 +610,18 @@ export default function LeaderboardPage() {
                 </div>
                 <div className={styles.mobileRowName}>
                   {getDisplayName(entry).slice(0, 12)}
+                  {entry.isOnChainVerified && (
+                    <Shield size={10} style={{ marginLeft: '4px', color: '#10B981' }} />
+                  )}
                   {entry.league && <span className={styles.inlineBadge}>{entry.league}</span>}
                 </div>
               </div>
               <div className={styles.mobileRowStats}>
-                <div className={styles.mobileStatPrimary}>{entry.profit}</div>
+                <div className={styles.mobileStatPrimary}>
+                  {entry.isOnChainVerified && entry.brierScore !== undefined
+                    ? `B: ${entry.brierScore.toFixed(3)}`
+                    : entry.profit}
+                </div>
                 <div className={`${styles.mobileStatChange} ${entry.trend === 'up' ? styles.changeUp : entry.trend === 'down' ? styles.changeDown : styles.changeNeutral}`}>
                   {entry.trend === 'up' && <TrendUpIcon />}
                   {entry.trend === 'down' && <TrendDownIcon />}

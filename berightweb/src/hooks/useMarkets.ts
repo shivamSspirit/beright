@@ -227,6 +227,49 @@ export function useLeaderboard(options?: UseLeaderboardOptions) {
   };
 }
 
+// ============ On-Chain Calibration Hook ============
+
+import { getOnChainLeaderboard, OnChainForecaster, OnChainLeaderboardResponse } from '../lib/api';
+
+export function useOnChainLeaderboard() {
+  const [data, setData] = useState<OnChainLeaderboardResponse['data'] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchOnChainLeaderboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await getOnChainLeaderboard();
+      if (response.success) {
+        setData(response.data);
+      } else {
+        setError('Failed to fetch on-chain leaderboard');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch on-chain leaderboard';
+      setError(message);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOnChainLeaderboard();
+  }, [fetchOnChainLeaderboard]);
+
+  return {
+    data,
+    forecasters: data?.forecasters || [],
+    network: data?.network || 'devnet',
+    loading,
+    error,
+    refetch: fetchOnChainLeaderboard,
+  };
+}
+
 // ============ Brief Hook ============
 
 export function useBrief() {

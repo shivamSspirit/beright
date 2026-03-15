@@ -365,6 +365,49 @@ export async function getLeaderboard(options?: {
   return apiFetch(`/api/leaderboard?${params}`);
 }
 
+// ============ ON-CHAIN CALIBRATION API ============
+
+export interface OnChainForecaster {
+  rank: number;
+  walletAddress: string;
+  displayName?: string;
+  forecasterPda: string;
+  programId: string;
+  isOnChainVerified: boolean;
+  brierScore: number;
+  accuracy: number;
+  totalPredictions: number;
+  resolvedPredictions: number;
+  correctPredictions: number;
+  streak: number;
+  maxStreak: number;
+  marketsTraded: number;
+  tier: 'superforecaster' | 'elite' | 'verified' | 'rookie' | 'unranked';
+  grade: string;
+  lastPrediction: string;
+  createdAt: string;
+}
+
+export interface OnChainLeaderboardResponse {
+  success: boolean;
+  data: {
+    forecasters: OnChainForecaster[];
+    totalOnChain: number;
+    network: 'devnet' | 'mainnet';
+  };
+}
+
+export async function getOnChainLeaderboard(): Promise<OnChainLeaderboardResponse> {
+  return apiFetch('/api/v2/calibration?leaderboard=true');
+}
+
+export async function getOnChainStats(walletAddress: string): Promise<{
+  success: boolean;
+  data: OnChainForecaster | null;
+}> {
+  return apiFetch(`/api/v2/calibration?wallet=${walletAddress}`);
+}
+
 // ============ PREDICTIONS API ============
 
 export async function getUserPredictions(options?: {

@@ -889,8 +889,24 @@ if (process.argv[1]?.endsWith('tavily.ts')) {
   })();
 }
 
+/**
+ * Simple web search wrapper for fact-checking
+ * Used by the fact-check API endpoint
+ */
+export async function searchWeb(
+  query: string,
+  options: { maxResults?: number } = {}
+): Promise<TavilySearchResponse> {
+  return tavilySearch(query, {
+    maxResults: options.maxResults || 5,
+    searchDepth: 'basic',
+    includeAnswer: false,
+  });
+}
+
 export default {
   search: tavilySearch,
+  searchWeb,
   newsSearch: tavilyNewsSearch,
   financeSearch: tavilyFinanceSearch,
   predictionSearch: tavilyPredictionSearch,

@@ -106,12 +106,13 @@ Respond in this exact JSON format:
 
     try {
       const llmResponse = await llmChat({
-        messages: [{ role: 'user', content: prompt }],
+        system: 'You are a fact-checker for prediction markets. Respond only with valid JSON.',
+        user: prompt,
         temperature: 0.3,
         maxTokens: 1000,
       });
 
-      const responseText = llmResponse.content || '';
+      const responseText = llmResponse.text || '';
 
       // Parse JSON from response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
