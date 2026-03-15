@@ -87,14 +87,8 @@ function loadAllUserStats(): UserStats[] {
     console.error('[Leaderboard] Failed to load user stats:', error);
   }
 
-  // Return mock data if no users file
-  return [
-    { id: 'user_1', username: 'SuperForecaster', brierScore: 0.12, accuracy: 0.78, predictions: 150, resolvedPredictions: 120, streak: 8, streakType: 'win' },
-    { id: 'user_2', username: 'MarketWatcher', brierScore: 0.18, accuracy: 0.72, predictions: 89, resolvedPredictions: 75, streak: 3, streakType: 'win' },
-    { id: 'user_3', username: 'ProbabilityPro', brierScore: 0.21, accuracy: 0.68, predictions: 200, resolvedPredictions: 180, streak: 2, streakType: 'loss' },
-    { id: 'user_4', username: 'CalibrationKing', brierScore: 0.14, accuracy: 0.75, predictions: 65, resolvedPredictions: 55, streak: 5, streakType: 'win' },
-    { id: 'user_5', username: 'EdgeFinder', brierScore: 0.23, accuracy: 0.65, predictions: 45, resolvedPredictions: 40, streak: 1, streakType: 'win' },
-  ];
+  // No local users found - return empty (on-chain data will be fetched separately)
+  return [];
 }
 
 function getGrade(brierScore: number): string {

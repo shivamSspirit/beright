@@ -120,35 +120,5 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// ============================================================================
-// Signal Generation (called by heartbeat/scanner services)
-// ============================================================================
-
-/**
- * Generate a sample signal (for testing/demo)
- */
-export function generateTestSignal() {
-  const signalTypes = ['volume_surge', 'whale_alert', 'arb_opportunity', 'price_movement', 'news_catalyst'];
-  const platforms = ['polymarket', 'kalshi', 'manifold', 'dflow'];
-  const actions: Array<'ALERT' | 'WATCH' | 'SKIP'> = ['ALERT', 'WATCH', 'SKIP'];
-
-  const signalType = signalTypes[Math.floor(Math.random() * signalTypes.length)];
-  const platform = platforms[Math.floor(Math.random() * platforms.length)];
-  const strength = Math.floor(Math.random() * 100);
-  const confidence = Math.floor(Math.random() * 100);
-  const action = strength > 70 ? 'ALERT' : strength > 40 ? 'WATCH' : 'SKIP';
-
-  emitSignal({
-    signalType,
-    marketTitle: `Sample Market ${Date.now()}`,
-    platform,
-    strength,
-    action,
-    confidence,
-    reasoning: `${signalType} detected with ${strength}% strength`,
-    alertText: `${signalType.toUpperCase()}: ${platform} market activity`,
-  });
-}
-
 // For importing in other modules
 export { signalBuffer, connections };

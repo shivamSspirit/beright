@@ -131,7 +131,7 @@ export async function GET(
         },
       });
     } else {
-      // Use local storage or generate mock data
+      // Check local storage (no database configured)
       const store = getLocalUserStore();
       const user = store[address];
 
@@ -147,36 +147,11 @@ export async function GET(
         });
       }
 
-      // Return mock data for unknown addresses
-      const seed = address.charCodeAt(2) + address.charCodeAt(3);
-      const accuracy = 50 + (seed % 35);
-      const predictions = 20 + (seed % 200);
-
-      return NextResponse.json({
-        user: {
-          address,
-          username: null,
-          avatar: null,
-          rank: 1 + (seed % 100),
-          totalPredictions: predictions,
-          resolvedPredictions: Math.floor(predictions * 0.7),
-          accuracy,
-          brierScore: 0.15 + (seed % 20) / 100,
-          streak: seed % 12,
-          vsAiWins: Math.floor(predictions * 0.3),
-          vsAiLosses: Math.floor(predictions * 0.25),
-          joinedAt: new Date(Date.now() - (seed % 365) * 24 * 60 * 60 * 1000).toISOString(),
-          followers: seed * 3,
-          following: seed * 2,
-          categories: [
-            { name: 'Crypto', accuracy: accuracy + (seed % 10) - 5, count: Math.floor(predictions * 0.3) },
-            { name: 'Politics', accuracy: accuracy + (seed % 8) - 4, count: Math.floor(predictions * 0.25) },
-            { name: 'Tech', accuracy: accuracy + (seed % 12) - 6, count: Math.floor(predictions * 0.2) },
-          ],
-          recentPredictions: [],
-          note: 'Mock data - user not found in local storage',
-        },
-      });
+      // User not found
+      return NextResponse.json(
+        { error: 'User not found', address },
+        { status: 404 }
+      );
     }
   } catch (error) {
     console.error('User by address GET error:', error);

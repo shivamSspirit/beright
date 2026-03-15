@@ -266,43 +266,79 @@ export default function Terminal() {
     setExpandedSection(prev => prev === section ? null : section);
   };
 
-  // Fetch brief data on mount
-  const fetchBrief = useCallback(async () => {
+  // Fetch real data from APIs
+  const fetchData = useCallback(async () => {
     try {
       setAgentStatus('SCANNING');
-      const res = await fetch('/api/brief?format=web');
-      if (!res.ok) throw new Error('Brief fetch failed');
-      const data: BriefData = await res.json();
 
-      setMarkets(data.sections.hotMarkets || []);
-      setArbs(data.sections.alphaAlerts || []);
-      setStats(data.sections.userStats || null);
+      // Fetch trending markets from real API
+      const marketsRes = await fetch('/api/v2/markets/trending?limit=10');
+      if (marketsRes.ok) {
+        const marketsData = await marketsRes.json();
+        if (marketsData.markets) {
+          setMarkets(marketsData.markets.map((m: any) => ({
+            title: m.title || m.question || 'Unknown',
+            platform: m.platform || 'unknown',
+            probability: m.probability || m.yesPrice || 0.5,
+            volume: m.volume || 0,
+            url: m.url || '',
+            change24h: m.change24h || 0,
+          })));
+        }
+      }
+
+      // Fetch arbitrage opportunities
+      const arbRes = await fetch('/api/markets?compare=true&limit=5');
+      if (arbRes.ok) {
+        const arbData = await arbRes.json();
+        if (arbData.arbitrage) {
+          setArbs(arbData.arbitrage.map((a: any) => ({
+            type: 'cross-platform',
+            topic: a.topic || a.question || 'Unknown',
+            spread: a.spread || 0,
+            platformA: { name: a.platformA?.name || 'unknown', price: a.platformA?.price || 0.5 },
+            platformB: { name: a.platformB?.name || 'unknown', price: a.platformB?.price || 0.5 },
+            strategy: a.strategy || 'arb',
+            profitPercent: (a.spread || 0) * 100,
+          })));
+        }
+      }
+
       setAgentStatus('ONLINE');
       setLastUpdate(new Date().toLocaleTimeString());
       setIsLoading(false);
     } catch (err) {
-      console.error('Brief error:', err);
+      console.error('Data fetch error:', err);
       setAgentStatus('OFFLINE');
       setIsLoading(false);
     }
   }, []);
 
-  // Connect to SSE feed
+  // Fetch data and connect to SSE feed
   useEffect(() => {
-    fetchBrief();
+    fetchData();
 
     // Refresh every 5 minutes
-    const refreshInterval = setInterval(fetchBrief, 5 * 60 * 1000);
+    const refreshInterval = setInterval(fetchData, 5 * 60 * 1000);
 
-    // SSE connection
+    // SSE connection to signals stream (if available)
     let eventSource: EventSource | null = null;
     try {
-      eventSource = new EventSource('/api/agent-feed');
+      eventSource = new EventSource('/api/signals/stream');
       eventSource.onmessage = (event) => {
         try {
-          const data: FeedEntry = JSON.parse(event.data);
-          if (data.type === 'PING') return; // skip heartbeats
-          setFeed(prev => [...prev.slice(-49), data]);
+          const data = JSON.parse(event.data);
+          if (data.type === 'heartbeat' || data.type === 'connected') return;
+          if (data.type === 'signal') {
+            setFeed(prev => [...prev.slice(-49), {
+              type: data.signalType?.toUpperCase() || 'SIGNAL',
+              action: data.action,
+              topic: data.marketTitle,
+              confidence: data.confidence,
+              onChain: false,
+              timestamp: data.createdAt || new Date().toISOString(),
+            }]);
+          }
         } catch {
           // ignore parse errors
         }
@@ -318,7 +354,7 @@ export default function Terminal() {
       clearInterval(refreshInterval);
       eventSource?.close();
     };
-  }, [fetchBrief]);
+  }, [fetchData]);
 
   // Auto-scroll feed
   useEffect(() => {
