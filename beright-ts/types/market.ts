@@ -28,6 +28,7 @@ export interface OrderbookData {
 
 export interface Market {
   platform: Platform;
+  id?: string;  // Unique identifier (API-specific)
   marketId: string | null;
   title: string;
   question: string;
@@ -35,6 +36,7 @@ export interface Market {
   noPrice: number;
   yesPct: number;
   noPct: number;
+  probability?: number;  // Alternative to yesPrice
   volume: number;
   volume24h?: number;  // 24h volume (DFlow)
   liquidity: number;
@@ -42,6 +44,10 @@ export interface Market {
   createdAt?: Date | null;  // When the market was created on the platform
   status: 'active' | 'resolved' | 'closed';
   url: string;
+  category?: string;  // Market category
+  change24h?: number;  // 24h probability change
+  participants?: number;  // Number of traders
+  uniqueTraders?: number;  // Alternative to participants
   // Tokenized market data (Solana SPL tokens) - only for DFlow/Kalshi
   onChain?: OnChainData;
   orderbook?: OrderbookData;
@@ -100,4 +106,26 @@ export interface PlatformConfig {
   baseUrl: string;
   requiresAuth: boolean;
   fee: number;
+}
+
+// Feed entry for real-time updates
+export interface FeedEntry {
+  type: string;
+  action?: string;
+  topic?: string;
+  confidence?: number;
+  onChain?: boolean;
+  txSignature?: string | null;
+  timestamp: string;
+}
+
+// AI fact-check response
+export interface FactCheckInsight {
+  summary: string;
+  supportingFacts: string[];
+  challengingFacts: string[];
+  recommendation: 'CONFIRMS' | 'CHALLENGES' | 'NEUTRAL';
+  confidence: 'low' | 'medium' | 'high';
+  sources: Array<{ title: string; url: string }>;
+  aiAnalysis: string;
 }

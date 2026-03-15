@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useWallet } from '@/components/wallet';
 
 // Types for the terminal
 interface MarketData {
@@ -202,9 +203,11 @@ export default function Terminal() {
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Shared wallet state from Privy
+  const { address: walletAddress, isConnected, login } = useWallet();
+
   // On-chain calibration state
   const [onChainData, setOnChainData] = useState<OnChainCalibration | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string>('');
   const [isCheckingOnChain, setIsCheckingOnChain] = useState(false);
 
   // Fetch on-chain calibration data for a wallet
@@ -252,14 +255,12 @@ export default function Terminal() {
     }
   }, []);
 
-  // Check localStorage for saved wallet on mount
+  // Fetch on-chain data when wallet connects
   useEffect(() => {
-    const savedWallet = localStorage.getItem('beright_wallet');
-    if (savedWallet) {
-      setWalletAddress(savedWallet);
-      fetchOnChainCalibration(savedWallet);
+    if (walletAddress) {
+      fetchOnChainCalibration(walletAddress);
     }
-  }, [fetchOnChainCalibration]);
+  }, [walletAddress, fetchOnChainCalibration]);
 
   // Toggle section - only one can be open at a time
   const toggleSection = (section: SectionId) => {
@@ -618,25 +619,15 @@ export default function Terminal() {
               <p className="text-gray-600 text-[10px] mt-1">Make predictions via Telegram to build your on-chain reputation.</p>
             </div>
           ) : (
-            <div className="text-xs space-y-2">
+            <div className="text-xs space-y-3">
               <p className="text-gray-500">Connect your Solana wallet to view on-chain calibration data.</p>
-              <input
-                type="text"
-                placeholder="Enter Solana wallet address..."
-                className="w-full px-2 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-xs placeholder-gray-600"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const target = e.target as HTMLInputElement;
-                    const addr = target.value.trim();
-                    if (addr.length >= 32) {
-                      setWalletAddress(addr);
-                      localStorage.setItem('beright_wallet', addr);
-                      fetchOnChainCalibration(addr);
-                    }
-                  }
-                }}
-              />
-              <p className="text-gray-600 text-[10px]">Press ENTER to check on-chain stats</p>
+              <button
+                onClick={login}
+                className="w-full px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded transition-colors"
+              >
+                Connect Wallet
+              </button>
+              <p className="text-gray-600 text-[10px] text-center">Powered by Privy</p>
             </div>
           )}
         </Dropdown>

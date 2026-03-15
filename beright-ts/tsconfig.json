@@ -10,6 +10,10 @@
     ],
     "outDir": "./dist",
     "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -46,6 +50,8 @@
     "app/**/*",
     "lib/**/*",
     "services/**/*",
+    "components/**/*",
+    "hooks/**/*",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

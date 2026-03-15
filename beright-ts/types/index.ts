@@ -3,6 +3,7 @@
  */
 
 export * from './market';
+export * from './user';
 export * from './response';
 export * from './wallet';
 export * from './memory';
