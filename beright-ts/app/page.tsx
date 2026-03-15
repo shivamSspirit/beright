@@ -31,6 +31,27 @@ interface UserStats {
   streakType: string;
   rank: number | null;
   grade: string;
+  // On-chain calibration fields
+  isOnChainVerified?: boolean;
+  walletAddress?: string;
+  tier?: 'superforecaster' | 'elite' | 'verified' | 'rookie' | 'unranked';
+  totalPredictions?: number;
+  resolvedPredictions?: number;
+}
+
+// On-chain calibration data
+interface OnChainCalibration {
+  walletAddress: string;
+  isOnChainVerified: boolean;
+  brierScore: number;
+  accuracy: number;
+  totalPredictions: number;
+  resolvedPredictions: number;
+  streak: number;
+  tier: string;
+  grade: string;
+  forecasterPda: string;
+  programId: string;
 }
 
 interface FeedEntry {
@@ -53,7 +74,7 @@ interface BriefData {
 }
 
 // Section type for accordion
-type SectionId = 'markets' | 'predictions' | 'arbitrage' | 'feed';
+type SectionId = 'markets' | 'predictions' | 'arbitrage' | 'feed' | 'onchain';
 
 // Platform colors
 const platformColor: Record<string, string> = {
@@ -180,6 +201,65 @@ export default function Terminal() {
   const [expandedSection, setExpandedSection] = useState<SectionId | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // On-chain calibration state
+  const [onChainData, setOnChainData] = useState<OnChainCalibration | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string>('');
+  const [isCheckingOnChain, setIsCheckingOnChain] = useState(false);
+
+  // Fetch on-chain calibration data for a wallet
+  const fetchOnChainCalibration = useCallback(async (wallet: string) => {
+    if (!wallet) return;
+    setIsCheckingOnChain(true);
+    try {
+      const res = await fetch(`/api/v2/calibration?wallet=${wallet}`);
+      if (!res.ok) throw new Error('Failed to fetch on-chain data');
+      const data = await res.json();
+      if (data.success && data.data?.isOnChainVerified) {
+        setOnChainData(data.data);
+        // Update stats with on-chain data
+        setStats(prev => prev ? {
+          ...prev,
+          isOnChainVerified: true,
+          walletAddress: wallet,
+          brierScore: data.data.brierScore,
+          accuracy: data.data.accuracy,
+          tier: data.data.tier,
+          streak: data.data.streak,
+          grade: data.data.grade,
+        } : {
+          brierScore: data.data.brierScore,
+          accuracy: data.data.accuracy,
+          pendingPredictions: 0,
+          streak: data.data.streak,
+          streakType: data.data.streak > 0 ? 'win' : 'none',
+          rank: null,
+          grade: data.data.grade,
+          isOnChainVerified: true,
+          walletAddress: wallet,
+          tier: data.data.tier,
+          totalPredictions: data.data.totalPredictions,
+          resolvedPredictions: data.data.resolvedPredictions,
+        });
+      } else {
+        setOnChainData(null);
+      }
+    } catch (err) {
+      console.error('On-chain fetch error:', err);
+      setOnChainData(null);
+    } finally {
+      setIsCheckingOnChain(false);
+    }
+  }, []);
+
+  // Check localStorage for saved wallet on mount
+  useEffect(() => {
+    const savedWallet = localStorage.getItem('beright_wallet');
+    if (savedWallet) {
+      setWalletAddress(savedWallet);
+      fetchOnChainCalibration(savedWallet);
+    }
+  }, [fetchOnChainCalibration]);
 
   // Toggle section - only one can be open at a time
   const toggleSection = (section: SectionId) => {
@@ -379,45 +459,143 @@ export default function Terminal() {
         <Dropdown
           id="predictions"
           title="My Predictions"
-          badge={stats?.grade}
+          badge={stats?.isOnChainVerified ? `${stats.grade} ✓` : stats?.grade}
           isOpen={expandedSection === 'predictions'}
           onToggle={() => toggleSection('predictions')}
           headerClass="accordion-header-predictions"
           indicatorClass="accordion-indicator-predictions"
         >
           {stats ? (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-              <div className="stat-row">
-                <span className="text-gray-500">Brier Score</span>
-                <span className="text-white font-semibold">{stats.brierScore.toFixed(3)}</span>
+            <div className="space-y-3">
+              {/* On-chain verification badge */}
+              {stats.isOnChainVerified && (
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-green-900/30 border border-green-700/50 rounded text-xs">
+                  <span className="text-green-400">✓ On-Chain Verified</span>
+                  <span className="text-gray-500">|</span>
+                  <span className="text-green-300 capitalize">{stats.tier}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                <div className="stat-row">
+                  <span className="text-gray-500">Brier Score</span>
+                  <span className="text-white font-semibold">
+                    {stats.brierScore.toFixed(3)}
+                    {stats.isOnChainVerified && <span className="text-green-500 ml-1 text-[10px]">on-chain</span>}
+                  </span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Accuracy</span>
+                  <span className="text-white font-semibold">{(stats.accuracy * 100).toFixed(0)}%</span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Grade</span>
+                  <span className={`font-semibold ${gradeColor(stats.grade)}`}>{stats.grade}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Streak</span>
+                  <span className="text-white font-semibold">
+                    {stats.streak} {stats.streakType === 'win' ? 'W' : stats.streakType === 'loss' ? 'L' : ''}
+                  </span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Pending</span>
+                  <span className="text-yellow-400 font-semibold">{stats.pendingPredictions}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Rank</span>
+                  <span className="text-white font-semibold">
+                    {stats.rank ? `#${stats.rank}` : '--'}
+                  </span>
+                </div>
+                {stats.totalPredictions !== undefined && (
+                  <div className="stat-row col-span-2">
+                    <span className="text-gray-500">Predictions</span>
+                    <span className="text-white font-semibold">
+                      {stats.resolvedPredictions} resolved / {stats.totalPredictions} total
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="stat-row">
-                <span className="text-gray-500">Accuracy</span>
-                <span className="text-white font-semibold">{(stats.accuracy * 100).toFixed(0)}%</span>
-              </div>
-              <div className="stat-row">
-                <span className="text-gray-500">Grade</span>
-                <span className={`font-semibold ${gradeColor(stats.grade)}`}>{stats.grade}</span>
-              </div>
-              <div className="stat-row">
-                <span className="text-gray-500">Streak</span>
-                <span className="text-white font-semibold">
-                  {stats.streak} {stats.streakType === 'win' ? 'W' : stats.streakType === 'loss' ? 'L' : ''}
-                </span>
-              </div>
-              <div className="stat-row">
-                <span className="text-gray-500">Pending</span>
-                <span className="text-yellow-400 font-semibold">{stats.pendingPredictions}</span>
-              </div>
-              <div className="stat-row">
-                <span className="text-gray-500">Rank</span>
-                <span className="text-white font-semibold">
-                  {stats.rank ? `#${stats.rank}` : '--'}
-                </span>
-              </div>
+              {/* Wallet connection prompt */}
+              {!stats.isOnChainVerified && (
+                <div className="mt-2 pt-2 border-t border-gray-800 text-[10px] text-gray-500">
+                  Connect wallet to verify on-chain reputation
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-gray-600 text-xs">No predictions yet</p>
+          )}
+        </Dropdown>
+
+        {/* On-Chain Calibration */}
+        <Dropdown
+          id="onchain"
+          title="On-Chain Stats"
+          badge={onChainData ? '✓' : undefined}
+          badgeAlert={!!onChainData}
+          isOpen={expandedSection === 'onchain'}
+          onToggle={() => toggleSection('onchain')}
+          headerClass="accordion-header-predictions"
+          indicatorClass="accordion-indicator-predictions"
+        >
+          {onChainData ? (
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2 px-2 py-1.5 bg-green-900/30 border border-green-700/50 rounded">
+                <span className="text-green-400 font-semibold">Verified Forecaster</span>
+                <span className="text-green-300 capitalize ml-auto">{onChainData.tier}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                <div className="stat-row">
+                  <span className="text-gray-500">Brier</span>
+                  <span className="text-white font-semibold">{onChainData.brierScore.toFixed(4)}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Accuracy</span>
+                  <span className="text-white font-semibold">{(onChainData.accuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Resolved</span>
+                  <span className="text-white font-semibold">{onChainData.resolvedPredictions}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="text-gray-500">Streak</span>
+                  <span className="text-white font-semibold">{onChainData.streak}W</span>
+                </div>
+              </div>
+              <div className="text-[10px] text-gray-600 pt-1 border-t border-gray-800">
+                <div className="truncate">Wallet: {onChainData.walletAddress.slice(0, 8)}...{onChainData.walletAddress.slice(-6)}</div>
+                <div className="truncate">Program: {onChainData.programId.slice(0, 8)}...</div>
+              </div>
+            </div>
+          ) : isCheckingOnChain ? (
+            <p className="text-gray-500 text-xs">Checking on-chain data...</p>
+          ) : walletAddress ? (
+            <div className="text-xs">
+              <p className="text-gray-500">No on-chain calibration data found.</p>
+              <p className="text-gray-600 text-[10px] mt-1">Make predictions via Telegram to build your on-chain reputation.</p>
+            </div>
+          ) : (
+            <div className="text-xs space-y-2">
+              <p className="text-gray-500">Connect your Solana wallet to view on-chain calibration data.</p>
+              <input
+                type="text"
+                placeholder="Enter Solana wallet address..."
+                className="w-full px-2 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-xs placeholder-gray-600"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const target = e.target as HTMLInputElement;
+                    const addr = target.value.trim();
+                    if (addr.length >= 32) {
+                      setWalletAddress(addr);
+                      localStorage.setItem('beright_wallet', addr);
+                      fetchOnChainCalibration(addr);
+                    }
+                  }
+                }}
+              />
+              <p className="text-gray-600 text-[10px]">Press ENTER to check on-chain stats</p>
+            </div>
           )}
         </Dropdown>
 
