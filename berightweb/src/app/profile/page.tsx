@@ -519,20 +519,17 @@ export default function ProfilePage() {
 
   const achievements = getAchievements(stats);
 
-  // Performance stats for the stats panel (using shared format utilities)
+  // Performance stats for the stats panel (using shared format utilities) - no mock data
   const performanceStats: PerformanceStat[] = [
     { label: 'Total Predictions', value: formatNumber(stats.totalPredictions), color: 'white' },
     { label: 'Win Rate', value: `${stats.accuracy.toFixed(1)}%`, color: 'green' },
     { label: 'Total Volume', value: `${(stats.totalPredictions * 0.5).toFixed(1)} SOL`, color: 'white' },
     { label: 'Net Profit', value: `+${((stats.accuracy / 100) * stats.totalPredictions * 0.1).toFixed(1)} SOL`, color: 'green' },
-    { label: 'Global Rank', value: `#${formatNumber(user?.rank || 342)}`, color: 'amber' },
+    { label: 'Global Rank', value: user?.rank ? `#${formatNumber(user.rank)}` : '--', color: 'amber' },
   ];
 
-  // Activity items (mock data - would come from API)
-  const activities: ActivityItem[] = [
-    { text: 'Market resolved:', highlight: 'BTC > $65k. You won 1.2 SOL.', time: '2 mins ago', type: 'amber' },
-    { text: 'You ranked up to', highlight: `${league.name}. +500 XP earned.`, time: '1 hour ago', type: 'indigo' },
-  ];
+  // Activity items - empty until real activity data is fetched from API
+  const activities: ActivityItem[] = [];
 
   // Format XP display (using shared utility)
   const formatXp = (xp: number) => formatCompactNumber(xp);

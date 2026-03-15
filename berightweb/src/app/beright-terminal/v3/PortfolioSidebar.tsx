@@ -20,12 +20,13 @@ interface PortfolioSidebarProps {
 
 /**
  * PortfolioSidebar - Right panel with PnL display and live signal feed
+ * No mock data - shows real portfolio values or placeholder state
  */
 export default function PortfolioSidebar({
   signals = [],
-  portfolioValue = 2408192.50,
-  dailyChange = 14204.10,
-  dailyChangePercent = 0.59,
+  portfolioValue,
+  dailyChange,
+  dailyChangePercent,
 }: PortfolioSidebarProps) {
   // Transform API signals to display format
   const displaySignals: Signal[] = useMemo(() => {
@@ -53,14 +54,8 @@ export default function PortfolioSidebar({
       });
     }
 
-    // Fallback demo signals
-    return [
-      { time: '[14:02:41]', type: 'EXEC' as const, message: 'Bought 10k shares ETH_ETF_APPROVAL @ 0.91', isFirst: true },
-      { time: '[14:02:15]', type: 'ANALYSIS' as const, message: 'Sentiment shift detected on FED statements. Risk model adjusted.', isFirst: false },
-      { time: '[13:58:02]', type: 'SCOUT' as const, message: 'Large block sell observed on BTC_100K_EOY. Monitoring.', isFirst: false },
-      { time: '[13:45:11]', type: 'EXEC' as const, message: 'Sold 5k shares ELECTION_REP_WIN @ 0.52. Profit secured.', isFirst: false },
-      { time: '[13:30:00]', type: 'SYS' as const, message: 'Market data sync complete. Latency stable.', isFirst: false },
-    ];
+    // No signals yet - return empty state
+    return [];
   }, [signals]);
 
   const formatCurrency = (value: number) => {
@@ -87,18 +82,27 @@ export default function PortfolioSidebar({
     }
   };
 
-  const isPositive = dailyChange >= 0;
+  const hasPortfolioData = portfolioValue !== undefined;
+  const isPositive = (dailyChange ?? 0) >= 0;
 
   return (
     <>
       {/* Portfolio Value Block */}
       <div className={styles.pnlBlock}>
         <div className={styles.pnlLabel}>TOTAL PORTFOLIO VALUE (USD)</div>
-        <div className={styles.pnlValue}>{formatCurrency(portfolioValue)}</div>
-        <div className={`${styles.pnlChange} ${!isPositive ? styles.pnlChangeNegative : ''}`}>
-          <span>{isPositive ? '▲' : '▼'} {formatChange(dailyChange)}</span>
-          <span className={styles.pnlPercent}>({dailyChangePercent.toFixed(2)}%) Today</span>
+        <div className={styles.pnlValue}>
+          {hasPortfolioData ? formatCurrency(portfolioValue) : '--'}
         </div>
+        {hasPortfolioData && dailyChange !== undefined ? (
+          <div className={`${styles.pnlChange} ${!isPositive ? styles.pnlChangeNegative : ''}`}>
+            <span>{isPositive ? '▲' : '▼'} {formatChange(dailyChange)}</span>
+            <span className={styles.pnlPercent}>({(dailyChangePercent ?? 0).toFixed(2)}%) Today</span>
+          </div>
+        ) : (
+          <div className={styles.pnlChange}>
+            <span style={{ opacity: 0.5 }}>Connect wallet to view</span>
+          </div>
+        )}
       </div>
 
       {/* Signal Feed Header */}
@@ -108,19 +112,28 @@ export default function PortfolioSidebar({
 
       {/* Signal Feed */}
       <div className={styles.signalFeed}>
-        {displaySignals.map((signal, index) => (
-          <div
-            key={index}
-            className={signal.isFirst ? styles.signalItemFirst : styles.signalItem}
-          >
-            <span className={styles.signalTime}>{signal.time}</span>
-            <span className={`${styles.signalType} ${getTypeClass(signal.type)}`}>
-              {signal.type}
-            </span>
+        {displaySignals.length > 0 ? (
+          displaySignals.map((signal, index) => (
+            <div
+              key={index}
+              className={signal.isFirst ? styles.signalItemFirst : styles.signalItem}
+            >
+              <span className={styles.signalTime}>{signal.time}</span>
+              <span className={`${styles.signalType} ${getTypeClass(signal.type)}`}>
+                {signal.type}
+              </span>
+              {' '}
+              <span className={styles.signalMessage}>{signal.message}</span>
+            </div>
+          ))
+        ) : (
+          <div className={styles.signalItem} style={{ opacity: 0.5 }}>
+            <span className={styles.signalTime}>[--:--:--]</span>
+            <span className={styles.signalType}>SYS</span>
             {' '}
-            <span className={styles.signalMessage}>{signal.message}</span>
+            <span className={styles.signalMessage}>Awaiting live signals...</span>
           </div>
-        ))}
+        )}
       </div>
     </>
   );

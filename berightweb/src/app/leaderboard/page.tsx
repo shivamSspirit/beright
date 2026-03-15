@@ -95,23 +95,8 @@ const demoAvatars = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MOCK DATA
+// EMPTY STATE - No mock data, real data only from API
 // ═══════════════════════════════════════════════════════════════════════════
-
-const mockLeaderboardData: LeaderboardEntry[] = [
-  { rank: 1, username: '0xOracle.eth', avatar: demoAvatars[0], profit: '+$1.42M', accuracy: 94.2, streak: 15, trend: 'up', change: 0, league: 'DIAMOND', predictions: 312 },
-  { rank: 2, username: 'QuantGirl', avatar: demoAvatars[1], profit: '+$892K', accuracy: 91.5, streak: 11, trend: 'up', change: 1, league: 'DIAMOND', predictions: 245 },
-  { rank: 3, username: 'BasedChad', avatar: demoAvatars[2], profit: '+$745K', accuracy: 89.2, streak: 8, trend: 'down', change: 1, league: 'PLATINUM', predictions: 198 },
-  { rank: 4, username: 'LunarWhale', avatar: demoAvatars[3], profit: '+$612,400', accuracy: 88.5, streak: 8, trend: 'up', change: 2, league: 'PLATINUM', predictions: 187 },
-  { rank: 5, username: 'ApeKing99', avatar: demoAvatars[4], profit: '+$589,100', accuracy: 82.1, streak: 3, trend: 'down', change: 1, league: 'GOLD', predictions: 156 },
-  { rank: 6, username: 'DegenSpartan', avatar: demoAvatars[5], profit: '+$490,050', accuracy: 91.0, streak: 12, trend: 'up', change: 14, league: 'GOLD', predictions: 134 },
-  { rank: 7, username: 'YieldFarmer', avatar: demoAvatars[6], profit: '+$475,220', accuracy: 79.4, streak: 0, trend: 'neutral', change: null, predictions: 112 },
-  { rank: 8, username: 'SatoshiNakamoto_', avatar: demoAvatars[7], profit: '+$442,900', accuracy: 85.2, streak: 5, trend: 'down', change: 3, league: 'GOLD', predictions: 98 },
-  { rank: 9, username: 'CryptoQueen', avatar: demoAvatars[8], profit: '+$410,000', accuracy: 80.0, streak: 2, trend: 'up', change: 1, predictions: 87 },
-  { rank: 10, username: 'MacroHedge', avatar: demoAvatars[9], profit: '+$398,500', accuracy: 76.5, streak: 0, trend: 'down', change: 2, predictions: 76 },
-  { rank: 11, username: 'NodeRunner', initials: 'NR', profit: '+$380,200', accuracy: 72.1, streak: 1, trend: 'up', change: 5, predictions: 65 },
-  { rank: 12, username: 'ArbitrageMax', avatar: demoAvatars[10], profit: '+$375,000', accuracy: 88.9, streak: 9, trend: 'up', change: 12, league: 'SILVER', predictions: 54 },
-];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LEADERBOARD PAGE COMPONENT
@@ -129,25 +114,24 @@ export default function LeaderboardPage() {
   const [activeMetric, setActiveMetric] = useState<DesktopMetric>('Profit');
   const [activeTime, setActiveTime] = useState<DesktopTime>('This Month');
 
-  // Transform API data or use mock (using shared utilities)
-  const leaderboardData: LeaderboardEntry[] = (data?.leaderboard?.length ?? 0) > 0
-    ? data!.leaderboard!.map((entry: any, index: number) => ({
-        rank: entry.rank || index + 1,
-        username: entry.username || entry.displayName || formatAddress(entry.walletAddress || ''),
-        avatar: demoAvatars[index % demoAvatars.length],
-        profit: entry.profit ? formatCurrency(entry.profit, { compact: true, showSign: true }) : '-',
-        accuracy: entry.accuracy || 0,
-        streak: entry.streak || 0,
-        trend: entry.change > 0 ? 'up' : entry.change < 0 ? 'down' : 'neutral',
-        change: entry.change || null,
-        league: computeLeagueFromAccuracy(entry.accuracy || 0),
-        predictions: entry.predictions || 0,
-      }))
-    : mockLeaderboardData;
+  // Transform API data - no mock fallback, real data only
+  const leaderboardData: LeaderboardEntry[] = (data?.leaderboard || []).map((entry: any, index: number) => ({
+    rank: entry.rank || index + 1,
+    username: entry.username || entry.displayName || formatAddress(entry.walletAddress || ''),
+    walletAddress: entry.walletAddress,
+    avatar: demoAvatars[index % demoAvatars.length],
+    profit: entry.profit ? formatCurrency(entry.profit, { compact: true, showSign: true }) : '-',
+    accuracy: entry.accuracy || 0,
+    streak: entry.streak || 0,
+    trend: entry.change > 0 ? 'up' : entry.change < 0 ? 'down' : 'neutral',
+    change: entry.change || null,
+    league: computeLeagueFromAccuracy(entry.accuracy || 0),
+    predictions: entry.predictions || 0,
+  }));
 
-  // User stats (using shared league utilities)
-  const userRank = user?.rank || data?.userRank || 24;
-  const userXp = (user as any)?.xp || 14500;
+  // User stats (using shared league utilities) - no fake defaults
+  const userRank = user?.rank || data?.userRank || 0;
+  const userXp = (user as any)?.xp || 0;
   const userXpTarget = 20000;
   const userLeague = computeLeague(userXp);
   const userLevel = computeLevel(userXp);
