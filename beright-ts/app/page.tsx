@@ -418,6 +418,12 @@ export default function Terminal() {
           <span className="text-gray-600 text-xs">v1.0</span>
         </div>
         <div className="flex items-center gap-4 text-xs">
+          <a
+            href="/swipe"
+            className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-colors"
+          >
+            Swipe Mode
+          </a>
           <span className="text-gray-500">Updated: {lastUpdate || '--:--'}</span>
           <span className="flex items-center gap-1.5">
             <span className={`inline-block w-2 h-2 rounded-full ${
