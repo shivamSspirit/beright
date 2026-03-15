@@ -2,6 +2,7 @@
  * Leaderboard Handler
  *
  * View rankings based on calibration scores and trading performance.
+ * Integrates with on-chain calibration program for verified Brier scores.
  *
  * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
@@ -14,6 +15,8 @@ import {
 import { registerHandler } from './registry';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getForecasterStats, ForecasterStats } from '../../onchain/calibration';
+import { PublicKey } from '@solana/web3.js';
 
 // =============================================================================
 // TYPES
@@ -23,12 +26,16 @@ export interface LeaderboardEntry {
   rank: number;
   userId: string;
   username?: string;
+  walletAddress?: string;
   brierScore: number;
   accuracy: number;
   predictions: number;
+  resolvedPredictions: number;
   streak: number;
   grade: string;
   isCurrentUser: boolean;
+  isOnChainVerified: boolean;
+  tier: 'superforecaster' | 'elite' | 'verified' | 'rookie' | 'unranked';
 }
 
 export interface LeaderboardResult {
@@ -36,6 +43,7 @@ export interface LeaderboardResult {
   category: 'calibration' | 'trading' | 'overall';
   entries: LeaderboardEntry[];
   totalParticipants: number;
+  onChainVerifiedCount: number;
   currentUserRank?: number;
   currentUserStats?: LeaderboardEntry;
   period: 'all-time' | 'monthly' | 'weekly';
@@ -48,12 +56,14 @@ export interface LeaderboardResult {
 interface UserStats {
   id: string;
   username?: string;
+  walletAddress?: string;
   brierScore: number;
   accuracy: number;
   predictions: number;
   resolvedPredictions: number;
   streak: number;
   streakType: 'win' | 'loss' | 'none';
+  isOnChainVerified?: boolean;
 }
 
 function loadAllUserStats(): UserStats[] {
@@ -96,6 +106,55 @@ function getGrade(brierScore: number): string {
   return 'F';
 }
 
+function getTier(brierScore: number, resolvedPredictions: number): LeaderboardEntry['tier'] {
+  if (resolvedPredictions < 10) return 'unranked';
+  if (resolvedPredictions < 20) return 'rookie';
+  if (brierScore < 0.12 && resolvedPredictions >= 100) return 'superforecaster';
+  if (brierScore < 0.18 && resolvedPredictions >= 50) return 'elite';
+  if (brierScore < 0.25 && resolvedPredictions >= 20) return 'verified';
+  return 'rookie';
+}
+
+/**
+ * Fetch on-chain forecaster stats for known wallet addresses
+ * This will be populated from Supabase or a registry of known forecasters
+ */
+async function fetchOnChainForecasters(): Promise<UserStats[]> {
+  const onChainForecasters: UserStats[] = [];
+
+  // Known forecaster wallet addresses (in production, fetch from Supabase)
+  const knownWallets = [
+    { address: '8X7vZpVYitCw7mb2ny9TWzubebZGanqEEW1fMnn28Rzf', username: 'BeRightBot' },
+    // Add more known forecasters here
+  ];
+
+  for (const { address, username } of knownWallets) {
+    try {
+      const pubkey = new PublicKey(address);
+      const stats = await getForecasterStats(pubkey);
+
+      if (stats && stats.resolvedPredictions > 0) {
+        onChainForecasters.push({
+          id: address,
+          username,
+          walletAddress: address,
+          brierScore: stats.avgBrierScore,
+          accuracy: stats.accuracy,
+          predictions: stats.totalPredictions,
+          resolvedPredictions: stats.resolvedPredictions,
+          streak: stats.streakCorrect,
+          streakType: stats.streakCorrect > 0 ? 'win' : 'none',
+          isOnChainVerified: true,
+        });
+      }
+    } catch (error) {
+      console.error(`[Leaderboard] Failed to fetch on-chain stats for ${address}:`, error);
+    }
+  }
+
+  return onChainForecasters;
+}
+
 // =============================================================================
 // HANDLER
 // =============================================================================
@@ -117,26 +176,61 @@ export const leaderboardHandler: CommandHandler<LeaderboardResult> = {
         categoryArg === 'trading' ? 'trading' :
         categoryArg === 'overall' ? 'overall' : 'calibration';
 
-      // Load all user stats
-      const allStats = loadAllUserStats();
+      // Load local user stats (fallback/additional data)
+      const localStats = loadAllUserStats();
 
-      // Filter to users with enough data
-      const eligibleUsers = allStats.filter(u => u.resolvedPredictions >= 5);
+      // Fetch on-chain verified forecasters
+      let onChainStats: UserStats[] = [];
+      try {
+        onChainStats = await fetchOnChainForecasters();
+        console.log(`[Leaderboard] Fetched ${onChainStats.length} on-chain forecasters`);
+      } catch (error) {
+        console.error('[Leaderboard] Failed to fetch on-chain data, using local only:', error);
+      }
 
-      // Sort by Brier score (lower is better)
-      const sorted = [...eligibleUsers].sort((a, b) => a.brierScore - b.brierScore);
+      // Merge: on-chain takes priority, then local
+      const allStatsMap = new Map<string, UserStats>();
+
+      // Add local stats first
+      for (const user of localStats) {
+        allStatsMap.set(user.id, { ...user, isOnChainVerified: false });
+      }
+
+      // Override with on-chain stats (they are authoritative)
+      for (const user of onChainStats) {
+        allStatsMap.set(user.id, user);
+      }
+
+      const allStats = Array.from(allStatsMap.values());
+
+      // Filter to users with enough data (at least 1 resolved for on-chain, 5 for local)
+      const eligibleUsers = allStats.filter(u =>
+        u.isOnChainVerified ? u.resolvedPredictions >= 1 : u.resolvedPredictions >= 5
+      );
+
+      // Sort by Brier score (lower is better), on-chain verified first
+      const sorted = [...eligibleUsers].sort((a, b) => {
+        // On-chain verified users get priority
+        if (a.isOnChainVerified && !b.isOnChainVerified) return -1;
+        if (!a.isOnChainVerified && b.isOnChainVerified) return 1;
+        return a.brierScore - b.brierScore;
+      });
 
       // Map to leaderboard entries
       const entries: LeaderboardEntry[] = sorted.slice(0, 20).map((user, index) => ({
         rank: index + 1,
         userId: user.id,
         username: user.username,
+        walletAddress: user.walletAddress,
         brierScore: user.brierScore,
         accuracy: user.accuracy,
         predictions: user.predictions,
+        resolvedPredictions: user.resolvedPredictions,
         streak: user.streak,
         grade: getGrade(user.brierScore),
         isCurrentUser: user.id === currentUserId,
+        isOnChainVerified: user.isOnChainVerified || false,
+        tier: getTier(user.brierScore, user.resolvedPredictions),
       }));
 
       // Find current user's rank
@@ -151,12 +245,16 @@ export const leaderboardHandler: CommandHandler<LeaderboardResult> = {
           rank: currentUserRank,
           userId: user.id,
           username: user.username,
+          walletAddress: user.walletAddress,
           brierScore: user.brierScore,
           accuracy: user.accuracy,
           predictions: user.predictions,
+          resolvedPredictions: user.resolvedPredictions,
           streak: user.streak,
           grade: getGrade(user.brierScore),
           isCurrentUser: true,
+          isOnChainVerified: user.isOnChainVerified || false,
+          tier: getTier(user.brierScore, user.resolvedPredictions),
         };
       }
 
@@ -165,6 +263,7 @@ export const leaderboardHandler: CommandHandler<LeaderboardResult> = {
         category,
         entries,
         totalParticipants: eligibleUsers.length,
+        onChainVerifiedCount: entries.filter(e => e.isOnChainVerified).length,
         currentUserRank,
         currentUserStats,
         period: 'all-time',

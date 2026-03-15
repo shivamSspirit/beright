@@ -784,19 +784,30 @@ Quick actions:
 function handleStart(): SkillResponse {
   return {
     text: `
-🎯 Welcome to BeRight
+🎯 *Welcome to BeRight*
 
-I'm your prediction market intelligence terminal.
+Your AI-powered prediction market terminal with *on-chain reputation*.
 
-I help you:
-• Find arbitrage opportunities across platforms
-• Research markets with superforecaster methodology
-• Track whale (smart money) activity
-• Monitor news and social sentiment
+*WHAT MAKES US DIFFERENT:*
+📊 Your Brier scores stored on Solana (portable proof of skill)
+🏆 Leaderboard rankings based on calibration
+💰 Trade via Jupiter (zero payout fees)
+🤖 AI research with superforecaster methodology
 
-${HELP_TEXT}
+*GET STARTED:*
+/connect <wallet> - Link your Solana wallet
+/hot - See trending markets
+/arb - Find arbitrage opportunities
+/predict - Make a prediction
 
-Let's make you a better forecaster.
+*YOUR STATS:*
+/me - View your Brier score & accuracy
+/leaderboard - See top forecasters
+/calibration - Detailed calibration report
+
+Type /help for all commands.
+
+_Your predictions build your on-chain reputation._
 `,
     mood: 'NEUTRAL',
   };
@@ -1305,17 +1316,20 @@ To link a different wallet:
       text: `
 🔗 *CONNECT WALLET*
 
-Link your Solana wallet to track trades and build your forecaster profile.
+Link your Solana wallet to build your on-chain forecaster reputation.
 
 Usage: /connect <solana_address>
 
 Example:
 /connect 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
 
-Benefits:
-• Track your trading volume
-• Build forecaster reputation
-• Enable trade execution
+*Benefits:*
+• 📊 On-chain Brier scores (verified calibration)
+• 🏆 Leaderboard ranking
+• 💰 Trade via Jupiter (zero payout fees)
+• 📈 Track your prediction accuracy
+
+Your Brier score is stored immutably on Solana - portable proof of forecasting skill.
 `,
       mood: 'EDUCATIONAL',
     };
@@ -1348,10 +1362,14 @@ ${'─'.repeat(35)}
 
 Address: \`${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}\`
 
-You can now:
-• /buy to get trade quotes
-• /volume to track your metrics
-• /profile to view your stats
+*You can now:*
+• /predict - Make predictions (stored on-chain)
+• /me - View your Brier score & stats
+• /leaderboard - See your ranking
+• /trade - Execute via Jupiter (zero fees)
+
+Your predictions will build your on-chain calibration score!
+Start with: /predict <market> <probability>
 
 Welcome to BeRight! 🎯
 `,
