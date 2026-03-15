@@ -1,9 +1,13 @@
 'use client';
 
 import { PrivyProvider as PrivyClientProvider } from '@privy-io/react-auth';
-import { ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || '';
+
+// Context to track if Privy is configured
+const PrivyConfigContext = createContext(false);
+export const usePrivyConfigured = () => useContext(PrivyConfigContext);
 
 // Solana mainnet chain definition
 const solanaMainnet = {
@@ -24,30 +28,36 @@ const solanaMainnet = {
 
 export function PrivyProvider({ children }: { children: ReactNode }) {
   if (!PRIVY_APP_ID) {
-    console.warn('[PrivyProvider] NEXT_PUBLIC_PRIVY_APP_ID not set, wallet features disabled');
-    return <>{children}</>;
+    // Privy not configured - provide context indicating this
+    return (
+      <PrivyConfigContext.Provider value={false}>
+        {children}
+      </PrivyConfigContext.Provider>
+    );
   }
 
   return (
-    <PrivyClientProvider
-      appId={PRIVY_APP_ID}
-      config={{
-        appearance: {
-          theme: 'dark',
-          accentColor: '#22c55e',
-          logo: '/logo.png',
-        },
-        loginMethods: ['wallet', 'email'],
-        embeddedWallets: {
-          solana: {
-            createOnLogin: 'users-without-wallets',
+    <PrivyConfigContext.Provider value={true}>
+      <PrivyClientProvider
+        appId={PRIVY_APP_ID}
+        config={{
+          appearance: {
+            theme: 'dark',
+            accentColor: '#22c55e',
+            logo: '/logo.png',
           },
-        },
-        supportedChains: [solanaMainnet],
-        defaultChain: solanaMainnet,
-      }}
-    >
-      {children}
-    </PrivyClientProvider>
+          loginMethods: ['wallet', 'email'],
+          embeddedWallets: {
+            solana: {
+              createOnLogin: 'users-without-wallets',
+            },
+          },
+          supportedChains: [solanaMainnet],
+          defaultChain: solanaMainnet,
+        }}
+      >
+        {children}
+      </PrivyClientProvider>
+    </PrivyConfigContext.Provider>
   );
 }

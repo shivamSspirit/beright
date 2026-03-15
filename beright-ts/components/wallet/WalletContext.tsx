@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, ReactNode } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivyConfigured } from './PrivyProvider';
 
 interface WalletState {
   address: string | null;
@@ -10,29 +11,32 @@ interface WalletState {
   isReady: boolean;
   login: () => void;
   logout: () => Promise<void>;
-  // Privy-specific
   user: any | null;
   wallets: any[];
   authenticated: boolean;
 }
 
-const WalletContext = createContext<WalletState | null>(null);
+const defaultState: WalletState = {
+  address: null,
+  isConnected: false,
+  isConnecting: false,
+  isReady: true,
+  login: () => {},
+  logout: async () => {},
+  user: null,
+  wallets: [],
+  authenticated: false,
+};
 
-export function WalletProvider({ children }: { children: ReactNode }) {
-  const {
-    login,
-    logout,
-    authenticated,
-    ready,
-    user
-  } = usePrivy();
+const WalletContext = createContext<WalletState>(defaultState);
 
+// Inner component that uses Privy hooks (only rendered when Privy is configured)
+function PrivyWalletProvider({ children }: { children: ReactNode }) {
+  const { login, logout, authenticated, ready, user } = usePrivy();
   const { wallets } = useWallets();
 
   const value = useMemo(() => {
-    // Get the first wallet (Privy embedded or external)
-    // Privy v2 uses walletClientType to identify wallet type
-    const primaryWallet = wallets.find(w => w.walletClientType === 'privy') || wallets[0];
+    const primaryWallet = wallets?.find((w: any) => w.walletClientType === 'privy') || wallets?.[0];
     const address = primaryWallet?.address || user?.wallet?.address || null;
 
     return {
@@ -43,7 +47,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       user,
-      wallets,
+      wallets: wallets || [],
       authenticated,
     };
   }, [authenticated, ready, user, wallets, login, logout]);
@@ -55,12 +59,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useWallet() {
-  const context = useContext(WalletContext);
-  if (!context) {
-    throw new Error('useWallet must be used within a WalletProvider');
+// Fallback provider when Privy is not configured
+function FallbackWalletProvider({ children }: { children: ReactNode }) {
+  return (
+    <WalletContext.Provider value={defaultState}>
+      {children}
+    </WalletContext.Provider>
+  );
+}
+
+// Main export - checks if Privy is configured via context
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const privyConfigured = usePrivyConfigured();
+
+  if (!privyConfigured) {
+    return <FallbackWalletProvider>{children}</FallbackWalletProvider>;
   }
-  return context;
+
+  return <PrivyWalletProvider>{children}</PrivyWalletProvider>;
+}
+
+export function useWallet() {
+  return useContext(WalletContext);
 }
 
 // Re-export Privy hooks for advanced usage
