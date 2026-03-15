@@ -532,6 +532,7 @@ async function handleChatContextQuery(
           manifold: '🔵',
           metaculus: '🟠',
           limitless: '⚪',
+          jupiter: '🟡',
         }[m.platform] || '📊';
         results.push(`${platformEmoji} *${m.title.slice(0, 50)}*\n   ${formatPct(m.yesPrice)} YES • 🔗 ${m.url}`);
       }
@@ -558,6 +559,7 @@ async function handleChatContextQuery(
         manifold: '🔵',
         metaculus: '🟠',
         limitless: '⚪',
+        jupiter: '🟡',
       }[market.platform] || '📊';
 
       return {
@@ -669,6 +671,7 @@ async function handleContextReply(
     manifold: '🔵',
     metaculus: '🟠',
     limitless: '⚪',
+    jupiter: '🟡',
   }[market.platform] || '📊';
 
   return {

@@ -76,6 +76,12 @@ const PLATFORM_FEES: Record<Platform, FeeStructure> = {
     settlementFee: 0.00,
     volumeDiscounts: [],
   },
+  jupiter: {
+    tradingFee: 0.00,        // No trading fee (on-chain swaps)
+    withdrawalFee: 0.00,
+    settlementFee: 0.00,
+    volumeDiscounts: [],
+  },
 };
 
 // ============================================
@@ -539,6 +545,7 @@ function assessOperationalRisk(pair: ValidatedMarketPair): OperationalRisk {
     manifold: 70, // Play money
     limitless: 60,
     metaculus: 80,
+    jupiter: 85,  // On-chain
   };
 
   const reliabilityA = platformReliability[pair.marketA.platform] || 50;

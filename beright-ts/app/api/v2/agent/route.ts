@@ -101,11 +101,15 @@ export async function POST(request: NextRequest) {
     // Route to agent system
     const response = await processMessage(message);
 
+    // Extract routing info from response data
+    const responseData = response.data as { routing?: { agent?: string; intent?: string; confidence?: number; executionMs?: number } } | undefined;
+    const agentId = responseData?.routing?.agent;
+
     // Record agent response
     session.messages.push({
       role: 'agent',
       content: response.text,
-      agent: response.agentId,
+      agent: agentId,
       timestamp: Date.now(),
     });
 
@@ -116,9 +120,9 @@ export async function POST(request: NextRequest) {
       data: {
         text: response.text,
         mood: response.mood || 'NEUTRAL',
-        agent: response.agentId,
-        agentEmoji: response.agentId ? AGENT_ROLES[response.agentId as keyof typeof AGENT_ROLES]?.emoji : '🎯',
-        metadata: response.metadata,
+        agent: agentId,
+        agentEmoji: agentId ? AGENT_ROLES[agentId as keyof typeof AGENT_ROLES]?.emoji : '🎯',
+        metadata: responseData?.routing,
       },
       session: {
         id: activeSessionId,

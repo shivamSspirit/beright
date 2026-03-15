@@ -111,22 +111,22 @@ export const TRADER_TOOLS: TraderTool[] = [
           balance: {
             total: balance.total,
             available: balance.available,
-            atRisk: balance.atRisk,
+            atRisk: balance.locked,
           },
           exposure: {
             totalAtRisk: exposure.totalAtRisk,
-            byCategory: exposure.byCategory,
-            byPlatform: exposure.byPlatform,
+            byCategory: exposure.exposureByPlatform,
+            byPlatform: exposure.exposureByPlatform,
           },
           positions: positions.map(p => ({
-            market: p.marketTitle,
+            market: p.marketQuestion,
             platform: p.platform,
-            direction: p.direction,
-            quantity: p.quantity,
+            direction: p.side,
+            quantity: p.size,
             entryPrice: p.avgEntryPrice,
             currentPrice: p.currentPrice,
-            unrealizedPnl: p.unrealizedPnl,
-            unrealizedPnlPct: p.unrealizedPnlPercent,
+            unrealizedPnl: p.unrealizedPnL,
+            unrealizedPnlPct: p.unrealizedPnLPct,
           })),
           positionCount: positions.length,
         };
@@ -305,9 +305,9 @@ export const TRADER_TOOLS: TraderTool[] = [
         const riskPct = (totalAtRisk / balance.total) * 100;
         const positionCount = positions.length;
 
-        // Category concentration
-        const categoryExposure = Object.entries(exposure.byCategory || {}).map(([cat, amt]) => ({
-          category: cat,
+        // Platform concentration (as proxy for category)
+        const categoryExposure = Object.entries(exposure.exposureByPlatform || {}).map(([platform, amt]) => ({
+          category: platform,
           amount: amt,
           percent: ((amt as number) / balance.total * 100).toFixed(1) + '%',
         }));

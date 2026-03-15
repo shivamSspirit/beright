@@ -158,7 +158,7 @@ async function fetchMarketIntel(): Promise<{
 }> {
   const [hotMarkets, arbResult] = await Promise.all([
     getHotMarkets(20).catch(() => []),
-    arbitrage().catch(() => ({ opportunities: [] })),
+    arbitrage().catch(() => ({ text: '', mood: 'NEUTRAL', data: [] })),
   ]);
 
   // Extract trending topics from market titles
@@ -169,7 +169,7 @@ async function fetchMarketIntel(): Promise<{
 
   return {
     hotMarkets: hotMarkets as Market[],
-    arbitrageOpps: arbResult.opportunities || [],
+    arbitrageOpps: (arbResult.data as any[]) || [],
     trendingTopics,
   };
 }

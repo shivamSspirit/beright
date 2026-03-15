@@ -204,6 +204,9 @@ export class TradeExecutionLayer extends EventEmitter {
     try {
       // Get opportunities from scanner
       const scanner = getAutonomousScanner();
+      if (!scanner) {
+        return { marketsScanned: 0, signalsGenerated: 0, tradesExecuted: 0 };
+      }
       const scanResult = await scanner.scan();
       marketsScanned = scanResult.marketsScanned;
 

@@ -391,6 +391,7 @@ export const directAggregator: MarketAggregator = {
       myriad: async () => [],
       baozi: async () => [],
       probable: async () => [],
+      jupiter: async () => [],  // Jupiter markets fetched via DFlow
     };
 
     const platformsToFetch = platforms.filter(p => fetchers[p]);

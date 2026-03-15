@@ -289,8 +289,9 @@ export async function execute(input: string): Promise<SkillResponse> {
 
     // Step 3: Add routing metadata if needed
     const executionMs = Date.now() - startTime;
+    const existingData = typeof response.data === 'object' && response.data !== null ? response.data : {};
     response.data = {
-      ...response.data,
+      ...existingData,
       routing: {
         agent: routing.agent,
         intent: routing.intent,

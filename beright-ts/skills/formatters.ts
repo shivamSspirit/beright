@@ -77,6 +77,8 @@ function platformBadge(platform: Platform): string {
     case 'manifold': return 'MF';
     case 'limitless': return 'LM';
     case 'metaculus': return 'MC';
+    case 'jupiter': return 'JP';
+    default: return 'UK';
   }
 }
 

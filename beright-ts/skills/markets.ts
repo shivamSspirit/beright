@@ -23,6 +23,7 @@ const PLATFORM_TIMEOUT: Record<Platform, number> = {
   manifold: 4000,
   limitless: 4000,
   metaculus: 5000,
+  jupiter: 4000,
 };
 
 // DFlow API for tokenized Kalshi markets (FREE, no key required)
@@ -619,6 +620,7 @@ export async function searchMarkets(
     manifold: fetchManifold,
     limitless: fetchLimitless,
     metaculus: fetchMetaculus,
+    jupiter: async () => [], // Jupiter markets fetched via DFlow
   };
 
   // Expand query with synonyms for better matching
@@ -955,6 +957,7 @@ export function formatIntelligenceMarkets(markets: Market[], title = 'Market Int
     limitless: '',
     manifold: '',
     metaculus: '',
+    jupiter: '',
   };
 
   const platformLabel: Record<Platform, string> = {
@@ -963,6 +966,7 @@ export function formatIntelligenceMarkets(markets: Market[], title = 'Market Int
     limitless: 'LIMITLESS',
     manifold: 'MANIFOLD',
     metaculus: 'METACULUS',
+    jupiter: 'JUPITER',
   };
 
   let output = `\n${'='.repeat(50)}\n   ${title}\n${'='.repeat(50)}\n`;
@@ -1008,6 +1012,7 @@ export async function compareOdds(query: string): Promise<OddsComparison> {
     manifold: [],
     limitless: [],
     metaculus: [],
+    jupiter: [],
   };
 
   for (const market of markets) {
@@ -1074,6 +1079,7 @@ export function formatMarkets(markets: Market[], title = 'Markets'): string {
     limitless: '🟢',
     manifold: '🟡',
     metaculus: '🔴',
+    jupiter: '🟠',
   };
 
   let output = `\n${'='.repeat(50)}\n   ${title}\n${'='.repeat(50)}\n\n`;

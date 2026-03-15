@@ -43,6 +43,7 @@ const PLATFORM_PRIORITY: Record<Platform, number> = {
   myriad: 20,        // Smaller platform
   baozi: 10,         // Minimal liquidity
   probable: 10,      // Newer platform
+  jupiter: 90,       // On-chain aggregator
 };
 
 /**
