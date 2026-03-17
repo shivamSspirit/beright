@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import BrandLogo from './BrandLogo';
 
 export default function PageLoader() {
   const [isLoading, setIsLoading] = useState(true);
@@ -17,10 +18,9 @@ export default function PageLoader() {
   return (
     <div className={`page-loader ${!isLoading ? 'hidden' : ''}`}>
       <div className="loader-logo">
-        <span className="loader-icon">◉</span>
-        <span className="loader-text">BeRight</span>
+        <BrandLogo size={48} className="loader-sphere" />
+        <span className="loader-text">beright AI</span>
       </div>
-      <div className="loader-spinner" />
     </div>
   );
 }

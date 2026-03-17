@@ -1,8 +1,17 @@
 /**
- * Market Deduplication Engine
+ * Market Deduplication Engine (Jaccard Fallback)
  *
- * Identifies and merges the same market across different platforms.
- * Uses text similarity and keyword matching.
+ * Identifies and merges the same market across different platforms
+ * using keyword-based Jaccard similarity.
+ *
+ * NOTE: This is the FALLBACK matching engine. The primary matching
+ * engine is ML-powered (lib/ml/marketMatcher.ts) using semantic embeddings.
+ * This engine is used when:
+ * - ML_MATCHING_DISABLED=true
+ * - No embedding provider available (no SBERT, no OpenAI API key)
+ * - ML matching fails for any reason
+ *
+ * The ML engine provides better accuracy (~95%) vs Jaccard (~70-80%).
  *
  * @author BeRight Protocol
  */

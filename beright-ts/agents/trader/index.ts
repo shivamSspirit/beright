@@ -350,7 +350,7 @@ export const TRADER_TOOLS: TraderTool[] = [
   },
   {
     name: 'execute_trade',
-    description: 'Execute a trade on a prediction market. Places the order with smart routing to get best execution. Use when user explicitly wants to buy, sell, or place an order. Always confirm trade details first.',
+    description: 'Execute a trade on a prediction market. Places the order with smart routing to get best execution. Use when user explicitly wants to buy, sell, or place an order. If walletPubkey is provided, returns an unsigned transaction for wallet signing.',
     parameters: {
       type: 'object',
       properties: {
@@ -358,6 +358,7 @@ export const TRADER_TOOLS: TraderTool[] = [
         direction: { type: 'string', description: 'Trade direction: YES or NO' },
         amount: { type: 'number', description: 'Amount to trade in USD' },
         platform: { type: 'string', description: 'Optional: specific platform to use' },
+        walletPubkey: { type: 'string', description: 'Optional: Solana wallet pubkey for live execution' },
         executionMode: { type: 'string', description: 'Execution mode: standard, fast, or jito (default: fast)' },
         useJito: { type: 'boolean', description: 'Use JITO bundle for MEV protection (default: false)' },
       },
@@ -387,7 +388,82 @@ export const TRADER_TOOLS: TraderTool[] = [
       const executionMode = params.executionMode || 'fast';
       const useJito = params.useJito || false;
 
-      // Calculate expected latency based on mode
+      // ============ LIVE EXECUTION PATH ============
+      // If walletPubkey is provided, try to execute via Jupiter
+      if (params.walletPubkey) {
+        try {
+          const { searchEvents, createOrder, microUsdToUsd } = await import('../../lib/jupiter/prediction');
+
+          // Search for Jupiter market
+          const jupiterSearch = await searchEvents({ query: params.marketQuery, limit: 5 });
+
+          if (jupiterSearch.success && jupiterSearch.data && jupiterSearch.data.length > 0) {
+            // Find best matching market
+            const jupiterEvent = jupiterSearch.data[0];
+            const jupiterMarket = jupiterEvent.markets?.[0];
+
+            if (jupiterMarket) {
+              // Create order (returns unsigned transaction)
+              const orderResponse = await createOrder({
+                marketId: jupiterMarket.marketId,
+                side: params.direction as 'YES' | 'NO',
+                amountUsd: params.amount,
+                userPubkey: params.walletPubkey,
+              });
+
+              if (orderResponse.success && orderResponse.data) {
+                const order = orderResponse.data;
+                const contracts = parseInt(order.order.contracts);
+                const totalCost = microUsdToUsd(order.order.totalCostUsd);
+
+                tracker.end('total');
+
+                return {
+                  success: true,
+                  requiresWalletSign: true, // Frontend will detect this and prompt wallet signing
+                  trade: {
+                    market: jupiterEvent.title || market.title,
+                    marketId: jupiterMarket.marketId,
+                    provider: jupiterMarket.provider || market.platform,
+                    direction: params.direction,
+                    amount: `$${params.amount.toFixed(2)}`,
+                    price: `${(price * 100).toFixed(1)}¢`,
+                    contracts: contracts,
+                    totalCost: `$${totalCost.toFixed(2)}`,
+                  },
+                  transaction: {
+                    base64: order.transaction,
+                    blockhash: order.txMeta.blockhash,
+                    lastValidBlockHeight: order.txMeta.lastValidBlockHeight,
+                  },
+                  orderDetails: {
+                    orderPubkey: order.order.orderPubkey,
+                    positionPubkey: order.order.positionPubkey,
+                  },
+                  benefits: [
+                    'Zero payout fees - winners get full $1/contract',
+                    'On-chain settlement on Solana',
+                    'Aggregated Polymarket + Kalshi liquidity',
+                  ],
+                  latency: {
+                    searchMs: (searchUs / 1000).toFixed(1),
+                    totalMs: (tracker.end('total') / 1000).toFixed(1),
+                  },
+                };
+              }
+            }
+          }
+
+          // Fallback: Jupiter search failed, return simulation with note
+          console.warn('[Trader] Jupiter market not found for:', params.marketQuery);
+        } catch (jupiterError) {
+          console.error('[Trader] Jupiter execution error:', jupiterError);
+          // Continue to simulation fallback
+        }
+      }
+
+      // ============ SIMULATION PATH ============
+      // No wallet or Jupiter execution failed
       let expectedLatencyMs: string;
       switch (executionMode) {
         case 'jito':
@@ -425,8 +501,9 @@ export const TRADER_TOOLS: TraderTool[] = [
           searchMs: (searchUs / 1000).toFixed(1),
           totalMs: (totalUs / 1000).toFixed(1),
         },
-        note: 'This is a simulation. Live trading requires wallet connection via /connect command.',
-        toExecute: `To place this trade for real, connect your wallet and use: /trade ${params.direction} $${params.amount} on "${params.marketQuery}" --mode ${executionMode}${useJito ? ' --jito' : ''}`,
+        note: params.walletPubkey
+          ? 'Market not available on Jupiter. Connect via Polymarket/Kalshi directly.'
+          : 'Connect your Solana wallet to execute live trades.',
       };
     },
   },

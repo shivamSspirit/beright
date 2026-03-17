@@ -64,7 +64,7 @@ export default function CLIInput({
 
   return (
     <footer className={styles.cliWrapper}>
-      <span className={styles.cliPrompt}>beright_trader@sys:~$</span>
+      <span className={styles.cliPrompt}>beright@ai:~$</span>
       <input
         ref={inputRef}
         type="text"

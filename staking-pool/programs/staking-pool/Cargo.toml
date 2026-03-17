@@ -1,0 +1,28 @@
+[package]
+name = "staking-pool"
+version = "0.1.0"
+description = "BeRight Forecaster Staking Pool - DeFi-native staking where reputation determines capacity"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "staking_pool"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.32", features = ["init-if-needed"] }
+anchor-spl = { version = "0.32", features = ["token", "associated_token", "metadata"] }
+solana-sha256-hasher = "2.3"
+
+[dev-dependencies]
+# Temporarily disabled for build compatibility - will enable after solving version conflicts
+# solana-program-test = "~2.2"
+# solana-sdk = "~2.2"
+tokio = "1.0"

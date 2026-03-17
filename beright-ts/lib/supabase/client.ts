@@ -820,6 +820,153 @@ export const db = {
       return data || [];
     },
   },
+
+  // ----------------------------------------
+  // PLATFORM IMPORTS (Cross-platform reputation)
+  // ----------------------------------------
+  platformImport: {
+    async getLinkedPlatforms(forecasterPubkey: string): Promise<any[]> {
+      const { data, error } = await supabaseAdmin
+        .from('external_platform_links')
+        .select('*')
+        .eq('forecaster_pubkey', forecasterPubkey)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+
+    async getLinkByPlatform(forecasterPubkey: string, platform: string): Promise<any | null> {
+      const { data, error } = await supabaseAdmin
+        .from('external_platform_links')
+        .select('*')
+        .eq('forecaster_pubkey', forecasterPubkey)
+        .eq('platform', platform)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+
+    async upsertLink(link: {
+      forecaster_pubkey: string;
+      platform: string;
+      platform_user_id: string;
+      platform_profile_url?: string;
+      verified_at?: string;
+      verification_method?: string;
+      verification_proof?: string;
+      imported_stats?: Record<string, unknown>;
+    }): Promise<any> {
+      const { data, error } = await supabaseAdmin
+        .from('external_platform_links')
+        .upsert(
+          {
+            ...link,
+            last_refreshed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'forecaster_pubkey,platform' }
+        )
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async deleteLink(forecasterPubkey: string, platform: string): Promise<void> {
+      const { error } = await supabaseAdmin
+        .from('external_platform_links')
+        .delete()
+        .eq('forecaster_pubkey', forecasterPubkey)
+        .eq('platform', platform);
+
+      if (error) throw error;
+    },
+
+    async getCompositeScore(forecasterPubkey: string): Promise<any | null> {
+      const { data, error } = await supabaseAdmin
+        .from('forecaster_composite_scores')
+        .select('*')
+        .eq('forecaster_pubkey', forecasterPubkey)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+
+    async upsertCompositeScore(score: {
+      forecaster_pubkey: string;
+      composite_score: number;
+      tier: string;
+      breakdown: unknown[];
+      total_predictions: number;
+    }): Promise<any> {
+      const { data, error } = await supabaseAdmin
+        .from('forecaster_composite_scores')
+        .upsert(
+          {
+            ...score,
+            last_calculated_at: new Date().toISOString(),
+          },
+          { onConflict: 'forecaster_pubkey' }
+        )
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async getVerificationCode(
+      forecasterPubkey: string,
+      platform: string,
+      code: string
+    ): Promise<any | null> {
+      const { data, error } = await supabaseAdmin
+        .from('verification_codes')
+        .select('*')
+        .eq('forecaster_pubkey', forecasterPubkey)
+        .eq('platform', platform)
+        .eq('code', code)
+        .is('used_at', null)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+
+    async markCodeUsed(
+      forecasterPubkey: string,
+      platform: string,
+      code: string
+    ): Promise<void> {
+      const { error } = await supabaseAdmin
+        .from('verification_codes')
+        .update({ used_at: new Date().toISOString() })
+        .eq('forecaster_pubkey', forecasterPubkey)
+        .eq('platform', platform)
+        .eq('code', code);
+
+      if (error) throw error;
+    },
+
+    async getPlatformsNeedingRefresh(maxAgeDays: number = 7): Promise<any[]> {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - maxAgeDays);
+
+      const { data, error } = await supabaseAdmin
+        .from('external_platform_links')
+        .select('*')
+        .eq('auto_refresh_enabled', true)
+        .lt('last_refreshed_at', cutoff.toISOString())
+        .not('verified_at', 'is', null);
+
+      if (error) throw error;
+      return data || [];
+    },
+  },
 };
 
 export default supabase;

@@ -13,6 +13,9 @@ import { EmbeddingResult, EmbeddingConfig, DEFAULT_EMBEDDING_CONFIG } from './ty
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/embeddings';
 
+// Track if we've already logged the missing API key warning (avoid log spam)
+let openaiKeyWarningLogged = false;
+
 // =============================================================================
 // KEYWORD-BASED SIMILARITY (Always available)
 // =============================================================================
@@ -116,7 +119,10 @@ export async function generateEmbedding(
 ): Promise<EmbeddingResult | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn('[Embeddings] OPENAI_API_KEY not set');
+    if (!openaiKeyWarningLogged) {
+      console.warn('[Embeddings] OPENAI_API_KEY not set - using keyword-based similarity');
+      openaiKeyWarningLogged = true;
+    }
     return null;
   }
 
@@ -167,7 +173,10 @@ export async function generateEmbeddings(
 ): Promise<EmbeddingResult[]> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn('[Embeddings] OPENAI_API_KEY not set');
+    if (!openaiKeyWarningLogged) {
+      console.warn('[Embeddings] OPENAI_API_KEY not set - using keyword-based similarity');
+      openaiKeyWarningLogged = true;
+    }
     return [];
   }
 

@@ -17,9 +17,20 @@ import {
   DataFabricCacheConfig,
   DataFabricCacheStats,
   MarketCategory,
+  PlatformMarketData,
 } from './types';
 import { getActiveProviders, getProvider, getSupportedPlatforms, checkAllProvidersHealth } from './providers';
 import { deduplicateMarkets } from './deduplication';
+import { matchMarkets } from '../ml/marketMatcher';
+import { mlResultsToUnifiedMarkets } from '../ml/adapters';
+import {
+  isMLMatchingEnabled,
+  isLMSRAggregationEnabled,
+  getMLConfig,
+  mlDebugLog,
+} from '../ml/config';
+import { canGenerateEmbeddings } from '../ml/embedding';
+import { aggregateProbability, type PlatformPriceData } from '../aggregation';
 
 // =============================================================================
 // CACHE LAYER
@@ -174,8 +185,61 @@ export class DataFabric {
       }
     }
 
-    // Deduplicate and unify
-    const { unified, matchStats } = deduplicateMarkets(allMarkets);
+    // Deduplicate and unify markets
+    // ML matching is enabled by default (set ML_MATCHING_DISABLED=true to disable)
+    let unified: UnifiedMarket[];
+    let matchStats: { avgSimilarity: number };
+    let matchMethod: 'ml' | 'jaccard' = 'jaccard';
+
+    if (isMLMatchingEnabled()) {
+      mlDebugLog('ML matching enabled, checking embedding availability');
+
+      try {
+        const embeddingStatus = await canGenerateEmbeddings();
+        mlDebugLog('Embedding status', embeddingStatus);
+
+        if (embeddingStatus.available) {
+          console.log(`[DataFabric] Using ML matching (provider: ${embeddingStatus.provider})`);
+
+          const mlConfig = getMLConfig();
+          const mlResults = await matchMarkets(allMarkets, mlConfig);
+
+          // Convert ML results to UnifiedMarket format using adapter
+          unified = mlResultsToUnifiedMarkets(mlResults, {
+            useLMSR: isLMSRAggregationEnabled(),
+          });
+
+          matchStats = {
+            avgSimilarity: mlResults.length > 0
+              ? mlResults.reduce((sum, r) => sum + r.matchConfidence, 0) / mlResults.length
+              : 0,
+          };
+          matchMethod = 'ml';
+
+          mlDebugLog(`ML matched ${allMarkets.length} → ${unified.length} markets`, {
+            clusters: mlResults.filter(r => r.markets.length > 1).length,
+            orphans: mlResults.filter(r => r.markets.length === 1).length,
+            avgConfidence: matchStats.avgSimilarity,
+          });
+        } else {
+          // No embeddings available, fall back to Jaccard
+          console.log('[DataFabric] No embedding capability, falling back to Jaccard matching');
+          const basicResult = deduplicateMarkets(allMarkets);
+          unified = basicResult.unified;
+          matchStats = basicResult.matchStats;
+        }
+      } catch (error) {
+        console.error('[DataFabric] ML matching failed, falling back to Jaccard:', error);
+        const basicResult = deduplicateMarkets(allMarkets);
+        unified = basicResult.unified;
+        matchStats = basicResult.matchStats;
+      }
+    } else {
+      mlDebugLog('ML matching disabled, using Jaccard');
+      const basicResult = deduplicateMarkets(allMarkets);
+      unified = basicResult.unified;
+      matchStats = basicResult.matchStats;
+    }
 
     // Apply filters
     let filtered = unified;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import BrandLogo from '@/components/BrandLogo';
 import styles from './ChatInterface.module.css';
 
 export interface ChatMessage {
@@ -101,7 +102,7 @@ export default function ChatInterface({ messages, isProcessing = false }: ChatIn
     <div className={styles.chatContainer}>
       {/* Chat Header */}
       <div className={styles.chatHeader}>
-        <span className={styles.chatTitle}>AGENT TERMINAL</span>
+        <span className={styles.chatTitle}>beright AI</span>
         <span className={styles.chatStatus}>
           {isProcessing ? (
             <>
@@ -144,13 +145,13 @@ export default function ChatInterface({ messages, isProcessing = false }: ChatIn
                   msg.role === 'user' ? styles.messageRowUser : styles.messageRowAgent
                 }`}
               >
-                {/* Agent Avatar (left side for agent messages) */}
+                {/* Agent Avatar (left side for agent messages) - BeRight silver sphere */}
                 {msg.role === 'agent' && (
                   <div
                     className={styles.avatar}
                     style={{ borderColor: getAgentColor(msg.agent) }}
                   >
-                    <span>{getAgentEmoji(msg.agent)}</span>
+                    <BrandLogo size={20} />
                   </div>
                 )}
 
@@ -198,11 +199,11 @@ export default function ChatInterface({ messages, isProcessing = false }: ChatIn
               </div>
             ))}
 
-            {/* Typing Indicator */}
+            {/* Typing Indicator - BeRight AI thinking */}
             {isProcessing && (
               <div className={`${styles.messageRow} ${styles.messageRowAgent}`}>
                 <div className={styles.avatar} style={{ borderColor: 'var(--color-primary, #10B981)' }}>
-                  <span>🤖</span>
+                  <BrandLogo size={20} className={styles.thinkingLogo} />
                 </div>
                 <div className={styles.typingBubble}>
                   <span className={styles.typingDot} />

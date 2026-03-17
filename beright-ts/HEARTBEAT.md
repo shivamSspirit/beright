@@ -3,7 +3,7 @@
 *This file is read by the OpenClaw heartbeat mechanism every 30 minutes.*
 *The agent uses this to determine what needs attention.*
 
-**Last Updated:** 2026-02-28T18:39:02.076Z
+**Last Updated:** 2026-03-17T11:41:32.971Z
 **System Health:** ACTIVE
 
 ## Current Focus
@@ -12,9 +12,9 @@ No active goals. Consider generating proactive opportunities.
 
 ## Pending Signals (3)
 
-- [volume_surge] Will Mark Cuban be the Democratic Presidential nom... (strength: 100%)
-- [volume_surge] Will Jon Stewart be the Democratic Presidential no... (strength: 100%)
-- [volume_surge] Will Gretchen Whitmer be the Democratic Presidenti... (strength: 100%)
+- [volume_surge] Will Iran's regime fall in 2026?... (strength: 100%)
+- [volume_surge] Will Hawai'i qualify for the men's Sweet Sixteen?... (strength: 100%)
+- [volume_surge] Manchester City vs Real Madrid Winner?... (strength: 100%)
 
 ## Active Goals (0)
 
@@ -24,13 +24,13 @@ No active goals.
 
 | Metric | Value |
 |--------|-------|
-| Total Scans | 112 |
-| Arbs Found | 111 |
+| Total Scans | 116 |
+| Arbs Found | 126 |
 | Pro Arb Alerts | 0 |
 | Whale Alerts | 0 |
-| Cognitive Cycles | 115 |
+| Cognitive Cycles | 120 |
 | Signal Alerts | 0 |
-| Builder Runs | 58 |
+| Builder Runs | 61 |
 
 ## Calibration
 
@@ -89,12 +89,12 @@ Generate an alert (don't return HEARTBEAT_OK) if:
 ### Scout Agent
 - Role: Fast market scanning, arbitrage detection
 - Status: active
-- Last Scan: 2026-02-28T18:38:06.303Z
+- Last Scan: 2026-03-17T11:39:20.454Z
 
 ### Analyst Agent
 - Role: Deep research, probability estimation
 - Status: active
-- Last Run: 2026-02-28T18:38:09.055Z
+- Last Run: 2026-03-17T11:39:28.203Z
 
 ### Trader Agent
 - Role: Trade execution, risk management
@@ -104,7 +104,7 @@ Generate an alert (don't return HEARTBEAT_OK) if:
 ### Builder Agent
 - Role: Autonomous code generation
 - Status: active
-- Last Build: 2026-02-28T18:32:09.267Z
+- Last Build: 2026-03-17T11:40:54.323Z
 
 ---
 

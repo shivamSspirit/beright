@@ -567,6 +567,9 @@ async function executeAnalystTask(
 
 /**
  * Trader agent execution - Trade execution
+ *
+ * Supports live Jupiter Prediction Market execution when wallet pubkey is provided.
+ * Returns unsigned transaction for wallet signing by the frontend.
  */
 async function executeTraderTask(
   agent: AgentConfig,
@@ -582,6 +585,9 @@ async function executeTraderTask(
 
   const taskLower = task.toLowerCase();
   let response: SkillResponse;
+
+  // Extract wallet pubkey from context (set when called from web terminal)
+  const walletPubkey = context?.username; // username field carries wallet pubkey from gateway
 
   if (taskLower.includes('swap')) {
     // Token swap
@@ -600,26 +606,142 @@ async function executeTraderTask(
     // Whale tracking
     response = await whaleWatch();
     response.text = `💱 *TRADER: WHALE ACTIVITY*\n${'─'.repeat(30)}\n\n${response.text}`;
-  } else if (taskLower.includes('buy') || taskLower.includes('trade')) {
-    // Trade quote
-    const tradeMatch = task.match(/(\w+[-\w]*)\s+(yes|no)\s+(\d+(?:\.\d+)?)/i);
+  } else if (taskLower.includes('buy') || taskLower.includes('trade') || taskLower.includes('execute')) {
+    // Trade execution - supports live Jupiter execution with wallet
+    // Match patterns like: "trade 5 yes on bitcoin" or "buy yes $10 bitcoin"
+    const tradeMatch = task.match(/(?:trade|buy|execute)?\s*(\d+(?:\.\d+)?)\s*\$?\s*(yes|no)\s+(?:on\s+)?(.+)/i) ||
+                       task.match(/(?:trade|buy|execute)?\s*(yes|no)\s+\$?(\d+(?:\.\d+)?)\s+(?:on\s+)?(.+)/i) ||
+                       task.match(/(\w+[-\w]*)\s+(yes|no)\s+(\d+(?:\.\d+)?)/i);
+
     if (tradeMatch) {
-      const [, ticker, direction, amount] = tradeMatch;
-      const result = await getTradeQuote(
-        ticker.toUpperCase(),
-        direction.toUpperCase() as 'YES' | 'NO',
-        parseFloat(amount)
-      );
-      response = formatTraderQuote(result, ticker, direction, amount);
+      let amount: string, direction: string, marketQuery: string;
+
+      // Handle different match patterns
+      if (/^\d/.test(tradeMatch[1])) {
+        // Pattern: "5 yes bitcoin" or "5 yes on bitcoin"
+        [, amount, direction, marketQuery] = tradeMatch;
+      } else if (/^(yes|no)$/i.test(tradeMatch[1])) {
+        // Pattern: "yes $10 bitcoin"
+        [, direction, amount, marketQuery] = tradeMatch;
+      } else {
+        // Pattern: "TICKER yes 10" (legacy)
+        [, marketQuery, direction, amount] = tradeMatch;
+      }
+
+      const amountNum = parseFloat(amount);
+      const side = direction.toUpperCase() as 'YES' | 'NO';
+
+      // Live execution path: wallet connected
+      if (walletPubkey) {
+        try {
+          const { searchEvents, createOrder } = await import('../lib/jupiter/prediction');
+
+          // Search for the market on Jupiter
+          const searchResult = await searchEvents({ query: marketQuery.trim(), limit: 5 });
+
+          if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+            const event = searchResult.data[0];
+            const market = event.markets?.[0];
+
+            if (market) {
+              // Create order (returns unsigned transaction)
+              const orderResult = await createOrder({
+                marketId: market.marketId,
+                side,
+                amountUsd: amountNum,
+                userPubkey: walletPubkey,
+              });
+
+              if (orderResult.success && orderResult.data) {
+                const orderData = orderResult.data;
+                const contracts = orderData.order?.contracts ? parseFloat(orderData.order.contracts) / 1e6 : 0;
+                const pricePerContract = orderData.order?.pricePerContractUsd
+                  ? parseFloat(orderData.order.pricePerContractUsd) / 1e6
+                  : 0;
+
+                response = {
+                  text: `💱 *TRADER: EXECUTING TRADE*\n${'─'.repeat(30)}\n\n` +
+                    `*Market:* ${event.title}\n` +
+                    `*Side:* ${side}\n` +
+                    `*Amount:* $${amountNum}\n` +
+                    `*Contracts:* ~${contracts.toFixed(2)}\n` +
+                    `*Price:* $${pricePerContract.toFixed(3)}/contract\n\n` +
+                    `🔐 Transaction ready. Signing with your wallet...`,
+                  mood: 'BULLISH' as Mood,
+                  data: [{
+                    tool: 'execute_trade',
+                    result: {
+                      requiresWalletSign: true,
+                      trade: {
+                        market: event.title,
+                        direction: side,
+                        amount: `$${amountNum}`,
+                        contracts,
+                        pricePerContract,
+                      },
+                      transaction: {
+                        base64: orderData.transaction,
+                        blockhash: orderData.txMeta?.blockhash,
+                        lastValidBlockHeight: orderData.txMeta?.lastValidBlockHeight,
+                      },
+                      jupiterMarket: {
+                        eventId: event.eventId,
+                        marketId: market.marketId,
+                      },
+                    },
+                  }],
+                };
+              } else {
+                response = {
+                  text: `💱 *TRADER: ORDER FAILED*\n${'─'.repeat(30)}\n\n` +
+                    `❌ Could not create order: ${orderResult.error || 'Unknown error'}\n\n` +
+                    `Market: ${event.title}`,
+                  mood: 'ERROR' as Mood,
+                };
+              }
+            } else {
+              response = {
+                text: `💱 *TRADER: NO MARKET*\n${'─'.repeat(30)}\n\n` +
+                  `Found event "${event.title}" but no tradeable market.\n` +
+                  `This market may not be live yet.`,
+                mood: 'NEUTRAL' as Mood,
+              };
+            }
+          } else {
+            response = {
+              text: `💱 *TRADER: MARKET NOT FOUND*\n${'─'.repeat(30)}\n\n` +
+                `No Jupiter prediction market found for "${marketQuery}".\n\n` +
+                `Try a more specific query or check /hot for available markets.`,
+              mood: 'NEUTRAL' as Mood,
+            };
+          }
+        } catch (error) {
+          console.error('[Trader] Jupiter execution error:', error);
+          response = {
+            text: `💱 *TRADER: ERROR*\n${'─'.repeat(30)}\n\n` +
+              `❌ Trade execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            mood: 'ERROR' as Mood,
+          };
+        }
+      } else {
+        // Quote-only path: no wallet connected
+        const result = await getTradeQuote(
+          marketQuery.toUpperCase(),
+          side,
+          amountNum
+        );
+        response = formatTraderQuote(result, marketQuery, direction, amount);
+        response.text += `\n\n💡 *Connect wallet in terminal to execute live trades*`;
+      }
     } else {
       response = {
-        text: `💱 *TRADER: BUY*\n${'─'.repeat(30)}\n\nUsage: buy <ticker> <YES|NO> <amount>\nExample: buy KXBTC-24DEC31 YES 10`,
+        text: `💱 *TRADER: BUY*\n${'─'.repeat(30)}\n\nUsage:\n• trade 5 yes on bitcoin\n• buy yes $10 fed rate cut\n• buy KXBTC-24DEC31 YES 10`,
         mood: 'EDUCATIONAL' as Mood,
       };
     }
   } else {
     response = {
-      text: `💱 *TRADER*\n${'─'.repeat(30)}\n\nAvailable commands:\n• swap <amount> <from> to <to>\n• buy <ticker> <YES|NO> <amount>\n• whale - Track whale activity`,
+      text: `💱 *TRADER*\n${'─'.repeat(30)}\n\nAvailable commands:\n• trade <amount> <YES|NO> on <market>\n• swap <amount> <from> to <to>\n• whale - Track whale activity`,
       mood: 'NEUTRAL' as Mood,
     };
   }

@@ -91,6 +91,34 @@
   text-shadow: var(--br-glow-green);
 }
 
+/* Refresh Button */
+.refreshBtn {
+  background: transparent;
+  border: 1px solid var(--br-green);
+  color: var(--br-green);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: var(--br-green);
+  color: var(--br-bg);
+}
+
+.refreshBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* Navigation Pill */
 .navPill {
   display: inline-flex;
@@ -703,15 +731,40 @@
   justify-content: center;
   height: 100dvh;
   background: var(--br-bg);
-  gap: 24px;
+  gap: 16px;
+}
+
+/* Silver sphere loading animation */
+.loadingLogo {
+  animation: loadingSphere 2s ease-in-out infinite;
+}
+
+@keyframes loadingSphere {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(200, 225, 255, 0.6));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.9));
+    transform: scale(1.1);
+  }
 }
 
 .loadingText {
+  color: #F1F5F9;
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.loadingSubtext {
   color: var(--br-cyan);
   font-family: var(--br-font-mono);
-  font-size: 14px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
+  opacity: 0.8;
 }
 
 .connectScreen {

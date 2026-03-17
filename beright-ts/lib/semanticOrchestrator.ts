@@ -55,6 +55,7 @@ export interface OrchestratorResponse {
 export interface ConversationContext {
   chatId: string;
   userId: string;
+  username?: string; // Solana wallet pubkey when from gateway
   recentMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
@@ -131,25 +132,31 @@ export async function orchestrate(
   // Step 5: Execute based on routing
   let response: OrchestratorResponse;
 
+  // Pass context through for wallet-aware operations
+  const agentContext = context ? {
+    userId: context.userId,
+    username: context.username, // Wallet pubkey from gateway
+  } : undefined;
+
   switch (routing.primary) {
     case 'SELF':
       response = await handleSelf(understanding, message);
       break;
 
     case 'SCOUT':
-      response = await handleScout(understanding, message, routing.skills);
+      response = await handleScout(understanding, message, routing.skills, agentContext);
       break;
 
     case 'ANALYST':
-      response = await handleAnalyst(understanding, message, routing.skills);
+      response = await handleAnalyst(understanding, message, routing.skills, agentContext);
       break;
 
     case 'TRADER':
-      response = await handleTrader(understanding, message, routing.skills);
+      response = await handleTrader(understanding, message, routing.skills, agentContext);
       break;
 
     case 'HYBRID':
-      response = await handleHybrid(understanding, message, routing);
+      response = await handleHybrid(understanding, message, routing, agentContext);
       break;
 
     default:
@@ -231,15 +238,16 @@ Understanding: ${understanding.interpretation}`,
 async function handleScout(
   understanding: SemanticUnderstanding,
   message: string,
-  skills: string[]
+  skills: string[],
+  agentContext?: { userId?: string; username?: string }
 ): Promise<OrchestratorResponse> {
   // Build agent task using correct AgentTask interface
   const task: AgentTask = {
     agentId: 'scout',
     task: `${understanding.interpretation}. Topic: ${understanding.topic || 'general'}. Skills to use: ${skills.join(', ')}`,
     context: {
-      userId: undefined,
-      username: undefined,
+      userId: agentContext?.userId,
+      username: agentContext?.username,
     },
   };
 
@@ -266,14 +274,15 @@ async function handleScout(
 async function handleAnalyst(
   understanding: SemanticUnderstanding,
   message: string,
-  skills: string[]
+  skills: string[],
+  agentContext?: { userId?: string; username?: string }
 ): Promise<OrchestratorResponse> {
   const task: AgentTask = {
     agentId: 'analyst',
     task: `${understanding.interpretation}. Topic: ${understanding.topic || message}. Approach: ${understanding.suggestedApproach}`,
     context: {
-      userId: undefined,
-      username: undefined,
+      userId: agentContext?.userId,
+      username: agentContext?.username,
     },
   };
 
@@ -300,14 +309,18 @@ async function handleAnalyst(
 async function handleTrader(
   understanding: SemanticUnderstanding,
   message: string,
-  skills: string[]
+  skills: string[],
+  agentContext?: { userId?: string; username?: string }
 ): Promise<OrchestratorResponse> {
+  // For Trader, username is the wallet pubkey for live execution
+  const walletPubkey = agentContext?.username;
+
   const task: AgentTask = {
     agentId: 'trader',
-    task: `${understanding.interpretation}. Topic: ${understanding.topic || message}`,
+    task: `${understanding.interpretation}. Topic: ${understanding.topic || message}${walletPubkey ? `. WalletPubkey: ${walletPubkey}` : ''}`,
     context: {
-      userId: undefined,
-      username: undefined,
+      userId: agentContext?.userId,
+      username: walletPubkey, // Wallet pubkey for live execution
     },
   };
 
@@ -334,15 +347,16 @@ async function handleTrader(
 async function handleHybrid(
   understanding: SemanticUnderstanding,
   message: string,
-  routing: { primary: RecommendedAgent; secondary?: RecommendedAgent; skills: string[] }
+  routing: { primary: RecommendedAgent; secondary?: RecommendedAgent; skills: string[] },
+  agentContext?: { userId?: string; username?: string }
 ): Promise<OrchestratorResponse> {
   // Phase 1: Scout gathers data
   const scoutTask: AgentTask = {
     agentId: 'scout',
     task: `Gather data for: ${understanding.interpretation}. Topic: ${understanding.topic || 'general'}`,
     context: {
-      userId: undefined,
-      username: undefined,
+      userId: agentContext?.userId,
+      username: agentContext?.username,
     },
   };
 
@@ -359,8 +373,8 @@ async function handleHybrid(
     agentId: 'analyst',
     task: `${understanding.interpretation}. Topic: ${understanding.topic || message}. Approach: ${understanding.suggestedApproach}. Scout data available: ${scoutData ? 'yes' : 'no'}`,
     context: {
-      userId: undefined,
-      username: undefined,
+      userId: agentContext?.userId,
+      username: agentContext?.username,
     },
   };
 

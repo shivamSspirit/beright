@@ -5,6 +5,9 @@ import path from "path";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker deployments
+  output: 'standalone',
+
   // Fix Turbopack monorepo root detection
   turbopack: {
     root: path.join(__dirname, ".."),

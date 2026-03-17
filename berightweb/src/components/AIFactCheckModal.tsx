@@ -368,47 +368,50 @@ export default function AIFactCheckModal({
           position: fixed;
           inset: 0;
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           justify-content: center;
-          padding: 16px;
+          padding: 0;
           z-index: 9999;
-          overflow-y: auto;
-          -webkit-overflow-scrolling: touch;
+          overflow: hidden;
         }
 
         .fact-check-modal {
           position: relative;
           width: 100%;
-          max-width: 400px;
-          max-height: calc(100vh - 32px);
-          max-height: calc(100dvh - 32px);
+          max-width: 100%;
+          max-height: 92vh;
+          max-height: 92dvh;
           background: linear-gradient(180deg, #1E1E2E 0%, #12121C 100%);
-          border-radius: 20px;
+          border-radius: 20px 20px 0 0;
           border: 1px solid rgba(255, 255, 255, 0.12);
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+          border-bottom: none;
+          box-shadow: 0 -10px 60px rgba(0, 0, 0, 0.5);
           overflow: hidden;
           display: flex;
           flex-direction: column;
         }
 
-        /* Small mobile */
+        /* Small mobile (iPhone SE, etc) */
         @media (max-width: 380px) {
-          .fact-check-container {
-            padding: 12px;
-          }
           .fact-check-modal {
-            border-radius: 14px;
-            max-height: calc(100dvh - 24px);
+            border-radius: 16px 16px 0 0;
+            max-height: 90dvh;
           }
         }
 
-        /* Tablet */
-        @media (min-width: 481px) and (max-width: 768px) {
+        /* Tablet and up - centered modal */
+        @media (min-width: 481px) {
           .fact-check-container {
-            padding: 24px;
+            align-items: center;
+            padding: 20px;
           }
           .fact-check-modal {
-            max-width: 440px;
+            max-width: 420px;
+            max-height: 85vh;
+            max-height: 85dvh;
+            border-radius: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
           }
         }
 
@@ -418,7 +421,7 @@ export default function AIFactCheckModal({
             padding: 32px;
           }
           .fact-check-modal {
-            max-width: 420px;
+            max-width: 440px;
             max-height: calc(100vh - 64px);
           }
         }
@@ -926,15 +929,17 @@ export default function AIFactCheckModal({
         /* Actions */
         .action-buttons {
           display: flex;
-          gap: 12px;
+          gap: 10px;
           margin-top: auto;
           padding-top: 8px;
+          padding-bottom: env(safe-area-inset-bottom, 0px);
           flex-shrink: 0;
         }
 
-        @media (max-width: 480px) {
+        @media (min-width: 481px) {
           .action-buttons {
-            gap: 10px;
+            gap: 12px;
+            padding-bottom: 0;
           }
         }
 

@@ -52,6 +52,7 @@ export interface DFlowData {
   ticker: string;
   seriesTicker: string;
   volume24h: number;
+  openInterest: number;  // Real position count (trader data)
   yesBid: number;
   yesAsk: number;
   noBid: number;

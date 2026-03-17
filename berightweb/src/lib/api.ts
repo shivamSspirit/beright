@@ -299,6 +299,129 @@ export async function compareOdds(query: string): Promise<MarketsResponse> {
   return apiFetch(`/api/markets?q=${encodeURIComponent(query)}&compare=true`);
 }
 
+// ============ FEED API v2 (ML-powered) ============
+
+export type FeedType = 'hot' | 'closing_soon' | 'arbitrage' | 'new' | 'trending' | 'category';
+
+export interface FeedPlatformData {
+  platform: Platform;
+  platformId: string;
+  yesPrice: number;
+  volume24h: number;
+  liquidity: number;
+  url: string;
+}
+
+export interface FeedArbitrageData {
+  buyPlatform: Platform;
+  buyPrice: number;
+  sellPlatform: Platform;
+  sellPrice: number;
+  spread: number;
+  profitPct: number;
+  netProfit: number;
+}
+
+export interface FeedMarket {
+  id: string;
+  question: string;
+  category: string;
+  consensusPrice: number;
+  priceSpread: number;
+  matchConfidence: number;
+  platformCount: number;
+  platforms: FeedPlatformData[];
+  totalLiquidity: number;
+  totalVolume24h: number;
+  arbitrage: FeedArbitrageData | null;
+  entities: {
+    people: string[];
+    organizations: string[];
+    events: string[];
+  };
+  closeDate: string | null;
+  matchedAt: string;
+}
+
+export interface FeedResponse {
+  success: boolean;
+  data: FeedMarket[];
+  meta: {
+    type: FeedType;
+    total: number;
+    offset: number;
+    limit: number;
+    hasMore: boolean;
+    fetchedAt: string;
+    latencyMs: number;
+    mlLatencyMs: number;
+    cacheHit: boolean;
+  };
+}
+
+export interface FeedQuery {
+  type?: FeedType;
+  category?: string;
+  platforms?: Platform[];
+  minLiquidity?: number;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Get ML-powered feed from /api/v2/feed
+ */
+export async function getFeed(query: FeedQuery = {}): Promise<FeedResponse> {
+  const params = new URLSearchParams();
+  if (query.type) params.set('type', query.type);
+  if (query.category) params.set('category', query.category);
+  if (query.platforms?.length) params.set('platforms', query.platforms.join(','));
+  if (query.minLiquidity) params.set('minLiquidity', String(query.minLiquidity));
+  if (query.limit) params.set('limit', String(query.limit));
+  if (query.offset) params.set('offset', String(query.offset));
+
+  return apiFetch(`/api/v2/feed?${params}`);
+}
+
+/**
+ * Convert FeedMarket to ApiMarket for backward compatibility
+ */
+export function feedMarketToApiMarket(feed: FeedMarket): ApiMarket {
+  // Use first platform's data as primary
+  const primary = feed.platforms[0];
+  return {
+    id: feed.id,
+    platform: primary?.platform || 'polymarket',
+    title: feed.question,
+    question: feed.question,
+    yesPrice: feed.consensusPrice,
+    noPrice: 1 - feed.consensusPrice,
+    yesPct: Math.round(feed.consensusPrice * 100),
+    noPct: Math.round((1 - feed.consensusPrice) * 100),
+    volume: feed.totalVolume24h,
+    liquidity: feed.totalLiquidity,
+    endDate: feed.closeDate,
+    status: 'active',
+    url: primary?.url || '',
+  };
+}
+
+/**
+ * Get hot markets using new feed API with fallback
+ */
+export async function getHotMarketsFeed(limit = 20): Promise<MarketsResponse> {
+  try {
+    const feed = await getFeed({ type: 'hot', limit });
+    return {
+      count: feed.meta.total,
+      markets: feed.data.map(feedMarketToApiMarket),
+    };
+  } catch {
+    // Fallback to old API
+    return getHotMarkets(limit);
+  }
+}
+
 // ============ ARBITRAGE API ============
 
 export interface ArbitrageResponse {
@@ -1494,6 +1617,7 @@ export function transformDFlowToPrediction(event: DFlowEvent): Prediction {
       ticker: event.ticker,
       seriesTicker: event.seriesTicker,
       volume24h: event.volume24h,
+      openInterest: event.openInterest,  // Real trader data
       yesBid: event.yesBid,
       yesAsk: event.yesAsk,
       noBid: event.noBid,
@@ -1543,6 +1667,456 @@ function categorizeDFlowMarket(title: string): Category {
  */
 export function transformDFlowEvents(events: DFlowEvent[]): Prediction[] {
   return events.map(transformDFlowToPrediction);
+}
+
+// ===== Jupiter Prediction API Functions =====
+
+/**
+ * Jupiter Event from API
+ */
+export interface JupiterEvent {
+  eventId: string;
+  title: string;
+  description?: string;
+  category?: string;
+  status: string;
+  imageUrl?: string;
+  startTime?: string;
+  endTime?: string;
+  markets?: JupiterMarket[];
+  metadata?: {
+    title: string;
+    description?: string;
+    imageUrl?: string;
+    source?: string;
+    tags?: string[];
+  };
+}
+
+/**
+ * Jupiter Market from API
+ */
+export interface JupiterMarket {
+  marketId: string;
+  eventId: string;
+  title: string;
+  description?: string;
+  status: string;
+  provider: 'polymarket' | 'kalshi';
+  pricing: {
+    buyYesPriceUsd: string;
+    buyNoPriceUsd: string;
+    sellYesPriceUsd?: string;
+    sellNoPriceUsd?: string;
+    volume?: string;
+    volume24h?: string;
+    liquidity?: string;
+    openInterest?: string;
+  };
+  onChain?: {
+    marketPubkey: string;
+    yesMint?: string;
+    noMint?: string;
+  };
+  openTime?: string;
+  closeTime?: string;
+  settlementTime?: string;
+}
+
+/**
+ * Get hot Jupiter prediction events
+ */
+export async function getJupiterHotEvents(limit = 20): Promise<{
+  success: boolean;
+  data: JupiterEvent[];
+}> {
+  return apiFetch(`/api/v2/jupiter/events?hot=true&limit=${limit}&includeMarkets=true`);
+}
+
+/**
+ * Search Jupiter prediction events
+ */
+export async function searchJupiterEvents(query: string, limit = 20): Promise<{
+  success: boolean;
+  data: JupiterEvent[];
+}> {
+  return apiFetch(`/api/v2/jupiter/events?q=${encodeURIComponent(query)}&limit=${limit}&includeMarkets=true`);
+}
+
+/**
+ * Get single Jupiter event by ID
+ */
+export async function getJupiterEvent(eventId: string): Promise<{
+  success: boolean;
+  data: JupiterEvent | null;
+}> {
+  return apiFetch(`/api/v2/jupiter/events?id=${encodeURIComponent(eventId)}`);
+}
+
+/**
+ * Transform Jupiter event to Prediction format
+ */
+export function transformJupiterToPrediction(event: JupiterEvent, market?: JupiterMarket): Prediction {
+  // Use the first market if not specified
+  const mkt = market || event.markets?.[0];
+
+  // Calculate YES probability from pricing (micro USD to percentage)
+  const yesPriceUsd = mkt?.pricing?.buyYesPriceUsd
+    ? parseInt(mkt.pricing.buyYesPriceUsd, 10) / 1_000_000
+    : 0.5;
+  const yesPct = Math.round(yesPriceUsd * 100);
+
+  // Parse volume
+  const volumeNum = mkt?.pricing?.volume
+    ? parseInt(mkt.pricing.volume, 10) / 1_000_000
+    : 0;
+
+  // Parse open interest
+  const openInterest = mkt?.pricing?.openInterest
+    ? parseInt(mkt.pricing.openInterest, 10) / 1_000_000
+    : 0;
+
+  // Category from event or infer from title
+  const category = categorizeJupiterMarket(event.title || mkt?.title || '');
+
+  // Format volume
+  const volume = formatVolumeForJupiter(volumeNum);
+
+  // Generate AI prediction
+  const { aiPrediction, aiReasoning, aiEvidence } = generateAIPrediction({
+    id: event.eventId,
+    platform: mkt?.provider || 'polymarket',
+    title: event.title,
+    question: mkt?.title || event.title,
+    yesPrice: yesPriceUsd,
+    noPrice: 1 - yesPriceUsd,
+    yesPct,
+    noPct: 100 - yesPct,
+    volume: volumeNum,
+    liquidity: mkt?.pricing?.liquidity ? parseInt(mkt.pricing.liquidity, 10) / 1_000_000 : 0,
+    endDate: mkt?.closeTime || event.endTime || null,
+    status: event.status as any,
+    url: `https://jup.ag/prediction/${event.eventId}`,
+  });
+
+  // Determine platform display name
+  const platformName = mkt?.provider === 'kalshi' ? 'Kalshi' : 'Polymarket';
+
+  return {
+    id: `jupiter-${event.eventId}${mkt ? `-${mkt.marketId}` : ''}`,
+    question: mkt?.title || event.title,
+    category,
+    marketOdds: yesPct,
+    platform: platformName as any,
+    volume,
+    resolvesAt: mkt?.closeTime
+      ? new Date(mkt.closeTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'TBD',
+    aiPrediction,
+    aiReasoning,
+    aiEvidence,
+    url: `https://jup.ag/prediction/${event.eventId}`,
+    liquidity: mkt?.pricing?.liquidity ? parseInt(mkt.pricing.liquidity, 10) / 1_000_000 : 0,
+    status: event.status as any,
+
+    // Jupiter-specific data stored in dflow field for compatibility
+    dflow: {
+      ticker: event.eventId,
+      seriesTicker: mkt?.marketId || '',
+      volume24h: mkt?.pricing?.volume24h ? parseInt(mkt.pricing.volume24h, 10) / 1_000_000 : 0,
+      openInterest: openInterest,
+      yesBid: yesPriceUsd,
+      yesAsk: yesPriceUsd,
+      noBid: 1 - yesPriceUsd,
+      noAsk: 1 - yesPriceUsd,
+      spread: 0,
+      tokens: mkt?.onChain ? {
+        yesMint: mkt.onChain.yesMint || null,
+        noMint: mkt.onChain.noMint || null,
+        marketLedger: mkt.onChain.marketPubkey,
+        isInitialized: true,
+        redemptionStatus: 'open' as const,
+      } : null,
+      imageUrl: event.imageUrl || event.metadata?.imageUrl,
+    },
+  };
+}
+
+/**
+ * Transform multiple Jupiter events to Predictions
+ */
+export function transformJupiterEvents(events: JupiterEvent[]): Prediction[] {
+  const predictions: Prediction[] = [];
+
+  for (const event of events) {
+    // If event has markets, create a prediction for each market
+    if (event.markets && event.markets.length > 0) {
+      for (const market of event.markets) {
+        predictions.push(transformJupiterToPrediction(event, market));
+      }
+    } else {
+      // No markets, create single prediction from event
+      predictions.push(transformJupiterToPrediction(event));
+    }
+  }
+
+  return predictions;
+}
+
+// Helper to categorize Jupiter markets
+function categorizeJupiterMarket(title: string): Category {
+  const lower = title.toLowerCase();
+
+  if (lower.includes('bitcoin') || lower.includes('btc') || lower.includes('eth') ||
+      lower.includes('crypto') || lower.includes('solana') || lower.includes('token')) {
+    return 'crypto';
+  }
+  if (lower.includes('trump') || lower.includes('biden') || lower.includes('election') ||
+      lower.includes('president') || lower.includes('senate') || lower.includes('congress')) {
+    return 'politics';
+  }
+  if (lower.includes('fed') || lower.includes('rate') || lower.includes('inflation') ||
+      lower.includes('gdp') || lower.includes('recession') || lower.includes('economy')) {
+    return 'economics';
+  }
+  if (lower.includes('ai') || lower.includes('spacex') || lower.includes('tesla') ||
+      lower.includes('apple') || lower.includes('google') || lower.includes('tech')) {
+    return 'tech';
+  }
+  if (lower.includes('nba') || lower.includes('nfl') || lower.includes('world cup') ||
+      lower.includes('super bowl') || lower.includes('championship') || lower.includes('olympics') ||
+      lower.includes('basketball') || lower.includes('football') || lower.includes('soccer')) {
+    return 'sports';
+  }
+
+  return 'politics'; // Default
+}
+
+// Format volume for Jupiter (already in USD)
+function formatVolumeForJupiter(volume: number): string {
+  if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}M`;
+  if (volume >= 1_000) return `$${(volume / 1_000).toFixed(0)}K`;
+  return `$${Math.round(volume)}`;
+}
+
+// ===== Aggregated Market Data =====
+
+/**
+ * Calculate trending score for a prediction
+ * Higher score = more trending/hot
+ *
+ * Factors considered:
+ * - Total volume (40% weight) - higher volume = more interest
+ * - 24h volume velocity (30% weight) - recent activity matters more
+ * - Open interest (15% weight) - more positions = more engagement
+ * - Time urgency (15% weight) - markets ending soon get boosted
+ */
+function calculateTrendingScore(prediction: Prediction): number {
+  let score = 0;
+
+  // 1. Total volume score (40% weight)
+  const volumeStr = prediction.volume || '$0';
+  const volumeNum = parseFloat(volumeStr.replace(/[$,KMB]/g, '')) * (
+    volumeStr.includes('M') ? 1_000_000 :
+    volumeStr.includes('K') ? 1_000 :
+    volumeStr.includes('B') ? 1_000_000_000 : 1
+  );
+  // Normalize: $1M = 100 points, cap at 500
+  const volumeScore = Math.min(500, (volumeNum / 10_000));
+  score += volumeScore * 0.4;
+
+  // 2. 24h volume velocity (30% weight) - recent activity
+  const volume24h = prediction.dflow?.volume24h || 0;
+  // Normalize: $100K 24h = 100 points, cap at 300
+  const velocityScore = Math.min(300, (volume24h / 1_000));
+  score += velocityScore * 0.3;
+
+  // 3. Open interest (15% weight) - engagement indicator
+  const openInterest = prediction.dflow?.openInterest || 0;
+  // Normalize: 1000 contracts = 100 points, cap at 200
+  const oiScore = Math.min(200, (openInterest / 10));
+  score += oiScore * 0.15;
+
+  // 4. Time urgency (15% weight) - markets ending soon are hotter
+  const resolvesAt = prediction.resolvesAt;
+  if (resolvesAt && resolvesAt !== 'TBD') {
+    try {
+      const endDate = new Date(resolvesAt);
+      const now = new Date();
+      const hoursUntilEnd = (endDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilEnd > 0 && hoursUntilEnd <= 24) {
+        // Ending within 24h - max boost (100 points)
+        score += 100 * 0.15;
+      } else if (hoursUntilEnd > 0 && hoursUntilEnd <= 72) {
+        // Ending within 3 days - medium boost (60 points)
+        score += 60 * 0.15;
+      } else if (hoursUntilEnd > 0 && hoursUntilEnd <= 168) {
+        // Ending within a week - small boost (30 points)
+        score += 30 * 0.15;
+      }
+      // Markets ending later get no urgency boost
+    } catch {
+      // Invalid date, no urgency score
+    }
+  }
+
+  // 5. Spread bonus - tighter spreads indicate active trading
+  const spread = prediction.dflow?.spread;
+  if (spread !== undefined && spread < 5) {
+    // Very tight spread (<5 cents) = bonus
+    score += (5 - spread) * 2;
+  }
+
+  return score;
+}
+
+/**
+ * Sort and shuffle predictions by trending score
+ * Most trending market goes first, then shuffled by score bands
+ */
+function sortByTrending(predictions: Prediction[]): Prediction[] {
+  if (predictions.length === 0) return predictions;
+
+  // Calculate scores for all predictions
+  const scored = predictions.map(p => ({
+    prediction: p,
+    score: calculateTrendingScore(p)
+  }));
+
+  // Sort by score (descending)
+  scored.sort((a, b) => b.score - a.score);
+
+  // Return sorted predictions
+  // The top market (highest score) is guaranteed to be first
+  // Rest are sorted by score, creating a natural "trending" order
+  return scored.map(s => s.prediction);
+}
+
+/**
+ * Get aggregated hot markets from both DFlow and Jupiter
+ */
+export async function getAggregatedHotMarkets(limit = 20): Promise<{
+  success: boolean;
+  predictions: Prediction[];
+  sources: {
+    dflow: { count: number; success: boolean; error?: string };
+    jupiter: { count: number; success: boolean; error?: string };
+  };
+}> {
+  // Fetch from both sources in parallel
+  const [dflowResult, jupiterResult] = await Promise.allSettled([
+    getDFlowHotMarkets(limit),
+    getJupiterHotEvents(limit),
+  ]);
+
+  const predictions: Prediction[] = [];
+  const sources: {
+    dflow: { count: number; success: boolean; error?: string };
+    jupiter: { count: number; success: boolean; error?: string };
+  } = {
+    dflow: { count: 0, success: false },
+    jupiter: { count: 0, success: false },
+  };
+
+  // Process DFlow results
+  if (dflowResult.status === 'fulfilled' && dflowResult.value.success) {
+    const dflowPredictions = transformDFlowEvents(dflowResult.value.events);
+    predictions.push(...dflowPredictions);
+    sources.dflow = { count: dflowPredictions.length, success: true };
+  } else if (dflowResult.status === 'rejected') {
+    const errorMsg = dflowResult.reason instanceof Error ? dflowResult.reason.message : 'Unknown error';
+    console.error('[API] DFlow fetch failed:', errorMsg);
+    sources.dflow = { count: 0, success: false, error: errorMsg };
+  } else if (dflowResult.status === 'fulfilled' && !dflowResult.value.success) {
+    console.error('[API] DFlow API returned error');
+    sources.dflow = { count: 0, success: false, error: 'API returned unsuccessful response' };
+  }
+
+  // Process Jupiter results
+  if (jupiterResult.status === 'fulfilled' && jupiterResult.value.success) {
+    const jupiterPredictions = transformJupiterEvents(jupiterResult.value.data);
+    predictions.push(...jupiterPredictions);
+    sources.jupiter = { count: jupiterPredictions.length, success: true };
+  } else if (jupiterResult.status === 'rejected') {
+    const errorMsg = jupiterResult.reason instanceof Error ? jupiterResult.reason.message : 'Unknown error';
+    console.error('[API] Jupiter fetch failed:', errorMsg);
+    sources.jupiter = { count: 0, success: false, error: errorMsg };
+  } else if (jupiterResult.status === 'fulfilled' && !jupiterResult.value.success) {
+    console.error('[API] Jupiter API returned error');
+    sources.jupiter = { count: 0, success: false, error: 'API returned unsuccessful response' };
+  }
+
+  // Sort by trending score (considers volume, 24h activity, open interest, time urgency)
+  // The most trending market will always be first in the deck
+  const sortedPredictions = sortByTrending(predictions);
+
+  // Limit total results
+  const limitedPredictions = sortedPredictions.slice(0, limit);
+
+  return {
+    success: sources.dflow.success || sources.jupiter.success,
+    predictions: limitedPredictions,
+    sources,
+  };
+}
+
+/**
+ * Search aggregated markets from both DFlow and Jupiter
+ */
+export async function searchAggregatedMarkets(query: string, limit = 20): Promise<{
+  success: boolean;
+  predictions: Prediction[];
+  sources: {
+    dflow: { count: number; success: boolean; error?: string };
+    jupiter: { count: number; success: boolean; error?: string };
+  };
+}> {
+  // Fetch from both sources in parallel
+  const [dflowResult, jupiterResult] = await Promise.allSettled([
+    searchDFlowMarkets(query, limit),
+    searchJupiterEvents(query, limit),
+  ]);
+
+  const predictions: Prediction[] = [];
+  const sources: {
+    dflow: { count: number; success: boolean; error?: string };
+    jupiter: { count: number; success: boolean; error?: string };
+  } = {
+    dflow: { count: 0, success: false },
+    jupiter: { count: 0, success: false },
+  };
+
+  // Process DFlow results
+  if (dflowResult.status === 'fulfilled' && dflowResult.value.success) {
+    const dflowPredictions = transformDFlowEvents(dflowResult.value.events);
+    predictions.push(...dflowPredictions);
+    sources.dflow = { count: dflowPredictions.length, success: true };
+  } else if (dflowResult.status === 'rejected') {
+    const errorMsg = dflowResult.reason instanceof Error ? dflowResult.reason.message : 'Unknown error';
+    console.error('[API] DFlow search failed:', errorMsg);
+    sources.dflow = { count: 0, success: false, error: errorMsg };
+  }
+
+  // Process Jupiter results
+  if (jupiterResult.status === 'fulfilled' && jupiterResult.value.success) {
+    const jupiterPredictions = transformJupiterEvents(jupiterResult.value.data);
+    predictions.push(...jupiterPredictions);
+    sources.jupiter = { count: jupiterPredictions.length, success: true };
+  } else if (jupiterResult.status === 'rejected') {
+    const errorMsg = jupiterResult.reason instanceof Error ? jupiterResult.reason.message : 'Unknown error';
+    console.error('[API] Jupiter search failed:', errorMsg);
+    sources.jupiter = { count: 0, success: false, error: errorMsg };
+  }
+
+  // Sort by trending score (considers volume, 24h activity, open interest, time urgency)
+  const sortedPredictions = sortByTrending(predictions);
+
+  return {
+    success: sources.dflow.success || sources.jupiter.success,
+    predictions: sortedPredictions.slice(0, limit),
+    sources,
+  };
 }
 
 // ============ TRANSFORM HELPERS ============
@@ -2121,18 +2695,36 @@ export interface TerminalData {
 
 /**
  * Fetch all terminal data in parallel
+ * Uses v2 feed API for ML-powered market matching
  */
 export async function fetchTerminalData(): Promise<TerminalData> {
-  const [marketsRes, arbRes, portfolioRes, riskRes] = await Promise.all([
-    getHotMarkets(20).catch(() => ({ markets: [], count: 0 })),
-    getArbitrageOpportunities().catch(() => ({ opportunities: [], scannedAt: '' })),
+  const [marketsRes, portfolioRes, riskRes] = await Promise.all([
+    getHotMarketsFeed(20).catch(() => ({ markets: [], count: 0 })),
     apiFetch('/api/v2/portfolio').catch(() => ({ success: false, data: null })),
     apiFetch('/api/v2/risk').catch(() => ({ success: false, data: null })),
   ]);
 
+  // Extract arbitrage from feed response or fetch separately
+  const arbRes = await getFeed({ type: 'arbitrage', limit: 10 }).catch(() => ({ data: [], meta: {} }));
+
+  // Convert feed arbitrage to ApiArbitrage format
+  const arbitrageOpportunities: ApiArbitrage[] = arbRes.data
+    ?.filter((m: FeedMarket) => m.arbitrage)
+    .map((m: FeedMarket) => ({
+      topic: m.question,
+      platformA: m.arbitrage!.buyPlatform,
+      platformB: m.arbitrage!.sellPlatform,
+      priceA: m.arbitrage!.buyPrice,
+      priceB: m.arbitrage!.sellPrice,
+      spread: m.arbitrage!.spread,
+      profitPercent: m.arbitrage!.profitPct,
+      strategy: `Buy on ${m.arbitrage!.buyPlatform}, sell on ${m.arbitrage!.sellPlatform}`,
+      confidence: m.matchConfidence,
+    })) || [];
+
   return {
     markets: marketsRes.markets || [],
-    arbitrage: arbRes.opportunities || [],
+    arbitrage: arbitrageOpportunities,
     portfolio: (portfolioRes as any)?.data || null,
     risk: (riskRes as any)?.data || null,
     connected: true,

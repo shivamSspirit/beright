@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useMarkets } from '@/hooks/useMarkets';
 import SwipeCards from '@/components/SwipeCards';
@@ -12,10 +13,38 @@ import LandingPage from '@/components/LandingPage';
 
 export default function Home() {
   const { isAuthenticated, isLoading: authLoading } = useUser();
-  const { predictions, loading: marketsLoading } = useMarkets({ mode: 'hot', limit: 10, preferDFlow: true });
+  const { predictions, loading: marketsLoading, dataSources } = useMarkets({
+    mode: 'aggregated',  // Combine DFlow + Jupiter markets
+    limit: 20
+  });
 
-  // Show loading while checking auth
-  if (authLoading) {
+  // Log data sources for debugging
+  useEffect(() => {
+    if (dataSources) {
+      console.log('[Markets] Sources:', dataSources);
+      // Log errors prominently
+      if (!dataSources.dflow.success) {
+        console.warn('[Markets] DFlow FAILED:', dataSources.dflow.error || 'Unknown error');
+      }
+      if (!dataSources.jupiter.success) {
+        console.warn('[Markets] Jupiter FAILED:', dataSources.jupiter.error || 'Unknown error');
+      }
+      // Summary
+      const dflowStatus = dataSources.dflow.success ? `✓ ${dataSources.dflow.count}` : '✗ FAILED';
+      const jupiterStatus = dataSources.jupiter.success ? `✓ ${dataSources.jupiter.count}` : '✗ FAILED';
+      console.log(`[Markets] Summary: DFlow(${dflowStatus}), Jupiter(${jupiterStatus})`);
+    }
+  }, [dataSources]);
+
+  // Emergency timeout - never show loading for more than 3 seconds
+  const [forceShow, setForceShow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setForceShow(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading while checking auth (max 3 seconds)
+  if (authLoading && !forceShow) {
     return (
       <div className="app-loading">
         <div className="loading-spinner" />

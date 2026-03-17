@@ -3623,7 +3623,7 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
           // Use semantic orchestrator for full understanding
           console.log(`[SemanticAgent] Processing: "${text.slice(0, 50)}..."`);
 
-          const result = await semanticProcess(text, chatId, telegramId);
+          const result = await semanticProcess(text, chatId, telegramId, username);
 
           console.log(`[SemanticAgent] Understanding: ${result.understanding.goal}/${result.understanding.domain} → ${result.understanding.recommendedAgent} (${Math.round(result.understanding.confidence * 100)}%) in ${result.processingTimeMs}ms`);
           console.log(`[SemanticAgent] Interpretation: ${result.understanding.interpretation}`);

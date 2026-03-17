@@ -52,24 +52,32 @@ export function useBackendStatus() {
 // ============ Markets Hook ============
 
 interface UseMarketsOptions {
-  mode?: 'hot' | 'search' | 'all' | 'dflow';
+  mode?: 'hot' | 'search' | 'all' | 'dflow' | 'aggregated';  // Added 'aggregated' mode
   query?: string;
   platform?: Platform;
   limit?: number;
   compare?: boolean;
   useMockOnError?: boolean;
   preferDFlow?: boolean;  // Use DFlow as primary data source
+  preferAggregated?: boolean;  // Use aggregated DFlow + Jupiter data
+}
+
+// Source tracking for aggregated mode
+interface DataSources {
+  dflow: { count: number; success: boolean; error?: string };
+  jupiter: { count: number; success: boolean; error?: string };
 }
 
 export function useMarkets(options: UseMarketsOptions = {}) {
-  const { mode = 'hot', query, platform, limit = 20, compare = false, useMockOnError = true, preferDFlow = false } = options;
+  const { mode = 'hot', query, platform, limit = 20, compare = false, useMockOnError = true, preferDFlow = false, preferAggregated = false } = options;
 
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [arbitrage, setArbitrage] = useState<ApiArbitrage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingMock, setUsingMock] = useState(false);
-  const [dataSource, setDataSource] = useState<'api' | 'dflow' | 'mock'>('api');
+  const [dataSource, setDataSource] = useState<'api' | 'dflow' | 'aggregated' | 'mock'>('api');
+  const [dataSources, setDataSources] = useState<DataSources | null>(null);
 
   const fetchMarkets = useCallback(async () => {
     setLoading(true);
@@ -77,6 +85,35 @@ export function useMarkets(options: UseMarketsOptions = {}) {
 
     try {
       let response: MarketsResponse;
+
+      // Use aggregated DFlow + Jupiter if preferAggregated or mode is 'aggregated'
+      if (preferAggregated || mode === 'aggregated') {
+        const { getAggregatedHotMarkets, searchAggregatedMarkets } = await import('../lib/api');
+
+        if (mode === 'search' && query) {
+          const aggResponse = await searchAggregatedMarkets(query, limit);
+          if (aggResponse.success) {
+            setPredictions(aggResponse.predictions);
+            setDataSource('aggregated');
+            setDataSources(aggResponse.sources);
+            setUsingMock(false);
+            setLoading(false);
+            console.log(`[Markets] Aggregated search: DFlow(${aggResponse.sources.dflow.count}), Jupiter(${aggResponse.sources.jupiter.count})`);
+            return;
+          }
+        } else {
+          const aggResponse = await getAggregatedHotMarkets(limit);
+          if (aggResponse.success) {
+            setPredictions(aggResponse.predictions);
+            setDataSource('aggregated');
+            setDataSources(aggResponse.sources);
+            setUsingMock(false);
+            setLoading(false);
+            console.log(`[Markets] Aggregated hot: DFlow(${aggResponse.sources.dflow.count}), Jupiter(${aggResponse.sources.jupiter.count})`);
+            return;
+          }
+        }
+      }
 
       // Use DFlow as primary source if preferDFlow is true or mode is 'dflow'
       if (preferDFlow || mode === 'dflow') {
@@ -129,7 +166,7 @@ export function useMarkets(options: UseMarketsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [mode, query, platform, limit, compare, useMockOnError, preferDFlow]);
+  }, [mode, query, platform, limit, compare, useMockOnError, preferDFlow, preferAggregated]);
 
   useEffect(() => {
     fetchMarkets();
@@ -142,6 +179,7 @@ export function useMarkets(options: UseMarketsOptions = {}) {
     error,
     usingMock,
     dataSource,
+    dataSources,  // Expose source breakdown for aggregated mode
     refetch: fetchMarkets,
   };
 }

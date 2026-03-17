@@ -47,10 +47,26 @@
   animation: pulse-loader 1.5s ease-in-out infinite;
 }
 
+/* Silver sphere logo animation */
+.loader-sphere {
+  animation: sphere-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sphere-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(200, 225, 255, 0.6));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.8));
+    transform: scale(1.08);
+  }
+}
+
 .loader-text {
-  font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff;
   letter-spacing: -0.5px;
 }

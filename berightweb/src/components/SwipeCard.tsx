@@ -1827,6 +1827,43 @@ function MarketDetailDrawer({
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// NIKITA BIER "HOOK-FIRST" CARD DESIGN
+// 5 Zones: Hook (top) → Question → Probability → Social Proof → Swipe Affordance
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Format trader count human-readable (Bier style: "14.9K traders" not raw numbers)
+function formatTraders(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+}
+
+// Calculate payout multiplier (Bier style: "Win 2.4x" not "41¢")
+function calcPayout(price: number): string {
+  const mult = 1 / price;
+  return mult >= 10 ? `${Math.round(mult)}x` : `${mult.toFixed(1)}x`;
+}
+
+// Determine urgency status based on market conditions
+function getUrgencyBadge(prediction: Prediction, seed: number): { text: string; type: 'hot' | 'new' | 'closing' | null } {
+  // Check if closing soon
+  const end = new Date(prediction.resolvesAt).getTime();
+  const now = Date.now();
+  const hoursLeft = (end - now) / (1000 * 60 * 60);
+
+  if (hoursLeft > 0 && hoursLeft < 24) return { text: 'CLOSING SOON', type: 'closing' };
+
+  // Check if contested (40-60% range = most engaging)
+  const odds = prediction.marketOdds;
+  if (odds >= 40 && odds <= 60) return { text: 'MOVING FAST', type: 'hot' };
+
+  // Simulate "just opened" for some markets
+  if (seed % 5 === 0) return { text: 'JUST OPENED', type: 'new' };
+
+  return { text: '', type: null };
+}
+
 export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet, onTradeComplete, isTop, stackIndex }: SwipeCardProps) {
   const { isAuthenticated } = useUser();
   const [pressed, setPressed] = useState(false);
@@ -1840,14 +1877,55 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
 
   const mock = useMemo(() => {
     const h = prediction.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    const delta = ((h % 20) - 10) * 0.8; // Bigger swings for drama
+    const traders = 1000 + (h % 15000);
+    const odds = prediction.marketOdds;
+
+    // Nikita Bier computed values
+    const isHot = Math.abs(delta) > 8; // Hot if moved >8pts
+
+    // Context line - single most important fact
+    const contextLines = [
+      'Trending on social media',
+      'Major news coverage today',
+      'Volume spike detected',
+      'Analyst upgrade this week',
+      'Breaking developments',
+      'Market momentum building',
+    ];
+    const contextLine = contextLines[h % contextLines.length];
+
+    // Gauge color: green (>60%), red (<40%), amber (contested 40-60%)
+    const gaugeColor = odds >= 60 ? 'hot-yes' : odds <= 40 ? 'hot-no' : 'contested';
+
+    // Payout multiplier (simplified)
+    const payoutMult = (100 / odds).toFixed(1) + 'x';
+
+    // Traders text (social framing)
+    const tradersText = traders >= 10000
+      ? `${(traders / 1000).toFixed(1)}K`
+      : traders >= 1000
+        ? `${(traders / 1000).toFixed(1)}K`
+        : traders.toString();
+
     return {
       trading: 50 + (h % 250),
-      delta: ((h % 20) - 10) * 0.3,
+      delta,
       liq: 50000 + (h % 400000),
-      traders: 100 + (h % 1500),
+      traders,
       seed: h,
+      // Nikita Bier additions
+      isHot,
+      contextLine,
+      gaugeColor,
+      payoutMult,
+      tradersText,
+      selectedStake: 5, // Default stake
     };
-  }, [prediction.id]);
+  }, [prediction.id, prediction.marketOdds]);
+
+  // Bier-style computed values
+  const urgency = useMemo(() => getUrgencyBadge(prediction, mock.seed), [prediction, mock.seed]);
 
   const yesPrice = prediction.dflow?.yesBid ?? prediction.marketOdds / 100;
   const noPrice = prediction.dflow?.noBid ?? (100 - prediction.marketOdds) / 100;
@@ -2025,201 +2103,167 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         onClose={handleTradingClose}
       />
 
+      {/* ═══════════════════════════════════════════════════════════════════════
+          NIKITA BIER 5-ZONE LAYOUT - Hook-First Dopamine Card
+          Zone 1: Hook (image + LIVE + category)
+          Zone 2: Question (punchy + context)
+          Zone 3: Number (probability gauge + payout)
+          Zone 4: Social Proof (traders + movement + countdown)
+          Zone 5: Swipe Affordance (edge glows + stake chips)
+          ═══════════════════════════════════════════════════════════════════════ */}
       <animated.div
         {...(bindHandlers as React.HTMLAttributes<HTMLDivElement>)}
-        className="swipe-card-wrapper"
+        className={`nb-wrapper ${mock.isHot ? 'nb-hot' : ''}`}
         style={{ x, y, rotate, scale, cursor: pressed ? 'grabbing' : 'grab' }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* The Card */}
         <animated.div
-          className={`swipe-card-inner ${hasImage ? 'has-media' : ''}`}
+          className="nb-card"
           style={{
             boxShadow: to([x, glow], (xv, g) => {
-              if (xv > 15) return `0 16px 48px rgba(0,230,118,${0.12 + g * 0.15}), 0 0 0 2px rgba(0,230,118,${0.25 + g * 0.3})`;
-              if (xv < -15) return `0 16px 48px rgba(255,82,82,${0.12 + g * 0.15}), 0 0 0 2px rgba(255,82,82,${0.25 + g * 0.3})`;
-              return '0 16px 48px rgba(0,0,0,0.5)';
+              if (xv > 15) return `0 25px 80px rgba(0,230,118,${0.3 + g * 0.3}), inset 0 0 0 2px rgba(0,230,118,${0.6})`;
+              if (xv < -15) return `0 25px 80px rgba(255,82,82,${0.3 + g * 0.3}), inset 0 0 0 2px rgba(255,82,82,${0.6})`;
+              return '0 30px 100px rgba(0, 0, 0, 0.6)';
             }),
           }}
         >
-          {/* YES/NO Stamps */}
-          <animated.div className="swipe-stamp swipe-stamp-yes" style={{ opacity: yesOp }}>YES</animated.div>
-          <animated.div className="swipe-stamp swipe-stamp-no" style={{ opacity: noOp }}>NO</animated.div>
+          {/* ═══ ZONE 1: THE HOOK (top 30%) ═══ */}
+          <div className="nb-hook" style={{
+            backgroundImage: hasImage ? `url(${imageUrl})` : undefined,
+          }}>
+            {/* Gradient overlay for text readability */}
+            <div className="nb-hook-overlay" />
 
-          {/* Hero Media Section */}
-          {hasImage ? (
-            <div className="sc-hero">
-              <img
-                src={imageUrl}
-                alt={prediction.question}
-                className="sc-hero-img"
-                onError={() => setImgError(true)}
+            {/* Hot Card Flame Badge */}
+            {mock.isHot && (
+              <div className="nb-hot-badge">
+                <span className="nb-flame">🔥</span>
+                <span>MOVING FAST</span>
+              </div>
+            )}
+
+            {/* Top row: LIVE dot + Category */}
+            <div className="nb-hook-top">
+              <div className="nb-live">
+                <span className="nb-live-dot" />
+                <span>LIVE</span>
+              </div>
+              <div className="nb-category">{prediction.category.toUpperCase()}</div>
+            </div>
+          </div>
+
+          {/* ═══ ZONE 2: THE QUESTION ═══ */}
+          <div className="nb-question-zone">
+            <h2 className="nb-question">{prediction.question}</h2>
+            <p className="nb-context">
+              {mock.contextLine} · <span className={up ? 'up' : 'down'}>{up ? '↑' : '↓'}{Math.abs(mock.delta).toFixed(0)}pts today</span>
+            </p>
+          </div>
+
+          {/* ═══ ZONE 3: THE NUMBER (Probability Gauge) ═══ */}
+          <div className="nb-number-zone">
+            <div className="nb-gauge">
+              <div
+                className={`nb-gauge-fill ${mock.gaugeColor}`}
+                style={{ width: `${prediction.marketOdds}%` }}
               />
-              <div className="sc-hero-overlay" />
-              <div className="sc-hero-content">
-                <h2 className="sc-hero-question">{prediction.question}</h2>
-              </div>
-              {/* Info button on hero */}
-              <button className="sc-info-btn hero" onClick={handleToggleTooltips}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4M12 8h.01" />
-                </svg>
-              </button>
+              <div className="nb-gauge-track" />
             </div>
-          ) : (
-            <div className="sc-text-header">
-              <h2 className="sc-text-question">{prediction.question}</h2>
-              {/* Info button on text header */}
-              <button className="sc-info-btn" onClick={handleToggleTooltips}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4M12 8h.01" />
-                </svg>
-              </button>
+            <div className="nb-odds-row">
+              <span className={`nb-odds-value ${mock.gaugeColor}`}>{prediction.marketOdds}%</span>
+              <span className="nb-odds-label">YES</span>
             </div>
-          )}
-
-          {/* Compact Trading Section with Line Charts */}
-          <div className="sc-trading">
-            {/* YES Side */}
-            <div className="sc-trade-card sc-trade-yes">
-              <div className="sc-trade-top">
-                <span className="sc-trade-label">YES</span>
-                <span className={`sc-trade-delta ${up ? 'up' : 'down'}`}>
-                  {up ? '↑' : '↓'}{Math.abs(mock.delta).toFixed(1)}%
-                </span>
-              </div>
-              <div className="sc-trade-main">
-                <div className="sc-trade-price-block">
-                  <div className="sc-trade-price">{Math.round(yesPrice * 100)}¢</div>
-                  <div className="sc-trade-pct">{prediction.marketOdds}% likely</div>
-                </div>
-                <div className="sc-trade-chart">
-                  <MiniLineChart isYes={true} seed={mock.seed} price={yesPrice} />
-                </div>
-              </div>
-            </div>
-
-            {/* NO Side */}
-            <div className="sc-trade-card sc-trade-no">
-              <div className="sc-trade-top">
-                <span className="sc-trade-label">NO</span>
-                <span className={`sc-trade-delta ${!up ? 'up' : 'down'}`}>
-                  {!up ? '↑' : '↓'}{Math.abs(mock.delta).toFixed(1)}%
-                </span>
-              </div>
-              <div className="sc-trade-main">
-                <div className="sc-trade-price-block">
-                  <div className="sc-trade-price">{Math.round(noPrice * 100)}¢</div>
-                  <div className="sc-trade-pct">{100 - prediction.marketOdds}% likely</div>
-                </div>
-                <div className="sc-trade-chart">
-                  <MiniLineChart isYes={false} seed={mock.seed + 50} price={noPrice} />
-                </div>
-              </div>
+            <div className="nb-payout">
+              Pays <span className="nb-payout-mult">{mock.payoutMult}</span> if YES
             </div>
           </div>
 
-          {/* Price explanation tooltip */}
-          <div className="sc-price-explain">
-            <span className="sc-price-explain-icon">💡</span>
-            <span className="sc-price-explain-text">
-              {Math.round(yesPrice * 100)}¢ = {prediction.marketOdds}% probability • Win $1 if correct
-            </span>
-          </div>
-
-          {/* Compact Stats Row */}
-          <div className="sc-stats-row">
-            <div className="sc-stat">
-              <span className="sc-stat-val">{formatVol(prediction.volume)}</span>
-              <span className="sc-stat-lbl">VOL</span>
+          {/* ═══ ZONE 4: SOCIAL PROOF BAR ═══ */}
+          <div className="nb-social-zone">
+            <div className="nb-social-stat">
+              <span className="nb-fire">🔥</span>
+              <span>{mock.tradersText} traders in</span>
             </div>
-            <div className="sc-stat-divider" />
-            <div className="sc-stat">
-              <span className="sc-stat-val">{mock.traders}</span>
-              <span className="sc-stat-lbl">TRADERS</span>
-            </div>
-            <div className="sc-stat-divider" />
-            <div className="sc-stat">
-              <span className="sc-stat-val"><Countdown date={prediction.resolvesAt} marketId={prediction.id} /></span>
-              <span className="sc-stat-lbl">CLOSES</span>
+            <div className="nb-social-stat">
+              <span>Closes <Countdown date={prediction.resolvesAt} marketId={prediction.id} /></span>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="sc-actions">
-            {isAuthenticated ? (
-              <>
-                <button className="sc-btn sc-btn-no" onClick={() => vote('left')}>
-                  <span className="sc-btn-icon">✕</span>
-                  <div className="sc-btn-content">
-                    <span className="sc-btn-label">NO</span>
-                    <span className="sc-btn-price">{Math.round(noPrice * 100)}¢</span>
-                  </div>
-                </button>
-                <button className="sc-skip-btn" onClick={skip} title="Skip this market">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                  <span>Skip</span>
-                </button>
-                <button className="sc-btn sc-btn-yes" onClick={() => vote('right')}>
-                  <span className="sc-btn-icon">✓</span>
-                  <div className="sc-btn-content">
-                    <span className="sc-btn-label">YES</span>
-                    <span className="sc-btn-price">{Math.round(yesPrice * 100)}¢</span>
-                  </div>
-                </button>
-              </>
-            ) : (
+          {/* ═══ ZONE 5: STAKE SELECTOR ═══ */}
+          <div className="nb-stake-zone">
+            {[1, 5, 25].map(amt => (
               <button
-                className="sc-connect-cta"
+                key={amt}
+                className={`nb-stake-chip ${mock.selectedStake === amt ? 'active' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (onConnectWallet) onConnectWallet();
+                  // In a real impl, this would set stake amount
                 }}
-                type="button"
               >
-                <div className="sc-connect-cta-inner">
-                  <div className="sc-connect-cta-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="6" width="20" height="12" rx="2" />
-                      <path d="M22 10H18C16.9 10 16 10.9 16 12C16 13.1 16.9 14 18 14H22" />
-                      <circle cx="18" cy="12" r="1" fill="currentColor" />
-                    </svg>
-                  </div>
-                  <div className="sc-connect-cta-text">
-                    <span className="sc-connect-cta-title">Connect Wallet to Predict</span>
-                    <span className="sc-connect-cta-subtitle">Swipe right for YES, left for NO</span>
-                  </div>
-                </div>
-                <div className="sc-connect-cta-arrow">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </div>
+                ${amt}
               </button>
-            )}
+            ))}
           </div>
+
+          {/* Swipe Direction Stamps */}
+          <animated.div className="nb-stamp nb-stamp-yes" style={{ opacity: yesOp }}>
+            <span className="nb-stamp-icon">✓</span>
+            <span>YES</span>
+          </animated.div>
+          <animated.div className="nb-stamp nb-stamp-no" style={{ opacity: noOp }}>
+            <span className="nb-stamp-icon">✕</span>
+            <span>NO</span>
+          </animated.div>
+
+          {/* Edge Glow Effects */}
+          <animated.div className="nb-edge-glow nb-glow-yes" style={{ opacity: yesOp }} />
+          <animated.div className="nb-edge-glow nb-glow-no" style={{ opacity: noOp }} />
         </animated.div>
+
+        {/* Swipe Labels Below Card */}
+        <div className="nb-swipe-labels">
+          <span className="nb-swipe-label nb-label-no">← NO</span>
+          <span className="nb-swipe-label nb-label-yes">YES →</span>
+        </div>
+
+        {/* Connect Wallet Overlay (for non-authenticated) */}
+        {!isAuthenticated && (
+          <button
+            className="nb-connect-overlay"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onConnectWallet) onConnectWallet();
+            }}
+          >
+            <span>Connect Wallet to Predict</span>
+          </button>
+        )}
       </animated.div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-        .swipe-card-wrapper,
+        /* ═══════════════════════════════════════════════════════════════════════
+           NIKITA BIER 5-ZONE CARD - Hook-First Dopamine Design
+           "The card IS the hook. It does the work in the first frame."
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        .nb-wrapper,
         .swipe-card-stack {
           position: absolute;
           top: 0;
-          bottom: 0;
           left: 0;
           right: 0;
           margin: 0 auto;
-          width: calc(100% - 16px);
-          max-width: 340px !important;
+          width: calc(100% - 20px);
+          max-width: 360px;
           touch-action: none;
           z-index: 30;
+          display: flex;
+          flex-direction: column;
+          height: calc(100% - 60px);
         }
 
         .swipe-card-stack {
@@ -2227,17 +2271,17 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           pointer-events: none;
         }
 
-        .swipe-card-inner {
-          --yes: #10B981;
-          --no: #F43F5E;
-          --glass: rgba(18, 18, 24, 0.85);
-          --glass-border: rgba(255, 255, 255, 0.08);
+        /* ═══ THE CARD ═══ */
+        .nb-card {
+          --yes: #00E676;
+          --no: #FF5252;
+          --amber: #FFB300;
+          --accent: #00D9FF;
 
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(165deg, #13131a 0%, #0a0a0f 100%);
+          flex: 1;
+          min-height: 0;
+          background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
           border-radius: 20px;
-          border: 1px solid var(--glass-border);
           display: flex;
           flex-direction: column;
           position: relative;
@@ -2245,539 +2289,407 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           font-family: 'DM Sans', system-ui, sans-serif;
         }
 
-        /* Stamps */
-        .swipe-stamp {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          padding: 8px 16px;
-          border: 3px solid currentColor;
-          border-radius: 8px;
-          font-size: 22px;
-          font-weight: 800;
-          letter-spacing: 3px;
-          pointer-events: none;
-          z-index: 50;
-          font-family: 'JetBrains Mono', monospace;
-        }
-        .swipe-stamp-yes { right: 16px; color: var(--yes); text-shadow: 0 0 20px var(--yes); }
-        .swipe-stamp-no { left: 16px; color: var(--no); text-shadow: 0 0 20px var(--no); }
-
-        /* Info Button */
-        .sc-info-btn {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(0, 0, 0, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 10px;
-          cursor: pointer;
-          transition: all 0.2s;
-          z-index: 10;
+        /* Hot card flame border animation */
+        .nb-wrapper.nb-hot .nb-card {
+          border: 2px solid transparent;
+          background-clip: padding-box;
+          animation: flameBorder 1.5s ease-in-out infinite;
         }
 
-        .sc-info-btn.hero {
-          background: rgba(0, 0, 0, 0.6);
+        @keyframes flameBorder {
+          0%, 100% { box-shadow: 0 0 20px rgba(255, 100, 0, 0.4), 0 0 40px rgba(255, 50, 0, 0.2); }
+          50% { box-shadow: 0 0 30px rgba(255, 150, 0, 0.6), 0 0 60px rgba(255, 100, 0, 0.3); }
         }
 
-        .sc-info-btn svg {
-          width: 18px;
-          height: 18px;
-          color: rgba(255, 255, 255, 0.7);
-        }
-
-        .sc-info-btn:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: rgba(255, 255, 255, 0.25);
-        }
-
-        .sc-info-btn:hover svg {
-          color: #fff;
-        }
-
-        /* Hero Media Section */
-        .sc-hero {
+        /* ═══ ZONE 1: THE HOOK (30% top) ═══ */
+        .nb-hook {
           position: relative;
-          flex: 1;
-          min-height: 160px;
-          overflow: hidden;
-          border-radius: 19px 19px 0 0;
+          height: 30%;
+          min-height: 120px;
+          background-size: cover;
+          background-position: center;
+          background-color: #1f2937;
         }
 
-        .sc-hero-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .sc-hero-overlay {
+        .nb-hook-overlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(
-            180deg,
-            rgba(0, 0, 0, 0) 0%,
-            rgba(0, 0, 0, 0.2) 40%,
-            rgba(10, 10, 15, 0.98) 100%
+          background: linear-gradient(180deg,
+            rgba(0, 0, 0, 0.3) 0%,
+            rgba(0, 0, 0, 0.5) 50%,
+            rgba(15, 15, 26, 1) 100%
           );
         }
 
-        .sc-hero-content {
+        .nb-hook-top {
           position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          padding: 14px;
-        }
-
-        .sc-hero-question {
-          font-size: 17px;
-          font-weight: 700;
-          color: #fff;
-          margin: 0;
-          line-height: 1.25;
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          text-shadow: 0 2px 12px rgba(0,0,0,0.7);
-        }
-
-        /* Text-only Header */
-        .sc-text-header {
-          flex: 1;
-          padding: 16px 14px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          position: relative;
-        }
-
-        .sc-text-question {
-          font-size: 19px;
-          font-weight: 700;
-          color: #fff;
-          margin: 0;
-          line-height: 1.3;
-          display: -webkit-box;
-          -webkit-line-clamp: 4;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          padding-right: 40px;
-        }
-
-        /* Price Explanation */
-        .sc-price-explain {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin: 6px 10px 0;
-          padding: 6px 10px;
-          background: rgba(0, 180, 255, 0.08);
-          border: 1px solid rgba(0, 180, 255, 0.15);
-          border-radius: 8px;
-          flex-shrink: 0;
-        }
-
-        .sc-price-explain-icon {
-          font-size: 11px;
-          flex-shrink: 0;
-        }
-
-        .sc-price-explain-text {
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.6);
-          line-height: 1.3;
-        }
-
-        /* Compact Trading Section */
-        .sc-trading {
-          display: flex;
-          gap: 6px;
-          padding: 0 10px;
-          flex-shrink: 0;
-        }
-
-        .sc-trade-card {
-          flex: 1;
-          background: rgba(0, 0, 0, 0.35);
-          border-radius: 10px;
-          padding: 8px;
-          border: 1px solid transparent;
-        }
-
-        .sc-trade-yes { border-color: rgba(0, 230, 118, 0.15); }
-        .sc-trade-no { border-color: rgba(255, 82, 82, 0.15); }
-
-        .sc-trade-top {
+          top: 12px;
+          left: 12px;
+          right: 12px;
           display: flex;
           justify-content: space-between;
+          align-items: flex-start;
+          z-index: 2;
+        }
+
+        /* LIVE indicator */
+        .nb-live {
+          display: flex;
           align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          background: rgba(255, 59, 48, 0.2);
+          border: 1px solid rgba(255, 59, 48, 0.5);
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #FF3B30;
+          letter-spacing: 0.5px;
+        }
+
+        .nb-live-dot {
+          width: 8px;
+          height: 8px;
+          background: #FF3B30;
+          border-radius: 50%;
+          animation: livePulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* Category chip */
+        .nb-category {
+          padding: 6px 12px;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(10px);
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #fff;
+          letter-spacing: 1px;
+        }
+
+        /* Hot badge */
+        .nb-hot-badge {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          background: linear-gradient(135deg, rgba(255, 100, 0, 0.3), rgba(255, 50, 0, 0.2));
+          border: 1px solid rgba(255, 100, 0, 0.5);
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #FF6600;
+          z-index: 3;
+          animation: hotPulse 2s ease-in-out infinite;
+        }
+
+        .nb-flame {
+          font-size: 14px;
+        }
+
+        @keyframes hotPulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        /* ═══ ZONE 2: THE QUESTION ═══ */
+        .nb-question-zone {
+          padding: 16px 16px 12px;
+        }
+
+        .nb-question {
+          font-size: 20px;
+          font-weight: 700;
+          color: #fff;
+          margin: 0 0 8px;
+          line-height: 1.25;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .nb-context {
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.5);
+          margin: 0;
+        }
+
+        .nb-context .up {
+          color: var(--yes);
+          font-weight: 600;
+        }
+
+        .nb-context .down {
+          color: var(--no);
+          font-weight: 600;
+        }
+
+        /* ═══ ZONE 3: THE NUMBER (Probability Gauge) ═══ */
+        .nb-number-zone {
+          padding: 0 16px 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .nb-gauge {
+          width: 100%;
+          height: 12px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 12px;
+        }
+
+        .nb-gauge-fill {
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          border-radius: 6px;
+          transition: width 0.5s ease;
+        }
+
+        .nb-gauge-fill.hot-yes {
+          background: linear-gradient(90deg, var(--yes), #00FF88);
+          box-shadow: 0 0 20px rgba(0, 230, 118, 0.5);
+        }
+
+        .nb-gauge-fill.hot-no {
+          background: linear-gradient(90deg, var(--no), #FF7777);
+          box-shadow: 0 0 20px rgba(255, 82, 82, 0.5);
+        }
+
+        .nb-gauge-fill.contested {
+          background: linear-gradient(90deg, var(--amber), #FFD700);
+          box-shadow: 0 0 20px rgba(255, 179, 0, 0.5);
+        }
+
+        .nb-odds-row {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
           margin-bottom: 4px;
         }
 
-        .sc-trade-label {
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 1px;
-        }
-        .sc-trade-yes .sc-trade-label { color: var(--yes); }
-        .sc-trade-no .sc-trade-label { color: var(--no); }
-
-        .sc-trade-delta {
-          font-size: 9px;
-          font-weight: 600;
-          font-family: 'JetBrains Mono', monospace;
-        }
-        .sc-trade-delta.up { color: var(--yes); }
-        .sc-trade-delta.down { color: var(--no); }
-
-        .sc-trade-main {
-          display: flex;
-          align-items: flex-end;
-          gap: 8px;
-        }
-
-        .sc-trade-price-block { flex-shrink: 0; }
-
-        .sc-trade-price {
-          font-size: 18px;
+        .nb-odds-value {
+          font-size: 48px;
           font-weight: 800;
           font-family: 'JetBrains Mono', monospace;
           line-height: 1;
         }
-        .sc-trade-yes .sc-trade-price { color: var(--yes); }
-        .sc-trade-no .sc-trade-price { color: var(--no); }
 
-        .sc-trade-pct {
-          font-size: 9px;
-          color: rgba(255, 255, 255, 0.4);
-          margin-top: 2px;
-        }
+        .nb-odds-value.hot-yes { color: var(--yes); text-shadow: 0 0 30px rgba(0, 230, 118, 0.5); }
+        .nb-odds-value.hot-no { color: var(--no); text-shadow: 0 0 30px rgba(255, 82, 82, 0.5); }
+        .nb-odds-value.contested { color: var(--amber); text-shadow: 0 0 30px rgba(255, 179, 0, 0.5); }
 
-        .sc-trade-chart {
-          flex: 1;
-          height: 28px;
-          min-width: 0;
-        }
-
-        .mini-line-svg {
-          width: 100%;
-          height: 100%;
-        }
-
-        /* Stats Row */
-        .sc-stats-row {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          padding: 8px 10px;
-          margin: 6px 10px 0;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 10px;
-          flex-shrink: 0;
-        }
-
-        .sc-stat {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1px;
-        }
-
-        .sc-stat-val {
-          font-size: 12px;
+        .nb-odds-label {
+          font-size: 18px;
           font-weight: 700;
-          color: #fff;
-          font-family: 'JetBrains Mono', monospace;
-        }
-
-        .sc-stat-lbl {
-          font-size: 8px;
-          color: rgba(255, 255, 255, 0.35);
-          letter-spacing: 0.5px;
-        }
-
-        .sc-stat-divider {
-          width: 1px;
-          height: 20px;
-          background: rgba(255, 255, 255, 0.08);
-        }
-
-        /* Action Buttons */
-        .sc-actions {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 10px;
-          flex-shrink: 0;
-        }
-
-        .sc-btn {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          border-radius: 12px;
-          border: 2px solid;
-          cursor: pointer;
-          font-family: inherit;
-          transition: all 0.15s ease;
-        }
-
-        .sc-btn-yes {
-          background: rgba(0, 230, 118, 0.08);
-          border-color: rgba(0, 230, 118, 0.35);
-          flex-direction: row-reverse;
-        }
-        .sc-btn-yes:active {
-          background: rgba(0, 230, 118, 0.15);
-          transform: scale(0.98);
-        }
-
-        .sc-btn-no {
-          background: rgba(255, 82, 82, 0.08);
-          border-color: rgba(255, 82, 82, 0.35);
-        }
-        .sc-btn-no:active {
-          background: rgba(255, 82, 82, 0.15);
-          transform: scale(0.98);
-        }
-
-        .sc-btn-icon {
-          font-size: 14px;
-          font-weight: 700;
-        }
-        .sc-btn-yes .sc-btn-icon { color: var(--yes); }
-        .sc-btn-no .sc-btn-icon { color: var(--no); }
-
-        .sc-btn-content {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-        }
-        .sc-btn-yes .sc-btn-content { align-items: flex-end; }
-        .sc-btn-no .sc-btn-content { align-items: flex-start; }
-
-        .sc-btn-label {
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 1px;
-        }
-        .sc-btn-yes .sc-btn-label { color: var(--yes); }
-        .sc-btn-no .sc-btn-label { color: var(--no); }
-
-        .sc-btn-price {
-          font-size: 14px;
-          font-weight: 800;
-          font-family: 'JetBrains Mono', monospace;
-        }
-        .sc-btn-yes .sc-btn-price { color: var(--yes); }
-        .sc-btn-no .sc-btn-price { color: var(--no); }
-
-        .sc-skip-btn {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 2px;
-          flex-shrink: 0;
-          min-width: 48px;
-          padding: 8px 12px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 10px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .sc-skip-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.15);
-        }
-
-        .sc-skip-btn:active { transform: scale(0.95); }
-
-        .sc-skip-btn svg {
-          width: 16px;
-          height: 16px;
-          color: rgba(255, 255, 255, 0.4);
-        }
-
-        .sc-skip-btn span {
-          font-size: 9px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.4);
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-        }
-
-        .sc-skip-btn:hover svg,
-        .sc-skip-btn:hover span {
           color: rgba(255, 255, 255, 0.6);
         }
 
-        /* Responsive */
-        @media (max-width: 359px) {
-          .sc-hero { min-height: 130px; }
-          .sc-hero-question { font-size: 14px; -webkit-line-clamp: 2; }
-          .sc-text-question { font-size: 16px; -webkit-line-clamp: 3; }
-          .sc-trade-price { font-size: 15px; }
-          .sc-trading { padding: 0 8px; gap: 5px; }
-          .sc-trade-card { padding: 6px; }
-          .sc-trade-chart { height: 24px; }
-          .sc-btn { padding: 8px 10px; }
-          .sc-btn-price { font-size: 12px; }
-          .sc-actions { padding: 8px; gap: 4px; }
-          .sc-stats-row { padding: 6px 8px; margin: 0 8px; gap: 8px; }
-          .sc-stat-val { font-size: 11px; }
-          .sc-price-explain { margin: 4px 8px 0; padding: 5px 8px; }
-          .sc-price-explain-text { font-size: 9px; }
+        .nb-payout {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.5);
         }
 
-        /* Note: swipe-card-wrapper max-width is defined at the top for mobile-first */
-
-        @media (min-width: 440px) {
-          .sc-hero { min-height: 200px; }
-          .sc-hero-question { font-size: 19px; }
+        .nb-payout-mult {
+          color: var(--accent);
+          font-weight: 700;
+          font-family: 'JetBrains Mono', monospace;
         }
 
-        @media (max-height: 650px) {
-          .sc-hero { min-height: 120px; flex: 0 0 auto; }
-          .sc-hero-question { -webkit-line-clamp: 2; font-size: 15px; }
-          .sc-text-header { flex: 0 1 auto; padding: 12px; }
-          .sc-text-question { -webkit-line-clamp: 3; font-size: 16px; }
-          .sc-trading { padding: 0 8px; }
-          .sc-trade-card { padding: 6px; }
-          .sc-trade-chart { height: 22px; }
-          .sc-stats-row { padding: 6px 8px; margin: 0 8px; }
-          .sc-actions { padding: 8px; }
-          .sc-price-explain { display: none; }
-        }
-
-        @media (max-height: 550px) {
-          .sc-hero { min-height: 100px; }
-          .sc-hero-question { -webkit-line-clamp: 1; }
-          .sc-text-question { -webkit-line-clamp: 2; }
-        }
-
-        /* Connect Wallet CTA Button */
-        .sc-connect-cta {
-          flex: 1;
+        /* ═══ ZONE 4: SOCIAL PROOF BAR ═══ */
+        .nb-social-zone {
           display: flex;
-          align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          padding: 14px 18px;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.12) 0%, rgba(0, 176, 255, 0.12) 100%);
-          border: 1px solid rgba(0, 230, 118, 0.3);
-          border-radius: 16px;
-          cursor: pointer;
-          transition: all 0.25s ease;
-          font-family: inherit;
-          position: relative;
-          overflow: hidden;
+          padding: 12px 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(0, 0, 0, 0.2);
         }
 
-        .sc-connect-cta::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.08) 0%, rgba(0, 176, 255, 0.08) 100%);
-          opacity: 0;
-          transition: opacity 0.25s ease;
-        }
-
-        .sc-connect-cta:hover::before { opacity: 1; }
-
-        .sc-connect-cta:hover {
-          border-color: rgba(0, 230, 118, 0.5);
-          box-shadow: 0 4px 24px rgba(0, 230, 118, 0.2);
-          transform: translateY(-1px);
-        }
-
-        .sc-connect-cta:active {
-          transform: translateY(0);
-          box-shadow: 0 2px 12px rgba(0, 230, 118, 0.15);
-        }
-
-        .sc-connect-cta-inner {
+        .nb-social-stat {
           display: flex;
           align-items: center;
-          gap: 14px;
-          position: relative;
-          z-index: 1;
+          gap: 6px;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.6);
         }
 
-        .sc-connect-cta-icon {
-          width: 44px;
-          height: 44px;
+        .nb-fire {
+          font-size: 14px;
+        }
+
+        /* ═══ ZONE 5: STAKE SELECTOR ═══ */
+        .nb-stake-zone {
           display: flex;
-          align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
-          border-radius: 12px;
-          color: #10B981;
-          flex-shrink: 0;
+          gap: 12px;
+          padding: 12px 16px 16px;
         }
 
-        .sc-connect-cta-text {
+        .nb-stake-chip {
+          padding: 10px 20px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .nb-stake-chip:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.3);
+          color: #fff;
+        }
+
+        .nb-stake-chip.active {
+          background: rgba(0, 217, 255, 0.15);
+          border-color: var(--accent);
+          color: var(--accent);
+        }
+
+        /* ═══ SWIPE STAMPS ═══ */
+        .nb-stamp {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%) rotate(-15deg);
+          padding: 12px 24px;
+          border-radius: 12px;
+          border: 4px solid;
+          font-size: 32px;
+          font-weight: 800;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-        }
-
-        .sc-connect-cta-title {
-          font-size: 15px;
-          font-weight: 600;
-          color: #fff;
-          line-height: 1.2;
-        }
-
-        .sc-connect-cta-subtitle {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.5);
-          line-height: 1.2;
-        }
-
-        .sc-connect-cta-arrow {
-          width: 36px;
-          height: 36px;
-          display: flex;
           align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #10B981 0%, #00C2FF 100%);
-          border-radius: 10px;
+          gap: 4px;
+          pointer-events: none;
+        }
+
+        .nb-stamp-icon {
+          font-size: 36px;
+        }
+
+        .nb-stamp-yes {
+          right: 20px;
+          color: var(--yes);
+          border-color: var(--yes);
+          background: rgba(0, 230, 118, 0.15);
+          transform: translateY(-50%) rotate(15deg);
+        }
+
+        .nb-stamp-no {
+          left: 20px;
+          color: var(--no);
+          border-color: var(--no);
+          background: rgba(255, 82, 82, 0.15);
+        }
+
+        /* ═══ EDGE GLOW EFFECTS ═══ */
+        .nb-edge-glow {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 60px;
+          pointer-events: none;
+        }
+
+        .nb-glow-yes {
+          right: 0;
+          background: linear-gradient(270deg, rgba(0, 230, 118, 0.3) 0%, transparent 100%);
+        }
+
+        .nb-glow-no {
+          left: 0;
+          background: linear-gradient(90deg, rgba(255, 82, 82, 0.3) 0%, transparent 100%);
+        }
+
+        /* ═══ SWIPE LABELS ═══ */
+        .nb-swipe-labels {
+          display: flex;
+          justify-content: space-between;
+          padding: 12px 8px;
+        }
+
+        .nb-swipe-label {
+          font-size: 14px;
+          font-weight: 600;
+          opacity: 0.5;
+        }
+
+        .nb-label-no { color: var(--no); }
+        .nb-label-yes { color: var(--yes); }
+
+        /* ═══ CONNECT OVERLAY ═══ */
+        .nb-connect-overlay {
+          position: absolute;
+          bottom: 80px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 14px 28px;
+          background: linear-gradient(135deg, var(--accent), #0099CC);
+          border: none;
+          border-radius: 14px;
+          font-size: 15px;
+          font-weight: 700;
           color: #000;
-          flex-shrink: 0;
-          position: relative;
-          z-index: 1;
-          transition: transform 0.25s ease;
+          cursor: pointer;
+          z-index: 10;
+          transition: all 0.2s;
+          white-space: nowrap;
         }
 
-        .sc-connect-cta:hover .sc-connect-cta-arrow {
-          transform: translateX(3px);
+        .nb-connect-overlay:hover {
+          transform: translateX(-50%) scale(1.05);
+          box-shadow: 0 8px 30px rgba(0, 217, 255, 0.4);
         }
 
+        /* ═══ STACKED CARD ═══ */
+        .swipe-card-inner {
+          flex: 1;
+          background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+          border-radius: 20px;
+        }
+
+        /* ═══ RESPONSIVE ═══ */
         @media (max-width: 380px) {
-          .sc-connect-cta { padding: 12px 14px; }
-          .sc-connect-cta-icon { width: 40px; height: 40px; }
-          .sc-connect-cta-icon svg { width: 20px; height: 20px; }
-          .sc-connect-cta-title { font-size: 14px; }
-          .sc-connect-cta-subtitle { font-size: 11px; }
-          .sc-connect-cta-arrow { width: 32px; height: 32px; }
-          .sc-connect-cta-arrow svg { width: 16px; height: 16px; }
+          .nb-card { border-radius: 16px; }
+          .nb-question { font-size: 18px; }
+          .nb-odds-value { font-size: 40px; }
+          .nb-stake-chip { padding: 8px 16px; font-size: 13px; }
         }
 
-        @media (max-width: 340px) {
-          .sc-connect-cta-subtitle { display: none; }
+        @media (max-height: 700px) {
+          .nb-hook { min-height: 100px; }
+          .nb-question-zone { padding: 12px 16px 8px; }
+          .nb-question { font-size: 18px; }
+          .nb-number-zone { padding: 0 16px 12px; }
+          .nb-odds-value { font-size: 40px; }
+        }
+
+        @media (max-height: 600px) {
+          .nb-wrapper { height: calc(100% - 50px); }
+          .nb-hook { min-height: 80px; }
+          .nb-question { -webkit-line-clamp: 1; font-size: 16px; }
+          .nb-context { display: none; }
+          .nb-odds-value { font-size: 36px; }
+          .nb-stake-zone { padding: 8px 16px 12px; }
         }
       `}</style>
     </>

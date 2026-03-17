@@ -21,12 +21,18 @@ interface RiskMetric {
 
 interface AgentFleetProps {
   onlineAgents?: string[];
+  marketExposure?: number;
+  positionRisk?: number;
 }
 
 /**
  * AgentFleet - Left panel showing agent status and risk exposure
  */
-export default function AgentFleet({ onlineAgents = ['SCOUT', 'ANALYST', 'TRADER'] }: AgentFleetProps) {
+export default function AgentFleet({
+  onlineAgents = ['SCOUT', 'ANALYST', 'TRADER'],
+  marketExposure = 0,
+  positionRisk = 0,
+}: AgentFleetProps) {
   const agents: Agent[] = useMemo(() => [
     {
       id: 1,
@@ -48,10 +54,19 @@ export default function AgentFleet({ onlineAgents = ['SCOUT', 'ANALYST', 'TRADER
     },
   ], [onlineAgents]);
 
-  const riskMetrics: RiskMetric[] = [
-    { label: 'Market Exposure', value: 68, color: 'cyan' },
-    { label: 'Position Risk', value: 42, color: 'green' },
-  ];
+  // Dynamic risk metrics based on real portfolio data
+  const riskMetrics: RiskMetric[] = useMemo(() => {
+    const getColor = (val: number): 'green' | 'cyan' | 'red' => {
+      if (val > 70) return 'red';
+      if (val > 40) return 'cyan';
+      return 'green';
+    };
+
+    return [
+      { label: 'Market Exposure', value: Math.round(marketExposure), color: getColor(marketExposure) },
+      { label: 'Position Risk', value: Math.round(positionRisk), color: getColor(positionRisk) },
+    ];
+  }, [marketExposure, positionRisk]);
 
   const activeCount = agents.filter(a => a.status === 'active').length;
 

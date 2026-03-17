@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useBackendStatus } from '@/hooks/useMarkets';
-import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData } from '@/lib/api';
+import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData, getJupiterHotEvents, searchJupiterEvents, JupiterEvent } from '@/lib/api';
 import TradingModal from '@/components/TradingModal';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -413,8 +413,11 @@ interface MarketCardProps {
 function MarketCard({ market, onTrade, index }: MarketCardProps) {
   const [imgError, setImgError] = useState(false);
   const hasDFlow = !!market.dflow;
+  const hasJupiter = !!market.jupiter;
+  const isTradeable = hasDFlow || hasJupiter;
   const marketTitle = market.question || market.title;
-  const imageUrl = market.dflow?.imageUrl; // Only use if actually provided by API
+  // Get image from either source
+  const imageUrl = market.dflow?.imageUrl || market.jupiter?.imageUrl || market.jupiter?.metadata?.imageUrl;
   const showImage = imageUrl && !imgError;
 
   // Calculate 24h change (mock based on seed for now, real data would come from API)
@@ -500,12 +503,17 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
         </div>
       </div>
 
-      {/* Trade button */}
-      {hasDFlow && (
-        <button className="trade-btn" type="button" onClick={() => onTrade?.(market)}>
-          Trade
-        </button>
-      )}
+      {/* Source badge & Trade button */}
+      <div className="card-footer">
+        <span className={`source-badge ${hasDFlow ? 'dflow' : 'jupiter'}`}>
+          {hasDFlow ? 'DFlow' : 'Jupiter'}
+        </span>
+        {isTradeable && (
+          <button className="trade-btn" type="button" onClick={() => onTrade?.(market)}>
+            Trade
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -534,6 +542,7 @@ function SkeletonCard({ index }: { index: number }) {
 
 interface MarketWithDFlow extends ApiMarket {
   dflow?: DFlowEvent;
+  jupiter?: JupiterEvent;
 }
 
 function dflowToApiMarket(event: DFlowEvent): MarketWithDFlow {
@@ -558,6 +567,49 @@ function dflowToApiMarket(event: DFlowEvent): MarketWithDFlow {
   };
 }
 
+function jupiterToApiMarket(event: JupiterEvent): MarketWithDFlow | null {
+  // Get the first market from the event
+  const market = event.markets?.[0];
+  if (!market) return null;
+
+  // Parse pricing (values are in micro USD, e.g., "500000" = $0.50)
+  const yesPriceUsd = market.pricing?.buyYesPriceUsd
+    ? parseFloat(market.pricing.buyYesPriceUsd) / 1_000_000
+    : 0.5;
+  const noPriceUsd = market.pricing?.buyNoPriceUsd
+    ? parseFloat(market.pricing.buyNoPriceUsd) / 1_000_000
+    : 0.5;
+
+  // Convert to percentage (0-100)
+  const yesPct = Math.round(yesPriceUsd * 100);
+  const noPct = Math.round(noPriceUsd * 100);
+
+  // Parse volume from pricing
+  const volumeUsd = market.pricing?.volume
+    ? parseFloat(market.pricing.volume) / 1_000_000
+    : 0;
+
+  // Construct Jupiter URL
+  const jupiterUrl = `https://app.jup.ag/predictions/${event.eventId}`;
+
+  return {
+    id: `jupiter-${event.eventId}`,
+    platform: 'kalshi' as const, // Jupiter aggregates Kalshi/Polymarket - use kalshi as compatible type
+    title: event.title || market.title,
+    question: event.title || market.title,
+    yesPrice: yesPriceUsd,
+    noPrice: noPriceUsd,
+    yesPct,
+    noPct,
+    volume: volumeUsd,
+    liquidity: 0,
+    endDate: event.endTime || null,
+    status: event.status as 'active' | 'resolved' || 'active',
+    url: jupiterUrl,
+    jupiter: event,
+  };
+}
+
 export default function MarketsPage() {
   const { isConnected } = useBackendStatus();
   const { login, authenticated, ready } = usePrivy();
@@ -574,6 +626,12 @@ export default function MarketsPage() {
   const [cursor, setCursor] = useState<number>(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalLoaded, setTotalLoaded] = useState(0);
+
+  // Data source tracking
+  const [dataSources, setDataSources] = useState<{
+    dflow: { count: number; success: boolean };
+    jupiter: { count: number; success: boolean };
+  }>({ dflow: { count: 0, success: false }, jupiter: { count: 0, success: false } });
 
   // Trading modal state
   const [tradingMarket, setTradingMarket] = useState<MarketWithDFlow | null>(null);
@@ -599,30 +657,56 @@ export default function MarketsPage() {
       const currentCursor = isLoadMore ? cursor : 0;
       const limit = ITEMS_PER_PAGE;
 
-      // Fetch with cursor-based pagination
-      const dflowResponse = searchQuery
-        ? await searchDFlowMarkets(searchQuery, limit + currentCursor)
-        : await getDFlowHotMarkets(limit + currentCursor);
+      // Fetch from both DFlow and Jupiter APIs in parallel
+      const [dflowResponse, jupiterResponse] = await Promise.allSettled([
+        searchQuery
+          ? searchDFlowMarkets(searchQuery, limit + currentCursor)
+          : getDFlowHotMarkets(limit + currentCursor),
+        searchQuery
+          ? searchJupiterEvents(searchQuery, limit + currentCursor)
+          : getJupiterHotEvents(limit + currentCursor),
+      ]);
 
-      if (dflowResponse.success) {
-        const allMarkets = dflowResponse.events.map(dflowToApiMarket);
-        const newMarkets = isLoadMore
-          ? allMarkets.slice(currentCursor)
-          : allMarkets;
+      const allMarkets: MarketWithDFlow[] = [];
+      const sources = {
+        dflow: { count: 0, success: false },
+        jupiter: { count: 0, success: false },
+      };
 
-        if (isLoadMore) {
-          setMarkets(prev => [...prev, ...newMarkets]);
-        } else {
-          setMarkets(newMarkets);
-        }
-
-        setTotalLoaded(allMarkets.length);
-        setHasMore(newMarkets.length >= limit);
-        setCursor(currentCursor + newMarkets.length);
-      } else {
-        if (!isLoadMore) setMarkets([]);
-        setHasMore(false);
+      // Process DFlow results
+      if (dflowResponse.status === 'fulfilled' && dflowResponse.value.success) {
+        const dflowMarkets = dflowResponse.value.events.map(dflowToApiMarket);
+        allMarkets.push(...dflowMarkets);
+        sources.dflow = { count: dflowMarkets.length, success: true };
       }
+
+      // Process Jupiter results
+      if (jupiterResponse.status === 'fulfilled' && jupiterResponse.value.success) {
+        const jupiterMarkets = jupiterResponse.value.data
+          .map(jupiterToApiMarket)
+          .filter((m): m is MarketWithDFlow => m !== null);
+        allMarkets.push(...jupiterMarkets);
+        sources.jupiter = { count: jupiterMarkets.length, success: true };
+      }
+
+      // Sort combined markets by volume (descending)
+      allMarkets.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+
+      // Apply pagination
+      const newMarkets = isLoadMore
+        ? allMarkets.slice(currentCursor)
+        : allMarkets;
+
+      if (isLoadMore) {
+        setMarkets(prev => [...prev, ...newMarkets]);
+      } else {
+        setMarkets(newMarkets);
+      }
+
+      setDataSources(sources);
+      setTotalLoaded(allMarkets.length);
+      setHasMore(newMarkets.length >= limit);
+      setCursor(currentCursor + newMarkets.length);
     } catch {
       if (!isLoadMore) setMarkets([]);
       setHasMore(false);
@@ -752,10 +836,26 @@ export default function MarketsPage() {
         {/* Results info */}
         <div className="results-info">
           <span className="results-count">{filteredMarkets.length} markets</span>
-          <span className="data-source dflow">
-            <span className="source-dot" />
-            DFlow
-          </span>
+          <div className="data-sources">
+            {dataSources.dflow.success && (
+              <span className="data-source dflow">
+                <span className="source-dot" />
+                DFlow ({dataSources.dflow.count})
+              </span>
+            )}
+            {dataSources.jupiter.success && (
+              <span className="data-source jupiter">
+                <span className="source-dot" />
+                Jupiter ({dataSources.jupiter.count})
+              </span>
+            )}
+            {!dataSources.dflow.success && !dataSources.jupiter.success && (
+              <span className="data-source offline">
+                <span className="source-dot" />
+                Offline
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -831,6 +931,7 @@ export default function MarketsPage() {
               ticker: tradingMarket.dflow.ticker,
               seriesTicker: tradingMarket.dflow.seriesTicker || '',
               volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
+              openInterest: tradingMarket.dflow.openInterest || 0,
               yesBid: tradingMarket.dflow.yesBid || 0,
               yesAsk: tradingMarket.dflow.yesAsk || 0,
               noBid: tradingMarket.dflow.noBid || 0,
@@ -1082,6 +1183,11 @@ export default function MarketsPage() {
           font-family: 'SF Mono', monospace;
           font-weight: 500;
         }
+        .data-sources {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
         .data-source {
           display: flex;
           align-items: center;
@@ -1094,6 +1200,8 @@ export default function MarketsPage() {
           letter-spacing: 0.03em;
         }
         .data-source.dflow { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+        .data-source.jupiter { background: rgba(196, 181, 253, 0.1); color: #C4B5FD; }
+        .data-source.offline { background: rgba(239, 68, 68, 0.1); color: #EF4444; }
         .source-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse-glow 2s infinite; }
 
         /* ━━━ MAIN GRID ━━━ */
@@ -1353,9 +1461,34 @@ export default function MarketsPage() {
         .markets-grid :global(.stat.time.live .stat-value) { color: #10B981; }
         .markets-grid :global(.stat.time.live .stat-label) { color: #10B981; }
 
+        /* ━━━ CARD FOOTER ━━━ */
+        .markets-grid :global(.card-footer) {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin: 0 10px 8px;
+        }
+        .markets-grid :global(.source-badge) {
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-size: 8px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .markets-grid :global(.source-badge.dflow) {
+          background: rgba(16, 185, 129, 0.1);
+          color: #10B981;
+        }
+        .markets-grid :global(.source-badge.jupiter) {
+          background: rgba(196, 181, 253, 0.1);
+          color: #C4B5FD;
+        }
+
         /* ━━━ TRADE BUTTON ━━━ */
         .markets-grid :global(.trade-btn) {
-          margin: 0 10px 8px;
+          flex: 1;
           padding: 7px;
           background: transparent;
           border: 1px solid rgba(16, 185, 129, 0.3);

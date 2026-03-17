@@ -67,7 +67,8 @@ export interface ProcessResult {
 export async function processMessage(
   text: string,
   chatId: string,
-  userId?: string
+  userId?: string,
+  username?: string // Wallet pubkey when from gateway
 ): Promise<ProcessResult> {
   const startTime = Date.now();
 
@@ -75,6 +76,7 @@ export async function processMessage(
   const response = await orchestrate(text, {
     chatId,
     userId: userId || 'anonymous',
+    username, // Pass wallet pubkey for trading context
   });
 
   // Extract understanding

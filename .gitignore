@@ -60,3 +60,4 @@ colosseum-agent.log
 
 # Solana test ledger (large files)
 beright-vault/test-ledger/
+staking-pool/target/

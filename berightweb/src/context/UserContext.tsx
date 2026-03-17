@@ -52,6 +52,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { wallets } = useWallets();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [privyTimedOut, setPrivyTimedOut] = useState(false);
+
+  // Timeout fallback for Privy initialization (prevent infinite loading)
+  useEffect(() => {
+    if (ready) return; // Privy is ready, no need for timeout
+
+    const timeout = setTimeout(() => {
+      if (!ready) {
+        console.warn('[UserContext] Privy initialization timed out after 5s');
+        setPrivyTimedOut(true);
+        setIsLoading(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [ready]);
 
   // Track referral on initial page load
   useEffect(() => {
@@ -231,7 +247,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: authenticated,
-        isLoading: !ready || isLoading,
+        isLoading: (!ready && !privyTimedOut) || isLoading,
         login,
         logout,
         walletAddress,
