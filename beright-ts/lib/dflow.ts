@@ -323,16 +323,27 @@ class DFlowClient {
   }
 
   async getMarketCandlesticks(ticker: string, params?: {
-    resolution?: string;
+    resolution?: '1m' | '1h' | '1d';
     startTime?: number;
     endTime?: number;
   }): Promise<{ candlesticks: DFlowCandlestick[] }> {
+    // DFlow API requires:
+    // - periodInterval: 1 (1min), 60 (1hr), or 1440 (1day) in minutes
+    // - startTs: Start timestamp (Unix seconds)
+    // - endTs: End timestamp (Unix seconds)
+    const resolutionMap: Record<string, number> = { '1m': 1, '1h': 60, '1d': 1440 };
+    const periodInterval = resolutionMap[params?.resolution || '1h'] || 60;
+
+    const now = Math.floor(Date.now() / 1000);
+    const startTs = params?.startTime || now - 7 * 24 * 60 * 60; // Default: 7 days ago
+    const endTs = params?.endTime || now;
+
     const query = new URLSearchParams();
-    if (params?.resolution) query.set('resolution', params.resolution);
-    if (params?.startTime) query.set('startTime', params.startTime.toString());
-    if (params?.endTime) query.set('endTime', params.endTime.toString());
-    const queryStr = query.toString();
-    return this.request(`${this.metadataUrl}/market/${ticker}/candlesticks${queryStr ? `?${queryStr}` : ''}`);
+    query.set('periodInterval', periodInterval.toString());
+    query.set('startTs', startTs.toString());
+    query.set('endTs', endTs.toString());
+
+    return this.request(`${this.metadataUrl}/market/${ticker}/candlesticks?${query}`);
   }
 
   async getOutcomeMints(ticker: string): Promise<{ yesMint: string; noMint: string }> {
@@ -648,11 +659,14 @@ export async function batchGetDFlowMarkets(mints: string[]): Promise<DFlowMarket
 
 /**
  * Get candlestick (OHLCV) data for a market
+ *
+ * IMPORTANT: ticker must be the full marketTicker (e.g., KXUCLGAME-26MAR17MCIRMA-RMA)
+ * NOT the event ticker (e.g., KXUCLGAME-26MAR17MCIRMA)
  */
 export async function getCandlesticks(
   ticker: string,
   options: {
-    resolution?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+    resolution?: '1m' | '1h' | '1d';
     from?: number;
     to?: number;
   } = {}
@@ -665,14 +679,15 @@ export async function getCandlesticks(
       endTime: options.to,
     });
 
-    // Transform the response to match expected format
-    const candles = result.candlesticks.map(c => ({
-      time: c.openTime,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      volume: c.volume,
+    // Transform the DFlow response format to standard OHLCV
+    // DFlow returns: { end_period_ts, price: { open, high, low, close }, volume }
+    const candles = result.candlesticks.map((c: any) => ({
+      time: c.end_period_ts,
+      open: (c.price?.open ?? 0) / 100, // Convert from cents to decimal
+      high: (c.price?.high ?? 0) / 100,
+      low: (c.price?.low ?? 0) / 100,
+      close: (c.price?.close ?? 0) / 100,
+      volume: c.volume ?? 0,
     }));
 
     return { success: true, data: candles };

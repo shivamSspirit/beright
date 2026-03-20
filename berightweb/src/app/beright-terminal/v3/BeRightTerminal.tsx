@@ -401,7 +401,7 @@ export default function BeRightTerminal() {
   // Render content based on active tab
   const renderContent = () => {
     if (activeTab === 'MARKETS') {
-      return <MarketsPage markets={markets} />;
+      return <MarketsPage />;
     }
 
     if (activeTab === 'AGENTS') {
@@ -448,7 +448,6 @@ export default function BeRightTerminal() {
       <header className={styles.topBar}>
         <div className={styles.topBarLeft}>
           <NavPill activeTab={activeTab} onTabChange={setActiveTab} />
-          <span className={styles.systemMode}>SYS.OP.MODE: AUTONOMOUS</span>
         </div>
         <div className={styles.topBarRight}>
           <button

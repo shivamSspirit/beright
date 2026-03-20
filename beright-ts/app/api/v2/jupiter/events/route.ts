@@ -4,6 +4,9 @@
  * GET /api/v2/jupiter/events - List prediction events
  * GET /api/v2/jupiter/events?id=<eventId> - Get single event
  * GET /api/v2/jupiter/events?q=<query> - Search events
+ *
+ * Demo Mode: Returns mock Jupiter events from demo data
+ * Production Mode: Returns live Jupiter API data
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,10 +17,91 @@ import {
   getHotEvents,
   JupiterEventsParams,
 } from '../../../../../lib/jupiter/prediction';
+import { isDemoFromRequest } from '../../../../../lib/mode';
+import { getDemoMarketsWithJitter, searchDemoMarkets } from '../../../../../lib/demo/mockMarkets';
+
+/**
+ * Transform demo market to Jupiter event format
+ */
+function transformToJupiterEvent(market: any) {
+  return {
+    id: `jupiter-${market.ticker}`,
+    eventId: `evt-${market.ticker}`,
+    title: market.title,
+    description: market.question,
+    category: market.category || 'general',
+    provider: 'jupiter' as const,
+    status: market.status === 'active' ? 'active' : 'ended',
+    createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+    endTime: market.endDate,
+    volume: market.volume,
+    volume24h: market.volume24h,
+    liquidity: market.liquidity,
+    openInterest: market.openInterest,
+    imageUrl: market.imageUrl,
+    externalUrl: `https://jup.ag/perps/${market.ticker}`,
+    markets: [{
+      id: `mkt-${market.ticker}`,
+      title: market.title,
+      yesPrice: market.yesPrice,
+      noPrice: market.noPrice,
+      volume: market.volume,
+      volume24h: market.volume24h,
+    }],
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+
+    // Get mode from cookie (UI toggle) or fall back to environment
+    const cookieHeader = request.headers.get('cookie');
+    const demoMode = isDemoFromRequest(cookieHeader);
+
+    // ============================================
+    // DEMO MODE: Return mock Jupiter events
+    // ============================================
+    if (demoMode) {
+      const limit = parseInt(searchParams.get('limit') || '20');
+
+      // Get single event by ID (demo)
+      const eventId = searchParams.get('id');
+      if (eventId) {
+        const markets = getDemoMarketsWithJitter(20);
+        const market = markets.find(m => `jupiter-${m.ticker}` === eventId || m.ticker === eventId);
+        if (!market) {
+          return NextResponse.json(
+            { success: false, error: 'Event not found' },
+            { status: 404 }
+          );
+        }
+        return NextResponse.json({ success: true, data: transformToJupiterEvent(market) });
+      }
+
+      // Search events (demo)
+      const query = searchParams.get('q');
+      if (query) {
+        const markets = searchDemoMarkets(query, limit);
+        return NextResponse.json({
+          success: true,
+          data: markets.map(transformToJupiterEvent),
+        });
+      }
+
+      // Hot events (demo) - return different subset than DFlow
+      const markets = getDemoMarketsWithJitter(limit * 2);
+      // Take every other market to differentiate from DFlow
+      const jupiterMarkets = markets.filter((_, i) => i % 2 === 1).slice(0, limit);
+      return NextResponse.json({
+        success: true,
+        data: jupiterMarkets.map(transformToJupiterEvent),
+      });
+    }
+
+    // ============================================
+    // PRODUCTION MODE: Real Jupiter API
+    // ============================================
 
     // Get single event by ID
     const eventId = searchParams.get('id');

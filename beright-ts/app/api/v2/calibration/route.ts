@@ -2,11 +2,16 @@
  * On-Chain Calibration API
  *
  * GET /api/v2/calibration?wallet=<address>  → Get on-chain Brier scores
- * GET /api/v2/calibration/leaderboard       → Top on-chain verified forecasters
+ * GET /api/v2/calibration?leaderboard=true  → Top on-chain verified forecasters
+ *
+ * Demo Mode: Returns mock leaderboard data
+ * Production Mode: Returns real on-chain data
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
+import { isDemo } from '../../../../lib/mode';
+import { getDemoLeaderboard, getDemoForecasterByWallet } from '../../../../lib/demo/mockLeaderboard';
 
 // Dynamic import to avoid build issues with Anchor
 async function getOnChainStats(walletAddress: string) {
@@ -74,6 +79,89 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const wallet = searchParams.get('wallet');
   const leaderboard = searchParams.get('leaderboard');
+
+  // ============================================
+  // DEMO MODE: Return mock data
+  // ============================================
+  if (isDemo()) {
+    // Single wallet lookup in demo mode
+    if (wallet) {
+      const forecaster = getDemoForecasterByWallet(wallet);
+      if (forecaster) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            walletAddress: forecaster.walletAddress,
+            forecasterPda: 'Demo' + forecaster.walletAddress.slice(4),
+            programId: 'DemoProgramId11111111111111111111111111111',
+            isOnChainVerified: true,
+            brierScore: forecaster.brierScore,
+            accuracy: forecaster.accuracy,
+            totalPredictions: forecaster.predictions,
+            resolvedPredictions: forecaster.resolvedPredictions,
+            correctPredictions: Math.round(forecaster.resolvedPredictions * forecaster.accuracy / 100),
+            streak: forecaster.streak,
+            maxStreak: forecaster.maxStreak,
+            tier: forecaster.tier,
+            grade: forecaster.grade,
+            displayName: forecaster.displayName,
+            _demo: true,
+          },
+          meta: { source: 'demo', network: 'devnet' },
+        });
+      }
+      return NextResponse.json({
+        walletAddress: wallet,
+        isOnChainVerified: false,
+        message: 'No calibration data found (Demo Mode)',
+        _demo: true,
+      });
+    }
+
+    // Leaderboard in demo mode
+    if (leaderboard === 'true') {
+      const demoForecasters = getDemoLeaderboard(50);
+      return NextResponse.json({
+        success: true,
+        data: {
+          forecasters: demoForecasters.map(f => ({
+            rank: f.rank,
+            walletAddress: f.walletAddress,
+            displayName: f.displayName,
+            brierScore: f.brierScore,
+            accuracy: f.accuracy,
+            totalPredictions: f.predictions,
+            resolvedPredictions: f.resolvedPredictions,
+            streak: f.streak,
+            tier: f.tier,
+            grade: f.grade,
+            onChainCount: f.onChainCount,
+            isOnChainVerified: true,
+            _demo: true,
+          })),
+          totalOnChain: demoForecasters.length,
+          network: 'devnet',
+        },
+        meta: { source: 'demo', network: 'devnet' },
+      });
+    }
+
+    // Default demo info
+    return NextResponse.json({
+      success: true,
+      data: {
+        programId: 'DemoProgramId11111111111111111111111111111',
+        network: 'devnet',
+        description: 'BeRight On-Chain Calibration Program (Demo Mode)',
+        _demo: true,
+      },
+      meta: { source: 'demo', network: 'devnet' },
+    });
+  }
+
+  // ============================================
+  // PRODUCTION MODE: Real on-chain data
+  // ============================================
 
   // Single wallet lookup
   if (wallet) {

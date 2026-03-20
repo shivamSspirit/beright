@@ -5,6 +5,9 @@
  * Endpoints for market data, search, trading, and positions.
  * All market data is FREE (no API key required for dev endpoints).
  * Trading requires user wallet signing (no backend auth needed).
+ *
+ * Demo Mode: Returns mock market data from lib/demo
+ * Production Mode: Returns live DFlow API data
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,6 +30,13 @@ import {
   DFlowEvent,
   DFlowMarket,
 } from '../../../lib/dflow';
+import { isDemoFromRequest } from '../../../lib/mode';
+import {
+  getHotDemoMarkets,
+  searchDemoMarkets,
+  getDemoMarketById,
+  getDemoMarketsWithJitter,
+} from '../../../lib/demo/mockMarkets';
 
 /**
  * Helper to extract token addresses from market
@@ -132,6 +142,110 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') as any;
     const order = searchParams.get('order') as any;
 
+    // Get mode from cookie (UI toggle) or fall back to environment
+    const cookieHeader = request.headers.get('cookie');
+    const demoMode = isDemoFromRequest(cookieHeader);
+
+    // ============================================
+    // DEMO MODE: Return mock data
+    // ============================================
+    if (demoMode) {
+      switch (action) {
+        case 'hot': {
+          const markets = getDemoMarketsWithJitter(limit);
+          return NextResponse.json({
+            success: true,
+            count: markets.length,
+            events: markets.map(m => ({
+              ticker: m.ticker,
+              seriesTicker: m.seriesTicker,
+              title: m.title,
+              subtitle: m.question,
+              volume: m.volume,
+              volume24h: m.volume24h,
+              liquidity: m.liquidity,
+              openInterest: m.openInterest,
+              strikeDate: new Date(m.endDate).getTime() / 1000,
+              status: m.status,
+              yesPrice: m.yesPrice,
+              noPrice: m.noPrice,
+              yesPct: m.yesPct,
+              noPct: m.noPct,
+              yesBid: m.yesPrice - 0.01,
+              yesAsk: m.yesPrice + 0.01,
+              noBid: m.noPrice - 0.01,
+              noAsk: m.noPrice + 0.01,
+              spread: 0.02,
+              tokens: m.tokens,
+              url: m.url,
+              _demo: true,
+            })),
+            meta: { source: 'demo', network: 'devnet' },
+          });
+        }
+        case 'search': {
+          if (!query) {
+            return NextResponse.json({ error: 'query parameter required' }, { status: 400 });
+          }
+          const markets = searchDemoMarkets(query, limit);
+          return NextResponse.json({
+            success: true,
+            query,
+            count: markets.length,
+            events: markets.map(m => ({
+              ticker: m.ticker,
+              seriesTicker: m.seriesTicker,
+              title: m.title,
+              subtitle: m.question,
+              volume: m.volume,
+              volume24h: m.volume24h,
+              liquidity: m.liquidity,
+              openInterest: m.openInterest,
+              strikeDate: new Date(m.endDate).getTime() / 1000,
+              status: m.status,
+              yesPrice: m.yesPrice,
+              noPrice: m.noPrice,
+              yesPct: m.yesPct,
+              noPct: m.noPct,
+              tokens: m.tokens,
+              url: m.url,
+              _demo: true,
+            })),
+            meta: { source: 'demo', network: 'devnet' },
+          });
+        }
+        case 'market': {
+          const market = getDemoMarketById(ticker || mint || '');
+          if (!market) {
+            return NextResponse.json({ error: 'Market not found' }, { status: 404 });
+          }
+          return NextResponse.json({
+            success: true,
+            market: {
+              ticker: market.ticker,
+              title: market.title,
+              yesPrice: market.yesPrice,
+              noPrice: market.noPrice,
+              volume: market.volume,
+              tokens: market.tokens,
+              _demo: true,
+            },
+            meta: { source: 'demo', network: 'devnet' },
+          });
+        }
+        default:
+          // For other actions in demo mode, return empty/mock responses
+          return NextResponse.json({
+            success: true,
+            data: [],
+            meta: { source: 'demo', network: 'devnet', message: 'Demo mode - limited functionality' },
+          });
+      }
+    }
+
+    // ============================================
+    // PRODUCTION MODE: Use live DFlow API
+    // ============================================
     const client = getDFlowClient();
 
     switch (action) {
@@ -321,16 +435,24 @@ export async function GET(request: NextRequest) {
 
       case 'candlesticks': {
         // Get historical price data (candlesticks)
+        // IMPORTANT: Requires full market ticker (e.g., KXUCLGAME-26MAR17MCIRMA-RMA), not event ticker
         if (!ticker) {
-          return NextResponse.json({ error: 'ticker parameter required' }, { status: 400 });
+          return NextResponse.json({ error: 'ticker parameter required (must be market ticker, not event ticker)' }, { status: 400 });
         }
-        const resolution = searchParams.get('resolution') as '1m' | '5m' | '15m' | '1h' | '4h' | '1d' || '1h';
+        // DFlow only supports: 1m, 1h (60min), 1d (1440min)
+        const rawResolution = searchParams.get('resolution') || '1h';
+        const resolution = ['1m', '1h', '1d'].includes(rawResolution) ? rawResolution as '1m' | '1h' | '1d' : '1h';
 
-        // Default to last 24 hours if no time range specified
+        // Default to last 7 days for hourly, 24h for minute, 30 days for daily
         const now = Math.floor(Date.now() / 1000);
+        const defaultRanges: Record<string, number> = {
+          '1m': 24 * 60 * 60, // 24 hours
+          '1h': 7 * 24 * 60 * 60, // 7 days
+          '1d': 30 * 24 * 60 * 60, // 30 days
+        };
         const fromParam = searchParams.get('from');
         const toParam = searchParams.get('to');
-        const from = fromParam ? parseInt(fromParam) : now - 24 * 60 * 60;
+        const from = fromParam ? parseInt(fromParam) : now - defaultRanges[resolution];
         const to = toParam ? parseInt(toParam) : now;
 
         const candleResponse = await getCandlesticks(ticker, { resolution, from, to });

@@ -274,23 +274,70 @@ export async function checkMarketResolutions(tickers: string[]): Promise<Map<str
 
 /**
  * Get historical price data (candlesticks)
+ *
+ * DFlow API requires:
+ * - ticker: Full market ticker (e.g., KXUCLGAME-26MAR17MCIRMA-RMA), not event ticker
+ * - periodInterval: 1 (1min), 60 (1hr), or 1440 (1day) in minutes
+ * - startTs: Start timestamp (Unix seconds)
+ * - endTs: End timestamp (Unix seconds)
  */
 export async function getCandlesticks(
   ticker: string,
   options: {
-    resolution?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+    resolution?: '1m' | '1h' | '1d';
     from?: number;
     to?: number;
   } = {}
 ): Promise<ApiResponse<Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }>>> {
-  const params = new URLSearchParams();
-  if (options.resolution) params.set('resolution', options.resolution);
-  if (options.from) params.set('from', String(options.from));
-  if (options.to) params.set('to', String(options.to));
+  // Map resolution to periodInterval (in minutes)
+  const resolutionMap: Record<string, number> = {
+    '1m': 1,
+    '1h': 60,
+    '1d': 1440,
+  };
+  const periodInterval = resolutionMap[options.resolution || '1h'] || 60;
 
-  return fetchApi<Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }>>(
+  // Default to last 24 hours
+  const now = Math.floor(Date.now() / 1000);
+  const startTs = options.from || now - 24 * 60 * 60;
+  const endTs = options.to || now;
+
+  const params = new URLSearchParams();
+  params.set('periodInterval', String(periodInterval));
+  params.set('startTs', String(startTs));
+  params.set('endTs', String(endTs));
+
+  // Fetch raw DFlow candlestick data
+  interface DFlowCandlestick {
+    end_period_ts: number;
+    open_interest: number;
+    price: {
+      close: number;
+      open: number;
+      high: number;
+      low: number;
+    };
+    volume: number;
+  }
+
+  const response = await fetchApi<{ candlesticks: DFlowCandlestick[] }>(
     `${DFLOW_METADATA_API}/api/v1/market/${ticker}/candlesticks?${params}`
   );
+
+  // Transform to standard OHLCV format
+  if (response.success && response.data?.candlesticks) {
+    const candles = response.data.candlesticks.map(c => ({
+      time: c.end_period_ts,
+      open: c.price.open / 100, // Convert from cents to decimal
+      high: c.price.high / 100,
+      low: c.price.low / 100,
+      close: c.price.close / 100,
+      volume: c.volume,
+    }));
+    return { success: true, data: candles };
+  }
+
+  return { success: false, error: response.error || 'No candlestick data' };
 }
 
 /**

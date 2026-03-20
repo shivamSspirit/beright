@@ -432,10 +432,24 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
   const timeLeft = formatTimeRemaining(market.endDate);
   const isLive = timeLeft !== 'TBD' && timeLeft !== 'Ended' && parseInt(timeLeft) <= 24 && timeLeft.includes('h');
 
+  // Get the market detail URL
+  const marketDetailUrl = hasDFlow && market.dflow?.ticker
+    ? `/market/${encodeURIComponent(market.dflow.ticker)}`
+    : hasJupiter && market.jupiter?.eventId
+    ? `/market/${encodeURIComponent(market.jupiter.eventId)}`
+    : null;
+
   return (
-    <div
+    <Link
+      href={marketDetailUrl || '#'}
       className="compact-card"
       style={{ '--delay': `${index * 35}ms` } as React.CSSProperties}
+      onClick={(e) => {
+        // If no detail URL, prevent navigation
+        if (!marketDetailUrl) {
+          e.preventDefault();
+        }
+      }}
     >
       {/* Only show image if API provides one and it loads successfully */}
       {showImage && (
@@ -509,12 +523,20 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
           {hasDFlow ? 'DFlow' : 'Jupiter'}
         </span>
         {isTradeable && (
-          <button className="trade-btn" type="button" onClick={() => onTrade?.(market)}>
+          <button
+            className="trade-btn"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTrade?.(market);
+            }}
+          >
             Trade
           </button>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 

@@ -47,6 +47,82 @@ export interface ApiArbitrage {
   volumeB?: number;
 }
 
+// ============ CROSSODDS-STYLE ARBITRAGE TYPES ============
+
+export interface ArbTradeLeg {
+  platform: string;
+  platformDisplayName: string;
+  side: 'YES' | 'NO';
+  price: number;
+  priceDisplay: string;
+  url: string;
+  liquidity: number;
+  volume24h: number;
+}
+
+export interface ArbOpportunity {
+  id: string;
+  quality: 'excellent' | 'good' | 'fair' | 'poor';
+  qualityScore: number;
+  confidenceGrade: 'A' | 'B' | 'C' | 'D' | 'F';
+
+  trade: {
+    leg1: ArbTradeLeg;
+    leg2: ArbTradeLeg;
+    totalCost: number;
+    totalCostDisplay: string;
+    guaranteedPayout: number;
+    profit: number;
+    profitDisplay: string;
+    profitPercent: number;
+    instruction: string;
+  };
+
+  market: {
+    question: string;
+    questionShort: string;
+    category: string;
+    resolutionDate: string;
+    resolutionRules: string;
+    relatedMarkets: number;
+  };
+
+  risk: {
+    level: 'low' | 'medium' | 'high';
+    score: number;
+    flags: string[];
+    executionWarnings: string[];
+  };
+
+  sizing: {
+    recommended: number;
+    maximum: number;
+    minimum: number;
+  };
+
+  detectedAt: string;
+  lastUpdated: string;
+  priceAge: number;
+  _demo?: boolean;
+}
+
+export interface ArbApiResponse {
+  success: boolean;
+  data: {
+    opportunities: ArbOpportunity[];
+    meta: {
+      totalScanned: number;
+      pairsEvaluated: number;
+      scanDurationMs: number;
+      platforms: string[];
+    };
+  };
+  meta: {
+    source: 'demo' | 'live';
+    network: 'devnet' | 'mainnet';
+  };
+}
+
 export interface MarketsResponse {
   count: number;
   markets: ApiMarket[];
@@ -470,6 +546,25 @@ export async function getArbitrageOpportunities(query?: string): Promise<{
     })),
     scannedAt: data.scannedAt,
   };
+}
+
+/**
+ * Get CrossOdds-style arbitrage opportunities
+ * Returns detailed arbitrage data with trade instructions, profit calculations,
+ * and direct platform links.
+ */
+export async function getCrossOddsArbitrage(options?: {
+  query?: string;
+  minProfit?: number;
+  limit?: number;
+}): Promise<ArbApiResponse> {
+  const params = new URLSearchParams();
+  if (options?.query) params.set('query', options.query);
+  if (options?.minProfit) params.set('minProfit', String(options.minProfit));
+  if (options?.limit) params.set('limit', String(options.limit));
+
+  const queryString = params.toString();
+  return apiFetch(`/api/v2/arbitrage${queryString ? `?${queryString}` : ''}`);
 }
 
 // ============ LEADERBOARD API ============
@@ -1341,6 +1436,32 @@ export async function getDFlowMarket(params: { ticker?: string; mint?: string })
 }
 
 /**
+ * Get single DFlow event by ticker
+ * Searches hot/active events to find matching ticker
+ */
+export async function getDFlowEventByTicker(ticker: string): Promise<DFlowEvent> {
+  // Try to get from hot markets first (most likely to be there)
+  const hotResponse = await getDFlowHotMarkets(100);
+  if (hotResponse.success && hotResponse.events) {
+    const event = hotResponse.events.find(
+      e => e.ticker === ticker || e.seriesTicker === ticker || e.marketTicker === ticker
+    );
+    if (event) return event;
+  }
+
+  // If not in hot, try searching
+  const searchResponse = await searchDFlowMarkets(ticker, 20);
+  if (searchResponse.success && searchResponse.events) {
+    const event = searchResponse.events.find(
+      e => e.ticker === ticker || e.seriesTicker === ticker || e.marketTicker === ticker
+    );
+    if (event) return event;
+  }
+
+  throw new Error('Market not found');
+}
+
+/**
  * Get DFlow orderbook
  */
 export async function getDFlowOrderbook(ticker: string): Promise<{
@@ -1401,12 +1522,14 @@ export interface DFlowCandleData {
  */
 export async function getDFlowCandlesticks(
   ticker: string,
-  resolution?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d'
+  resolution?: '1m' | '1h' | '1d'
 ): Promise<{
   success: boolean;
   ticker: string;
   candles: DFlowCandleData[];
 }> {
+  // IMPORTANT: ticker must be marketTicker (e.g., KXUCLGAME-26MAR17MCIRMA-RMA)
+  // Not event ticker (e.g., KXUCLGAME-26MAR17MCIRMA)
   const params = new URLSearchParams({ action: 'candlesticks', ticker });
   if (resolution) params.set('resolution', resolution);
   return apiFetch(`/api/dflow?${params}`);
@@ -2729,4 +2852,44 @@ export async function fetchTerminalData(): Promise<TerminalData> {
     risk: (riskRes as any)?.data || null,
     connected: true,
   };
+}
+
+// ============ MODE API ============
+// Get app mode info (demo vs production)
+
+export interface ModeInfo {
+  mode: 'demo' | 'production';
+  network: 'devnet' | 'mainnet-beta';
+  networkLabel: string;
+  tradingMode: 'paper' | 'live';
+  showWaitlist: boolean;
+  features: {
+    trading: boolean;
+    predictions: boolean;
+    leaderboard: boolean;
+    agents: boolean;
+  };
+}
+
+/**
+ * Get current app mode info
+ */
+export async function getModeInfo(): Promise<{
+  success: boolean;
+  data: ModeInfo | null;
+}> {
+  return apiFetch('/api/v2/mode');
+}
+
+/**
+ * Check if currently in demo mode
+ */
+export async function isInDemoMode(): Promise<boolean> {
+  try {
+    const result = await getModeInfo();
+    return result.success && result.data?.mode === 'demo';
+  } catch {
+    // Default to demo if can't determine
+    return true;
+  }
 }
