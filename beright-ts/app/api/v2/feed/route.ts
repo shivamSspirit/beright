@@ -15,7 +15,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataFabric } from '../../../../lib/dataFabric';
 import {
-  matchMarkets,
   filterByFeedType,
   MLMatchResult,
   FeedType,
@@ -36,8 +35,12 @@ interface MLCache {
 const ML_CACHE_TTL = 60_000; // 60 seconds
 let mlCache: MLCache | null = null;
 
+// Request timeout for ML processing (30 seconds)
+const ML_REQUEST_TIMEOUT = 30_000;
+
 /**
  * Get cached ML results or compute new ones
+ * Includes timeout to prevent indefinite hangs
  */
 async function getMLResults(
   platforms?: DataPlatform[]
@@ -47,40 +50,93 @@ async function getMLResults(
     return { results: mlCache.results, fromCache: true };
   }
 
-  // Fetch from DataFabric
-  const fabric = getDataFabric();
-  const fabricResult = await fabric.getMarkets({
-    limit: 300, // Reduced for faster processing
-    platforms,
-  });
+  // Wrap in timeout to prevent indefinite hangs
+  const computeResults = async (): Promise<MLMatchResult[]> => {
+    console.log('[API v2/feed] Computing ML results...');
 
-  // Convert to RawMarketData format
-  const rawMarkets = fabricResult.markets.flatMap(market =>
-    market.platforms.map(p => ({
-      id: p.platformId,
-      platform: p.platform,
-      source: 'direct' as const,
-      title: market.question,
-      question: market.question,
-      yesPrice: p.yesPrice,
-      noPrice: p.noPrice,
-      volume: p.volume,
-      volume24h: p.volume24h || p.volume,
-      liquidity: p.liquidity,
-      url: p.url,
-      endDate: market.closeDate,
-      fetchedAt: p.lastUpdate,
-      status: market.status as 'active' | 'resolved',
-    }))
-  );
+    // Fetch from DataFabric - it already does ML matching internally
+    const fabric = getDataFabric();
+    const fabricResult = await fabric.getMarkets({
+      limit: 100, // Reduced for faster initial load
+      platforms,
+    });
 
-  // Run ML matching
-  const results = await matchMarkets(rawMarkets);
+    console.log(`[API v2/feed] Fetched ${fabricResult.markets.length} unified markets from DataFabric`);
 
-  // Update cache
-  mlCache = { results, timestamp: Date.now() };
+    // Convert UnifiedMarket to MLMatchResult format directly
+    // DataFabric already did ML matching, so we just adapt the format
+    const results: MLMatchResult[] = fabricResult.markets.map(market => ({
+      eventId: market.id,
+      canonicalQuestion: market.question,
+      category: market.category,
+      markets: market.platforms.map(p => ({
+        platform: p.platform,
+        platformId: p.platformId,
+        question: market.question,
+        yesPrice: p.yesPrice,
+        noPrice: p.noPrice,
+        volume24h: p.volume24h || p.volume,
+        liquidity: p.liquidity,
+        url: p.url,
+        closeDate: market.closeDate,
+      })),
+      matchConfidence: market.matchConfidence || 0.95, // DataFabric sets this
+      consensusPrice: market.consensusPrice,
+      priceSpread: market.priceRange.max - market.priceRange.min,
+      totalLiquidity: market.totalLiquidity,
+      totalVolume24h: market.totalVolume,
+      arbitrage: market.arbitrageSpread && market.arbitrageSpread > 0.02 && market.arbitragePlatforms ? {
+        buyPlatform: market.arbitragePlatforms.buy,
+        buyPrice: market.platforms.find(p => p.platform === market.arbitragePlatforms?.buy)?.yesPrice || 0,
+        sellPlatform: market.arbitragePlatforms.sell,
+        sellPrice: market.platforms.find(p => p.platform === market.arbitragePlatforms?.sell)?.yesPrice || 0,
+        spread: market.arbitrageSpread,
+        profitPct: market.arbitrageSpread * 100,
+        estimatedFees: 0.02, // ~2% typical platform fees
+        netProfit: market.arbitrageSpread - 0.02,
+      } : undefined,
+      entities: {
+        people: market.tags?.filter(t => t.startsWith('person:')).map(t => t.replace('person:', '')) || [],
+        organizations: market.tags?.filter(t => t.startsWith('org:')).map(t => t.replace('org:', '')) || [],
+        events: market.tags?.filter(t => t.startsWith('event:')).map(t => t.replace('event:', '')) || [],
+        locations: [],
+        dates: [],
+        amounts: [],
+        customTags: market.tags?.filter(t => !t.includes(':')) || [],
+      },
+      closeDate: market.closeDate,
+      matchedAt: new Date(),
+    }));
 
-  return { results, fromCache: false };
+    console.log(`[API v2/feed] Converted ${results.length} markets to feed format`);
+    return results;
+  };
+
+  try {
+    // Race between computation and timeout
+    const results = await Promise.race([
+      computeResults(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('ML processing timeout')), ML_REQUEST_TIMEOUT)
+      ),
+    ]);
+
+    // Update cache
+    mlCache = { results, timestamp: Date.now() };
+
+    return { results, fromCache: false };
+  } catch (error) {
+    console.error('[API v2/feed] ML processing failed:', error);
+
+    // If we have stale cache, use it rather than failing completely
+    if (mlCache) {
+      console.log('[API v2/feed] Using stale cache due to processing error');
+      return { results: mlCache.results, fromCache: true };
+    }
+
+    // No cache available, return empty results
+    return { results: [], fromCache: false };
+  }
 }
 
 /**

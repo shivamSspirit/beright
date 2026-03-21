@@ -26,7 +26,7 @@
  */
 
 import { SkillResponse, Mood, Market, Platform } from '../../types/index';
-import { llmChat } from '../../lib/llm';
+import { llmRoute } from '../../lib/llm';
 import { searchMarkets, getHotMarkets } from '../../skills/markets';
 import {
   getPortfolioManager,
@@ -978,12 +978,10 @@ For simple questions like greetings, use direct_response.
 
 Respond with ONLY valid JSON, no other text.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'trader',
     system: TRADER_SYSTEM_PROMPT,
     user: decisionPrompt,
-    maxTokens: 1024,
-    temperature: 0.1, // Very precise for trading decisions
-    quality: 'fast',
   });
 
   try {
@@ -1113,12 +1111,10 @@ For trading:
 
 Respond with just the synthesized message, no JSON.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'trader',
     system: TRADER_SYSTEM_PROMPT,
     user: synthesisPrompt,
-    maxTokens: 1000,
-    temperature: 0.2,
-    quality: 'fast',
   });
 
   return response.text;

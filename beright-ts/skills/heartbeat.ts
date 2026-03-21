@@ -52,7 +52,8 @@ import { checkAndSendNotifications, generateArbAlerts, generateWhaleAlerts, queu
 import { checkAlerts as checkPriceAlerts, getPendingTriggers, formatTriggeredAlert } from './priceAlerts';
 import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade';
 import { refreshPositionPrices, getExpiringPositions } from './positions';
-import { buildOnce as runBuilderOnce } from './buildLoop';
+// Builder agent disabled - saves ~$2,880/mo in LLM costs
+// import { buildOnce as runBuilderOnce } from './buildLoop';
 import { runProactiveAgent } from './proactiveAgent';
 
 // Signal Intelligence Engine
@@ -84,7 +85,7 @@ import { recordEpisode, syncToOpenClawMemory } from '../lib/cognitive/memory';
 import { updateHeartbeatMD } from '../lib/cognitive/heartbeatWriter';
 
 // Interval constants — now defined in lib/orchestrator.ts, accessed via INTERVALS
-const BUILDER_INTERVAL   = INTERVALS.builder;
+// const BUILDER_INTERVAL   = INTERVALS.builder; // Disabled
 const COGNITIVE_INTERVAL = INTERVALS.cognitive;
 const PRICE_SNAPSHOT_INTERVAL = INTERVALS.priceSnapshot;
 const MOMENTUM_INTERVAL  = INTERVALS.momentum;
@@ -437,29 +438,8 @@ Reason: ${exec.reason}
     }
   }
 
-  // 10. Run builder (autonomous code generation) - every 7 minutes
-  if (shouldRun(state.lastBuilderRun, BUILDER_INTERVAL)) {
-    try {
-      console.log(`[${timestamp()}] Running autonomous builder...`);
-      const builderResult = await runBuilderOnce();
-      state.lastBuilderRun = timestamp();
-      state.totalBuilderRuns++;
-      saveState(state);
-
-      if (builderResult.mood === 'BULLISH') {
-        console.log(`[${timestamp()}] Builder completed tasks successfully`);
-        alerts.push({
-          text: `*BUILDER UPDATE*\n${builderResult.text.slice(0, 500)}`,
-          mood: 'BULLISH',
-          data: builderResult.data,
-        });
-      } else {
-        console.log(`[${timestamp()}] Builder: ${builderResult.text.slice(0, 100)}`);
-      }
-    } catch (err) {
-      console.warn('Builder run failed:', err);
-    }
-  }
+  // 10. Builder agent DISABLED - saves ~$2,880/mo in LLM costs
+  // Re-enable by uncommenting when needed for autonomous code generation
 
   // 11. Run PROACTIVE AGENT - Smart alerts for subscribers
   // Scans markets for: closing soon, big movers, hot alpha, spread inefficiencies
@@ -753,7 +733,7 @@ if (process.argv[1]?.endsWith('heartbeat.ts')) {
     console.log(`  Last whale scan: ${state.lastWhaleScan || 'never'}`);
     console.log(`  Last notification: ${state.lastNotificationCheck || 'never'}`);
     console.log(`  Last price snapshot: ${state.lastPriceSnapshot || 'never'}`);
-    console.log(`  Last builder run: ${state.lastBuilderRun || 'never'}`);
+    // console.log(`  Last builder run: ${state.lastBuilderRun || 'never'}`); // Disabled
     console.log(`  Last signal run: ${state.lastSignalRun || 'never'}`);
     console.log(`  Last momentum run: ${state.lastMomentumRun || 'never'}`);
     console.log(`  Last social run: ${state.lastSocialRun || 'never'}`);

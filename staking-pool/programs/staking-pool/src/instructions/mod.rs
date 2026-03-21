@@ -5,6 +5,9 @@ pub mod sanctum;
 pub mod ve_token;
 pub mod rewards;
 pub mod slashing;
+pub mod meteora;
+pub mod dlmm;
+pub mod drift;
 
 pub use pool::*;
 pub use deposit::*;
@@ -13,3 +16,6 @@ pub use sanctum::*;
 pub use ve_token::*;
 pub use rewards::*;
 pub use slashing::*;
+pub use meteora::*;
+pub use dlmm::*;
+pub use drift::*;

@@ -3,9 +3,15 @@ pub mod depositor;
 pub mod ve_token;
 pub mod merkle;
 pub mod slashing;
+pub mod meteora;
+pub mod dlmm;
+pub mod drift;
 
 pub use pool::*;
 pub use depositor::*;
 pub use ve_token::*;
 pub use merkle::*;
 pub use slashing::*;
+pub use meteora::*;
+pub use dlmm::*;
+pub use drift::*;

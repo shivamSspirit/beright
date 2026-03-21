@@ -30,7 +30,7 @@ import {
 import { arbitrage } from '../../skills/arbitrage';
 import { tavilyIntelSearch, newsSearch } from '../../skills/intel';
 import { isTavilyConfigured } from '../../lib/tavily';
-import { llmChat } from '../../lib/llm';
+import { llmRoute } from '../../lib/llm';
 
 // ============================================================================
 // SCOUT CONFIGURATION
@@ -394,12 +394,10 @@ If the request is unclear or just a greeting, use direct_response.
 
 Respond with ONLY valid JSON, no other text.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'scout',
     system: SCOUT_SYSTEM_PROMPT,
     user: decisionPrompt,
-    maxTokens: 1024,
-    temperature: 0.1, // Low temperature for reliable JSON
-    quality: 'fast',
   });
 
   // Parse the LLM's decision
@@ -497,12 +495,10 @@ Now synthesize this into a clear, actionable response for the user.
 
 Respond with just the synthesized message, no JSON or extra formatting.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'scout',
     system: SCOUT_SYSTEM_PROMPT,
     user: synthesisPrompt,
-    maxTokens: 1500,
-    temperature: 0.3,
-    quality: 'fast',
   });
 
   return response.text;

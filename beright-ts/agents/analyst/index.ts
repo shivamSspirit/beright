@@ -25,7 +25,7 @@
  */
 
 import { SkillResponse, Mood, Market, Platform } from '../../types/index';
-import { llmChat } from '../../lib/llm';
+import { llmRoute } from '../../lib/llm';
 import { searchMarkets } from '../../skills/markets';
 import { estimateBaseRate, listReferenceClasses } from '../../lib/analyst/baserates';
 import { gatherEvidence } from '../../lib/analyst/evidence';
@@ -502,12 +502,10 @@ If the request is a greeting or simple question, use direct_response.
 
 Respond with ONLY valid JSON, no other text.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'analyst',
     system: ANALYST_SYSTEM_PROMPT,
     user: decisionPrompt,
-    maxTokens: 1024,
-    temperature: 0.2,
-    quality: 'smart', // Use smart model for better reasoning
   });
 
   // Parse the LLM's decision
@@ -638,12 +636,10 @@ Be thorough but not verbose. Show your work.
 
 Respond with just the synthesized analysis, no JSON.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'analyst',
     system: ANALYST_SYSTEM_PROMPT,
     user: synthesisPrompt,
-    maxTokens: 2000,
-    temperature: 0.3,
-    quality: 'smart',
   });
 
   return response.text;

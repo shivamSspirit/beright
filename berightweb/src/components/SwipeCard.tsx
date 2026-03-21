@@ -177,7 +177,7 @@ function TradingChart({
     const fetchCandles = async () => {
       setLoading(true);
       try {
-        const resolution = timeRange === '1D' ? '1h' : timeRange === '1W' ? '4h' : '1d';
+        const resolution = timeRange === '1D' ? '1h' : timeRange === '1W' ? '1h' : '1d';
         const result = await getDFlowCandlesticks(ticker, resolution);
         if (result.success && result.candles?.length > 0) {
           setCandles(result.candles);

@@ -76,7 +76,7 @@ function DualLineChart({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const result = await getDFlowCandlesticks(ticker, '4h');
+        const result = await getDFlowCandlesticks(ticker, '1h');
         if (result.success && result.candles?.length > 0) {
           setCandles(result.candles);
         }

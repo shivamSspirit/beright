@@ -3,120 +3,119 @@
 import { useMode } from '@/context/ModeContext';
 
 /**
- * Mode Banner Component
+ * Mode Toggle Component
  *
- * Displays a clickable banner to toggle between demo and production modes.
- * Shows current network info and allows switching.
+ * Compact toggle button for switching between demo and production modes.
+ * Designed to integrate cleanly into the header navigation.
  */
-export function ModeBanner() {
-  const { isDemo, networkLabel, tradingMode, isLoading, toggleMode } = useMode();
+export function ModeToggle() {
+  const { isDemo, isLoading, toggleMode } = useMode();
 
-  // Don't show while loading
   if (isLoading) {
     return null;
   }
 
   return (
-    <div className={`mode-banner ${isDemo ? 'demo' : 'production'}`}>
-      <div className="mode-banner-content">
-        <button className="mode-toggle-btn" onClick={toggleMode}>
-          <span className="mode-badge">{isDemo ? 'TESTNET' : 'MAINNET'}</span>
-          <span className="mode-info">
-            {networkLabel} &bull; {tradingMode === 'paper' ? 'Paper Trading' : 'Live Trading'}
-          </span>
-          <span className="mode-switch">
-            Click to switch to {isDemo ? 'Production' : 'Demo'}
-          </span>
-        </button>
-      </div>
+    <button
+      className={`mode-toggle ${isDemo ? 'demo' : 'production'}`}
+      onClick={toggleMode}
+      title={`Switch to ${isDemo ? 'Production' : 'Demo'} mode`}
+    >
+      <span className="mode-dot" />
+      <span className="mode-label">{isDemo ? 'Demo' : 'Live'}</span>
+      <svg className="mode-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="6,9 12,15 18,9" />
+      </svg>
 
       <style jsx>{`
-        .mode-banner {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          padding: 6px 16px;
-          z-index: 9999;
-          font-size: 13px;
+        .mode-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          background: transparent;
+          border: 1px solid rgba(148, 163, 184, 0.2);
+          border-radius: 8px;
+          color: #94A3B8;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 12px;
           font-weight: 500;
-          transition: background 0.3s ease;
-        }
-
-        .mode-banner.demo {
-          background: linear-gradient(90deg, #F59E0B 0%, #D97706 100%);
-          color: #000;
-        }
-
-        .mode-banner.production {
-          background: linear-gradient(90deg, #22C55E 0%, #16A34A 100%);
-          color: #000;
-        }
-
-        .mode-banner-content {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .mode-toggle-btn {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          background: none;
-          border: none;
-          color: inherit;
           cursor: pointer;
-          padding: 4px 8px;
-          border-radius: 6px;
-          transition: background 0.2s;
-          font-family: inherit;
-          font-size: inherit;
+          transition: all 0.2s ease;
         }
 
-        .mode-toggle-btn:hover {
-          background: rgba(0, 0, 0, 0.1);
+        .mode-toggle:hover {
+          border-color: rgba(148, 163, 184, 0.4);
+          background: rgba(148, 163, 184, 0.05);
         }
 
-        .mode-badge {
-          background: #000;
-          padding: 3px 10px;
-          border-radius: 4px;
-          font-weight: 700;
-          font-size: 11px;
-          letter-spacing: 0.5px;
-        }
-
-        .mode-banner.demo .mode-badge {
+        .mode-toggle.demo {
+          border-color: rgba(245, 158, 11, 0.3);
           color: #F59E0B;
         }
 
-        .mode-banner.production .mode-badge {
+        .mode-toggle.demo:hover {
+          border-color: rgba(245, 158, 11, 0.5);
+          background: rgba(245, 158, 11, 0.08);
+        }
+
+        .mode-toggle.production {
+          border-color: rgba(34, 197, 94, 0.3);
           color: #22C55E;
         }
 
-        .mode-info {
-          opacity: 0.8;
+        .mode-toggle.production:hover {
+          border-color: rgba(34, 197, 94, 0.5);
+          background: rgba(34, 197, 94, 0.08);
         }
 
-        .mode-switch {
+        .mode-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          animation: pulse 2s infinite;
+        }
+
+        .mode-label {
+          font-weight: 600;
+          letter-spacing: 0.3px;
+        }
+
+        .mode-chevron {
           opacity: 0.6;
-          font-size: 12px;
-          border-left: 1px solid rgba(0, 0, 0, 0.2);
-          padding-left: 12px;
-          margin-left: 4px;
+          transition: transform 0.2s ease;
+        }
+
+        .mode-toggle:hover .mode-chevron {
+          transform: translateY(1px);
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
 
         @media (max-width: 640px) {
-          .mode-switch {
+          .mode-toggle {
+            padding: 6px 10px;
+          }
+
+          .mode-chevron {
             display: none;
           }
         }
       `}</style>
-    </div>
+    </button>
   );
+}
+
+/**
+ * @deprecated Use ModeToggle instead - integrates into header
+ */
+export function ModeBanner() {
+  // Deprecated: Return null - use ModeToggle in Header instead
+  return null;
 }
 
 /**

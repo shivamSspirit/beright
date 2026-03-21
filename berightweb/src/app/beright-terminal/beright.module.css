@@ -62,9 +62,9 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .terminalPage {
-  /* Account for BottomNav (72px) on all screen sizes */
-  height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
-  max-height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
+  /* Height calculation: 100dvh - 72px (spacer in providers) - 72px (BottomNav) */
+  height: calc(100dvh - 72px - 72px - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 72px - 72px - env(safe-area-inset-bottom, 0px));
   background: var(--br-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),

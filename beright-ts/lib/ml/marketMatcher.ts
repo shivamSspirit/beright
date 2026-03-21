@@ -85,6 +85,7 @@ async function getEmbedding(
 
 /**
  * Batch compute embeddings for multiple markets
+ * Uses parallel processing with concurrency limit to avoid memory issues
  */
 async function batchGetEmbeddings(
   markets: RawMarketData[],
@@ -106,14 +107,50 @@ async function batchGetEmbeddings(
     }
   }
 
-  // Compute embeddings for uncached (sequential to avoid rate limits)
-  for (const market of uncached) {
-    const embedding = await getEmbedding(market, config);
-    if (embedding) {
-      embeddings.set(getCacheKey(market.platform, market.id), embedding);
+  if (uncached.length === 0) {
+    return embeddings;
+  }
+
+  console.log(`[ML Matcher] Computing embeddings for ${uncached.length} markets (${embeddings.size} cached)...`);
+
+  // Process in parallel batches with concurrency limit
+  // Increased batch size since SBERT is fast locally (~5ms per embedding)
+  const BATCH_SIZE = 50; // Process 50 at a time (SBERT handles this well)
+  const TIMEOUT_MS = 3000; // 3 second timeout per embedding (generous for local)
+
+  for (let i = 0; i < uncached.length; i += BATCH_SIZE) {
+    const batch = uncached.slice(i, i + BATCH_SIZE);
+
+    // Create promises with timeout
+    const batchPromises = batch.map(async (market) => {
+      try {
+        const embedding = await Promise.race([
+          getEmbedding(market, config),
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('Embedding timeout')), TIMEOUT_MS)
+          ),
+        ]);
+        if (embedding) {
+          return { key: getCacheKey(market.platform, market.id), embedding };
+        }
+      } catch (error) {
+        // Silently skip failed embeddings, will use keyword similarity fallback
+      }
+      return null;
+    });
+
+    // Wait for batch to complete
+    const results = await Promise.all(batchPromises);
+
+    // Add successful embeddings to map
+    for (const result of results) {
+      if (result) {
+        embeddings.set(result.key, result.embedding);
+      }
     }
   }
 
+  console.log(`[ML Matcher] Computed ${embeddings.size} total embeddings`);
   return embeddings;
 }
 
@@ -294,7 +331,6 @@ function extractEntities(question: string): ExtractedEntities {
  */
 function parseDate(text: string): Date | null {
   const lower = text.toLowerCase();
-  const now = new Date();
 
   // Year match
   const yearMatch = lower.match(/(20\d{2})/);

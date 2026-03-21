@@ -9,7 +9,7 @@
  *   11 Detectors (parallel) → Groq Scout evaluation → Supabase save → Alert queue
  */
 
-import { llmChat } from '../llm';
+import { llmRoute } from '../llm';
 import { supabaseAdmin, isSupabaseConfigured } from '../supabase/client';
 import { RawSignal, EvaluatedSignal, SIGNAL_META } from './types';
 
@@ -64,12 +64,10 @@ async function evaluateSignal(signal: RawSignal): Promise<EvaluatedSignal> {
   ].join('\n');
 
   try {
-    const response = await llmChat({
+    const response = await llmRoute({
+      agent: 'signal',
       system: SCOUT_SYSTEM_PROMPT,
       user: `Evaluate this signal:\n\n${context}`,
-      maxTokens: 300,
-      temperature: 0.1,
-      quality: 'fast',  // llama-3.1-8b-instant for speed
     });
 
     if (response.provider === 'none') throw new Error('No LLM provider');

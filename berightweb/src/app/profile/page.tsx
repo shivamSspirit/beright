@@ -4,18 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import { useUserPredictions, useBackendStatus } from '@/hooks/useMarkets';
+import { useSubscription } from '@/hooks/useSubscription';
 import {
-  TrendingUp, Flame, Share2, ChevronRight, ChevronLeft, Copy,
+  TrendingUp, Flame, ChevronRight, Copy,
   ExternalLink, Check, Bell, Settings, HelpCircle, Zap, RefreshCw,
-  Info, Star, Wallet, ArrowUp, LogOut, BookOpen
+  Info, Star, Wallet, ArrowUp, LogOut, BookOpen, Crown, CreditCard
 } from 'lucide-react';
 import styles from './profile.module.css';
-import { computeLeague, getLeagueInfo, getLevelProgress, LEAGUES, type LeagueName } from '@/lib/leagues';
-import { formatNumber, formatAddress, formatCurrency, formatCompactNumber } from '@/lib/format';
+import { getLeagueInfo, getLevelProgress } from '@/lib/leagues';
+import { formatNumber, formatAddress, formatCompactNumber } from '@/lib/format';
 import ReferralCard from '@/components/ReferralCard';
 import ShareButton from '@/components/ShareButton';
 import { useOnboarding } from '@/components/Onboarding';
-import BrandLogo from '@/components/BrandLogo';
 
 // ═══════════════════════════════════════════════════════════════
 // PROFILE PAGE - Industrial Metallic Design
@@ -243,6 +243,25 @@ const StatsPanel = ({
   </div>
 );
 
+// Subscription info interface
+interface SubscriptionInfo {
+  tier: string;
+  tierConfig: { badge: string; color: string; name: string };
+  isPaid: boolean;
+  subscription: {
+    currentPeriodEnd: string;
+    cancelAtPeriodEnd: boolean;
+    billingInterval: 'month' | 'year';
+  } | null;
+  usage: {
+    queriesUsed: number;
+  } | null;
+  limits: {
+    queriesPerDay: number;
+  };
+  openBillingPortal: () => Promise<void>;
+}
+
 // Settings Panel Component
 const SettingsPanel = ({
   walletAddress,
@@ -257,6 +276,7 @@ const SettingsPanel = ({
   onNotificationsClick,
   onLogout,
   onReplayOnboarding,
+  subscriptionInfo,
 }: {
   walletAddress: string | null;
   displayName: string;
@@ -270,6 +290,7 @@ const SettingsPanel = ({
   onNotificationsClick: () => void;
   onLogout: () => void;
   onReplayOnboarding: () => void;
+  subscriptionInfo: SubscriptionInfo;
 }) => (
   <div className={styles.rightPanel}>
     {/* Wallet Card */}
@@ -340,6 +361,108 @@ const SettingsPanel = ({
           <div className={styles.fieldLabel}>EMAIL</div>
           <div className={styles.fieldValueMuted}>{userEmail || 'Not set'}</div>
         </div>
+      </Inset>
+    </Plate>
+
+    {/* Subscription Card */}
+    <Plate>
+      <Inset className={styles.settingsInset}>
+        <div className={styles.settingsHeader}>
+          <div className={styles.settingsHeaderLabel}>
+            <Crown size={14} />
+            <span>Subscription</span>
+          </div>
+          <span
+            className={styles.tierBadge}
+            style={{
+              background: `${subscriptionInfo.tierConfig.color}20`,
+              color: subscriptionInfo.tierConfig.color,
+              border: `1px solid ${subscriptionInfo.tierConfig.color}40`,
+            }}
+          >
+            {subscriptionInfo.tierConfig.badge}
+          </span>
+        </div>
+
+        {subscriptionInfo.isPaid && subscriptionInfo.subscription ? (
+          <>
+            <div style={{ marginBottom: '12px' }}>
+              <div className={styles.fieldLabel}>CURRENT PLAN</div>
+              <div className={styles.fieldValue}>
+                {subscriptionInfo.tierConfig.name}{' '}
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
+                  ({subscriptionInfo.subscription.billingInterval === 'year' ? 'Annual' : 'Monthly'})
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <div className={styles.fieldLabel}>
+                {subscriptionInfo.subscription.cancelAtPeriodEnd ? 'EXPIRES ON' : 'RENEWS ON'}
+              </div>
+              <div className={styles.fieldValue} style={{ color: subscriptionInfo.subscription.cancelAtPeriodEnd ? '#F59E0B' : undefined }}>
+                {new Date(subscriptionInfo.subscription.currentPeriodEnd).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+                {subscriptionInfo.subscription.cancelAtPeriodEnd && (
+                  <span style={{ color: '#F59E0B', fontSize: '11px', marginLeft: '6px' }}>
+                    (Canceling)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <div className={styles.fieldLabel}>TODAY&apos;S USAGE</div>
+              <div className={styles.usageBar}>
+                <div
+                  className={styles.usageBarFill}
+                  style={{
+                    width: `${Math.min(100, ((subscriptionInfo.usage?.queriesUsed || 0) / (subscriptionInfo.limits.queriesPerDay === -1 ? 1 : subscriptionInfo.limits.queriesPerDay)) * 100)}%`,
+                    background: subscriptionInfo.tierConfig.color,
+                  }}
+                />
+              </div>
+              <div className={styles.usageText}>
+                {subscriptionInfo.usage?.queriesUsed || 0} / {subscriptionInfo.limits.queriesPerDay === -1 ? '∞' : subscriptionInfo.limits.queriesPerDay} queries
+              </div>
+            </div>
+
+            <button className={styles.btnSecondary} onClick={subscriptionInfo.openBillingPortal}>
+              <CreditCard size={14} />
+              Manage Billing
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom: '12px' }}>
+              <div className={styles.fieldLabel}>CURRENT PLAN</div>
+              <div className={styles.fieldValue}>Free Tier</div>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <div className={styles.fieldLabel}>DAILY QUERIES</div>
+              <div className={styles.usageBar}>
+                <div
+                  className={styles.usageBarFill}
+                  style={{
+                    width: `${Math.min(100, ((subscriptionInfo.usage?.queriesUsed || 0) / 10) * 100)}%`,
+                  }}
+                />
+              </div>
+              <div className={styles.usageText}>
+                {subscriptionInfo.usage?.queriesUsed || 0} / 10 queries
+              </div>
+            </div>
+
+            <Link href="/subscription" className={styles.btnPrimary} style={{ textDecoration: 'none', textAlign: 'center' }}>
+              <Crown size={14} />
+              Upgrade Plan
+            </Link>
+          </>
+        )}
       </Inset>
     </Plate>
 
@@ -424,6 +547,15 @@ export default function ProfilePage() {
   const { isConnected } = useBackendStatus();
   const { stats: apiStats } = useUserPredictions();
   const { resetOnboarding } = useOnboarding();
+  const {
+    tier,
+    tierConfig,
+    isPaid,
+    subscription,
+    usage,
+    limits,
+    openBillingPortal,
+  } = useSubscription();
 
   // Panel state
   const [activePanel, setActivePanel] = useState<PanelType>('stats');
@@ -576,24 +708,8 @@ export default function ProfilePage() {
       <div className={styles.ambientLight} />
 
       <div className={styles.layoutGrid}>
-        {/* Mobile Header */}
-        <div className={styles.mobileHeader} style={{ gridColumn: '1 / -1' }}>
-          <Link href="/" className={styles.backBtn}>
-            <ChevronLeft size={20} />
-          </Link>
-          <h1 className={styles.headerTitle}>Profile</h1>
-          <button className={styles.shareBtn}>
-            <Share2 size={18} />
-          </button>
-        </div>
-
         {/* Desktop Sidebar */}
         <aside className={styles.sidebar}>
-          <div className={styles.logo}>
-            <BrandLogo size={28} />
-            <span className={styles.logoText}>BeRight</span>
-          </div>
-
           <nav className={styles.nav}>
             <button
               className={`${styles.navItem} ${activePanel === 'stats' ? styles.navItemActive : ''}`}
@@ -820,13 +936,24 @@ export default function ProfilePage() {
               onNotificationsClick={() => {}}
               onLogout={logout}
               onReplayOnboarding={resetOnboarding}
+              subscriptionInfo={{
+                tier,
+                tierConfig,
+                isPaid,
+                subscription: subscription ? {
+                  currentPeriodEnd: subscription.currentPeriodEnd,
+                  cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+                  billingInterval: subscription.billingInterval,
+                } : null,
+                usage: usage ? { queriesUsed: usage.queriesUsed } : null,
+                limits: { queriesPerDay: limits.queriesPerDay },
+                openBillingPortal,
+              }}
             />
           )}
         </aside>
       </div>
 
-      {/* Bottom Nav Spacer for Mobile */}
-      <div className={styles.bottomNavSpacer} />
     </div>
   );
 }

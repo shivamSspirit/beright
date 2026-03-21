@@ -19,7 +19,7 @@
  */
 
 import { SkillResponse, Mood } from '../../types/index';
-import { llmChat } from '../../lib/llm';
+import { llmRoute } from '../../lib/llm';
 
 // Import agents
 import ScoutAgent from '../scout';
@@ -171,12 +171,10 @@ Decide which specialist should handle this. Respond in JSON:
 Route to the specialist best suited for this request.
 Respond with ONLY valid JSON, no other text.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'orchestrator',
     system: ORCHESTRATOR_SYSTEM_PROMPT,
     user: routingPrompt,
-    maxTokens: 256,
-    temperature: 0.2,
-    quality: 'fast',
   });
 
   try {

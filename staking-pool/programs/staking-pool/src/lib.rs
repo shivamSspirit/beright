@@ -12,7 +12,7 @@ mod tests;
 use instructions::*;
 use state::*;
 
-declare_id!("STAKEpoo11111111111111111111111111111111111");
+declare_id!("Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM");
 
 #[program]
 pub mod staking_pool {
@@ -122,6 +122,301 @@ pub mod staking_pool {
     /// Claims accrued yield from Sanctum and updates pool NAV.
     pub fn harvest_sanctum_yield(ctx: Context<HarvestSanctumYield>) -> Result<()> {
         instructions::sanctum::harvest::handler(ctx)
+    }
+
+    // ============ Meteora Vault Integration ============
+
+    /// Initialize Meteora vault integration for a staking pool
+    ///
+    /// Sets up the pool to route idle capital to a Meteora Dynamic Vault
+    /// for yield generation.
+    ///
+    /// # Arguments
+    /// * `allocation_bps` - Percentage of idle capital to allocate (basis points, max 10000)
+    /// * `min_deposit` - Minimum deposit amount to prevent dust
+    pub fn initialize_meteora_vault(
+        ctx: Context<InitializeMeteoraVault>,
+        allocation_bps: u16,
+        min_deposit: u64,
+    ) -> Result<()> {
+        instructions::meteora::initialize::handler(ctx, allocation_bps, min_deposit)
+    }
+
+    /// Deposit underlying tokens to Meteora Dynamic Vault via CPI
+    ///
+    /// Transfers tokens from the pool's vault to Meteora and receives
+    /// LP tokens in return.
+    ///
+    /// # Arguments
+    /// * `amount` - Amount of underlying tokens to deposit
+    pub fn deposit_to_meteora(ctx: Context<DepositToMeteora>, amount: u64) -> Result<()> {
+        instructions::meteora::deposit::handler(ctx, amount)
+    }
+
+    /// Withdraw from Meteora Dynamic Vault via CPI
+    ///
+    /// Burns LP tokens and receives the underlying tokens plus any accrued yield.
+    ///
+    /// # Arguments
+    /// * `lp_amount` - Amount of LP tokens to burn
+    /// * `min_out_amount` - Minimum underlying tokens to receive (slippage protection)
+    pub fn withdraw_from_meteora(
+        ctx: Context<WithdrawFromMeteora>,
+        lp_amount: u64,
+        min_out_amount: u64,
+    ) -> Result<()> {
+        instructions::meteora::withdraw::handler(ctx, lp_amount, min_out_amount)
+    }
+
+    /// Withdraw all LP tokens from Meteora vault
+    ///
+    /// Convenience method that withdraws all LP tokens with default slippage.
+    pub fn withdraw_all_from_meteora(ctx: Context<WithdrawAllFromMeteora>) -> Result<()> {
+        instructions::meteora::withdraw::handler_withdraw_all(ctx)
+    }
+
+    /// Harvest yield from Meteora vault
+    ///
+    /// Updates yield tracking based on virtual price increase.
+    ///
+    /// # Arguments
+    /// * `new_virtual_price` - Current virtual price from Meteora vault (scaled 1e9)
+    pub fn harvest_meteora_yield(
+        ctx: Context<HarvestMeteoraYield>,
+        new_virtual_price: u64,
+    ) -> Result<()> {
+        instructions::meteora::harvest::handler(ctx, new_virtual_price)
+    }
+
+    /// Auto-harvest Meteora yield by reading virtual price from vault
+    ///
+    /// Permissionless instruction that anyone can call to trigger yield harvest.
+    pub fn auto_harvest_meteora_yield(ctx: Context<AutoHarvestMeteoraYield>) -> Result<()> {
+        instructions::meteora::harvest::handler_auto_harvest(ctx)
+    }
+
+    /// Update Meteora vault allocation percentage
+    ///
+    /// # Arguments
+    /// * `new_allocation_bps` - New allocation in basis points (max 10000 = 100%)
+    pub fn update_meteora_allocation(
+        ctx: Context<UpdateMeteoraAllocation>,
+        new_allocation_bps: u16,
+    ) -> Result<()> {
+        instructions::meteora::harvest::handler_update_allocation(ctx, new_allocation_bps)
+    }
+
+    /// Pause or unpause Meteora vault integration
+    ///
+    /// # Arguments
+    /// * `is_active` - Whether the integration should be active
+    pub fn set_meteora_active(ctx: Context<SetMeteoraActive>, is_active: bool) -> Result<()> {
+        instructions::meteora::harvest::handler_set_active(ctx, is_active)
+    }
+
+    // ============ DLMM Integration ============
+
+    /// Initialize DLMM configuration for a staking pool
+    ///
+    /// Sets up the pool to create concentrated liquidity positions.
+    pub fn initialize_dlmm_config(
+        ctx: Context<InitializeDlmmConfig>,
+        config: Option<DlmmConfigParams>,
+    ) -> Result<()> {
+        instructions::dlmm::initialize::handler(ctx, config)
+    }
+
+    /// Update DLMM configuration parameters
+    pub fn update_dlmm_config(
+        ctx: Context<UpdateDlmmConfig>,
+        config: DlmmConfigParams,
+    ) -> Result<()> {
+        instructions::dlmm::initialize::handler_update_config(ctx, config)
+    }
+
+    /// Pause or unpause DLMM integration
+    pub fn set_dlmm_active(ctx: Context<SetDlmmActive>, is_active: bool) -> Result<()> {
+        instructions::dlmm::initialize::handler_set_active(ctx, is_active)
+    }
+
+    /// Create a new DLMM position
+    ///
+    /// Creates a concentrated liquidity position on the DLMM pool.
+    pub fn create_dlmm_position(
+        ctx: Context<CreateDlmmPosition>,
+        position_index: u8,
+        params: CreatePositionParams,
+    ) -> Result<()> {
+        instructions::dlmm::create_position::handler(ctx, position_index, params)
+    }
+
+    /// Add liquidity to an existing DLMM position
+    pub fn add_dlmm_liquidity(
+        ctx: Context<AddDlmmLiquidity>,
+        position_index: u8,
+        amount_x: u64,
+        amount_y: u64,
+        min_shares: u128,
+    ) -> Result<()> {
+        instructions::dlmm::add_liquidity::handler(ctx, position_index, amount_x, amount_y, min_shares)
+    }
+
+    /// Remove liquidity from a DLMM position
+    pub fn remove_dlmm_liquidity(
+        ctx: Context<RemoveDlmmLiquidity>,
+        position_index: u8,
+        shares_to_remove: u128,
+        min_amount_x: u64,
+        min_amount_y: u64,
+    ) -> Result<()> {
+        instructions::dlmm::remove_liquidity::handler(ctx, position_index, shares_to_remove, min_amount_x, min_amount_y)
+    }
+
+    /// Close a DLMM position and recover all liquidity
+    pub fn close_dlmm_position(
+        ctx: Context<CloseDlmmPosition>,
+        position_index: u8,
+    ) -> Result<()> {
+        instructions::dlmm::remove_liquidity::handler_close_position(ctx, position_index)
+    }
+
+    /// Claim accumulated fees from a DLMM position
+    pub fn claim_dlmm_fees(ctx: Context<ClaimDlmmFees>, position_index: u8) -> Result<()> {
+        instructions::dlmm::claim_fees::handler(ctx, position_index)
+    }
+
+    /// Update unclaimed fees for a position
+    pub fn update_dlmm_fees(
+        ctx: Context<UpdateDlmmFees>,
+        position_index: u8,
+        fee_x: u64,
+        fee_y: u64,
+    ) -> Result<()> {
+        instructions::dlmm::claim_fees::handler_update_fees(ctx, position_index, fee_x, fee_y)
+    }
+
+    /// Rebalance a DLMM position to a new price range
+    pub fn rebalance_dlmm_position(
+        ctx: Context<RebalanceDlmmPosition>,
+        position_index: u8,
+        params: RebalanceParams,
+    ) -> Result<()> {
+        instructions::dlmm::rebalance::handler(ctx, position_index, params)
+    }
+
+    /// Update position status based on current active bin
+    pub fn update_dlmm_position_status(
+        ctx: Context<UpdateDlmmPositionStatus>,
+        position_index: u8,
+        current_active_bin: i32,
+    ) -> Result<()> {
+        instructions::dlmm::rebalance::handler_update_status(ctx, position_index, current_active_bin)
+    }
+
+    // ============ Drift Trading Integration ============
+
+    /// Initialize Drift trading for a staking pool
+    ///
+    /// Sets up the pool to execute perp trades based on forecaster predictions.
+    /// Requires the forecaster to meet minimum calibration requirements.
+    pub fn initialize_drift_trading(
+        ctx: Context<InitializeDriftTrading>,
+        config: Option<DriftTradingConfig>,
+    ) -> Result<()> {
+        instructions::drift::initialize::handler(ctx, config)
+    }
+
+    /// Update Drift trading configuration
+    pub fn update_drift_config(
+        ctx: Context<UpdateDriftConfig>,
+        config: DriftTradingConfig,
+    ) -> Result<()> {
+        instructions::drift::initialize::handler_update_config(ctx, config)
+    }
+
+    /// Pause or unpause Drift trading
+    pub fn set_drift_active(ctx: Context<SetDriftActive>, is_active: bool) -> Result<()> {
+        instructions::drift::initialize::handler_set_active(ctx, is_active)
+    }
+
+    /// Deposit collateral to Drift
+    ///
+    /// Transfers funds from pool vault to Drift for trading margin.
+    pub fn deposit_drift_collateral(
+        ctx: Context<DepositDriftCollateral>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::drift::collateral::handler_deposit(ctx, amount)
+    }
+
+    /// Withdraw collateral from Drift
+    ///
+    /// Withdraws margin back to pool vault. Cannot withdraw if positions are open.
+    pub fn withdraw_drift_collateral(
+        ctx: Context<WithdrawDriftCollateral>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::drift::collateral::handler_withdraw(ctx, amount)
+    }
+
+    /// Open a perp position based on a prediction
+    ///
+    /// Position size is determined by forecaster's Brier score and prediction confidence.
+    pub fn open_drift_position(
+        ctx: Context<OpenDriftPosition>,
+        position_index: u8,
+        params: OpenPositionParams,
+    ) -> Result<()> {
+        instructions::drift::open_position::handler(ctx, position_index, params)
+    }
+
+    /// Close an open perp position
+    pub fn close_drift_position(
+        ctx: Context<CloseDriftPosition>,
+        position_index: u8,
+    ) -> Result<()> {
+        instructions::drift::close_position::handler(ctx, position_index)
+    }
+
+    /// Cleanup a closed position account to recover rent
+    pub fn cleanup_drift_position(
+        ctx: Context<CleanupDriftPosition>,
+        position_index: u8,
+    ) -> Result<()> {
+        instructions::drift::close_position::handler_cleanup(ctx, position_index)
+    }
+
+    /// Update P&L for an open position (permissionless)
+    pub fn update_drift_pnl(
+        ctx: Context<UpdateDriftPositionPnl>,
+        position_index: u8,
+        current_price: u64,
+    ) -> Result<()> {
+        instructions::drift::manage::handler_update_pnl(ctx, position_index, current_price)
+    }
+
+    /// Check liquidation risk and emergency close if needed
+    pub fn liquidation_guard(
+        ctx: Context<LiquidationGuard>,
+        position_index: u8,
+        current_price: u64,
+    ) -> Result<()> {
+        instructions::drift::manage::handler_liquidation_guard(ctx, position_index, current_price)
+    }
+
+    /// Update stop loss and take profit orders
+    pub fn update_drift_orders(
+        ctx: Context<UpdateDriftOrders>,
+        position_index: u8,
+        stop_loss: Option<u64>,
+        take_profit: Option<u64>,
+    ) -> Result<()> {
+        instructions::drift::manage::handler_update_orders(ctx, position_index, stop_loss, take_profit)
+    }
+
+    /// Check drawdown limit and pause trading if exceeded (permissionless)
+    pub fn check_drift_drawdown(ctx: Context<CheckDriftDrawdown>) -> Result<()> {
+        instructions::drift::manage::handler_check_drawdown(ctx)
     }
 
     // ============ veToken Governance (Phase 4) ============

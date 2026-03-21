@@ -19,7 +19,7 @@
 import { SkillResponse, Mood, Market, Platform } from '../../types/index';
 import { getHotMarkets, searchMarkets } from '../../skills/markets';
 import { arbitrage } from '../../skills/arbitrage';
-import { llmChat } from '../../lib/llm';
+import { llmRoute } from '../../lib/llm';
 
 // ============================================================================
 // XDEGEN CONFIGURATION
@@ -367,12 +367,10 @@ RULES:
 
 Generate a single post. Return ONLY the post text, nothing else.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'xdegen',
     system: 'You are xDegen, a viral content creator for prediction markets. Sharp. Confident. Data-driven.',
     user: prompt,
-    maxTokens: 500,
-    temperature: 0.8,
-    quality: 'fast',
   });
 
   return {
@@ -567,12 +565,10 @@ Format: Return each tweet on a new line, numbered (1/, 2/, etc.)
 
 Be sharp, intelligent, data-driven. Not cringe.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'xdegen',
     system: 'You are xDegen, a viral content creator. Bloomberg meets degen culture.',
     user: prompt,
-    maxTokens: 1500,
-    temperature: 0.7,
-    quality: 'fast',
   });
 
   // Parse thread tweets
@@ -762,12 +758,10 @@ Decide what to do. Respond in JSON format:
 
 Respond with ONLY valid JSON.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'xdegen',
     system: XDEGEN_SYSTEM_PROMPT,
     user: decisionPrompt,
-    maxTokens: 1024,
-    temperature: 0.1,
-    quality: 'fast',
   });
 
   try {
@@ -815,12 +809,10 @@ Synthesize a clear response for the user. Include:
 
 Be concise. Format nicely.`;
 
-  const response = await llmChat({
+  const response = await llmRoute({
+    agent: 'xdegen',
     system: XDEGEN_SYSTEM_PROMPT,
     user: synthesisPrompt,
-    maxTokens: 1500,
-    temperature: 0.3,
-    quality: 'fast',
   });
 
   return response.text;

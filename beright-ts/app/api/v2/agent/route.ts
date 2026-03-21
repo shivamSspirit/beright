@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { processMessage, AGENT_ROLES, getToolCounts } from '../../../../agents';
+import { checkAgentAccess, getTierContext, checkAndIncrementUsage } from '../../../../lib/stripe/middleware';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -89,6 +90,50 @@ export async function POST(request: NextRequest) {
     const activeSessionId = sessionId || `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const session = getOrCreateSession(activeSessionId);
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TIER-BASED ACCESS CONTROL
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (userId) {
+      // Check daily query limit first
+      const queryCheck = await checkAndIncrementUsage(userId, 'queriesPerDay');
+      if (!queryCheck.allowed) {
+        return NextResponse.json({
+          success: false,
+          error: 'rate_limit',
+          message: queryCheck.reason,
+          data: {
+            text: `You've reached your daily query limit (${queryCheck.currentUsage}/${queryCheck.limit}). Upgrade your plan for more queries.`,
+            mood: 'LIMIT_REACHED',
+          },
+          tier: queryCheck.tier,
+          usage: {
+            current: queryCheck.currentUsage,
+            limit: queryCheck.limit,
+          },
+          upgradeUrl: '/subscription',
+        }, { status: 429 });
+      }
+
+      // If a specific agent is forced, check access to that agent
+      if (forcedAgent) {
+        const agentCheck = await checkAgentAccess(userId, forcedAgent);
+        if (!agentCheck.allowed) {
+          return NextResponse.json({
+            success: false,
+            error: 'tier_required',
+            message: agentCheck.reason,
+            data: {
+              text: `The ${forcedAgent} agent requires a higher tier. ${agentCheck.reason}`,
+              mood: 'UPGRADE_REQUIRED',
+            },
+            tier: agentCheck.tier,
+            requiredTier: agentCheck.requiredTier,
+            upgradeUrl: '/subscription',
+          }, { status: 403 });
+        }
+      }
+    }
+
     // Record user message
     session.messages.push({
       role: 'user',
@@ -115,6 +160,21 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
+    // Get tier context for response (optional, only if userId provided)
+    let tierInfo = null;
+    if (userId) {
+      try {
+        const context = await getTierContext(userId);
+        tierInfo = {
+          tier: context.tier,
+          usage: context.usage,
+          limits: context.limits,
+        };
+      } catch {
+        // Ignore tier context errors
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -128,6 +188,7 @@ export async function POST(request: NextRequest) {
         id: activeSessionId,
         messageCount: session.messages.length,
       },
+      tier: tierInfo,
       meta: {
         processingTimeMs: processingTime,
         timestamp: new Date().toISOString(),

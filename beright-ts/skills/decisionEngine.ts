@@ -10,7 +10,7 @@ import { ArbitrageOpportunity } from '../types/index';
 import { ConsensusResult, getConsensus } from './consensus';
 import { getCalibrationStats } from './calibration';
 import { logArbitrage } from './onchain';
-import { llmChat } from '../lib/llm';
+import { llmRoute } from '../lib/llm';
 
 export interface DecisionInput {
   topic: string;
@@ -281,7 +281,8 @@ export async function decide(input: DecisionInput): Promise<DecisionOutput> {
   try {
     const signalContext = buildSignalContext(input);
 
-    const response = await llmChat({
+    const response = await llmRoute({
+      agent: 'decision',
       system: `You are Scout, a prediction market signal analyst. Given raw signal data, you produce a decision.
 
 Respond ONLY with valid JSON matching this exact schema:
@@ -297,9 +298,6 @@ Rules:
 - SKIP: Too risky, insufficient data, or spread not worth execution costs
 - Be specific in reasoning — cite actual numbers from the signals`,
       user: `Evaluate these signals and decide:\n\n${signalContext}`,
-      maxTokens: 512,
-      temperature: 0.2,
-      quality: 'smart',
     });
 
     const text = response.text;

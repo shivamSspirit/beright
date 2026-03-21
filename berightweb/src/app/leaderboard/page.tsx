@@ -1,15 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Link from 'next/link';
 import { useLeaderboard, useOnChainLeaderboard, useBackendStatus } from '@/hooks/useMarkets';
 import { useUser } from '@/context/UserContext';
-import { ChevronLeft, MoreVertical, Layers, Shield } from 'lucide-react';
+import { Layers, Shield } from 'lucide-react';
 import styles from './leaderboard.module.css';
 import { computeLeague, computeLevel, computeLeagueFromAccuracy, getXpToNextLeague } from '@/lib/leagues';
 import { formatCurrency, formatAddress } from '@/lib/format';
 import ShareButton from '@/components/ShareButton';
-import BrandLogo from '@/components/BrandLogo';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -212,30 +210,8 @@ export default function LeaderboardPage() {
 
   return (
     <div className={styles.pageContainer}>
-      {/* DESKTOP HEADER */}
+      {/* DESKTOP FILTERS - Single row with all filters */}
       <header className={styles.desktopHeader}>
-        <div className={styles.headerBrand}>
-          <Link href="/" className={styles.logo}>
-            <BrandLogo size={28} />
-            <span className={styles.logoText}>BeRight</span>
-          </Link>
-          <span className={styles.version}>V.2.04</span>
-          {onChainForecasters.length > 0 && (
-            <span style={{
-              marginLeft: '8px',
-              padding: '2px 8px',
-              background: network === 'mainnet' ? '#10B981' : '#6366F1',
-              color: 'white',
-              borderRadius: '4px',
-              fontSize: '10px',
-              fontWeight: 600,
-              textTransform: 'uppercase'
-            }}>
-              <Shield size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-              {network}
-            </span>
-          )}
-        </div>
         <div className={styles.headerFilters}>
           <div className={styles.filterRow}>
             {desktopMetrics.map((metric) => (
@@ -247,11 +223,7 @@ export default function LeaderboardPage() {
                 {metric}
               </button>
             ))}
-            <button className={`${styles.filterBtn} ${styles.filterBtnLast}`}>
-              Rules & Payouts
-            </button>
-          </div>
-          <div className={styles.filterRow}>
+            <span className={styles.filterDivider} />
             {desktopTimes.map((time) => (
               <button
                 key={time}
@@ -261,20 +233,15 @@ export default function LeaderboardPage() {
                 {time}
               </button>
             ))}
+            <button className={`${styles.filterBtn} ${styles.filterBtnLast}`}>
+              Rules & Payouts
+            </button>
           </div>
         </div>
       </header>
 
-      {/* MOBILE HEADER */}
+      {/* MOBILE HEADER - Title only, navigation handled by global header */}
       <header className={styles.mobileHeader}>
-        <div className={styles.mobileTopBar}>
-          <Link href="/" className={styles.iconBtn}>
-            <ChevronLeft size={24} />
-          </Link>
-          <button className={styles.iconBtn}>
-            <MoreVertical size={24} />
-          </button>
-        </div>
         <h1 className={styles.mobileTitle}>LEADERBOARD</h1>
       </header>
 
@@ -594,6 +561,7 @@ export default function LeaderboardPage() {
 
         {/* MOBILE LIST */}
         <div className={styles.mobileList}>
+          <h2 className={styles.mobileListTitle}>All Rankings</h2>
           <div className={styles.mobileListHeader}>
             <span>TRADER</span>
             <span>ALPHA / ACC.</span>

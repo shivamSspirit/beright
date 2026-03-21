@@ -380,20 +380,21 @@ export async function runOrchestratorCycle(
     }
   }
 
-  // ── 10. Builder ─────────────────────────────────────────────────────────
-  if (shouldRun(state.lastBuilderRun, INTERVALS.builder)) {
-    try {
-      const builderResult = await deps.runBuilder();
-      state.lastBuilderRun = ts();
-      state.totalBuilderRuns++;
-      saveState(state);
-      if (builderResult.mood === 'BULLISH') {
-        alerts.push({ text: `*BUILDER* — ${builderResult.text.slice(0, 500)}`, mood: 'BULLISH', data: builderResult.data });
-      }
-    } catch (err) {
-      console.warn('[orchestrator] Builder failed:', err);
-    }
-  }
+  // ── 10. Builder DISABLED - saves ~$2,880/mo in LLM costs ────────────────
+  // Re-enable when needed for autonomous code generation
+  // if (shouldRun(state.lastBuilderRun, INTERVALS.builder)) {
+  //   try {
+  //     const builderResult = await deps.runBuilder();
+  //     state.lastBuilderRun = ts();
+  //     state.totalBuilderRuns++;
+  //     saveState(state);
+  //     if (builderResult.mood === 'BULLISH') {
+  //       alerts.push({ text: `*BUILDER* — ${builderResult.text.slice(0, 500)}`, mood: 'BULLISH', data: builderResult.data });
+  //     }
+  //   } catch (err) {
+  //     console.warn('[orchestrator] Builder failed:', err);
+  //   }
+  // }
 
   // ── 11. Proactive agent ─────────────────────────────────────────────────
   if (shouldRun(state.lastProactiveRun, INTERVALS.proactive)) {

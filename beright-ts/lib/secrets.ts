@@ -47,6 +47,12 @@ export interface SecretsConfig {
   // Gemini (backup LLM - Google)
   geminiApiKey?: string;
 
+  // OpenAI (GPT-4)
+  openaiApiKey?: string;
+
+  // xAI (Grok)
+  xaiApiKey?: string;
+
   // Tavily (social search)
   tavilyApiKey?: string;
 
@@ -126,6 +132,12 @@ class SecretsManager {
 
     // Gemini (backup)
     this.config.geminiApiKey = process.env.GEMINI_API_KEY;
+
+    // OpenAI (GPT-4)
+    this.config.openaiApiKey = process.env.OPENAI_API_KEY;
+
+    // xAI (Grok)
+    this.config.xaiApiKey = process.env.XAI_API_KEY;
 
     // Tavily
     this.config.tavilyApiKey = process.env.TAVILY_API_KEY;
@@ -246,6 +258,22 @@ class SecretsManager {
   getGeminiApiKey(): string | undefined {
     this.ensureInitialized();
     return this.config.geminiApiKey;
+  }
+
+  /**
+   * Get OpenAI API key
+   */
+  getOpenAIApiKey(): string | undefined {
+    this.ensureInitialized();
+    return this.config.openaiApiKey;
+  }
+
+  /**
+   * Get xAI (Grok) API key
+   */
+  getXAIApiKey(): string | undefined {
+    this.ensureInitialized();
+    return this.config.xaiApiKey;
   }
 
   /**

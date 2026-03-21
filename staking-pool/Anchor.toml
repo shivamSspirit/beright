@@ -7,10 +7,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-staking_pool = "StKp111111111111111111111111111111111111111"
+staking_pool = "Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM"
 
 [programs.devnet]
-staking_pool = "StKp111111111111111111111111111111111111111"
+staking_pool = "Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM"
+
+[programs.mainnet]
+staking_pool = "Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM"
 
 [registry]
 url = "https://api.apr.dev"

@@ -4,6 +4,14 @@ members = [
 ]
 resolver = "2"
 
+[workspace.dependencies]
+anchor-lang = "0.32.0"
+anchor-spl = "0.32.0"
+# Pin to avoid edition2024 requirement in newer versions
+blake3 = "=1.5.5"
+indexmap = "=2.7.1"
+proc-macro-crate = "=3.2.0"
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

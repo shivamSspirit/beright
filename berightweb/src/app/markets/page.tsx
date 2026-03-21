@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useBackendStatus } from '@/hooks/useMarkets';
 import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData, getJupiterHotEvents, searchJupiterEvents, JupiterEvent } from '@/lib/api';
 import TradingModal from '@/components/TradingModal';
@@ -634,8 +633,6 @@ function jupiterToApiMarket(event: JupiterEvent): MarketWithDFlow | null {
 
 export default function MarketsPage() {
   const { isConnected } = useBackendStatus();
-  const { login, authenticated, ready } = usePrivy();
-  const { wallets } = useWallets();
 
   const [markets, setMarkets] = useState<MarketWithDFlow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -657,14 +654,6 @@ export default function MarketsPage() {
 
   // Trading modal state
   const [tradingMarket, setTradingMarket] = useState<MarketWithDFlow | null>(null);
-
-  // Get wallet address from Privy
-  const solanaWallet = wallets.find(w =>
-    w.walletClientType === 'privy' ||
-    w.walletClientType === 'phantom' ||
-    w.walletClientType === 'solflare'
-  );
-  const walletAddress = solanaWallet?.address;
 
   const fetchMarkets = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) {
@@ -788,38 +777,8 @@ export default function MarketsPage() {
 
   return (
     <div className="markets-page">
-      {/* Header */}
+      {/* Search & Filters */}
       <header className="markets-header">
-        <div className="header-top">
-          <Link href="/" className="back-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </Link>
-          <h1 className="page-title">Markets</h1>
-          <div className="header-right">
-            {ready && !authenticated ? (
-              <button className="connect-wallet-btn" onClick={login}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 7V4a1 1 0 00-1-1H5a2 2 0 00-2 2v14a2 2 0 002 2h13a1 1 0 001-1v-4" />
-                  <path d="M16 10h6M18 8v4" />
-                </svg>
-                Connect
-              </button>
-            ) : walletAddress ? (
-              <div className="wallet-badge">
-                <span className="wallet-dot" />
-                {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
-              </div>
-            ) : (
-              <div className={`status-badge ${isConnected ? 'live' : ''}`}>
-                <span className="status-dot" />
-                {isConnected ? 'Live' : 'Demo'}
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Search */}
         <div className="search-container">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -979,7 +938,7 @@ export default function MarketsPage() {
         /* ━━━ HEADER ━━━ */
         .markets-header {
           position: sticky;
-          top: 0;
+          top: 72px; /* Account for global header */
           z-index: 50;
           background: rgba(10, 10, 12, 0.85);
           backdrop-filter: blur(20px) saturate(180%);
@@ -987,92 +946,6 @@ export default function MarketsPage() {
           border-bottom: 1px solid rgba(255, 255, 255, 0.04);
           padding-top: env(safe-area-inset-top, 0px);
         }
-
-        .header-top {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 16px;
-        }
-
-        .back-btn {
-          width: 34px;
-          height: 34px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.06);
-          border-radius: 10px;
-          color: rgba(255, 255, 255, 0.6);
-          transition: all 0.2s;
-        }
-        .back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-
-        .page-title {
-          font-size: 18px;
-          font-weight: 800;
-          color: #fff;
-          letter-spacing: -0.03em;
-          text-transform: uppercase;
-        }
-
-        .header-right { display: flex; align-items: center; }
-
-        .status-badge {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 5px 10px;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 20px;
-          font-size: 10px;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.5);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .status-badge.live { background: rgba(16, 185, 129, 0.12); color: #10B981; }
-        .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-        .status-badge.live .status-dot { box-shadow: 0 0 8px currentColor; animation: pulse-glow 2s infinite; }
-
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(0.9); }
-        }
-
-        .connect-wallet-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 14px;
-          background: linear-gradient(135deg, #10B981 0%, #10B981 100%);
-          border: none;
-          border-radius: 10px;
-          font-size: 11px;
-          font-weight: 700;
-          color: #000;
-          cursor: pointer;
-          transition: all 0.2s;
-          text-transform: uppercase;
-          letter-spacing: 0.02em;
-        }
-        .connect-wallet-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3); }
-        .connect-wallet-btn svg { stroke: #000; }
-
-        .wallet-badge {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.2);
-          border-radius: 20px;
-          font-size: 11px;
-          font-weight: 600;
-          font-family: 'SF Mono', 'Fira Code', monospace;
-          color: #10B981;
-        }
-        .wallet-dot { width: 6px; height: 6px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981; }
 
         /* ━━━ SEARCH ━━━ */
         .search-container {
@@ -1629,90 +1502,77 @@ export default function MarketsPage() {
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - VERY SMALL PHONES (<360px)
+           RESPONSIVE - SMALL PHONES (<420px) - SINGLE COLUMN
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (max-width: 359px) {
-          .header-top { padding: 8px 10px; }
-          .page-title { font-size: 14px; }
-          .back-btn { width: 30px; height: 30px; }
-          .connect-wallet-btn { padding: 5px 8px; font-size: 9px; }
-          .status-badge, .wallet-badge { padding: 3px 6px; font-size: 9px; }
+        @media (max-width: 419px) {
+          .search-container { margin: 0 12px 10px; padding: 10px 12px; }
+          .search-container input { font-size: 14px; }
 
-          .search-container { margin: 0 10px 8px; padding: 8px 10px; }
-          .search-container input { font-size: 12px; }
+          .filters-container { padding: 0 12px 8px; gap: 6px; }
+          .filters-container :global(.dropdown-trigger) { padding: 8px 12px; font-size: 12px; }
+          .filters-container :global(.dropdown-label) { max-width: 70px; }
 
-          .filters-container { padding: 0 10px 6px; gap: 4px; }
-          .filters-container :global(.dropdown-trigger) { padding: 5px 8px; font-size: 10px; }
-          .filters-container :global(.dropdown-label) { max-width: 50px; }
+          .results-info { padding: 0 12px 8px; }
+          .results-count { font-size: 11px; }
+          .data-source { font-size: 10px; padding: 4px 8px; }
 
-          .results-info { padding: 0 10px 6px; }
-          .results-count { font-size: 9px; }
-          .data-source { font-size: 8px; padding: 2px 5px; }
+          .markets-main { padding: 8px 12px; }
+          .markets-grid { grid-template-columns: 1fr; gap: 12px; }
 
-          .markets-main { padding: 6px 8px; }
-          .markets-grid { grid-template-columns: 1fr; gap: 8px; }
+          .markets-grid :global(.compact-card) { height: auto; min-height: 180px; max-height: none; }
+          .markets-grid :global(.card-media) { height: 100px; }
+          .markets-grid :global(.card-content) { padding: 12px; gap: 8px; }
+          .markets-grid :global(.card-title) { font-size: 15px; height: auto; min-height: auto; max-height: none; -webkit-line-clamp: 3; line-height: 1.4; }
+          .markets-grid :global(.price-value) { font-size: 18px; }
+          .markets-grid :global(.price-label) { font-size: 10px; }
+          .markets-grid :global(.spark-row) { height: 56px; min-height: 56px; }
+          .markets-grid :global(.spark-badge) { padding: 4px 8px; font-size: 11px; }
+          .markets-grid :global(.stat-value) { font-size: 12px; }
+          .markets-grid :global(.stat-label) { font-size: 9px; }
+          .markets-grid :global(.card-footer) { margin: 0 12px 10px; }
+          .markets-grid :global(.trade-btn) { padding: 10px; font-size: 12px; border-radius: 8px; }
+          .markets-grid :global(.source-badge) { font-size: 10px; padding: 4px 10px; }
 
-          .markets-grid :global(.compact-card) { height: 210px; min-height: 210px; max-height: 210px; }
-          .markets-grid :global(.card-media) { height: 60px; }
-          .markets-grid :global(.card-content) { padding: 8px; gap: 5px; }
+          .load-more-btn { padding: 12px 20px; font-size: 13px; min-width: 160px; }
+          .pagination-info { font-size: 11px; }
+        }
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+           RESPONSIVE - MEDIUM PHONES (420-519px) - 2 COLUMNS
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+        @media (min-width: 420px) and (max-width: 519px) {
+          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .markets-grid :global(.compact-card) { height: 260px; min-height: 260px; max-height: 260px; }
+          .markets-grid :global(.card-media) { height: 65px; }
+          .markets-grid :global(.card-content) { padding: 10px; gap: 6px; }
           .markets-grid :global(.card-title) { font-size: 12px; height: 32px; min-height: 32px; max-height: 32px; }
-          .markets-grid :global(.price-value) { font-size: 13px; }
-          .markets-grid :global(.spark-row) { height: 40px; min-height: 40px; }
-          .markets-grid :global(.spark-badge) { padding: 1px 4px; font-size: 8px; }
-          .markets-grid :global(.trade-btn) { margin: 0 8px 6px; padding: 6px; font-size: 9px; }
-
-          .load-more-btn { padding: 10px 16px; font-size: 11px; min-width: 140px; }
-          .pagination-info { font-size: 9px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - SMALL PHONES (360-399px)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 360px) and (max-width: 399px) {
-          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-          .markets-grid :global(.compact-card) { height: 230px; min-height: 230px; max-height: 230px; }
-          .markets-grid :global(.card-media) { height: 55px; }
-          .markets-grid :global(.card-content) { padding: 8px; gap: 4px; }
-          .markets-grid :global(.card-title) { font-size: 10px; height: 26px; min-height: 26px; max-height: 26px; }
-          .markets-grid :global(.price-value) { font-size: 12px; }
-          .markets-grid :global(.price-label) { font-size: 7px; }
-          .markets-grid :global(.spark-row) { height: 42px; min-height: 42px; }
-          .markets-grid :global(.spark-badge) { padding: 1px 4px; font-size: 8px; }
-          .markets-grid :global(.stat-value) { font-size: 9px; }
-          .markets-grid :global(.trade-btn) { margin: 0 6px 5px; padding: 5px; font-size: 8px; }
-          .filters-container :global(.dropdown-label) { max-width: 60px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - MEDIUM PHONES (400-479px)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 400px) and (max-width: 479px) {
-          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-          .markets-grid :global(.compact-card) { height: 240px; min-height: 240px; max-height: 240px; }
-          .markets-grid :global(.card-media) { height: 60px; }
-          .markets-grid :global(.card-title) { font-size: 11px; height: 28px; min-height: 28px; max-height: 28px; }
-          .markets-grid :global(.price-value) { font-size: 13px; }
-          .markets-grid :global(.spark-row) { height: 44px; min-height: 44px; }
+          .markets-grid :global(.price-value) { font-size: 14px; }
+          .markets-grid :global(.price-label) { font-size: 8px; }
+          .markets-grid :global(.spark-row) { height: 48px; min-height: 48px; }
+          .markets-grid :global(.spark-badge) { padding: 3px 6px; font-size: 10px; }
+          .markets-grid :global(.stat-value) { font-size: 11px; }
+          .markets-grid :global(.trade-btn) { padding: 8px; font-size: 10px; }
           .filters-container :global(.dropdown-label) { max-width: 80px; }
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - LARGE PHONES (480-639px)
+           RESPONSIVE - LARGE PHONES (520-639px)
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 480px) and (max-width: 639px) {
-          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-          .markets-grid :global(.compact-card) { height: 250px; min-height: 250px; max-height: 250px; }
-          .markets-grid :global(.card-media) { height: 65px; }
-          .markets-grid :global(.card-title) { font-size: 12px; height: 32px; min-height: 32px; max-height: 32px; }
-          .markets-grid :global(.price-value) { font-size: 14px; }
-          .markets-grid :global(.spark-row) { height: 46px; min-height: 46px; }
+        @media (min-width: 520px) and (max-width: 639px) {
+          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .markets-grid :global(.compact-card) { height: 270px; min-height: 270px; max-height: 270px; }
+          .markets-grid :global(.card-media) { height: 70px; }
+          .markets-grid :global(.card-content) { padding: 12px; gap: 6px; }
+          .markets-grid :global(.card-title) { font-size: 13px; height: 34px; min-height: 34px; max-height: 34px; }
+          .markets-grid :global(.price-value) { font-size: 15px; }
+          .markets-grid :global(.spark-row) { height: 50px; min-height: 50px; }
+          .markets-grid :global(.stat-value) { font-size: 11px; }
         }
 
         /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
            RESPONSIVE - SMALL TABLETS (640-767px)
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         @media (min-width: 640px) and (max-width: 767px) {
-          .header-top { padding: 14px 20px; }
           .search-container { margin: 0 20px 14px; }
           .filters-container { padding: 0 20px 12px; }
           .results-info { padding: 0 20px 12px; }
@@ -1730,8 +1590,6 @@ export default function MarketsPage() {
            RESPONSIVE - TABLETS (768-1023px)
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         @media (min-width: 768px) and (max-width: 1023px) {
-          .header-top { padding: 16px 24px; }
-          .page-title { font-size: 18px; }
           .search-container { margin: 0 24px 16px; padding: 12px 16px; }
           .filters-container { padding: 0 24px 14px; gap: 10px; }
           .filters-container :global(.dropdown-trigger) { padding: 10px 14px; }
@@ -1751,8 +1609,6 @@ export default function MarketsPage() {
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         @media (min-width: 1024px) {
           .markets-header { padding-left: 24px; padding-right: 24px; }
-          .header-top { padding: 18px 0; max-width: 1400px; margin: 0 auto; }
-          .page-title { font-size: 20px; }
           .search-container { max-width: 1400px; margin: 0 auto 18px; padding: 14px 18px; }
           .filters-container { max-width: 1400px; margin: 0 auto; padding: 0 0 16px; gap: 12px; }
           .filters-container :global(.dropdown-trigger) { padding: 10px 16px; border-radius: 12px; }
@@ -1797,8 +1653,6 @@ export default function MarketsPage() {
            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
         @media (max-height: 500px) and (orientation: landscape) {
           .markets-header { position: relative; }
-          .header-top { padding: 8px 16px; }
-          .page-title { font-size: 15px; }
           .search-container { margin: 0 16px 8px; padding: 8px 12px; }
           .filters-container { padding: 0 16px 8px; }
           .filters-container :global(.dropdown-trigger) { padding: 6px 10px; }

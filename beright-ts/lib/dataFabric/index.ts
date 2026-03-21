@@ -171,7 +171,7 @@ export class DataFabric {
     );
 
     // Collect all markets
-    const allMarkets: RawMarketData[] = [];
+    let allMarkets: RawMarketData[] = [];
     const errors: string[] = [];
 
     for (const result of results) {
@@ -183,6 +183,16 @@ export class DataFabric {
       } else {
         errors.push(result.reason?.message || 'Unknown error');
       }
+    }
+
+    // Limit raw markets before ML matching to prevent slow processing
+    // Sort by volume to keep most relevant markets
+    const MAX_MARKETS_FOR_ML = 200;
+    if (allMarkets.length > MAX_MARKETS_FOR_ML) {
+      console.log(`[DataFabric] Limiting markets from ${allMarkets.length} to ${MAX_MARKETS_FOR_ML} for ML matching`);
+      allMarkets = allMarkets
+        .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+        .slice(0, MAX_MARKETS_FOR_ML);
     }
 
     // Deduplicate and unify markets

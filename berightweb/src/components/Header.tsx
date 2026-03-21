@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import { usePrivy } from '@privy-io/react-auth';
+import { useSubscription, TIER_CONFIG } from '@/hooks/useSubscription';
 import BrandLogo from './BrandLogo';
+import { ModeToggle } from './ModeBanner';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated, walletAddress, logout, isLoading } = useUser();
   const { login } = usePrivy();
+  const { tier, tierConfig, isLoading: subscriptionLoading } = useSubscription();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -27,17 +30,19 @@ export default function Header() {
     <>
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="nav-inner">
-          <Link href="/" className="nav-logo" aria-label="BeRight Home">
-            <BrandLogo size={32} />
-            <span className="logo-text">BeRight</span>
+          <Link href="/" className="nav-logo" aria-label="BeRight Home" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+            <BrandLogo size={28} />
+            <span className="logo-text" style={{ lineHeight: '28px' }}>BeRight</span>
           </Link>
 
           <div className="nav-links" role="menubar">
+            <Link href="/pools" className="nav-link" role="menuitem">Pools</Link>
             <Link href="/docs" className="nav-link" role="menuitem">Docs</Link>
             <Link href="/docs/faq" className="nav-link" role="menuitem">FAQ</Link>
           </div>
 
           <div className="nav-actions">
+            <ModeToggle />
             <a href="https://t.me/berightaii" target="_blank" rel="noopener noreferrer" className="nav-cta telegram-btn" aria-label="Join Telegram">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
@@ -67,6 +72,11 @@ export default function Header() {
               </button>
             ) : (
               <div className="wallet-connected">
+                {/* Tier Badge */}
+                <Link href="/subscription" className="tier-badge" style={{ '--tier-color': tierConfig.color } as React.CSSProperties}>
+                  {tierConfig.badge}
+                </Link>
+
                 <div className="wallet-info">
                   <span className="wallet-dot" />
                   <span className="wallet-address">{formatAddress(walletAddress || '')}</span>
@@ -116,60 +126,56 @@ export default function Header() {
         }
 
         .nav-logo {
-          display: inline-flex;
+          display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           text-decoration: none;
           color: #F1F5F9;
-          line-height: 1;
         }
 
         .logo-text {
-          font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
-          font-size: 22px;
-          font-weight: 800;
-          letter-spacing: -0.5px;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: -0.3px;
           color: #F1F5F9;
-          line-height: 1;
-          display: inline-block;
-          vertical-align: middle;
+          line-height: 32px;
         }
 
         .nav-links {
           display: flex;
           align-items: center;
-          gap: 36px;
+          gap: 32px;
         }
 
         .nav-link {
-          color: #94A3B8;
+          color: #CBD5E1;
           text-decoration: none;
-          font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
-          font-size: 15px;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 14px;
           font-weight: 500;
+          letter-spacing: 0.01em;
           transition: color 0.2s ease;
-          line-height: 1;
         }
 
         .nav-link:hover {
-          color: #F1F5F9;
+          color: #FFFFFF;
         }
 
         .nav-cta {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 18px;
-          background: rgba(0, 194, 255, 0.1);
+          padding: 10px 16px;
+          background: rgba(0, 194, 255, 0.08);
           border: 1px solid rgba(0, 194, 255, 0.2);
-          border-radius: 10px;
+          border-radius: 8px;
           color: #F1F5F9;
-          font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 13px;
+          font-weight: 500;
           text-decoration: none;
-          transition: all 0.25s ease;
-          line-height: 1;
+          transition: all 0.2s ease;
         }
 
         .nav-cta:hover {
@@ -224,25 +230,48 @@ export default function Header() {
         .wallet-connected {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 6px 8px 6px 14px;
+          gap: 6px;
+          padding: 4px 6px 4px 6px;
           background: rgba(16, 185, 129, 0.1);
           border: 1px solid rgba(16, 185, 129, 0.25);
-          border-radius: 10px;
+          border-radius: 8px;
+        }
+
+        .tier-badge {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 3px 8px;
+          background: color-mix(in srgb, var(--tier-color) 15%, transparent);
+          border: 1px solid color-mix(in srgb, var(--tier-color) 30%, transparent);
+          border-radius: 4px;
+          font-family: 'JetBrains Mono', 'SF Mono', monospace;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          color: var(--tier-color);
+          text-decoration: none;
+          transition: all 0.2s ease;
+        }
+
+        .tier-badge:hover {
+          background: color-mix(in srgb, var(--tier-color) 25%, transparent);
+          border-color: color-mix(in srgb, var(--tier-color) 50%, transparent);
+          transform: translateY(-1px);
         }
 
         .wallet-info {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
         }
 
         .wallet-dot {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
           background: #10B981;
           border-radius: 50%;
-          box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+          box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
           animation: pulse 2s ease-in-out infinite;
         }
 
@@ -253,7 +282,7 @@ export default function Header() {
 
         .wallet-address {
           font-family: 'JetBrains Mono', 'SF Mono', monospace;
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 500;
           color: #F1F5F9;
         }
@@ -262,11 +291,11 @@ export default function Header() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 32px;
-          height: 32px;
+          width: 26px;
+          height: 26px;
           background: rgba(244, 63, 94, 0.1);
           border: 1px solid rgba(244, 63, 94, 0.2);
-          border-radius: 8px;
+          border-radius: 6px;
           color: #F43F5E;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -275,6 +304,11 @@ export default function Header() {
         .disconnect-btn:hover {
           background: rgba(244, 63, 94, 0.2);
           border-color: rgba(244, 63, 94, 0.4);
+        }
+
+        .disconnect-btn svg {
+          width: 14px;
+          height: 14px;
         }
 
         @media (max-width: 768px) {
@@ -315,21 +349,26 @@ export default function Header() {
           }
 
           .wallet-connected {
-            padding: 6px 8px 6px 10px;
+            padding: 4px 6px 4px 8px;
           }
 
           .wallet-address {
-            font-size: 12px;
+            font-size: 10px;
           }
 
           .disconnect-btn {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
           }
 
           .disconnect-btn svg {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
+          }
+
+          .tier-badge {
+            padding: 2px 6px;
+            font-size: 8px;
           }
         }
 
@@ -339,12 +378,12 @@ export default function Header() {
           }
 
           .wallet-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
           }
 
           .wallet-connected {
-            padding: 8px 8px 8px 12px;
+            padding: 6px 6px 6px 10px;
           }
         }
       `}</style>

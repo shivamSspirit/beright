@@ -558,20 +558,6 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
             {/* Ambient Glow */}
             <div className="ambient-glow" />
 
-            {/* Header */}
-            <header className="header">
-                <div className="user-pill">
-                    <div className="avatar" />
-                    <div className="balance"><span>$1,240.50</span> USD</div>
-                </div>
-                <div className="icon-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                    </svg>
-                </div>
-            </header>
-
             <main className="deck-container">
                 {/* Bottom Card (preview) */}
                 {bottomCard && (
@@ -911,7 +897,9 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
           background: linear-gradient(180deg, #0f0f1a 0%, var(--bg-deep) 100%);
           color: var(--text-primary);
-          height: 100vh;
+          /* Height: 100dvh - 72px (header spacer from providers) - 72px (bottom nav) */
+          height: calc(100dvh - 144px);
+          min-height: 380px;
           width: 100%;
           overflow: hidden;
           display: flex;
@@ -931,56 +919,6 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           filter: blur(60px);
         }
 
-        /* Header */
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px 20px;
-          position: relative;
-          z-index: 10;
-        }
-
-        .user-pill {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(255, 255, 255, 0.05);
-          padding: 4px 12px 4px 4px;
-          border-radius: 20px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .avatar {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, var(--accent), #0066cc);
-        }
-
-        .balance {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-        }
-
-        .balance span {
-          color: var(--text-primary);
-        }
-
-        .icon-btn {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--text-secondary);
-          cursor: pointer;
-        }
-
         /* Deck */
         .deck-container {
           flex: 1;
@@ -998,7 +936,9 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           position: absolute;
           width: 100%;
           max-width: 360px;
-          height: 520px;
+          /* Height accounts for swipe labels + controls area */
+          height: calc(100% - 130px);
+          max-height: 500px;
           background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
           border-radius: 24px;
           display: flex;
@@ -1404,7 +1344,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         /* Controls */
         .controls {
-          padding: 0 24px calc(24px + 80px);
+          padding: 0 24px 16px;
           display: flex;
           justify-content: center;
           gap: 48px;
@@ -1413,7 +1353,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
           .controls {
-            padding-bottom: calc(24px + 80px + env(safe-area-inset-bottom));
+            padding-bottom: calc(16px + env(safe-area-inset-bottom));
           }
         }
 
@@ -2348,87 +2288,99 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         /* Small phones (iPhone SE, etc) */
         @media (max-width: 380px) {
+          .bier-root {
+            height: calc(100dvh - 144px);
+            min-height: 360px;
+          }
           .bier-card {
             border-radius: 18px;
-            height: calc(100vh - 220px);
-            max-height: 480px;
+            height: calc(100% - 110px);
+            max-height: 420px;
           }
-          .zone-hook { min-height: 90px; height: 25%; }
-          .zone-question { padding: 12px 14px 10px; }
-          .question { font-size: 16px; }
-          .context { font-size: 12px; }
-          .zone-number { padding: 0 14px 10px; }
-          .chart-odds .odds-value { font-size: 36px; }
+          .zone-hook { min-height: 80px; height: 24%; }
+          .zone-question { padding: 10px 12px 8px; }
+          .question { font-size: 15px; -webkit-line-clamp: 2; }
+          .context { font-size: 11px; }
+          .zone-number { padding: 0 12px 8px; }
+          .chart-odds .odds-value { font-size: 32px; }
           .chart-container { gap: 2px; }
-          .mini-chart { width: 100px; height: 35px; }
-          .gauge-container { height: 6px; margin-bottom: 8px; }
-          .payout-text { font-size: 12px; }
-          .zone-social { padding: 10px 14px; }
-          .social-stat { font-size: 11px; }
-          .zone-insight { padding: 10px 14px; gap: 10px; }
-          .insight-text { font-size: 12px; }
-          .control-btn { width: 58px; height: 58px; }
-          .btn-icon { width: 26px; height: 26px; }
-          .btn-skip { width: 44px; height: 44px; }
-          .btn-skip .btn-icon { width: 20px; height: 20px; }
-          .controls { gap: 32px; padding: 0 20px calc(16px + 70px); }
-          .swipe-labels { padding: 6px 30px; font-size: 12px; }
-          .header { padding: 12px 16px; }
-          .deck-container { padding: 0 12px; margin-top: -5px; }
+          .mini-chart { width: 90px; height: 32px; }
+          .gauge-container { height: 6px; margin-bottom: 6px; }
+          .payout-text { font-size: 11px; }
+          .zone-social { padding: 8px 12px; }
+          .social-stat { font-size: 10px; }
+          .zone-insight { padding: 8px 12px; gap: 8px; }
+          .insight-text { font-size: 11px; }
+          .insight-icon { width: 24px; height: 24px; }
+          .control-btn { width: 54px; height: 54px; }
+          .btn-icon { width: 24px; height: 24px; }
+          .btn-skip { width: 40px; height: 40px; }
+          .btn-skip .btn-icon { width: 18px; height: 18px; }
+          .controls { gap: 28px; padding: 0 16px 12px; }
+          .swipe-labels { padding: 4px 24px; font-size: 11px; }
+          .deck-container { padding: 0 10px; margin-top: 0; }
         }
 
         /* Regular phones */
         @media (min-width: 381px) and (max-width: 480px) {
-          .bier-card {
-            height: calc(100vh - 230px);
-            max-height: 520px;
+          .bier-root {
+            height: calc(100dvh - 144px);
+            min-height: 380px;
           }
-          .zone-hook { min-height: 100px; }
-          .question { font-size: 18px; }
-          .chart-odds .odds-value { font-size: 38px; }
-          .control-btn { width: 64px; height: 64px; }
-          .controls { gap: 40px; padding: 0 24px calc(20px + 70px); }
+          .bier-card {
+            height: calc(100% - 120px);
+            max-height: 460px;
+          }
+          .zone-hook { min-height: 90px; }
+          .question { font-size: 17px; }
+          .chart-odds .odds-value { font-size: 36px; }
+          .control-btn { width: 60px; height: 60px; }
+          .controls { gap: 36px; padding: 0 20px 14px; }
         }
 
         /* Short screens (landscape, older phones) */
         @media (max-height: 700px) {
           .bier-card {
-            height: calc(100vh - 200px);
-            max-height: 450px;
+            height: calc(100% - 100px);
+            max-height: 380px;
           }
-          .zone-hook { min-height: 80px; height: 22%; }
-          .question { font-size: 17px; }
-          .chart-odds .odds-value { font-size: 36px; }
-          .controls { padding: 0 24px calc(12px + 60px); gap: 36px; }
+          .zone-hook { min-height: 70px; height: 22%; }
+          .question { font-size: 16px; }
+          .chart-odds .odds-value { font-size: 32px; }
+          .controls { padding: 0 24px 10px; gap: 32px; }
           .swipe-labels { padding: 4px 30px; }
         }
 
         /* Very short screens */
         @media (max-height: 600px) {
           .bier-card {
-            height: calc(100vh - 180px);
-            max-height: 380px;
+            height: calc(100% - 90px);
+            max-height: 320px;
           }
-          .zone-hook { min-height: 60px; height: 20%; }
-          .zone-question { padding: 10px 14px 8px; }
-          .question { -webkit-line-clamp: 1; font-size: 15px; }
+          .zone-hook { min-height: 50px; height: 18%; }
+          .zone-question { padding: 8px 12px 6px; }
+          .question { -webkit-line-clamp: 1; font-size: 14px; }
           .context { display: none; }
-          .zone-number { padding: 0 14px 8px; }
-          .chart-odds .odds-value { font-size: 32px; }
-          .chart-row { margin-bottom: 8px; }
-          .zone-social { padding: 8px 14px; }
-          .zone-insight { padding: 8px 14px; }
-          .controls { padding: 0 20px calc(8px + 50px); gap: 30px; }
-          .control-btn { width: 56px; height: 56px; }
+          .zone-number { padding: 0 12px 6px; }
+          .chart-odds .odds-value { font-size: 28px; }
+          .chart-row { margin-bottom: 6px; }
+          .zone-social { padding: 6px 12px; }
+          .zone-insight { padding: 6px 12px; }
+          .controls { padding: 0 20px 8px; gap: 28px; }
+          .control-btn { width: 50px; height: 50px; }
         }
 
         /* Tablets and larger */
         @media (min-width: 768px) {
+          .bier-root {
+            height: calc(100dvh - 144px);
+          }
           .bier-card {
             max-width: 400px;
-            height: 560px;
+            height: calc(100% - 140px);
+            max-height: 540px;
           }
-          .controls { gap: 56px; }
+          .controls { gap: 56px; padding: 0 24px 20px; }
         }
       `}</style>
         </div>

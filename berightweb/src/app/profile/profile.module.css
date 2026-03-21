@@ -26,7 +26,9 @@
     linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 40px 40px;
-  min-height: 100vh;
+  /* Account for bottom nav (72px) - header spacer is handled by providers */
+  min-height: calc(100vh - 72px);
+  padding-bottom: 72px;
   font-family: var(--pf-font-sans);
   -webkit-font-smoothing: antialiased;
   position: relative;
@@ -66,67 +68,6 @@
   }
 }
 
-/* Mobile Header */
-.mobileHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--pf-border);
-  margin-bottom: 8px;
-}
-
-@media (min-width: 1024px) {
-  .mobileHeader {
-    display: none;
-  }
-}
-
-.backBtn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--pf-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--pf-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.backBtn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--pf-text);
-}
-
-.headerTitle {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--pf-text);
-  letter-spacing: -0.02em;
-}
-
-.shareBtn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--pf-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--pf-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.shareBtn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--pf-text);
-}
-
 /* ═══════════════════════════════════════════════════════════════
    SIDEBAR (Desktop Only)
    ═══════════════════════════════════════════════════════════════ */
@@ -141,27 +82,6 @@
   .sidebar {
     display: flex;
   }
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 8px;
-  margin-bottom: 16px;
-}
-
-.logoText {
-  font-size: 18px;
-  font-weight: 700;
-  color: #F1F5F9;
-  font-family: Inter, -apple-system, sans-serif;
-  letter-spacing: -0.3px;
-}
-
-.logoSvg {
-  width: 100px;
-  height: 24px;
 }
 
 /* Navigation */
@@ -1039,6 +959,37 @@
   color: var(--pf-text-muted);
 }
 
+/* Subscription Card Styles */
+.tierBadge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--pf-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.usageBar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.usageBarFill {
+  height: 100%;
+  background: var(--pf-emerald);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.usageText {
+  font-size: 11px;
+  color: var(--pf-text-dim);
+  font-family: var(--pf-font-mono);
+}
+
 .addressBox {
   display: flex;
   align-items: center;
@@ -1224,19 +1175,6 @@
   padding-bottom: 8px;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MOBILE BOTTOM NAV
-   ═══════════════════════════════════════════════════════════════ */
-
-.bottomNavSpacer {
-  height: 80px;
-}
-
-@media (min-width: 1024px) {
-  .bottomNavSpacer {
-    display: none;
-  }
-}
 
 /* ═══════════════════════════════════════════════════════════════
    LOADING & STATES
