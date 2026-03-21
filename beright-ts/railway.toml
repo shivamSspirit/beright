@@ -1,45 +1,10 @@
-# Railway Configuration for BeRight Agents
-# ==========================================
-# Deploy with: railway up
-# Or link repo and auto-deploy on push
-
 [build]
-# Use custom Dockerfile for multi-service deployment
-dockerfilePath = "Dockerfile"
+builder = "nixpacks"
+buildCommand = "npm install && npm run build"
 
 [deploy]
-# Number of instances (1 is fine for monolithic PM2 setup)
-numReplicas = 1
-
-# Health check (120s for PM2 + Next.js cold start)
+startCommand = "npm start"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 120
-
-# Graceful shutdown
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
-
-[deploy.resources]
-# Railway Pro plan resources
-# Adjust based on your plan limits
-memory = "1Gi"
-cpu = "1"
-
-[[volumes]]
-# Persistent storage for memory, logs, and state
-# Mount at /data - survives redeploys
-source = "beright-data"
-target = "/data"
-
-[env]
-# Port MUST be 8080 for Railway
-PORT = "8080"
-NODE_ENV = "production"
-
-# PM2 config
-PM2_HOME = "/data/.pm2"
-
-# State directories (persistent via volume)
-BERIGHT_STATE_DIR = "/data/state"
-BERIGHT_MEMORY_DIR = "/data/memory"
-BERIGHT_LOGS_DIR = "/data/logs"
+restartPolicyMaxRetries = 3
