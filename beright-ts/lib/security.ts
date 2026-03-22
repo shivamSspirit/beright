@@ -51,6 +51,7 @@ const dynamicVerifiedUsers = new Set<string>();
 // ============================================
 
 // PUBLIC: Basic discovery commands (no account needed)
+// Note: /predict is public to allow easy onboarding - predictions require wallet anyway
 export const PUBLIC_COMMANDS: string[] = [
   '/start',
   '/help',
@@ -63,6 +64,10 @@ export const PUBLIC_COMMANDS: string[] = [
   '/intel',
   '/research',
   '/leaderboard',
+  '/predict',       // Public for easy onboarding
+  '/smartpredict',  // Public for easy onboarding
+  '/findmarket',    // Public for discovery
+  '/me',            // Public to show stats
 ];
 
 // VERIFIED: Predictions + Trading + Wallet (auto-verified on first prediction)
@@ -420,6 +425,18 @@ export function isCommandAllowed(telegramId: string, command: string): { allowed
   // Check if command is in allowlist (or is a general text query)
   const isKnownCommand = cmd.startsWith('/');
   if (isKnownCommand && !allowedCommands.includes(cmd)) {
+    // Check if it's a typo - suggest similar command
+    const allCommands = [...new Set([...PUBLIC_COMMANDS, ...VERIFIED_COMMANDS])];
+    const suggestion = findSimilarCommand(cmd, allCommands);
+
+    if (suggestion) {
+      logAudit({ telegramId, action: 'typo_suggestion', command: cmd, suggestion, tier });
+      return {
+        allowed: false,
+        reason: `Unknown command "${cmd}". Did you mean ${suggestion}?`
+      };
+    }
+
     logAudit({ telegramId, action: 'blocked', command: cmd, reason: 'not_in_allowlist', tier });
     return {
       allowed: false,
@@ -428,6 +445,55 @@ export function isCommandAllowed(telegramId: string, command: string): { allowed
   }
 
   return { allowed: true };
+}
+
+/**
+ * Simple Levenshtein distance for typo detection
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Find similar command for typo suggestions
+ */
+function findSimilarCommand(typo: string, commands: string[]): string | null {
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+
+  for (const cmd of commands) {
+    const distance = levenshteinDistance(typo.toLowerCase(), cmd.toLowerCase());
+    // Only suggest if distance is small (1-2 characters off)
+    if (distance <= 2 && distance < bestDistance) {
+      bestDistance = distance;
+      bestMatch = cmd;
+    }
+  }
+
+  return bestMatch;
 }
 
 /**
@@ -480,11 +546,38 @@ export function filterOutput(text: string, telegramId?: string): string {
   let filtered = text;
   let scrubbed = false;
 
+  // Preserve blockchain explorer URLs before redaction
+  // These contain TX signatures that look like secrets but are public data
+  const explorerUrlPlaceholders: { placeholder: string; url: string }[] = [];
+  const explorerPatterns = [
+    /https?:\/\/solscan\.io\/tx\/[A-Za-z0-9]+(?:\?[^\s)]*)?/g,
+    /https?:\/\/solscan\.io\/account\/[A-Za-z0-9]+(?:\?[^\s)]*)?/g,
+    /https?:\/\/explorer\.solana\.com\/tx\/[A-Za-z0-9]+(?:\?[^\s)]*)?/g,
+    /https?:\/\/solana\.fm\/tx\/[A-Za-z0-9]+(?:\?[^\s)]*)?/g,
+  ];
+
+  // Extract and replace explorer URLs with placeholders
+  let placeholderIndex = 0;
+  for (const pattern of explorerPatterns) {
+    filtered = filtered.replace(pattern, (match) => {
+      const placeholder = `__EXPLORER_URL_${placeholderIndex}__`;
+      explorerUrlPlaceholders.push({ placeholder, url: match });
+      placeholderIndex++;
+      return placeholder;
+    });
+  }
+
+  // Apply secret redaction
   for (const pattern of SECRET_PATTERNS) {
     if (pattern.test(filtered)) {
       filtered = filtered.replace(pattern, '[REDACTED]');
       scrubbed = true;
     }
+  }
+
+  // Restore explorer URLs
+  for (const { placeholder, url } of explorerUrlPlaceholders) {
+    filtered = filtered.replace(placeholder, url);
   }
 
   // Also filter file paths that might reveal server structure

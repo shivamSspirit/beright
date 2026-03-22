@@ -25,6 +25,17 @@ import { recommendations as recommendationsSkill } from './recommendations';
 import { compare as compareSkill } from './comparison';
 import { learnings as learningsSkill } from './learnings';
 import { predict as smartPredictSkill, searchMarketsForPrediction } from './smartPredict';
+import {
+  parseNaturalLanguageCommand,
+  parseSemanticCommand,
+  executeSemanticPrediction,
+  ParsedPredictionCommand,
+  ChatContext,
+  detectMarketUrl,
+  parseUrlPrediction,
+  executeUrlPrediction,
+  FetchedMarketFromUrl,
+} from './semanticPredict';
 import { getQuote as getSwapQuote } from './swap';
 import { getSolPrice } from './prices';
 import { withFailover } from './rpc';
@@ -105,25 +116,45 @@ import { getMarketWatcher } from '../services/marketWatcher';
 // ============================================
 // CHAT CONTEXT TRACKING
 // Track last bot message per chat for context-aware replies
+// Also tracks recent markets for semantic prediction references
 // ============================================
-interface ChatContext {
+interface LocalChatContext {
   lastBotMessage: string;
   timestamp: number;
   markets?: Array<{ title: string; platform: string; url: string }>;
+  // Enhanced market data for semantic predictions
+  recentMarkets?: Array<{
+    title: string;
+    ticker?: string;
+    platform?: string;
+    yesPrice?: number;
+    noPrice?: number;
+  }>;
+  lastCommand?: string;
 }
 
-const chatContextCache = new Map<string, ChatContext>();
+const chatContextCache = new Map<string, LocalChatContext>();
 const CONTEXT_TTL = 10 * 60 * 1000; // 10 minutes
 
-function setChatContext(chatId: string, botMessage: string, markets?: Array<{ title: string; platform: string; url: string }>) {
+function setChatContext(
+  chatId: string,
+  botMessage: string,
+  markets?: Array<{ title: string; platform: string; url: string }>,
+  recentMarkets?: Array<{ title: string; ticker?: string; platform?: string; yesPrice?: number; noPrice?: number }>,
+  lastCommand?: string
+) {
+  const existing = chatContextCache.get(chatId);
   chatContextCache.set(chatId, {
     lastBotMessage: botMessage,
     timestamp: Date.now(),
     markets,
+    // Preserve recent markets if not provided (accumulate from multiple commands)
+    recentMarkets: recentMarkets || existing?.recentMarkets,
+    lastCommand: lastCommand || existing?.lastCommand,
   });
 }
 
-function getChatContext(chatId: string): ChatContext | null {
+function getChatContext(chatId: string): LocalChatContext | null {
   const ctx = chatContextCache.get(chatId);
   if (!ctx) return null;
   if (Date.now() - ctx.timestamp > CONTEXT_TTL) {
@@ -131,6 +162,75 @@ function getChatContext(chatId: string): ChatContext | null {
     return null;
   }
   return ctx;
+}
+
+/**
+ * Get chat context for semantic predictions
+ */
+function getSemanticContext(chatId: string): ChatContext | undefined {
+  const ctx = getChatContext(chatId);
+  if (!ctx || !ctx.recentMarkets || ctx.recentMarkets.length === 0) {
+    return undefined;
+  }
+  return {
+    recentMarkets: ctx.recentMarkets,
+    lastCommand: ctx.lastCommand,
+  };
+}
+
+/**
+ * Patterns that indicate user wants to bet/predict on recent context
+ * Handles: "make a bet on this", "bet on that market", "this yes 0.1 sol"
+ */
+const PRONOUN_BET_PATTERNS = [
+  /(?:bet|predict|wager)\s+(?:on\s+)?(?:this|that|it)(?:\s+(?:market|one))?/i,
+  /(?:make\s+a\s+)?bet\s+on\s+(?:this|that|it)/i,
+  /^(?:this|that)\s*(?:market|one)?\s*(?:yes|no)?\s*([\d.]+)?\s*(sol|usdc)?$/i,
+  /(?:yes|no)\s+(?:on\s+)?(?:this|that|it)(?:\s+(?:market|one))?/i,
+  /(?:go|put|place)\s+(?:[\d.]+)?\s*(?:sol|usdc)?\s*(?:on\s+)?(?:this|that|it)/i,
+  /confirm\s*(?:bet|trade|prediction)?/i,
+];
+
+/**
+ * Check if text contains pronoun reference to recent market
+ */
+function hasPronounReference(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  return PRONOUN_BET_PATTERNS.some(p => p.test(lower));
+}
+
+/**
+ * Extract bet details from pronoun reference
+ */
+function parsePronounBet(text: string): { direction: 'YES' | 'NO'; amount: number; token: string } | null {
+  const lower = text.toLowerCase();
+
+  // Default values
+  let direction: 'YES' | 'NO' = 'YES';
+  let amount = 0.1;
+  let token = 'SOL';
+
+  // Check for NO
+  if (/\bno\b/i.test(lower) || /\bagainst\b/i.test(lower)) {
+    direction = 'NO';
+  }
+
+  // Check for YES explicitly
+  if (/\byes\b/i.test(lower)) {
+    direction = 'YES';
+  }
+
+  // Extract amount
+  const amountMatch = text.match(/([\d.]+)\s*(sol|usdc)?/i);
+  if (amountMatch) {
+    const parsedAmount = parseFloat(amountMatch[1]);
+    if (parsedAmount > 0 && parsedAmount < 1000) {
+      amount = parsedAmount;
+      token = (amountMatch[2] || 'SOL').toUpperCase();
+    }
+  }
+
+  return { direction, amount, token };
 }
 
 /**
@@ -996,32 +1096,98 @@ Markets expiring in <24 hours - act fast!
  * WIRED TO: Supabase (primary) + Solana Memo (verification)
  */
 async function handlePredict(text: string, telegramId?: string, username?: string): Promise<SkillResponse> {
-  // Parse: /predict "question" 70 YES reasoning...
-  const match = text.match(/\/predict\s+["']?([^"']+)["']?\s+(\d+(?:\.\d+)?)\s+(YES|NO)(?:\s+(.+))?/i);
+  // Parse multiple formats:
+  // Format 1: /predict "question" 70 YES [reasoning]
+  // Format 2: /predict "question" YES 0.5 SOL [reasoning]
+  // Format 3: /predict "question" 70 YES 0.5 SOL [reasoning]
+  // Format 4: /predict "question" YES [reasoning] (default 50%)
 
+  let question: string | undefined;
+  let probability = 0.5; // Default 50%
+  let directionUpper: 'YES' | 'NO' = 'YES';
+  let amount = 0;
+  let token = 'SOL';
+  let reasoning: string | undefined;
+
+  // Try Format 3 first: question + prob + direction + amount
+  // /predict "BTC 100k" 75 YES 0.5 SOL reasoning here
+  let match = text.match(/\/predict\s+["']?([^"']+)["']?\s+(\d+(?:\.\d+)?)\s+(YES|NO)\s+([\d.]+)\s*(SOL|USDC)(?:\s+(.+))?/i);
+  if (match) {
+    question = match[1].trim();
+    probability = parseFloat(match[2]) / 100;
+    directionUpper = match[3].toUpperCase() as 'YES' | 'NO';
+    amount = parseFloat(match[4]);
+    token = (match[5] || 'SOL').toUpperCase();
+    reasoning = match[6]?.trim();
+  }
+
+  // Try Format 2: question + direction + amount (no probability)
+  // /predict "BTC 100k" YES 0.5 SOL reasoning here
   if (!match) {
+    match = text.match(/\/predict\s+["']?([^"']+)["']?\s+(YES|NO)\s+([\d.]+)\s*(SOL|USDC)(?:\s+(.+))?/i);
+    if (match) {
+      question = match[1].trim();
+      directionUpper = match[2].toUpperCase() as 'YES' | 'NO';
+      amount = parseFloat(match[3]);
+      token = (match[4] || 'SOL').toUpperCase();
+      reasoning = match[5]?.trim();
+    }
+  }
+
+  // Try Format 1: question + prob + direction + optional reasoning (original format)
+  // /predict "BTC 100k" 75 YES strong momentum
+  if (!match) {
+    match = text.match(/\/predict\s+["']?([^"']+)["']?\s+(\d+(?:\.\d+)?)\s+(YES|NO)(?:\s+(.+))?/i);
+    if (match) {
+      question = match[1].trim();
+      probability = parseFloat(match[2]) / 100;
+      directionUpper = match[3].toUpperCase() as 'YES' | 'NO';
+      reasoning = match[4]?.trim();
+      // Check if reasoning contains amount
+      if (reasoning) {
+        const amountInReasoning = reasoning.match(/([\d.]+)\s*(SOL|USDC)/i);
+        if (amountInReasoning) {
+          amount = parseFloat(amountInReasoning[1]);
+          token = (amountInReasoning[2] || 'SOL').toUpperCase();
+          reasoning = reasoning.replace(amountInReasoning[0], '').trim() || undefined;
+        }
+      }
+    }
+  }
+
+  // Try Format 4: question + direction only (default 50%)
+  // /predict "BTC 100k" YES
+  if (!match) {
+    match = text.match(/\/predict\s+["']?([^"']+)["']?\s+(YES|NO)(?:\s+(.+))?/i);
+    if (match) {
+      question = match[1].trim();
+      directionUpper = match[2].toUpperCase() as 'YES' | 'NO';
+      reasoning = match[3]?.trim();
+    }
+  }
+
+  if (!question) {
     return {
       text: `
 📝 *MAKE A PREDICTION*
 
-Usage: /predict <question> <probability> YES|NO [reasoning]
+*Format:* /predict "market" YES|NO [probability] [amount SOL]
 
-Examples:
-/predict "Bitcoin above 100K by Dec 2026" 65 YES Strong ETF inflows
-/predict "Fed cuts in March" 40 NO Inflation still high
+*Examples:*
+/predict "Bitcoin 100K" YES 0.5 SOL
+/predict "Fed cuts March" NO 75 0.25 SOL
+/predict "Trump wins 2028" YES 60
 
-Probability should be 0-100 (your confidence %).
+*With probability:* 0-100 (your confidence %)
+*With amount:* Get Jupiter quote + on-chain record
 
-Your predictions are stored in Supabase and committed on-chain to Solana for verification.
+Your predictions are committed on-chain to Solana devnet.
 `,
       mood: 'EDUCATIONAL',
     };
   }
 
-  const [, question, probStr, direction, reasoning] = match;
-  const probability = parseFloat(probStr) / 100; // Convert to 0-1
-  const directionUpper = direction.toUpperCase() as 'YES' | 'NO';
-
+  // Validate probability
   if (probability < 0 || probability > 1) {
     return { text: 'Probability must be between 0 and 100', mood: 'ERROR' };
   }
@@ -1089,13 +1255,31 @@ Your predictions are stored in Supabase and committed on-chain to Solana for ver
     // 5. Also store in file-based system for backward compatibility
     addUserPrediction(telegramId, question, probability, directionUpper, reasoning || 'No reasoning provided', 'telegram');
 
+    // 5.5. Get Jupiter quote if amount provided
+    let quoteInfo = '';
+    if (amount > 0) {
+      try {
+        const { getQuote } = await import('./swap');
+        const quote = await getQuote(token, 'USDC', amount);
+        if (quote) {
+          const inputDecimals = token === 'SOL' ? 9 : 6;
+          const outputDecimals = 6;
+          const inputAmount = parseInt(quote.inAmount) / Math.pow(10, inputDecimals);
+          const outputAmount = parseInt(quote.outAmount) / Math.pow(10, outputDecimals);
+          quoteInfo = `\n💰 *Trade:* ${inputAmount.toFixed(4)} ${token} → ${outputAmount.toFixed(2)} USDC\n📊 Mode: Demo (quote only)`;
+        }
+      } catch (quoteError) {
+        console.warn('Jupiter quote failed:', quoteError);
+      }
+    }
+
     // 6. Get user stats for response
     const userPredictions = await db.predictions.getByUser(user.id);
     const totalPredictions = userPredictions.length;
 
     // 7. Format response
     const chainStatus = chainResult.success
-      ? `\n⛓️ *On-Chain Verified*\nTX: \`${chainResult.signature?.slice(0, 12)}...\`\n🔗 [View on Solscan](${chainResult.explorerUrl})`
+      ? `\n⛓️ *On-Chain TX:* \`${chainResult.signature?.slice(0, 8)}...${chainResult.signature?.slice(-8)}\`\n🔗 View: ${chainResult.explorerUrl}`
       : `\n⚠️ On-chain commit pending`;
 
     return {
@@ -1107,28 +1291,90 @@ ${'─'.repeat(35)}
 
 🎯 Direction: ${directionUpper}
 📈 Probability: ${(probability * 100).toFixed(0)}%
+${amount > 0 ? `💵 Amount: ${amount} ${token}` : ''}
 💭 Reasoning: ${reasoning || 'None provided'}
+${quoteInfo}
 ${chainStatus}
 
 📊 Your total predictions: ${totalPredictions}
-Use /me to see your stats
 `,
       mood: 'NEUTRAL',
-      data: { prediction, chainResult },
+      data: { prediction, chainResult, amount, token },
     };
 
   } catch (error) {
     console.error('Prediction error:', error);
 
-    // Fallback to file-based storage
-    console.warn('Falling back to file-based storage');
-    const globalResult = await predict(question, probability, directionUpper, reasoning || 'No reasoning provided', 'telegram');
+    // Fallback to file-based storage + on-chain commit
+    console.warn('Falling back to file-based storage with on-chain commit');
+
+    // Store locally
     addUserPrediction(telegramId, question, probability, directionUpper, reasoning || 'No reasoning provided', 'telegram');
 
+    // Still commit on-chain using calibration program
+    let chainResult: { success: boolean; memoTx?: string; calibrationTx?: string; explorerUrl?: string; error?: string } = { success: false };
+    const marketId = question.slice(0, 30).replace(/[^a-zA-Z0-9-]/g, '-').toUpperCase();
+
+    try {
+      const { commitPredictionWithCalibration } = await import('../lib/onchain/commit');
+      const result = await commitPredictionWithCalibration(
+        username || telegramId, // wallet or telegram ID
+        marketId,
+        probability,
+        directionUpper,
+        0 // category
+      );
+
+      if (result.success) {
+        chainResult = {
+          success: true,
+          memoTx: result.memoTx,
+          calibrationTx: result.calibrationTx,
+          explorerUrl: `https://solscan.io/tx/${result.calibrationTx || result.memoTx}?cluster=devnet`,
+        };
+      }
+    } catch (chainError) {
+      console.warn('On-chain commit failed:', chainError);
+    }
+
+    // Get Jupiter quote if amount provided
+    let quoteInfo = '';
+    if (amount > 0) {
+      try {
+        const { getQuote } = await import('./swap');
+        const quote = await getQuote(token, 'USDC', amount);
+        if (quote) {
+          const inputDecimals = token === 'SOL' ? 9 : 6;
+          const outputDecimals = 6;
+          const inputAmount = parseInt(quote.inAmount) / Math.pow(10, inputDecimals);
+          const outputAmount = parseInt(quote.outAmount) / Math.pow(10, outputDecimals);
+          quoteInfo = `\n💰 *Trade:* ${inputAmount.toFixed(4)} ${token} → ${outputAmount.toFixed(2)} USDC\n📊 Mode: Demo (quote only)`;
+        }
+      } catch (quoteError) {
+        console.warn('Jupiter quote failed:', quoteError);
+      }
+    }
+
+    // Format response with on-chain link
+    const chainStatus = chainResult.success
+      ? `\n⛓️ *On-Chain TX:* \`${(chainResult.calibrationTx || chainResult.memoTx || '').slice(0, 8)}...${(chainResult.calibrationTx || chainResult.memoTx || '').slice(-8)}\`\n🔗 View: ${chainResult.explorerUrl}`
+      : '\n⚠️ On-chain commit pending';
+
     return {
-      text: globalResult.text + '\n\n⚠️ Note: Stored locally (Supabase unavailable)',
-      mood: globalResult.mood,
-      data: globalResult.data,
+      text: `
+✅ *PREDICTION RECORDED*
+${'─'.repeat(35)}
+
+📊 *${question}*
+
+🎯 Direction: ${directionUpper}
+📈 Probability: ${(probability * 100).toFixed(0)}%
+${amount > 0 ? `💵 Amount: ${amount} ${token}` : ''}
+💭 Reasoning: ${reasoning || 'None provided'}
+${quoteInfo}
+${chainStatus}
+`,
+      mood: 'NEUTRAL',
     };
   }
 }
@@ -2947,35 +3193,72 @@ async function processMessage(message: TelegramMessage): Promise<SkillResponse> 
     if (lower === '/brief' || lower === '/morning' || lower === '/daily') return await handleBrief();
     if (lower === '/closing' || lower === '/expiring') return await handleClosing();
 
-    // /hot, /trending, /top - save context for follow-up questions
+    // /hot, /trending, /top - save context for follow-up questions AND semantic predictions
     if (lower === '/hot' || lower === '/trending' || lower === '/top') {
       const response = await handleHot();
-      // Save context with market data for follow-up queries
-      const marketData = response.data as Array<{ title: string; platform: string; url: string }> | undefined;
+      // Save context with enhanced market data for semantic predictions
+      const marketData = response.data as Array<{
+        title: string;
+        platform: string;
+        url: string;
+        ticker?: string;
+        yesPrice?: number;
+        noPrice?: number;
+        yesBid?: number;
+        noBid?: number;
+      }> | undefined;
       if (marketData) {
-        setChatContext(chatId, response.text, marketData.map(m => ({
+        const basicMarkets = marketData.map(m => ({
           title: m.title,
           platform: m.platform,
           url: m.url,
-        })));
+        }));
+        // Enhanced market data for semantic predictions (with prices)
+        const recentMarkets = marketData.slice(0, 10).map(m => ({
+          title: m.title,
+          ticker: m.ticker,
+          platform: m.platform,
+          yesPrice: m.yesPrice || m.yesBid,
+          noPrice: m.noPrice || m.noBid,
+        }));
+        setChatContext(chatId, response.text, basicMarkets, recentMarkets, '/hot');
+        console.log(`[Context] Stored ${recentMarkets.length} markets from /hot for semantic predictions`);
       } else {
-        setChatContext(chatId, response.text);
+        setChatContext(chatId, response.text, undefined, undefined, '/hot');
       }
       return response;
     }
 
-    // /alpha, /edge, /opportunities - save context for follow-up questions
+    // /alpha, /edge, /opportunities - save context for follow-up questions AND semantic predictions
     if (lower === '/alpha' || lower === '/edge' || lower === '/opportunities') {
       const response = await handleAlpha();
-      const marketData = response.data as Array<{ title: string; platform: string; url: string }> | undefined;
+      const marketData = response.data as Array<{
+        title: string;
+        platform: string;
+        url: string;
+        ticker?: string;
+        yesPrice?: number;
+        noPrice?: number;
+        yesBid?: number;
+        noBid?: number;
+      }> | undefined;
       if (marketData) {
-        setChatContext(chatId, response.text, marketData.map(m => ({
+        const basicMarkets = marketData.map(m => ({
           title: m.title,
           platform: m.platform,
           url: m.url,
-        })));
+        }));
+        const recentMarkets = marketData.slice(0, 10).map(m => ({
+          title: m.title,
+          ticker: m.ticker,
+          platform: m.platform,
+          yesPrice: m.yesPrice || m.yesBid,
+          noPrice: m.noPrice || m.noBid,
+        }));
+        setChatContext(chatId, response.text, basicMarkets, recentMarkets, '/alpha');
+        console.log(`[Context] Stored ${recentMarkets.length} markets from /alpha for semantic predictions`);
       } else {
-        setChatContext(chatId, response.text);
+        setChatContext(chatId, response.text, undefined, undefined, '/alpha');
       }
       return response;
     }
@@ -3617,6 +3900,235 @@ Address: \`${address.slice(0, 8)}...${address.slice(-6)}\`
             text: quickResponse.text,
             mood: quickResponse.mood,
           };
+        }
+
+        // ============================================================
+        // URL-BASED PREDICTION DETECTION
+        // Detect pasted market links from Polymarket, Kalshi, Metaculus
+        // e.g., "https://polymarket.com/event/trump-election yes 0.5 sol"
+        // e.g., "https://kalshi.com/markets/btc-100k predict NO with 1 SOL"
+        // ============================================================
+        const detectedUrl = detectMarketUrl(text);
+        if (detectedUrl) {
+          console.log(`[UrlPredict] Detected ${detectedUrl.platform} URL: ${detectedUrl.marketId}`);
+
+          try {
+            const urlPrediction = await parseUrlPrediction(text);
+
+            if (urlPrediction) {
+              console.log(`[UrlPredict] Market: ${urlPrediction.market.title}`);
+              console.log(`[UrlPredict] Direction: ${urlPrediction.direction}, Amount: ${urlPrediction.amount} ${urlPrediction.token}`);
+
+              const predictionResult = await executeUrlPrediction(
+                urlPrediction.market,
+                urlPrediction.direction,
+                urlPrediction.amount,
+                urlPrediction.token,
+                telegramId || 'anonymous',
+                username
+              );
+
+              if (predictionResult.success) {
+                let responseText = `*[TRADER] Prediction Recorded*\n\n`;
+                responseText += `📊 ${urlPrediction.direction} on "${urlPrediction.market.title}"\n`;
+                responseText += `🔗 Platform: ${urlPrediction.market.platform.toUpperCase()}\n`;
+                responseText += `💰 ${urlPrediction.amount} ${urlPrediction.token}\n\n`;
+
+                if (predictionResult.marketMatch) {
+                  const m = predictionResult.marketMatch;
+                  responseText += `Current: YES ${(m.yesPrice * 100).toFixed(0)}% / NO ${(m.noPrice * 100).toFixed(0)}%\n\n`;
+                }
+
+                if (predictionResult.jupiterQuote) {
+                  const q = predictionResult.jupiterQuote;
+                  responseText += `*Quote:* ${q.inputAmount.toFixed(4)} ${q.inputToken} → ${q.outputAmount.toFixed(2)} ${q.outputToken}\n`;
+                  if (q.isSimulation) {
+                    responseText += `Mode: Demo (quote only)\n\n`;
+                  }
+                }
+
+                if (predictionResult.onChainResult) {
+                  const tx = predictionResult.onChainResult.calibrationTx || predictionResult.onChainResult.memoTx;
+                  responseText += `⛓️ *On-Chain TX:* \`${tx.slice(0, 8)}...${tx.slice(-8)}\`\n`;
+                  responseText += `🔗 View: ${predictionResult.onChainResult.explorerUrl}\n`;
+                }
+
+                return {
+                  text: responseText,
+                  mood: 'BULLISH',
+                  data: predictionResult,
+                };
+              } else {
+                return {
+                  text: `❌ Prediction failed: ${predictionResult.error || 'Unknown error'}\n\nTry pasting a market link with: YES/NO and amount`,
+                  mood: 'ERROR',
+                };
+              }
+            } else {
+              // URL detected but couldn't fetch market - show info
+              return {
+                text: `⚠️ Could not fetch market from ${detectedUrl.platform}.\n\nMarket ID: ${detectedUrl.marketId}\n\nPlease check the link is valid and try again.`,
+                mood: 'NEUTRAL',
+              };
+            }
+          } catch (error) {
+            console.error('[UrlPredict] Error:', error);
+            return {
+              text: `❌ Failed to process market link: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              mood: 'ERROR',
+            };
+          }
+        }
+
+        // ============================================================
+        // PRONOUN REFERENCE DETECTION
+        // Handles: "make a bet on this", "bet on that", "this market yes 0.1 sol"
+        // Resolves "this/that/it" to the most recent market from context
+        // ============================================================
+        if (hasPronounReference(text)) {
+          const ctx = getChatContext(chatId);
+          if (ctx?.recentMarkets && ctx.recentMarkets.length > 0) {
+            const recentMarket = ctx.recentMarkets[0]; // Use most recent market
+            const betDetails = parsePronounBet(text);
+
+            if (betDetails && recentMarket) {
+              console.log(`[PronounRef] Resolved "this" to: "${recentMarket.title}"`);
+              console.log(`[PronounRef] Direction: ${betDetails.direction}, Amount: ${betDetails.amount} ${betDetails.token}`);
+
+              try {
+                const predictionResult = await executeSemanticPrediction({
+                  market: recentMarket.title,
+                  direction: betDetails.direction,
+                  amount: betDetails.amount,
+                  token: betDetails.token,
+                  userId: telegramId || 'anonymous',
+                  walletAddress: username,
+                });
+
+                if (predictionResult.success) {
+                  let responseText = `*[TRADER] Prediction Recorded*\n\n`;
+                  responseText += `📊 ${betDetails.direction} on "${recentMarket.title}"\n`;
+                  responseText += `💰 ${betDetails.amount} ${betDetails.token}\n\n`;
+
+                  if (predictionResult.marketMatch) {
+                    const m = predictionResult.marketMatch;
+                    responseText += `Current: YES ${(m.yesPrice * 100).toFixed(0)}% / NO ${(m.noPrice * 100).toFixed(0)}%\n\n`;
+                  }
+
+                  if (predictionResult.jupiterQuote) {
+                    const q = predictionResult.jupiterQuote;
+                    responseText += `*Quote:* ${q.inputAmount.toFixed(4)} ${q.inputToken} → ${q.outputAmount.toFixed(2)} ${q.outputToken}\n`;
+                    if (q.isSimulation) {
+                      responseText += `Mode: Demo (quote only)\n\n`;
+                    }
+                  }
+
+                  if (predictionResult.onChainResult) {
+                    const tx = predictionResult.onChainResult.calibrationTx || predictionResult.onChainResult.memoTx;
+                    responseText += `⛓️ *On-Chain TX:* \`${tx.slice(0, 8)}...${tx.slice(-8)}\`\n`;
+                    responseText += `🔗 View: ${predictionResult.onChainResult.explorerUrl}\n`;
+                  }
+
+                  return {
+                    text: responseText,
+                    mood: 'BULLISH',
+                    data: predictionResult,
+                  };
+                } else {
+                  return {
+                    text: `❌ Prediction failed: ${predictionResult.error || 'Unknown error'}`,
+                    mood: 'ERROR',
+                  };
+                }
+              } catch (error) {
+                console.error('[PronounRef] Error:', error);
+                return {
+                  text: `❌ Error recording prediction: ${error instanceof Error ? error.message : 'Unknown'}`,
+                  mood: 'ERROR',
+                };
+              }
+            }
+          } else {
+            // No context available - tell user to select a market first
+            return {
+              text: `I don't know which market you're referring to.\n\nTry:\n• /hot - See trending markets\n• Then say "bet on the first one" or paste a market link`,
+              mood: 'NEUTRAL',
+            };
+          }
+        }
+
+        // ============================================================
+        // SEMANTIC PREDICTION DETECTION
+        // Check for natural language prediction commands before LLM routing
+        // Uses Mistral LLM for semantic understanding
+        // Supports context references like "predict on the first one"
+        // e.g., "Predict YES on Chiefs with 0.5 SOL"
+        // e.g., "I want to bet on founder raising seed"
+        // e.g., "predict yes on the first market" (uses context)
+        // ============================================================
+        const semanticContext = getSemanticContext(chatId);
+        if (semanticContext) {
+          console.log(`[SemanticPredict] Context available: ${semanticContext.recentMarkets?.length || 0} markets`);
+        }
+        const parsedPrediction = await parseSemanticCommand(text, semanticContext);
+        if (parsedPrediction) {
+          console.log(`[SemanticPredict] Detected: ${parsedPrediction.direction} on "${parsedPrediction.market}" for ${parsedPrediction.amount} ${parsedPrediction.token}`);
+
+          try {
+            const predictionResult = await executeSemanticPrediction({
+              market: parsedPrediction.market,
+              direction: parsedPrediction.direction,
+              amount: parsedPrediction.amount,
+              token: parsedPrediction.token,
+              userId: telegramId || 'anonymous',
+              walletAddress: username, // Wallet pubkey when from gateway
+            });
+
+            if (predictionResult.success) {
+              // Format successful response with Solscan link
+              let responseText = `*[TRADER] Prediction Recorded*\n\n`;
+              responseText += `📊 ${parsedPrediction.direction} on "${parsedPrediction.market}"\n`;
+              responseText += `💰 ${parsedPrediction.amount} ${parsedPrediction.token}\n\n`;
+
+              if (predictionResult.marketMatch) {
+                const m = predictionResult.marketMatch;
+                responseText += `*Matched Market:* ${m.title}\n`;
+                responseText += `Current: YES ${(m.yesPrice * 100).toFixed(0)}% / NO ${(m.noPrice * 100).toFixed(0)}%\n`;
+                responseText += `Match confidence: ${(m.similarity * 100).toFixed(0)}%\n\n`;
+              }
+
+              if (predictionResult.jupiterQuote) {
+                const q = predictionResult.jupiterQuote;
+                responseText += `*Quote:* ${q.inputAmount.toFixed(4)} ${q.inputToken} → ${q.outputAmount.toFixed(2)} ${q.outputToken}\n`;
+                if (q.isSimulation) {
+                  responseText += `Mode: Demo (quote only)\n\n`;
+                }
+              }
+
+              if (predictionResult.onChainResult) {
+                const tx = predictionResult.onChainResult.calibrationTx || predictionResult.onChainResult.memoTx;
+                responseText += `⛓️ *On-Chain TX:* \`${tx.slice(0, 8)}...${tx.slice(-8)}\`\n`;
+                responseText += `🔗 View: ${predictionResult.onChainResult.explorerUrl}\n`;
+              }
+
+              return {
+                text: responseText,
+                mood: 'BULLISH',
+                data: predictionResult,
+              };
+            } else {
+              return {
+                text: `❌ Prediction failed: ${predictionResult.error || 'Unknown error'}\n\nTry: /predict "<question>" <prob> YES|NO`,
+                mood: 'ERROR',
+              };
+            }
+          } catch (error) {
+            console.error('[SemanticPredict] Error:', error);
+            return {
+              text: `❌ Prediction error: ${error instanceof Error ? error.message : 'Unknown'}\n\nTry: /predict "<question>" <prob> YES|NO`,
+              mood: 'ERROR',
+            };
+          }
         }
 
         try {

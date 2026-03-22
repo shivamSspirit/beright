@@ -602,6 +602,33 @@ export const ROUTES: Route[] = [
   },
 
   {
+    id: 'semantic-predict',
+    handler: 'semanticPredict',
+    patterns: ['/bet', '/wager'],
+    aliases: [
+      'predict yes', 'predict no', 'bet on', 'betting on',
+      'wager on', 'putting', 'put sol on', 'put usdc on',
+      'bet sol', 'bet usdc', 'predict with'
+    ],
+    goals: ['EXECUTE_TRADE', 'CALIBRATE'],
+    domains: ['PREDICTION_MARKETS'],
+    requiresAuth: true,
+    requiresWallet: true,
+    tier: 'free',
+    rateLimit: { requests: 10, window: 60000 },
+    description: 'Natural language prediction with Jupiter quote and on-chain recording',
+    examples: [
+      'Predict YES on Chiefs Super Bowl with 0.5 SOL',
+      'bet 1 SOL on NO for Bitcoin $100k',
+      'putting 0.25 SOL on YES for Fed rate cut'
+    ],
+    categories: ['predictions', 'trading'],
+    showTyping: true,
+    expectedDurationMs: 5000,
+    recordEpisode: true,
+  },
+
+  {
     id: 'intelligence',
     handler: 'intelligence',
     patterns: ['/intel', '/intelligence'],
