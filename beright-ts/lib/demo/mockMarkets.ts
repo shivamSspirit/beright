@@ -72,6 +72,7 @@ const CRYPTO_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/btc-100k',
     category: 'crypto',
+    imageUrl: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint1111111111111111111111111111111',
       noMint: 'DemoNoMint11111111111111111111111111111111',
@@ -99,6 +100,7 @@ const CRYPTO_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/eth-10k',
     category: 'crypto',
+    imageUrl: 'https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint2222222222222222222222222222222',
       noMint: 'DemoNoMint22222222222222222222222222222222',
@@ -126,6 +128,7 @@ const CRYPTO_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/sol-500',
     category: 'crypto',
+    imageUrl: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint3333333333333333333333333333333',
       noMint: 'DemoNoMint33333333333333333333333333333333',
@@ -160,6 +163,7 @@ const POLITICS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/potus-2028',
     category: 'politics',
+    imageUrl: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint4444444444444444444444444444444',
       noMint: 'DemoNoMint44444444444444444444444444444444',
@@ -187,6 +191,7 @@ const POLITICS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/fed-chair',
     category: 'politics',
+    imageUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint5555555555555555555555555555555',
       noMint: 'DemoNoMint55555555555555555555555555555555',
@@ -221,6 +226,7 @@ const ECONOMICS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/fed-q2',
     category: 'economics',
+    imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint6666666666666666666666666666666',
       noMint: 'DemoNoMint66666666666666666666666666666666',
@@ -248,6 +254,7 @@ const ECONOMICS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/recession-2025',
     category: 'economics',
+    imageUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint7777777777777777777777777777777',
       noMint: 'DemoNoMint77777777777777777777777777777777',
@@ -275,6 +282,7 @@ const ECONOMICS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/inflation-3pct',
     category: 'economics',
+    imageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint8888888888888888888888888888888',
       noMint: 'DemoNoMint88888888888888888888888888888888',
@@ -309,6 +317,7 @@ const TECH_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/agi-2026',
     category: 'tech',
+    imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMint9999999999999999999999999999999',
       noMint: 'DemoNoMint99999999999999999999999999999999',
@@ -336,6 +345,7 @@ const TECH_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/tesla-fsd',
     category: 'tech',
+    imageUrl: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMintAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       noMint: 'DemoNoMintAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
@@ -363,6 +373,7 @@ const TECH_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/apple-ar',
     category: 'tech',
+    imageUrl: 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMintBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
       noMint: 'DemoNoMintBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
@@ -397,6 +408,7 @@ const SPORTS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/superbowl-2026',
     category: 'sports',
+    imageUrl: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMintCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
       noMint: 'DemoNoMintCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
@@ -424,6 +436,7 @@ const SPORTS_MARKETS: DemoMarket[] = [
     status: 'active',
     url: 'https://demo.beright.fun/market/worldcup-2026',
     category: 'sports',
+    imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&h=300&fit=crop',
     tokens: {
       yesMint: 'DemoYesMintDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
       noMint: 'DemoNoMintDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
