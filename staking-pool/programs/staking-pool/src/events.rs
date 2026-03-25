@@ -389,3 +389,79 @@ pub struct DriftLiquidationWarningEvent {
     pub action_taken: u8, // 0 = warning, 1 = stop loss, 2 = liquidated
     pub timestamp: i64,
 }
+
+// === Simplified Forecaster Pool Events ===
+
+/// Emitted when a forecaster pool is created
+#[event]
+pub struct ForecastPoolCreatedEvent {
+    pub pool: Pubkey,
+    pub forecaster: Pubkey,
+    pub tier: u8,
+    pub capacity: u64,
+    pub token_mint: Pubkey,
+    pub timestamp: i64,
+}
+
+/// Emitted when tokens are staked to a forecaster pool
+#[event]
+pub struct ForecastPoolStakedEvent {
+    pub pool: Pubkey,
+    pub delegator: Pubkey,
+    pub amount: u64,
+    pub shares_received: u64,
+    pub share_price: u64,
+    pub total_value: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when tokens are unstaked from a forecaster pool
+#[event]
+pub struct ForecastPoolUnstakedEvent {
+    pub pool: Pubkey,
+    pub delegator: Pubkey,
+    pub shares_burned: u64,
+    pub amount_received: u64,
+    pub fee_paid: u64,
+    pub share_price: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when a prediction is opened using pool capital
+#[event]
+pub struct PoolPredictionOpenedEvent {
+    pub pool: Pubkey,
+    pub prediction: Pubkey,
+    pub market_id: [u8; 32],
+    pub platform: u8,
+    pub side: u8,
+    pub amount: u64,
+    pub entry_price: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when a prediction is resolved
+#[event]
+pub struct PoolPredictionResolvedEvent {
+    pub pool: Pubkey,
+    pub prediction: Pubkey,
+    pub won: bool,
+    pub pnl: i64,
+    pub forecaster_share: u64,
+    pub delegator_share: u64,
+    pub platform_share: u64,
+    pub new_share_price: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when profit is distributed
+#[event]
+pub struct ProfitDistributedEvent {
+    pub pool: Pubkey,
+    pub total_profit: u64,
+    pub forecaster_amount: u64,
+    pub delegator_amount: u64,
+    pub platform_amount: u64,
+    pub new_share_price: u64,
+    pub timestamp: i64,
+}

@@ -520,4 +520,131 @@ pub mod staking_pool {
     pub fn execute_slash(ctx: Context<ExecuteSlash>) -> Result<()> {
         instructions::slashing::check::execute_handler(ctx)
     }
+
+    // ============ Simplified Forecaster Pools ============
+
+    /// Initialize platform treasury (one-time setup)
+    ///
+    /// Creates the treasury account that collects fees from all pools.
+    pub fn initialize_treasury(ctx: Context<InitializeTreasury>) -> Result<()> {
+        instructions::forecast_pool::treasury::handler_init(ctx)
+    }
+
+    /// Update treasury admin
+    pub fn update_treasury_admin(ctx: Context<UpdateTreasuryAdmin>) -> Result<()> {
+        instructions::forecast_pool::treasury::handler_update_admin(ctx)
+    }
+
+    /// Create a forecaster pool (one-click)
+    ///
+    /// Creates a new staking pool with fixed tier configuration.
+    /// Tiers: StarterSol, BasicSol, StarterUsdc, BasicUsdc, ProSol, ProUsdc, EliteSol, EliteUsdc
+    ///
+    /// # Arguments
+    /// * `tier` - Pool tier determining capacity and requirements
+    /// * `brier_score_scaled` - Forecaster's Brier score * 1000 (e.g., 0.25 = 250)
+    /// * `prediction_count` - Number of resolved predictions
+    pub fn create_forecast_pool(
+        ctx: Context<CreateForecastPool>,
+        tier: PoolTier,
+        brier_score_scaled: u64,
+        prediction_count: u32,
+    ) -> Result<()> {
+        instructions::forecast_pool::create_pool::handler(ctx, tier, brier_score_scaled, prediction_count)
+    }
+
+    /// Create a demo forecaster pool (no eligibility check)
+    ///
+    /// For testing and demo purposes only.
+    pub fn create_forecast_pool_demo(
+        ctx: Context<CreateForecastPoolDemo>,
+        tier: PoolTier,
+    ) -> Result<()> {
+        instructions::forecast_pool::create_pool::handler_demo(ctx, tier)
+    }
+
+    /// Stake tokens to a forecaster pool
+    ///
+    /// Delegators deposit tokens and receive pool shares.
+    /// Revenue split: 30% forecaster, 50% delegators, 20% platform
+    ///
+    /// # Arguments
+    /// * `amount` - Amount of tokens to stake
+    pub fn stake_to_forecast_pool(ctx: Context<StakeToPool>, amount: u64) -> Result<()> {
+        instructions::forecast_pool::stake::handler(ctx, amount)
+    }
+
+    /// Unstake tokens from a forecaster pool
+    ///
+    /// Burns shares and returns tokens minus fees:
+    /// - 0.5% withdrawal fee (normal)
+    /// - 2% early exit fee (if < 7 days)
+    ///
+    /// # Arguments
+    /// * `shares` - Number of shares to unstake
+    pub fn unstake_from_forecast_pool(
+        ctx: Context<UnstakeFromPool>,
+        shares: u64,
+    ) -> Result<()> {
+        instructions::forecast_pool::unstake::handler(ctx, shares)
+    }
+
+    /// Open a prediction using pool capital
+    ///
+    /// Records a new prediction. Amount is locked from available liquidity.
+    /// Position size must be between 1% and 20% of pool TVL.
+    pub fn open_pool_prediction(
+        ctx: Context<OpenPoolPrediction>,
+        prediction_index: u8,
+        market_id: [u8; 32],
+        platform: u8,
+        side: u8,
+        amount: u64,
+        entry_price: u64,
+    ) -> Result<()> {
+        instructions::forecast_pool::prediction::handler_open(
+            ctx,
+            prediction_index,
+            market_id,
+            platform,
+            side,
+            amount,
+            entry_price,
+        )
+    }
+
+    /// Resolve a prediction and distribute profits
+    ///
+    /// When prediction wins:
+    /// - 30% to forecaster
+    /// - 50% to delegators (increases share price)
+    /// - 20% to platform treasury
+    ///
+    /// When prediction loses:
+    /// - Loss deducted from pool (decreases share price)
+    pub fn resolve_pool_prediction(
+        ctx: Context<ResolvePoolPrediction>,
+        prediction_index: u8,
+        won: bool,
+        exit_price: u64,
+        realized_amount: u64,
+    ) -> Result<()> {
+        instructions::forecast_pool::prediction::handler_resolve(
+            ctx,
+            prediction_index,
+            won,
+            exit_price,
+            realized_amount,
+        )
+    }
+
+    /// Cancel a prediction (market voided)
+    ///
+    /// Returns staked amount to available liquidity.
+    pub fn cancel_pool_prediction(
+        ctx: Context<CancelPoolPrediction>,
+        prediction_index: u8,
+    ) -> Result<()> {
+        instructions::forecast_pool::prediction::handler_cancel(ctx, prediction_index)
+    }
 }

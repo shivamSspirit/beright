@@ -8,6 +8,7 @@ pub mod slashing;
 pub mod meteora;
 pub mod dlmm;
 pub mod drift;
+pub mod forecast_pool;
 
 pub use pool::*;
 pub use deposit::*;
@@ -19,3 +20,4 @@ pub use slashing::*;
 pub use meteora::*;
 pub use dlmm::*;
 pub use drift::*;
+pub use forecast_pool::*;

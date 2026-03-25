@@ -25,3 +25,4 @@ export const STAKING_POOL_CONFIG = {
 export * from "./meteora-cpi";
 export * from "./dlmm";
 export * from "./drift";
+export * from "./forecast-pool";
