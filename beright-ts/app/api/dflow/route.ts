@@ -30,7 +30,7 @@ import {
   DFlowEvent,
   DFlowMarket,
 } from '../../../lib/dflow';
-import { isDemoFromRequest } from '../../../lib/mode';
+import { isDemoRequest } from '../../../lib/mode';
 import {
   getHotDemoMarkets,
   searchDemoMarkets,
@@ -142,9 +142,8 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') as any;
     const order = searchParams.get('order') as any;
 
-    // Get mode from cookie (UI toggle) or fall back to environment
-    const cookieHeader = request.headers.get('cookie');
-    const demoMode = isDemoFromRequest(cookieHeader);
+    // Get mode from middleware-injected header (instant, no parsing needed)
+    const demoMode = isDemoRequest(request);
 
     // ============================================
     // DEMO MODE: Return mock data
@@ -161,6 +160,7 @@ export async function GET(request: NextRequest) {
               seriesTicker: m.seriesTicker,
               title: m.title,
               subtitle: m.question,
+              imageUrl: m.imageUrl,
               volume: m.volume,
               volume24h: m.volume24h,
               liquidity: m.liquidity,
@@ -197,6 +197,7 @@ export async function GET(request: NextRequest) {
               seriesTicker: m.seriesTicker,
               title: m.title,
               subtitle: m.question,
+              imageUrl: m.imageUrl,
               volume: m.volume,
               volume24h: m.volume24h,
               liquidity: m.liquidity,
@@ -224,6 +225,7 @@ export async function GET(request: NextRequest) {
             market: {
               ticker: market.ticker,
               title: market.title,
+              imageUrl: market.imageUrl,
               yesPrice: market.yesPrice,
               noPrice: market.noPrice,
               volume: market.volume,
