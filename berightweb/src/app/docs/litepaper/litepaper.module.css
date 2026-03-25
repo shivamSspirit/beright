@@ -665,6 +665,101 @@
 }
 
 /* ===========================================================================
+   Formula Box - Mathematical formulas styling
+   =========================================================================== */
+
+.formulaBox {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin: 20px 0;
+  font-family: var(--font-mono);
+}
+
+.formula {
+  display: block;
+  font-size: var(--text-base);
+  color: var(--color-primary);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.formula:last-of-type {
+  border-bottom: none;
+}
+
+.formulaExample {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 12px 0 0;
+  font-family: var(--font-sans);
+}
+
+/* ===========================================================================
+   Flow Diagram - Step-by-step process visualization
+   =========================================================================== */
+
+.flowDiagram {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 24px 0;
+}
+
+.flowStep {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.flowNumber {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(0, 255, 178, 0.2));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 50%;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.flowContent {
+  flex: 1;
+}
+
+.flowContent strong {
+  display: block;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.flowContent p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.flowArrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xl);
+  color: var(--color-primary);
+  padding: 8px 0;
+  opacity: 0.6;
+}
+
+/* ===========================================================================
    Mobile Responsive
    =========================================================================== */
 

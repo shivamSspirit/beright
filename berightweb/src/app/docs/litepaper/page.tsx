@@ -17,9 +17,11 @@ const TOC_SECTIONS = [
   { id: 'solution', number: 5, label: 'The Solution' },
   { id: 'competitive', number: 6, label: 'Competitive Landscape' },
   { id: 'product', number: 7, label: 'BeRight Product' },
-  { id: 'business-model', number: 8, label: 'Business Model' },
-  { id: 'roadmap', number: 9, label: 'Roadmap' },
-  { id: 'conclusion', number: 10, label: 'Conclusion' },
+  { id: 'reputation', number: 8, label: 'Reputation System' },
+  { id: 'staking-pools', number: 9, label: 'Staking Pools' },
+  { id: 'business-model', number: 10, label: 'Business Model' },
+  { id: 'roadmap', number: 11, label: 'Roadmap' },
+  { id: 'conclusion', number: 12, label: 'Conclusion' },
 ];
 
 // ===========================================================================
@@ -189,12 +191,98 @@ const REVENUE_STREAMS = [
   {
     title: 'Performance Fee',
     value: '20%',
-    description: 'From Conviction Pools (high-water mark)',
+    description: 'Platform share from Staking Pools profits',
   },
   {
     title: 'Execution Fee',
     value: '1%',
     description: 'Jupiter referral integration',
+  },
+];
+
+// ===========================================================================
+// Reputation System Data
+// ===========================================================================
+
+const DECAY_FORMULA = {
+  main: 'BS_decay = \u03A3(weight_i \u00D7 brier_i) / \u03A3 weight_i',
+  weight: 'weight_i = e^(-\u03BB \u00D7 t_i)',
+  halfLife: 'half-life = ln(2) / \u03BB \u2248 0.693 / \u03BB',
+};
+
+const DECAY_PRESETS = [
+  { name: 'Slow', lambda: '0.01', halfLife: '69 days', lookback: '2 years', useCase: 'Long-term reputation' },
+  { name: 'Moderate', lambda: '0.02', halfLife: '35 days', lookback: '1 year', useCase: 'Default (balanced)' },
+  { name: 'Fast', lambda: '0.05', halfLife: '14 days', lookback: '180 days', useCase: 'Recent focus' },
+  { name: 'Slashing', lambda: '0.10', halfLife: '7 days', lookback: '90 days', useCase: 'Accountability' },
+];
+
+const TIER_REQUIREMENTS = [
+  { tier: 'Superforecaster', maxBrier: '0.15', minPredictions: '50', minEffective: '20', color: '#10b981' },
+  { tier: 'Elite', maxBrier: '0.22', minPredictions: '30', minEffective: '12', color: '#8b5cf6' },
+  { tier: 'Verified', maxBrier: '0.28', minPredictions: '15', minEffective: '8', color: '#3b82f6' },
+  { tier: 'Rookie', maxBrier: '1.00', minPredictions: '5', minEffective: '3', color: '#6b7280' },
+];
+
+// ===========================================================================
+// Staking Pool Tiers Data
+// ===========================================================================
+
+const POOL_TIERS = [
+  { tier: 0, name: 'Starter SOL', capacity: '5 SOL', token: 'SOL', maxBrier: '0.35', minPredictions: 10, minDeposit: '0.1 SOL' },
+  { tier: 1, name: 'Basic SOL', capacity: '10 SOL', token: 'SOL', maxBrier: '0.30', minPredictions: 25, minDeposit: '0.1 SOL' },
+  { tier: 2, name: 'Starter USDC', capacity: '500 USDC', token: 'USDC', maxBrier: '0.35', minPredictions: 10, minDeposit: '5 USDC' },
+  { tier: 3, name: 'Basic USDC', capacity: '1,000 USDC', token: 'USDC', maxBrier: '0.30', minPredictions: 25, minDeposit: '10 USDC' },
+  { tier: 4, name: 'Pro SOL', capacity: '100 SOL', token: 'SOL', maxBrier: '0.25', minPredictions: 100, minDeposit: '1 SOL' },
+  { tier: 5, name: 'Pro USDC', capacity: '10,000 USDC', token: 'USDC', maxBrier: '0.25', minPredictions: 100, minDeposit: '100 USDC' },
+  { tier: 6, name: 'Elite SOL', capacity: '500 SOL', token: 'SOL', maxBrier: '0.20', minPredictions: 250, minDeposit: '5 SOL' },
+  { tier: 7, name: 'Elite USDC', capacity: '50,000 USDC', token: 'USDC', maxBrier: '0.20', minPredictions: 250, minDeposit: '500 USDC' },
+];
+
+const POOL_CONSTANTS = {
+  revenueSplit: { forecaster: 20, delegator: 60, platform: 20 },
+  lockupPeriod: '7 days',
+  withdrawalFee: '0.5%',
+  earlyExitFee: '2%',
+  maxPosition: '20%',
+  minPosition: '1%',
+  creationFee: '0.1 SOL',
+};
+
+// ===========================================================================
+// ML Pipeline Data
+// ===========================================================================
+
+const ML_ALGORITHMS = [
+  {
+    name: 'SBERT (all-MiniLM-L6-v2)',
+    type: 'Embeddings',
+    description: '384-dimensional semantic embeddings for market text matching. ~5ms inference, runs locally via ONNX.',
+  },
+  {
+    name: 'XGBoost Fusion Classifier',
+    type: 'Classification',
+    description: 'Combines 8 features (embedding similarity, cross-encoder, entity overlap, date proximity) for market matching.',
+  },
+  {
+    name: 'GPT-4o-mini',
+    type: 'LLM Classification',
+    description: 'Fallback classifier for edge cases. Rate-limited with caching to minimize costs.',
+  },
+  {
+    name: 'Cosine Similarity',
+    type: 'Similarity',
+    description: 'Measures semantic similarity between normalized embedding vectors.',
+  },
+  {
+    name: 'Jaccard Coefficient',
+    type: 'Entity Matching',
+    description: 'Calculates overlap between extracted entities (names, dates, amounts) from market questions.',
+  },
+  {
+    name: 'Cross-Encoder Reranking',
+    type: 'Verification',
+    description: 'Secondary verification layer for high-confidence matches using bi-encoder architecture.',
   },
 ];
 
@@ -853,13 +941,251 @@ export default function LitepaperPage() {
                   <tr><td>Yield</td><td>Sanctum INF (idle capital)</td></tr>
                 </tbody>
               </table>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>ML Pipeline</h3>
+              <p className={styles.paragraph}>
+                Our market matching and classification system uses a multi-stage ML pipeline for accurate cross-platform market identification.
+              </p>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Algorithm</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ML_ALGORITHMS.map((algo) => (
+                    <tr key={algo.name}>
+                      <td style={{ fontWeight: 600 }}>{algo.name}</td>
+                      <td>{algo.type}</td>
+                      <td style={{ fontSize: 'var(--text-xs)' }}>{algo.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <Callout title="Research Foundation">
+                Our matching methodology is based on arXiv:2601.01706, adapted for prediction market semantics with custom entity extraction for dates, names, and numerical thresholds.
+              </Callout>
             </div>
           </Section>
 
-          {/* Section 8: Business Model */}
-          <Section id="business-model" className={styles.contentSection}>
+          {/* Section 8: Reputation System */}
+          <Section id="reputation" className={styles.contentSection}>
             <div className={styles.sectionTitle}>
               <span className={styles.sectionNumber}>8</span>
+              <h2 className={styles.sectionHeading}>Reputation System</h2>
+            </div>
+            <div className={styles.sectionContent}>
+              <p className={styles.paragraph}>
+                BeRight implements a sophisticated on-chain reputation system using the <span className={styles.highlight}>Brier Score</span> with exponential time decay. This ensures forecasters are judged on recent performance, not historical accuracy that may no longer be relevant.
+              </p>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Brier Score Fundamentals</h3>
+              <p className={styles.paragraph}>
+                The Brier Score measures forecast accuracy on a 0-1 scale where <strong>lower is better</strong>. A score of 0 means perfect predictions, while 0.25 equals random guessing.
+              </p>
+              <div className={styles.formulaBox}>
+                <code className={styles.formula}>Brier = (forecast_probability - actual_outcome)²</code>
+                <p className={styles.formulaExample}>Example: Predicted 65% YES, outcome was NO → Brier = (0.65 - 0)² = 0.4225</p>
+              </div>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Decaying Brier Score</h3>
+              <p className={styles.paragraph}>
+                We apply exponential decay weighting so recent predictions matter more than older ones. This prevents forecasters who were accurate in the past but inaccurate recently from maintaining artificially high reputation.
+              </p>
+              <div className={styles.formulaBox}>
+                <code className={styles.formula}>{DECAY_FORMULA.main}</code>
+                <code className={styles.formula}>{DECAY_FORMULA.weight}</code>
+                <code className={styles.formula}>{DECAY_FORMULA.halfLife}</code>
+              </div>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Decay Configurations</h3>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Mode</th>
+                    <th>Lambda (\u03BB)</th>
+                    <th>Half-Life</th>
+                    <th>Lookback</th>
+                    <th>Use Case</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {DECAY_PRESETS.map((preset) => (
+                    <tr key={preset.name}>
+                      <td>{preset.name}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>{preset.lambda}</td>
+                      <td>{preset.halfLife}</td>
+                      <td>{preset.lookback}</td>
+                      <td>{preset.useCase}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Forecaster Tiers</h3>
+              <p className={styles.paragraph}>
+                Forecasters progress through tiers based on their decaying Brier score and prediction volume. Higher tiers unlock larger pool capacities.
+              </p>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Tier</th>
+                    <th>Max Brier</th>
+                    <th>Min Predictions</th>
+                    <th>Effective Sample</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {TIER_REQUIREMENTS.map((tier) => (
+                    <tr key={tier.tier}>
+                      <td style={{ color: tier.color, fontWeight: 600 }}>{tier.tier}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>\u2264 {tier.maxBrier}</td>
+                      <td>{tier.minPredictions}+</td>
+                      <td>{tier.minEffective}+</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <Callout title="On-Chain Storage">
+                All predictions are recorded on Solana via Program <code style={{ fontSize: '11px' }}>GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ</code>. ForecasterState PDAs store cumulative Brier, calibration buckets, and streak data.
+              </Callout>
+            </div>
+          </Section>
+
+          {/* Section 9: Staking Pools */}
+          <Section id="staking-pools" className={styles.contentSection}>
+            <div className={styles.sectionTitle}>
+              <span className={styles.sectionNumber}>9</span>
+              <h2 className={styles.sectionHeading}>Staking Pools</h2>
+            </div>
+            <div className={styles.sectionContent}>
+              <p className={styles.paragraph}>
+                <span className={styles.highlight}>Forecaster Staking Pools</span> are the core DeFi primitive enabling capital delegation to proven forecasters. Delegators deposit SOL or USDC into pools managed by elite forecasters and earn proportional returns.
+              </p>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>How It Works</h3>
+              <div className={styles.flowDiagram}>
+                <div className={styles.flowStep}>
+                  <div className={styles.flowNumber}>1</div>
+                  <div className={styles.flowContent}>
+                    <strong>Forecaster Creates Pool</strong>
+                    <p>Must meet tier requirements (Brier score + prediction count)</p>
+                  </div>
+                </div>
+                <div className={styles.flowArrow}>\u2193</div>
+                <div className={styles.flowStep}>
+                  <div className={styles.flowNumber}>2</div>
+                  <div className={styles.flowContent}>
+                    <strong>Delegators Stake Capital</strong>
+                    <p>Deposit SOL/USDC, receive LP shares representing pool ownership</p>
+                  </div>
+                </div>
+                <div className={styles.flowArrow}>\u2193</div>
+                <div className={styles.flowStep}>
+                  <div className={styles.flowNumber}>3</div>
+                  <div className={styles.flowContent}>
+                    <strong>Forecaster Trades</strong>
+                    <p>Opens positions on prediction markets (max 20% per trade)</p>
+                  </div>
+                </div>
+                <div className={styles.flowArrow}>\u2193</div>
+                <div className={styles.flowStep}>
+                  <div className={styles.flowNumber}>4</div>
+                  <div className={styles.flowContent}>
+                    <strong>Profits Distributed</strong>
+                    <p>Revenue split: 50% delegators, 30% forecaster, 20% platform</p>
+                  </div>
+                </div>
+              </div>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Pool Tiers</h3>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Tier</th>
+                    <th>Pool Name</th>
+                    <th>Capacity</th>
+                    <th>Max Brier</th>
+                    <th>Min Predictions</th>
+                    <th>Min Deposit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {POOL_TIERS.map((pool) => (
+                    <tr key={pool.tier}>
+                      <td>{pool.tier}</td>
+                      <td>{pool.name}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>{pool.capacity}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>{pool.maxBrier}</td>
+                      <td>{pool.minPredictions}+</td>
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>{pool.minDeposit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Pool Economics</h3>
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.delegator}%</p>
+                  <p className={styles.statLabel}>To Delegators</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.forecaster}%</p>
+                  <p className={styles.statLabel}>To Forecaster</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.platform}%</p>
+                  <p className={styles.statLabel}>To Platform</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.lockupPeriod}</p>
+                  <p className={styles.statLabel}>Lockup Period</p>
+                </div>
+              </div>
+
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Fee Structure</h3>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>Fee Type</th>
+                    <th>Amount</th>
+                    <th>When Applied</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Pool Creation</td>
+                    <td>{POOL_CONSTANTS.creationFee}</td>
+                    <td>One-time on pool creation</td>
+                  </tr>
+                  <tr>
+                    <td>Standard Withdrawal</td>
+                    <td>{POOL_CONSTANTS.withdrawalFee}</td>
+                    <td>After 7-day lockup</td>
+                  </tr>
+                  <tr>
+                    <td>Early Exit</td>
+                    <td>{POOL_CONSTANTS.earlyExitFee}</td>
+                    <td>Before lockup expires</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <Callout title="On-Chain Program">
+                Staking Pools run on Solana Program <code style={{ fontSize: '11px' }}>Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM</code>. All pool state, delegations, and predictions are stored in PDAs for full transparency.
+              </Callout>
+            </div>
+          </Section>
+
+          {/* Section 10: Business Model */}
+          <Section id="business-model" className={styles.contentSection}>
+            <div className={styles.sectionTitle}>
+              <span className={styles.sectionNumber}>10</span>
               <h2 className={styles.sectionHeading}>Business Model</h2>
             </div>
             <div className={styles.sectionContent}>
@@ -908,10 +1234,10 @@ export default function LitepaperPage() {
             </div>
           </Section>
 
-          {/* Section 9: Roadmap */}
+          {/* Section 11: Roadmap */}
           <Section id="roadmap" className={styles.contentSection}>
             <div className={styles.sectionTitle}>
-              <span className={styles.sectionNumber}>9</span>
+              <span className={styles.sectionNumber}>11</span>
               <h2 className={styles.sectionHeading}>Roadmap</h2>
             </div>
             <div className={styles.sectionContent}>
@@ -959,10 +1285,10 @@ export default function LitepaperPage() {
             </div>
           </Section>
 
-          {/* Section 10: Conclusion */}
+          {/* Section 12: Conclusion */}
           <Section id="conclusion" className={styles.contentSection}>
             <div className={styles.sectionTitle}>
-              <span className={styles.sectionNumber}>10</span>
+              <span className={styles.sectionNumber}>12</span>
               <h2 className={styles.sectionHeading}>Conclusion</h2>
             </div>
             <div className={styles.sectionContent}>
