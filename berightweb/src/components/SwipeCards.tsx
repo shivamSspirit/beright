@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { Prediction } from '@/lib/types';
+import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
 
 /**
  * SwipeCards - Nikita Bier 5-Zone Hook-First Design
@@ -16,7 +17,7 @@ import { Prediction } from '@/lib/types';
 
 interface SwipeCardsProps {
     predictions: Prediction[];
-    onVote?: (prediction: Prediction, choice: 'YES' | 'NO') => void;
+    onVote?: (prediction: Prediction, choice: 'YES' | 'NO', txSignature?: string, explorerUrl?: string) => void;
 }
 
 interface AIAnalysis {
@@ -187,6 +188,10 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
     const [swipeClass, setSwipeClass] = useState<string | null>(null);
     const isAnimating = useRef(false);
 
+    // On-chain prediction recording
+    const { recordPrediction, connected: walletConnected } = usePredictionRecorder();
+    const [isRecordingOnChain, setIsRecordingOnChain] = useState(false);
+
     // Track pending fetches to prevent duplicates
     const pendingAnalysisFetches = useRef<Set<string>>(new Set());
 
@@ -195,8 +200,14 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
     const [pendingChoice, setPendingChoice] = useState<'YES' | 'NO' | null>(null);
     const [analysisCache, setAnalysisCache] = useState<Record<string, AIAnalysis>>({});
 
-    // Pre-fetched market intel (real Tavily data)
-    const [marketIntel, setMarketIntel] = useState<Record<string, { loading: boolean; headline: string | null; error: boolean }>>({});
+    // Pre-fetched market intel (real Tavily data) - actionable signals
+    const [marketIntel, setMarketIntel] = useState<Record<string, {
+        loading: boolean;
+        signal: 'YES' | 'NO' | 'NEUTRAL' | null;
+        confidence: 'high' | 'medium' | 'low' | null;
+        shortTake: string | null;
+        error: boolean;
+    }>>({});
     const fetchingIntel = useRef<Set<string>>(new Set());
 
     // Price History Cache (real DFlow data)
@@ -237,38 +248,74 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         }
 
         fetchingIntel.current.add(predictionId);
-        setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: true, headline: null, error: false } }));
+        setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: true, signal: null, confidence: null, shortTake: null, error: false } }));
 
         try {
-            // Quick fetch - just get headline/summary, not full analysis
             const response = await fetch('/api/v2/fact-check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     marketId: prediction.id,
                     question: prediction.question,
-                    userChoice: 'YES', // Default to YES for general intel
+                    userChoice: 'YES',
                     currentProbability: prediction.marketOdds / 100,
                     platform: prediction.platform,
-                    quickMode: true, // Signal we just need headline
+                    quickMode: true,
                 }),
             });
 
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.data?.insight) {
-                    // Extract a concise headline from the analysis
                     const insight = data.data.insight;
-                    const headline = insight.summary || insight.aiAnalysis?.slice(0, 100) || null;
-                    setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, headline, error: false } }));
+
+                    // Extract actionable signal from recommendation
+                    const recommendation = insight.recommendation as 'CONFIRMS' | 'CHALLENGES' | 'NEUTRAL';
+                    const signal: 'YES' | 'NO' | 'NEUTRAL' =
+                        recommendation === 'CONFIRMS' ? 'YES' :
+                        recommendation === 'CHALLENGES' ? 'NO' : 'NEUTRAL';
+
+                    const confidence = (insight.confidence as 'high' | 'medium' | 'low') || 'medium';
+                    const marketOdds = prediction.marketOdds;
+
+                    // Generate ONE smart line: Compare AI view vs market odds to find EDGE
+                    let shortTake: string;
+
+                    if (signal === 'YES') {
+                        // AI supports YES - does market already reflect this?
+                        if (marketOdds >= 70) {
+                            shortTake = confidence === 'high' ? 'AI confirms - market priced right' : 'Market odds look fair';
+                        } else if (marketOdds >= 50) {
+                            shortTake = confidence === 'high' ? 'Undervalued - edge on YES' : 'Slight edge on YES';
+                        } else {
+                            shortTake = confidence === 'high' ? 'Strong contrarian YES' : 'AI sees YES value here';
+                        }
+                    } else if (signal === 'NO') {
+                        // AI supports NO - is market overpriced?
+                        if (marketOdds <= 30) {
+                            shortTake = confidence === 'high' ? 'AI confirms - NO looks right' : 'Market odds look fair';
+                        } else if (marketOdds <= 50) {
+                            shortTake = confidence === 'high' ? 'Edge on NO side' : 'Slight lean to NO';
+                        } else {
+                            shortTake = confidence === 'high' ? 'Market overpriced - bet NO' : 'Consider NO here';
+                        }
+                    } else {
+                        // Neutral - no clear edge
+                        shortTake = marketOdds > 45 && marketOdds < 55 ? 'True coin flip - your call' : 'No clear edge detected';
+                    }
+
+                    setMarketIntel(prev => ({
+                        ...prev,
+                        [predictionId]: { loading: false, signal, confidence, shortTake, error: false }
+                    }));
                 } else {
-                    setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, headline: null, error: true } }));
+                    setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, signal: null, confidence: null, shortTake: null, error: true } }));
                 }
             } else {
-                setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, headline: null, error: true } }));
+                setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, signal: null, confidence: null, shortTake: null, error: true } }));
             }
         } catch {
-            setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, headline: null, error: true } }));
+            setMarketIntel(prev => ({ ...prev, [predictionId]: { loading: false, signal: null, confidence: null, shortTake: null, error: true } }));
         } finally {
             fetchingIntel.current.delete(predictionId);
         }
@@ -471,13 +518,72 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
     }, [topCard, fetchAnalysisForChoice]);
 
     // Confirm vote after viewing analysis
-    const confirmVote = useCallback(() => {
-        if (!pendingChoice || !topCard) return;
+    const confirmVote = useCallback(async () => {
+        console.log('═══════════════════════════════════════════════════');
+        console.log('[SwipeCards] 🎯 confirmVote called');
+        console.log('[SwipeCards] pendingChoice:', pendingChoice);
+        console.log('[SwipeCards] topCard:', topCard?.id, topCard?.question?.slice(0, 50));
+        console.log('[SwipeCards] walletConnected:', walletConnected);
+
+        if (!pendingChoice || !topCard) {
+            console.log('[SwipeCards] ❌ ABORT: No pending choice or top card');
+            return;
+        }
 
         isAnimating.current = true;
         setShowAnalysisModal(false);
         setLastChoice(pendingChoice);
         setShowOverlay(true);
+
+        // Record prediction on-chain first
+        let txSignature: string | null = null;
+        let explorerUrl: string | undefined;
+
+        if (walletConnected) {
+            setIsRecordingOnChain(true);
+
+            // Validate required fields before recording
+            const marketId = topCard.id || `market_${Date.now()}`;
+            const marketOdds = typeof topCard.marketOdds === 'number' && !isNaN(topCard.marketOdds)
+                ? topCard.marketOdds
+                : 50; // Default to 50% if missing
+            const probability = pendingChoice === 'YES'
+                ? marketOdds / 100
+                : 1 - marketOdds / 100;
+
+            console.log('[SwipeCards] 📝 Starting on-chain recording...');
+            console.log('[SwipeCards] Market ID:', marketId);
+            console.log('[SwipeCards] Direction:', pendingChoice.toLowerCase());
+            console.log('[SwipeCards] Market Odds:', marketOdds);
+            console.log('[SwipeCards] Probability:', probability);
+
+            try {
+                txSignature = await recordPrediction({
+                    marketId,
+                    direction: pendingChoice.toLowerCase() as 'yes' | 'no',
+                    probability,
+                    category: 0,
+                });
+
+                if (txSignature) {
+                    explorerUrl = `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`;
+                    console.log('[SwipeCards] ✅ Prediction recorded on-chain!');
+                    console.log('[SwipeCards] Signature:', txSignature);
+                    console.log('[SwipeCards] Explorer:', explorerUrl);
+                } else {
+                    console.log('[SwipeCards] ⚠️ recordPrediction returned null');
+                }
+            } catch (err) {
+                console.error('[SwipeCards] ❌ Failed to record on-chain:', err);
+            } finally {
+                setIsRecordingOnChain(false);
+            }
+        } else {
+            console.log('[SwipeCards] ⚠️ Wallet not connected, skipping on-chain recording');
+        }
+
+        console.log('[SwipeCards] txSignature after recording:', txSignature);
+        console.log('═══════════════════════════════════════════════════');
 
         setTimeout(() => {
             setSwipeClass(pendingChoice === 'YES' ? 'swipe-right' : 'swipe-left');
@@ -494,7 +600,8 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
             });
 
             if (onVote && topCard) {
-                onVote(topCard, pendingChoice);
+                // Pass signature to onVote so it can be saved with the prediction
+                onVote(topCard, pendingChoice, txSignature || undefined, explorerUrl);
             }
 
             setPendingChoice(null);
@@ -503,7 +610,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
                 isAnimating.current = false;
             }, 200);
         }, 1200);
-    }, [pendingChoice, topCard, onVote]);
+    }, [pendingChoice, topCard, onVote, walletConnected, recordPrediction]);
 
     // Change decision
     const changeDecision = useCallback(() => {
@@ -550,14 +657,23 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         return labels[cat] || cat.toUpperCase();
     };
 
+    // Get fallback image based on category
+    const getCategoryFallbackImage = (cat: string) => {
+        const images: Record<string, string> = {
+            crypto: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=400&h=300&fit=crop',
+            politics: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?w=400&h=300&fit=crop',
+            tech: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop',
+            economics: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop',
+            sports: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=400&h=300&fit=crop',
+        };
+        return images[cat] || 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop';
+    };
+
     // Get current analysis
     const currentAnalysis = topCard ? analysisCache[topCard.id] : null;
 
     return (
         <div className="bier-root">
-            {/* Ambient Glow */}
-            <div className="ambient-glow" />
-
             <main className="deck-container">
                 {/* Bottom Card (preview) */}
                 {bottomCard && (
@@ -585,10 +701,10 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
                 {/* Top Card (interactive) */}
                 {topCard && bierData && (
-                    <div className={`bier-card ${swipeClass || ''} ${bierData.isHot ? 'hot-card' : ''}`} data-index="0">
+                    <div className={`bier-card ${swipeClass || ''}`} data-index="0">
                         {/* ZONE 1: THE HOOK (top 30%) */}
                         <div className="zone-hook" style={{
-                            backgroundImage: topCard.dflow?.imageUrl ? `url(${topCard.dflow.imageUrl})` : undefined,
+                            backgroundImage: `url(${topCard.dflow?.imageUrl || getCategoryFallbackImage(topCard.category)})`,
                         }}>
                             <div className="hook-overlay" />
 
@@ -657,36 +773,36 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
                             </div>
                         </div>
 
-                        {/* ZONE 5: AI INTEL */}
-                        <div className="zone-insight">
-                            {marketIntel[topCard.id]?.loading ? (
-                                <>
-                                    <div className="insight-loading" />
-                                    <p className="insight-text loading">Fetching latest news...</p>
-                                </>
-                            ) : marketIntel[topCard.id]?.headline ? (
-                                <>
-                                    <div className="insight-icon live">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                                            <circle cx="12" cy="12" r="10"/>
-                                        </svg>
+                        {/* AI Edge Detector - One line to help you BeRight */}
+                        <div className="zone-ai-footer">
+                            {(() => {
+                                const intel = marketIntel[topCard.id];
+                                if (intel?.loading) {
+                                    return (
+                                        <div className="ai-edge loading">
+                                            <span className="ai-dot pulse" />
+                                            <span>Finding edge...</span>
+                                        </div>
+                                    );
+                                }
+                                if (intel?.signal && intel?.shortTake) {
+                                    return (
+                                        <div className={`ai-edge has-signal ${intel.signal.toLowerCase()}`}>
+                                            <span className="ai-edge-text">{intel.shortTake}</span>
+                                        </div>
+                                    );
+                                }
+                                // Default - show market consensus
+                                const odds = topCard.marketOdds;
+                                return (
+                                    <div className="ai-edge default">
+                                        <span className="ai-edge-text">
+                                            {odds >= 65 ? 'Market favors YES' :
+                                             odds <= 35 ? 'Market favors NO' : 'Market split'}
+                                        </span>
                                     </div>
-                                    <p className="insight-text">
-                                        {marketIntel[topCard.id].headline!.slice(0, 90)}{marketIntel[topCard.id].headline!.length > 90 ? '...' : ''}
-                                    </p>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="insight-icon">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                                        </svg>
-                                    </div>
-                                    <p className="insight-text">
-                                        {topCard.marketOdds >= 70 ? 'Strong YES consensus' : topCard.marketOdds <= 30 ? 'Strong NO consensus' : 'Market divided'} · Swipe for AI analysis
-                                    </p>
-                                </>
-                            )}
+                                );
+                            })()}
                         </div>
 
                         {/* Swipe Stamps */}
@@ -754,6 +870,36 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
                             <span className={`choice-value ${pendingChoice === 'YES' ? 'yes' : 'no'}`}>
                                 {pendingChoice}
                             </span>
+                        </div>
+
+                        {/* AI Edge Section */}
+                        <div className="ai-edge-section">
+                            <div className="edge-row">
+                                <div className="edge-item">
+                                    <span className="edge-label">Market</span>
+                                    <span className="edge-value market">{topCard.marketOdds}%</span>
+                                </div>
+                                <div className="edge-vs">vs</div>
+                                <div className="edge-item">
+                                    <span className="edge-label">AI Estimate</span>
+                                    <span className={`edge-value ai ${
+                                        currentAnalysis?.mood === 'CONFIRMS' ? 'confirms' :
+                                        currentAnalysis?.mood === 'CHALLENGES' ? 'challenges' : ''
+                                    }`}>
+                                        {currentAnalysis?.confidence === 'high' ?
+                                            (currentAnalysis?.mood === 'CONFIRMS' ? `${Math.min(topCard.marketOdds + 15, 95)}%` : `${Math.max(topCard.marketOdds - 15, 5)}%`) :
+                                            currentAnalysis?.confidence === 'medium' ?
+                                            (currentAnalysis?.mood === 'CONFIRMS' ? `${Math.min(topCard.marketOdds + 8, 90)}%` : `${Math.max(topCard.marketOdds - 8, 10)}%`) :
+                                            `${topCard.marketOdds}%`
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            {currentAnalysis?.mood && currentAnalysis?.mood !== 'NEUTRAL' && (
+                                <div className={`edge-hint ${currentAnalysis.mood.toLowerCase()}`}>
+                                    {currentAnalysis.mood === 'CONFIRMS' ? '↑ AI suggests higher probability' : '↓ AI suggests lower probability'}
+                                </div>
+                            )}
                         </div>
 
                         <div className="modal-analysis">
@@ -907,18 +1053,6 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           position: relative;
         }
 
-        .ambient-glow {
-          position: absolute;
-          top: -20%;
-          left: -20%;
-          width: 140%;
-          height: 60%;
-          background: radial-gradient(ellipse at center, rgba(0, 194, 255, 0.12), transparent 70%);
-          pointer-events: none;
-          z-index: 0;
-          filter: blur(60px);
-        }
-
         /* Deck */
         .deck-container {
           flex: 1;
@@ -928,24 +1062,27 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           align-items: center;
           perspective: 1000px;
           padding: 0 16px;
-          margin-top: -10px;
+          /* Removed margin-top hack - use proper flexbox alignment */
         }
 
-        /* THE CARD */
+        /* THE CARD - Premium compact design */
         .bier-card {
           position: absolute;
-          width: 100%;
-          max-width: 360px;
-          /* Height accounts for swipe labels + controls area */
-          height: calc(100% - 130px);
-          max-height: 500px;
-          background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+          width: calc(100% - 48px);
+          max-width: 340px;
+          /* Auto height - content determines size, no clipping */
+          height: auto;
+          background: linear-gradient(180deg, #1a1a28 0%, #0d0d14 100%);
           border-radius: 24px;
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s;
-          box-shadow: 0 30px 100px rgba(0, 0, 0, 0.6);
+          transition: transform 0.35s ease-out, opacity 0.35s ease-out;
+          box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.5),
+            0 2px 8px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .bier-card[data-index="0"] {
@@ -965,24 +1102,15 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           opacity: 0.25;
         }
 
-        /* Hot card animation */
-        .bier-card.hot-card {
-          animation: flameBorder 1.5s ease-in-out infinite;
-        }
-
-        @keyframes flameBorder {
-          0%, 100% { box-shadow: 0 30px 100px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 100, 0, 0.3); }
-          50% { box-shadow: 0 30px 100px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 150, 0, 0.5); }
-        }
-
-        /* ZONE 1: THE HOOK */
+        /* ZONE 1: THE HOOK - Compact for mobile, scales up */
         .zone-hook {
           position: relative;
-          height: 30%;
-          min-height: 120px;
+          height: 100px;
+          flex-shrink: 0;
           background-size: cover;
           background-position: center;
-          background-color: #1f2937;
+          background-color: #1a1a28;
+          border-radius: 24px 24px 0 0;
         }
 
         .hook-overlay {
@@ -1219,7 +1347,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         .zone-social {
           display: flex;
           justify-content: space-between;
-          padding: 12px 16px;
+          padding: 10px 16px;
           border-top: 1px solid rgba(255, 255, 255, 0.08);
           background: rgba(0, 0, 0, 0.2);
         }
@@ -1232,63 +1360,68 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           color: rgba(255, 255, 255, 0.6);
         }
 
-        /* ZONE 5: AI INTEL - Full width footer */
-        .zone-insight {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 14px 16px;
-          background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 0 0 24px 24px;
-          margin: 0;
-        }
-
-        .insight-loading {
-          width: 20px;
-          height: 20px;
-          border: 2px solid rgba(0, 217, 255, 0.2);
-          border-top-color: var(--accent);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          flex-shrink: 0;
-        }
-
-        .insight-icon {
+        /* AI Edge Footer - One clear line */
+        .zone-ai-footer {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
-          background: rgba(255, 255, 255, 0.08);
-          border-radius: 8px;
-          color: var(--text-tertiary);
+          padding: 10px 14px;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.4) 100%);
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 0 0 24px 24px;
+          min-height: 40px;
           flex-shrink: 0;
         }
 
-        .insight-icon.live {
-          background: rgba(0, 230, 118, 0.15);
+        .ai-edge {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .ai-edge.loading {
+          color: var(--accent);
+          font-size: 12px;
+        }
+
+        .ai-edge-text {
+          font-size: 13px;
+          font-weight: 600;
+          text-align: center;
+        }
+
+        .ai-edge.default .ai-edge-text {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .ai-edge.has-signal.yes .ai-edge-text {
           color: var(--yes);
-          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .ai-edge.has-signal.no .ai-edge-text {
+          color: var(--no);
+        }
+
+        .ai-edge.has-signal.neutral .ai-edge-text {
+          color: var(--amber);
+        }
+
+        .ai-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .ai-dot.pulse {
+          background: var(--accent);
+          animation: pulse 1.5s ease-in-out infinite;
         }
 
         @keyframes pulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-
-        .insight-text {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.7);
-          margin: 0;
-          line-height: 1.5;
-          flex: 1;
-        }
-
-        .insight-text.loading {
-          color: var(--accent);
-          font-style: italic;
+          50% { opacity: 0.4; }
         }
 
         /* SWIPE STAMPS */
@@ -1528,8 +1661,8 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         .analysis-modal {
           width: 100%;
           max-width: 100%;
-          max-height: 80vh;
-          max-height: 80dvh;
+          max-height: 70vh;
+          max-height: 70dvh;
           background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
           border-radius: 20px 20px 0 0;
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1543,8 +1676,8 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         /* Small phones - even more compact */
         @media (max-width: 380px) {
           .analysis-modal {
-            max-height: 90vh;
-            max-height: 90dvh;
+            max-height: 70vh;
+            max-height: 70dvh;
             border-radius: 16px 16px 0 0;
           }
 
@@ -1665,8 +1798,8 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         @media (min-width: 481px) {
           .analysis-modal {
             max-width: 400px;
-            max-height: 85vh;
-            max-height: 85dvh;
+            max-height: 70vh;
+            max-height: 70dvh;
             border-radius: 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             animation: slideUp 0.3s ease-out;
@@ -1687,20 +1820,20 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 10px 14px;
+          padding: 8px 12px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           flex-shrink: 0;
         }
 
         @media (max-width: 380px) {
           .modal-header {
-            padding: 8px 12px;
+            padding: 6px 10px;
           }
         }
 
         @media (min-width: 481px) {
           .modal-header {
-            padding: 16px 20px;
+            padding: 10px 16px;
           }
         }
 
@@ -1752,8 +1885,8 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         }
 
         .modal-question {
-          padding: 10px 14px;
-          font-size: 14px;
+          padding: 8px 12px;
+          font-size: 13px;
           font-weight: 700;
           color: var(--text-primary);
           line-height: 1.3;
@@ -1767,11 +1900,10 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         @media (min-width: 481px) {
           .modal-question {
-            padding: 20px;
-            font-size: 18px;
+            padding: 12px 16px;
+            font-size: 15px;
             line-height: 1.4;
-            -webkit-line-clamp: none;
-            display: block;
+            -webkit-line-clamp: 2;
           }
         }
 
@@ -1780,15 +1912,15 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           justify-content: center;
           align-items: center;
           gap: 8px;
-          padding: 10px 14px;
+          padding: 6px 12px;
           background: rgba(0, 0, 0, 0.3);
           flex-shrink: 0;
         }
 
         @media (min-width: 481px) {
           .modal-choice {
-            gap: 12px;
-            padding: 16px;
+            gap: 10px;
+            padding: 10px 14px;
           }
         }
 
@@ -1804,17 +1936,17 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         }
 
         .choice-value {
-          padding: 6px 18px;
+          padding: 4px 14px;
           border-radius: 6px;
-          font-size: 15px;
+          font-size: 13px;
           font-weight: 800;
         }
 
         @media (min-width: 481px) {
           .choice-value {
-            padding: 8px 24px;
-            border-radius: 8px;
-            font-size: 18px;
+            padding: 6px 18px;
+            border-radius: 6px;
+            font-size: 15px;
           }
         }
 
@@ -1830,10 +1962,85 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           border: 1px solid var(--no);
         }
 
+        /* AI Edge Section */
+        .ai-edge-section {
+          padding: 8px 12px;
+          background: rgba(0, 217, 255, 0.05);
+          border-top: 1px solid rgba(0, 217, 255, 0.1);
+          border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+        }
+
+        .edge-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+        }
+
+        .edge-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .edge-label {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .edge-value {
+          font-size: 20px;
+          font-weight: 700;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .edge-value.market {
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .edge-value.ai {
+          color: var(--accent);
+        }
+
+        .edge-value.ai.confirms {
+          color: var(--yes);
+        }
+
+        .edge-value.ai.challenges {
+          color: var(--no);
+        }
+
+        .edge-vs {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.3);
+          font-weight: 600;
+        }
+
+        .edge-hint {
+          text-align: center;
+          font-size: 11px;
+          margin-top: 8px;
+          padding: 4px 8px;
+          border-radius: 4px;
+        }
+
+        .edge-hint.confirms {
+          color: var(--yes);
+          background: rgba(0, 230, 118, 0.1);
+        }
+
+        .edge-hint.challenges {
+          color: var(--no);
+          background: rgba(255, 82, 82, 0.1);
+        }
+
         .modal-analysis {
           padding: 12px;
-          min-height: 80px;
-          flex: 1;
+          min-height: 0;
+          flex: 1 1 auto;
           overflow-y: auto;
           overflow-x: hidden;
           -webkit-overflow-scrolling: touch;
@@ -1841,8 +2048,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         @media (min-width: 481px) {
           .modal-analysis {
-            padding: 20px;
-            min-height: 120px;
+            padding: 16px;
           }
         }
 
@@ -1891,17 +2097,17 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         .verdict-banner {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 10px 12px;
-          border-radius: 10px;
+          gap: 8px;
+          padding: 8px 10px;
+          border-radius: 8px;
           margin-bottom: 4px;
         }
 
         @media (min-width: 481px) {
           .verdict-banner {
-            gap: 12px;
-            padding: 14px 16px;
-            border-radius: 12px;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
           }
         }
 
@@ -1921,13 +2127,13 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
         }
 
         .verdict-icon {
-          font-size: 24px;
+          font-size: 20px;
           line-height: 1;
         }
 
         @media (min-width: 481px) {
           .verdict-icon {
-            font-size: 32px;
+            font-size: 24px;
           }
         }
 
@@ -2221,29 +2427,29 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         .modal-actions {
           display: flex;
-          gap: 8px;
-          padding: 12px;
-          padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+          gap: 6px;
+          padding: 10px 12px;
+          padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
           border-top: 1px solid rgba(255, 255, 255, 0.08);
           flex-shrink: 0;
         }
 
         @media (min-width: 481px) {
           .modal-actions {
-            gap: 12px;
-            padding: 20px;
+            gap: 10px;
+            padding: 12px 16px;
           }
         }
 
         .action-btn {
           flex: 1;
-          padding: 10px;
-          border-radius: 10px;
+          padding: 8px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
-          min-height: 40px;
+          min-height: 36px;
         }
 
         @media (min-width: 481px) {
@@ -2284,103 +2490,185 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           transform: scale(1.02);
         }
 
-        /* RESPONSIVE - Mobile First */
+        /* RESPONSIVE - Premium compact widths */
 
         /* Small phones (iPhone SE, etc) */
         @media (max-width: 380px) {
           .bier-root {
-            height: calc(100dvh - 144px);
-            min-height: 360px;
+            min-height: 420px;
           }
           .bier-card {
-            border-radius: 18px;
-            height: calc(100% - 110px);
-            max-height: 420px;
+            width: calc(100% - 40px);
+            max-width: 300px;
+            border-radius: 20px;
           }
-          .zone-hook { min-height: 80px; height: 24%; }
-          .zone-question { padding: 10px 12px 8px; }
+          .zone-hook {
+            height: 80px;
+            border-radius: 20px 20px 0 0;
+          }
+          .zone-question { padding: 10px 12px 6px; }
           .question { font-size: 15px; -webkit-line-clamp: 2; }
           .context { font-size: 11px; }
           .zone-number { padding: 0 12px 8px; }
           .chart-odds .odds-value { font-size: 32px; }
           .chart-container { gap: 2px; }
-          .mini-chart { width: 90px; height: 32px; }
+          .mini-chart { width: 80px; height: 30px; }
           .gauge-container { height: 6px; margin-bottom: 6px; }
           .payout-text { font-size: 11px; }
           .zone-social { padding: 8px 12px; }
-          .social-stat { font-size: 10px; }
-          .zone-insight { padding: 8px 12px; gap: 8px; }
-          .insight-text { font-size: 11px; }
-          .insight-icon { width: 24px; height: 24px; }
-          .control-btn { width: 54px; height: 54px; }
+          .social-stat { font-size: 11px; }
+          .zone-ai-footer {
+            padding: 8px 12px;
+            min-height: 36px;
+            border-radius: 0 0 20px 20px;
+          }
+          .ai-hint { font-size: 11px; }
+          .ai-headline-text { -webkit-line-clamp: 2; }
+          .control-btn { width: 56px; height: 56px; }
           .btn-icon { width: 24px; height: 24px; }
-          .btn-skip { width: 40px; height: 40px; }
+          .btn-skip { width: 42px; height: 42px; }
           .btn-skip .btn-icon { width: 18px; height: 18px; }
-          .controls { gap: 28px; padding: 0 16px 12px; }
-          .swipe-labels { padding: 4px 24px; font-size: 11px; }
-          .deck-container { padding: 0 10px; margin-top: 0; }
+          .controls { gap: 32px; padding: 0 16px 12px; }
+          .swipe-labels { padding: 6px 24px; font-size: 12px; }
+          .deck-container { padding: 0 16px; }
         }
 
-        /* Regular phones */
+        /* Regular phones (381px - 480px) */
         @media (min-width: 381px) and (max-width: 480px) {
-          .bier-root {
-            height: calc(100dvh - 144px);
-            min-height: 380px;
-          }
           .bier-card {
-            height: calc(100% - 120px);
-            max-height: 460px;
+            width: calc(100% - 48px);
+            max-width: 320px;
           }
-          .zone-hook { min-height: 90px; }
-          .question { font-size: 17px; }
-          .chart-odds .odds-value { font-size: 36px; }
-          .control-btn { width: 60px; height: 60px; }
-          .controls { gap: 36px; padding: 0 20px 14px; }
+          .zone-hook { height: 90px; }
+          .question { font-size: 16px; }
+          .chart-odds .odds-value { font-size: 34px; }
+          .mini-chart { width: 90px; height: 32px; }
+          .control-btn { width: 62px; height: 62px; }
+          .controls { gap: 40px; padding: 0 20px 14px; }
         }
 
-        /* Short screens (landscape, older phones) */
+        /* Short screens (landscape) */
         @media (max-height: 700px) {
-          .bier-card {
-            height: calc(100% - 100px);
-            max-height: 380px;
-          }
-          .zone-hook { min-height: 70px; height: 22%; }
-          .question { font-size: 16px; }
-          .chart-odds .odds-value { font-size: 32px; }
-          .controls { padding: 0 24px 10px; gap: 32px; }
+          .zone-hook { height: 70px; }
+          .zone-question { padding: 8px 12px 6px; }
+          .question { font-size: 15px; -webkit-line-clamp: 2; }
+          .chart-odds .odds-value { font-size: 30px; }
+          .zone-social { padding: 6px 12px; }
+          .zone-ai-footer { padding: 8px 12px; min-height: 34px; }
+          .controls { padding: 0 24px 10px; gap: 36px; }
           .swipe-labels { padding: 4px 30px; }
         }
 
         /* Very short screens */
-        @media (max-height: 600px) {
-          .bier-card {
-            height: calc(100% - 90px);
-            max-height: 320px;
-          }
-          .zone-hook { min-height: 50px; height: 18%; }
-          .zone-question { padding: 8px 12px 6px; }
+        @media (max-height: 580px) {
+          .zone-hook { height: 60px; }
+          .zone-question { padding: 6px 12px 4px; }
           .question { -webkit-line-clamp: 1; font-size: 14px; }
           .context { display: none; }
           .zone-number { padding: 0 12px 6px; }
-          .chart-odds .odds-value { font-size: 28px; }
+          .chart-odds .odds-value { font-size: 26px; }
           .chart-row { margin-bottom: 6px; }
-          .zone-social { padding: 6px 12px; }
-          .zone-insight { padding: 6px 12px; }
+          .zone-social { padding: 5px 12px; }
+          .zone-ai-footer { padding: 6px 12px; min-height: 30px; }
+          .ai-hint { font-size: 10px; }
           .controls { padding: 0 20px 8px; gap: 28px; }
           .control-btn { width: 50px; height: 50px; }
         }
 
-        /* Tablets and larger */
+        /* Tablets (768px+) */
         @media (min-width: 768px) {
-          .bier-root {
-            height: calc(100dvh - 144px);
-          }
+          .deck-container { padding: 0 24px; }
           .bier-card {
-            max-width: 400px;
-            height: calc(100% - 140px);
-            max-height: 540px;
+            width: min(45vw, 360px);
+            max-width: 360px;
+            border-radius: 24px;
           }
-          .controls { gap: 56px; padding: 0 24px 20px; }
+          .zone-hook {
+            height: 100px;
+            border-radius: 24px 24px 0 0;
+          }
+          .zone-question { padding: 12px 16px 8px; }
+          .question { font-size: 17px; -webkit-line-clamp: 2; }
+          .context { font-size: 12px; }
+          .zone-number { padding: 0 16px 10px; }
+          .chart-odds .odds-value { font-size: 38px; }
+          .chart-row { margin-bottom: 10px; }
+          .mini-chart { width: 100px; height: 36px; }
+          .gauge-container { height: 7px; margin-bottom: 8px; }
+          .payout-text { font-size: 12px; }
+          .zone-social { padding: 10px 16px; }
+          .social-stat { font-size: 12px; }
+          .zone-ai-footer {
+            padding: 10px 16px;
+            min-height: 44px;
+            border-radius: 0 0 24px 24px;
+          }
+          .ai-hint { font-size: 12px; gap: 6px; }
+          .ai-headline-text { -webkit-line-clamp: 2; }
+          .controls { gap: 48px; padding: 0 24px 20px; }
+          .control-btn { width: 64px; height: 64px; }
+        }
+
+        /* Small desktops (1024px+) */
+        @media (min-width: 1024px) {
+          .deck-container { padding: 0 32px; }
+          .bier-card {
+            width: min(32vw, 380px);
+            max-width: 380px;
+          }
+          .zone-hook { height: 110px; }
+          .question { font-size: 18px; }
+          .chart-odds .odds-value { font-size: 40px; }
+          .mini-chart { width: 110px; height: 40px; }
+        }
+
+        /* Desktop (1280px+) */
+        @media (min-width: 1280px) {
+          .deck-container { padding: 0 40px; }
+          .bier-card {
+            width: min(28vw, 400px);
+            max-width: 400px;
+            border-radius: 26px;
+          }
+          .zone-hook {
+            height: 120px;
+            border-radius: 26px 26px 0 0;
+          }
+          .zone-question { padding: 14px 18px 10px; }
+          .question { font-size: 19px; }
+          .context { font-size: 13px; }
+          .zone-number { padding: 0 18px 12px; }
+          .chart-odds .odds-value { font-size: 44px; }
+          .mini-chart { width: 120px; height: 44px; }
+          .gauge-container { height: 8px; margin-bottom: 10px; }
+          .payout-text { font-size: 13px; }
+          .zone-social { padding: 12px 18px; }
+          .social-stat { font-size: 13px; }
+          .zone-ai-footer {
+            padding: 12px 18px;
+            min-height: 48px;
+            border-radius: 0 0 26px 26px;
+          }
+          .ai-hint { font-size: 13px; }
+          .controls { gap: 56px; padding: 0 32px 24px; }
+          .control-btn { width: 72px; height: 72px; }
+          .btn-icon { width: 30px; height: 30px; }
+          .btn-skip { width: 52px; height: 52px; }
+        }
+
+        /* Large Desktop (1536px+) */
+        @media (min-width: 1536px) {
+          .deck-container { padding: 0 48px; }
+          .bier-card {
+            width: min(24vw, 420px);
+            max-width: 420px;
+          }
+          .zone-hook { height: 130px; }
+          .question { font-size: 20px; }
+          .chart-odds .odds-value { font-size: 48px; }
+          .mini-chart { width: 130px; height: 48px; }
+          .controls { gap: 60px; }
+          .control-btn { width: 76px; height: 76px; }
         }
       `}</style>
         </div>
