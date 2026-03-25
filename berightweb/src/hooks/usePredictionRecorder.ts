@@ -6,7 +6,7 @@
  * Every prediction on the platform is recorded on-chain (devnet) to track forecaster accuracy.
  * Returns transaction signature for display in profile.
  *
- * Works in both demo mode (Jupiter wallet adapter) and production mode (Privy).
+ * Uses window globals set by both DemoWalletProvider and PrivyProvider for unified access.
  */
 
 import { useCallback, useState, useEffect } from 'react';
@@ -24,38 +24,49 @@ interface RecordParams {
   category?: number;
 }
 
-// Window globals type for Privy wallet state
-interface PrivyWalletState {
+// Window globals type for wallet state (set by both DemoWalletProvider and PrivyProvider)
+interface WalletState {
   connected: boolean;
   publicKey: string | null;
 }
 
-interface PrivyWalletFuncs {
-  signTransaction?: (tx: Uint8Array) => Promise<Uint8Array>;
+interface WalletFuncs {
+  signTransaction?: (tx: Transaction | VersionedTransaction | Uint8Array) => Promise<Transaction | VersionedTransaction | Uint8Array>;
   rawSignTransaction?: unknown;
 }
 
 export function usePredictionRecorder() {
   const { isDemo } = useMode();
 
-  // Use wallet adapter directly for demo mode
-  const wallet = useWallet();
-  const { publicKey: walletAdapterPublicKey, signTransaction: walletSignTransaction, connected: walletAdapterConnected } = wallet;
+  // Try to use wallet adapter (works in both modes as a fallback)
+  let walletAdapterPublicKey = null;
+  let walletSignTransaction = null;
+  let walletAdapterConnected = false;
 
-  // State for Privy wallet (production mode)
-  const [privyWalletState, setPrivyWalletState] = useState<PrivyWalletState>({
+  try {
+    const wallet = useWallet();
+    walletAdapterPublicKey = wallet.publicKey;
+    walletSignTransaction = wallet.signTransaction;
+    walletAdapterConnected = wallet.connected;
+  } catch {
+    // Wallet adapter not available (might be outside provider)
+    console.log('[Calibration] Wallet adapter not available, using window globals');
+  }
+
+  // State from window globals (works for both Demo and Privy)
+  const [windowWalletState, setWindowWalletState] = useState<WalletState>({
     connected: false,
     publicKey: null,
   });
 
-  // Poll for Privy wallet state from window globals
+  // Poll for wallet state from window globals (both providers set this)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const checkPrivyWallet = () => {
-      const walletState = (window as Window & { __BERIGHT_WALLET__?: PrivyWalletState }).__BERIGHT_WALLET__;
+    const checkWallet = () => {
+      const walletState = (window as Window & { __BERIGHT_WALLET__?: WalletState }).__BERIGHT_WALLET__;
       if (walletState) {
-        setPrivyWalletState({
+        setWindowWalletState({
           connected: walletState.connected,
           publicKey: walletState.publicKey,
         });
@@ -63,64 +74,91 @@ export function usePredictionRecorder() {
     };
 
     // Check immediately
-    checkPrivyWallet();
+    checkWallet();
 
-    // Poll every 500ms (Privy sets this on login)
-    const interval = setInterval(checkPrivyWallet, 500);
+    // Poll every 500ms
+    const interval = setInterval(checkWallet, 500);
     return () => clearInterval(interval);
   }, []);
 
-  // Determine connected state based on mode
-  const connected = isDemo
-    ? walletAdapterConnected && !!walletAdapterPublicKey
-    : privyWalletState.connected && !!privyWalletState.publicKey;
-
-  const ownerPubkey = isDemo
-    ? walletAdapterPublicKey?.toBase58() || null
-    : privyWalletState.publicKey;
+  // UNIFIED: Use window globals as primary source (both providers set these)
+  // This works for BOTH Demo (Jupiter) and Production (Privy) modes
+  const connected = windowWalletState.connected || (walletAdapterConnected && !!walletAdapterPublicKey);
+  const ownerPubkey = windowWalletState.publicKey || walletAdapterPublicKey?.toBase58() || null;
 
   /**
-   * Get the signTransaction function - from wallet adapter (demo) or Privy globals (production)
+   * Get the signTransaction function - UNIFIED for both Demo and Production
+   * Both DemoWalletProvider and PrivyProvider set window.__BERIGHT_WALLET_FUNCS__
    */
   const getSignTransaction = useCallback((): ((tx: Transaction | VersionedTransaction) => Promise<Transaction | VersionedTransaction>) | null => {
+    const provider = typeof window !== 'undefined' ? (window as Window & { __BERIGHT_PROVIDER__?: string }).__BERIGHT_PROVIDER__ : 'unknown';
+
     console.log('[Calibration] getSignTransaction - checking sources:', {
       isDemo,
+      provider,
       hasWalletAdapter: !!walletSignTransaction,
-      hasPrivyGlobal: !!(typeof window !== 'undefined' && (window as Window & { __BERIGHT_WALLET_FUNCS__?: PrivyWalletFuncs }).__BERIGHT_WALLET_FUNCS__?.signTransaction),
+      hasWindowGlobal: !!(typeof window !== 'undefined' && (window as Window & { __BERIGHT_WALLET_FUNCS__?: WalletFuncs }).__BERIGHT_WALLET_FUNCS__?.signTransaction),
     });
 
-    // Demo mode: Use wallet adapter signTransaction
-    if (isDemo && walletSignTransaction) {
-      console.log('[Calibration] ✓ Using wallet adapter signTransaction (demo mode)');
-      return walletSignTransaction;
-    }
-
-    // Production mode: Use Privy's signTransaction from window globals
+    // PRIMARY: Use window globals (both providers set this)
     if (typeof window !== 'undefined') {
-      const walletFuncs = (window as Window & { __BERIGHT_WALLET_FUNCS__?: PrivyWalletFuncs }).__BERIGHT_WALLET_FUNCS__;
+      const walletFuncs = (window as Window & { __BERIGHT_WALLET_FUNCS__?: WalletFuncs }).__BERIGHT_WALLET_FUNCS__;
 
       if (walletFuncs?.signTransaction) {
-        console.log('[Calibration] ✓ Using Privy signTransaction (production mode)');
+        console.log(`[Calibration] ✓ Using window global signTransaction (${provider} provider)`);
 
-        // Wrap Privy's signTransaction to match expected interface
-        // Privy expects Uint8Array and returns Uint8Array
+        // The signTransaction function signature differs between providers:
+        // - Jupiter/Demo: (tx: Transaction) => Promise<Transaction>
+        // - Privy: (tx: Uint8Array) => Promise<Uint8Array>
+        // We detect and handle both
+
         return async (tx: Transaction | VersionedTransaction): Promise<Transaction | VersionedTransaction> => {
-          const serialized = tx.serialize({ requireAllSignatures: false });
-          const signedBytes = await walletFuncs.signTransaction!(serialized);
+          try {
+            // Try direct call first (Jupiter wallet adapter style)
+            const result = await walletFuncs.signTransaction!(tx);
 
-          // Return signed transaction
-          if (tx instanceof Transaction) {
-            return Transaction.from(signedBytes);
-          } else {
-            return VersionedTransaction.deserialize(signedBytes);
+            // If result is a Transaction/VersionedTransaction, return directly
+            if (result instanceof Transaction || result instanceof VersionedTransaction) {
+              console.log('[Calibration] ✓ Direct Transaction signing succeeded');
+              return result;
+            }
+
+            // If result is Uint8Array (Privy style), deserialize
+            if (result instanceof Uint8Array) {
+              console.log('[Calibration] ✓ Uint8Array signing succeeded, deserializing');
+              if (tx instanceof Transaction) {
+                return Transaction.from(result);
+              } else {
+                return VersionedTransaction.deserialize(result);
+              }
+            }
+
+            // Unknown result type - try to use as-is
+            console.log('[Calibration] Unknown result type, attempting to use as-is');
+            return result as Transaction | VersionedTransaction;
+          } catch (err) {
+            // If direct call fails, try serializing first (for Privy)
+            console.log('[Calibration] Direct signing failed, trying serialized approach');
+            const serialized = tx.serialize({ requireAllSignatures: false });
+            const signedBytes = await walletFuncs.signTransaction!(serialized as unknown as Transaction);
+
+            if (signedBytes instanceof Uint8Array) {
+              if (tx instanceof Transaction) {
+                return Transaction.from(signedBytes);
+              } else {
+                return VersionedTransaction.deserialize(signedBytes);
+              }
+            }
+
+            throw err;
           }
         };
       }
     }
 
-    // Fallback: Try wallet adapter even in production (some wallets inject it)
+    // FALLBACK: Try wallet adapter directly
     if (walletSignTransaction) {
-      console.log('[Calibration] ✓ Using wallet adapter signTransaction (fallback)');
+      console.log('[Calibration] ✓ Using wallet adapter signTransaction (direct fallback)');
       return walletSignTransaction;
     }
 
@@ -140,16 +178,19 @@ export function usePredictionRecorder() {
         return null;
       }
 
+      const provider = typeof window !== 'undefined' ? (window as Window & { __BERIGHT_PROVIDER__?: string }).__BERIGHT_PROVIDER__ : 'unknown';
+
       console.log('═══════════════════════════════════════════════════');
       console.log('[Calibration] 🚀 recordPrediction called' + (retryCount > 0 ? ` (retry ${retryCount})` : ''));
       console.log('[Calibration] Params:', params);
       console.log('[Calibration] Wallet state:', {
         isDemo,
+        provider,
         connected,
-        ownerPubkey,
+        ownerPubkey: ownerPubkey?.slice(0, 8) || 'none',
+        windowWalletConnected: windowWalletState.connected,
+        windowWalletPubkey: windowWalletState.publicKey?.slice(0, 8) || 'none',
         walletAdapterConnected,
-        privyConnected: privyWalletState.connected,
-        privyPubkey: privyWalletState.publicKey?.slice(0, 8) || 'none',
       });
 
       if (!connected || !ownerPubkey) {
@@ -337,7 +378,7 @@ export function usePredictionRecorder() {
         return null;
       }
     },
-    [connected, ownerPubkey, isDemo, getSignTransaction, walletAdapterConnected, privyWalletState]
+    [connected, ownerPubkey, isDemo, getSignTransaction, walletAdapterConnected, windowWalletState]
   );
 
   return {
