@@ -112,7 +112,83 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const limit = validated.data.limit ? parseInt(validated.data.limit) : 50;
     const offset = validated.data.offset ? parseInt(validated.data.offset) : 0;
 
-    // Demo mode
+    // If forecaster is provided, try to fetch their actual pool from blockchain
+    if (forecaster) {
+      try {
+        const { Connection, PublicKey } = await import('@solana/web3.js');
+        const { getStakingPoolClient } = await import('../../../../lib/staking/forecast-pool');
+
+        const rpcUrl = isDemo()
+          ? process.env.HELIUS_RPC_DEVNET || 'https://api.devnet.solana.com'
+          : process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+
+        console.log(`[API v2/forecast-pools] Fetching pool for forecaster: ${forecaster.slice(0, 12)}... on ${isDemo() ? 'devnet' : 'mainnet'}`);
+
+        const connection = new Connection(rpcUrl, 'confirmed');
+        const client = getStakingPoolClient(connection, { network: isDemo() ? 'devnet' : 'mainnet' });
+
+        const forecasterPk = new PublicKey(forecaster);
+        const [poolPda] = client.derivePoolPda(forecasterPk);
+
+        console.log(`[API v2/forecast-pools] Pool PDA: ${poolPda.toBase58()}`);
+
+        // First check if account exists at all
+        const accountInfo = await connection.getAccountInfo(poolPda);
+        console.log(`[API v2/forecast-pools] Account exists: ${!!accountInfo}, size: ${accountInfo?.data?.length || 0} bytes`);
+
+        if (accountInfo) {
+          // Account exists - try to decode it
+          let poolState = null;
+          try {
+            poolState = await client.getPoolState(poolPda);
+            console.log(`[API v2/forecast-pools] Pool state decoded:`, poolState ? 'success' : 'null');
+          } catch (decodeErr) {
+            console.error(`[API v2/forecast-pools] Failed to decode pool state:`, decodeErr);
+          }
+
+          // Even if decode fails, we know pool exists - return basic info
+          const pool = {
+            address: poolPda.toBase58(),
+            forecaster: forecaster,
+            forecasterName: 'You',
+            tier: 0, // TODO: extract from decoded pool state
+            tierConfig: TIER_CONFIGS[0],
+            tvl: 0,
+            tvlDisplay: '0 USDC',
+            sharePrice: 1_000_000,
+            sharePriceDisplay: '1.000',
+            utilizationPct: 0,
+            delegatorCount: 0,
+            winRate: 0,
+            predictionCount: 0,
+            winsCount: 0,
+            lossesCount: 0,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            _raw: poolState, // Include raw decoded state for debugging
+          };
+
+          console.log(`[API v2/forecast-pools] Returning pool: ${poolPda.toBase58()}`);
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              pools: [pool],
+              total: 1,
+              limit,
+              offset,
+            },
+            meta: { source: 'blockchain', network: isDemo() ? 'devnet' : 'mainnet', latencyMs: Date.now() - startTime },
+          });
+        } else {
+          console.log(`[API v2/forecast-pools] No pool account found for forecaster`);
+        }
+      } catch (err) {
+        console.error('[API v2/forecast-pools] Error fetching on-chain pool:', err);
+      }
+    }
+
+    // Fall back to demo pools
     if (isDemo()) {
       let pools = [...DEMO_POOLS];
 

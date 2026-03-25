@@ -75,6 +75,262 @@ const KNOWN_FORECASTERS = [
   // Add more as they register
 ];
 
+// ============================================================================
+// POST /api/v2/calibration - Build transactions
+// ============================================================================
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  try {
+    const body = await req.json();
+    const action = body.action as string;
+
+    if (!action) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing action parameter',
+          validActions: ['initialize', 'record', 'resolve', 'derive-pda'],
+        },
+        { status: 400 }
+      );
+    }
+
+    // Import calibration module
+    const {
+      deriveForecasterPda,
+      derivePredictionPda,
+      CALIBRATION_PROGRAM_ID,
+    } = await import('../../../../lib/onchain/calibration');
+
+    const { Connection, PublicKey, Transaction, SystemProgram } = await import('@solana/web3.js');
+    const { BN } = await import('@coral-xyz/anchor');
+
+    const connection = new Connection(
+      process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      'confirmed'
+    );
+
+    switch (action) {
+      case 'derive-pda': {
+        if (!body.authority) {
+          return NextResponse.json({ success: false, error: 'authority required' }, { status: 400 });
+        }
+        const authority = new PublicKey(body.authority);
+        const [forecasterPda, bump] = deriveForecasterPda(authority);
+
+        const result: Record<string, unknown> = {
+          forecasterPda: forecasterPda.toBase58(),
+          forecasterBump: bump,
+        };
+
+        if (body.marketId && body.timestampSeed) {
+          const marketIdHash = Buffer.alloc(32);
+          Buffer.from(body.marketId, 'utf-8').copy(marketIdHash, 0, 0, Math.min(body.marketId.length, 32));
+          const [predictionPda, predBump] = derivePredictionPda(
+            authority,
+            marketIdHash,
+            new BN(body.timestampSeed)
+          );
+          result.predictionPda = predictionPda.toBase58();
+          result.predictionBump = predBump;
+        }
+
+        return NextResponse.json({ success: true, data: result });
+      }
+
+      case 'initialize': {
+        if (!body.authority) {
+          return NextResponse.json({ success: false, error: 'authority required' }, { status: 400 });
+        }
+        const authority = new PublicKey(body.authority);
+        const [forecasterPda, bump] = deriveForecasterPda(authority);
+
+        // Check if already initialized
+        const accountInfo = await connection.getAccountInfo(forecasterPda);
+        if (accountInfo) {
+          return NextResponse.json(
+            { success: false, error: 'Forecaster already initialized', code: 'ALREADY_INITIALIZED' },
+            { status: 409 }
+          );
+        }
+
+        // Build initialize instruction
+        const discriminator = Buffer.from([16, 22, 244, 53, 163, 61, 216, 211]);
+        const { TransactionInstruction } = await import('@solana/web3.js');
+
+        const instruction = new TransactionInstruction({
+          programId: CALIBRATION_PROGRAM_ID,
+          keys: [
+            { pubkey: authority, isSigner: true, isWritable: true },
+            { pubkey: forecasterPda, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          ],
+          data: discriminator,
+        });
+
+        const transaction = new Transaction().add(instruction);
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = authority;
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            transaction: transaction.serialize({ requireAllSignatures: false }).toString('base64'),
+            forecasterPda: forecasterPda.toBase58(),
+            bump,
+            blockhash,
+            lastValidBlockHeight,
+          },
+          meta: { action: 'initialize' },
+        });
+      }
+
+      case 'record': {
+        if (!body.authority || !body.marketId || body.predictedProbability === undefined || !body.direction) {
+          return NextResponse.json(
+            { success: false, error: 'authority, marketId, predictedProbability, and direction required' },
+            { status: 400 }
+          );
+        }
+
+        const authority = new PublicKey(body.authority);
+        const [forecasterPda] = deriveForecasterPda(authority);
+
+        // Check if initialized (use confirmed commitment for fresher data)
+        // Skip check if skipInitCheck=true to handle RPC cache issues
+        if (!body.skipInitCheck) {
+          const accountInfo = await connection.getAccountInfo(forecasterPda, { commitment: 'confirmed' });
+          if (!accountInfo) {
+            return NextResponse.json(
+              { success: false, error: 'Forecaster not initialized', code: 'NOT_INITIALIZED' },
+              { status: 400 }
+            );
+          }
+        }
+
+        const marketIdHash = Buffer.alloc(32);
+        Buffer.from(body.marketId, 'utf-8').copy(marketIdHash, 0, 0, Math.min(body.marketId.length, 32));
+
+        const timestampSeed = new BN(Math.floor(Date.now() / 1000));
+        const [predictionPda, predBump] = derivePredictionPda(authority, marketIdHash, timestampSeed);
+
+        // Build record prediction instruction
+        const discriminator = Buffer.from([6, 250, 152, 187, 248, 58, 42, 136]);
+        const dataBuffer = Buffer.alloc(8 + 32 + 8 + 8 + 1 + 64 + 1);
+        let offset = 0;
+
+        discriminator.copy(dataBuffer, offset); offset += 8;
+        marketIdHash.copy(dataBuffer, offset); offset += 32;
+        dataBuffer.writeBigInt64LE(BigInt(timestampSeed.toString()), offset); offset += 8;
+        dataBuffer.writeDoubleLE(body.predictedProbability, offset); offset += 8;
+        dataBuffer.writeUInt8(body.direction === 'yes' ? 0 : 1, offset); offset += 1;
+        // memo_tx_signature - 64 bytes zeros
+        offset += 64;
+        dataBuffer.writeUInt8(body.category || 0, offset);
+
+        const { TransactionInstruction } = await import('@solana/web3.js');
+        const instruction = new TransactionInstruction({
+          programId: CALIBRATION_PROGRAM_ID,
+          keys: [
+            { pubkey: authority, isSigner: true, isWritable: true },
+            { pubkey: forecasterPda, isSigner: false, isWritable: true },
+            { pubkey: predictionPda, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          ],
+          data: dataBuffer,
+        });
+
+        const transaction = new Transaction().add(instruction);
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = authority;
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            transaction: transaction.serialize({ requireAllSignatures: false }).toString('base64'),
+            forecasterPda: forecasterPda.toBase58(),
+            predictionPda: predictionPda.toBase58(),
+            predictionBump: predBump,
+            timestampSeed: timestampSeed.toString(),
+            blockhash,
+            lastValidBlockHeight,
+          },
+          meta: {
+            action: 'record',
+            marketId: body.marketId,
+            predictedProbability: body.predictedProbability,
+            direction: body.direction,
+          },
+        });
+      }
+
+      case 'resolve': {
+        if (!body.authority || !body.predictionPda || body.outcome === undefined) {
+          return NextResponse.json(
+            { success: false, error: 'authority, predictionPda, and outcome required' },
+            { status: 400 }
+          );
+        }
+
+        const authority = new PublicKey(body.authority);
+        const predictionPda = new PublicKey(body.predictionPda);
+        const [forecasterPda] = deriveForecasterPda(authority);
+
+        // Build resolve instruction
+        const discriminator = Buffer.from([199, 159, 54, 235, 121, 68, 53, 137]);
+        const dataBuffer = Buffer.alloc(9);
+        discriminator.copy(dataBuffer, 0);
+        dataBuffer.writeUInt8(body.outcome ? 1 : 0, 8);
+
+        const { TransactionInstruction } = await import('@solana/web3.js');
+        const instruction = new TransactionInstruction({
+          programId: CALIBRATION_PROGRAM_ID,
+          keys: [
+            { pubkey: authority, isSigner: true, isWritable: true },
+            { pubkey: forecasterPda, isSigner: false, isWritable: true },
+            { pubkey: predictionPda, isSigner: false, isWritable: true },
+          ],
+          data: dataBuffer,
+        });
+
+        const transaction = new Transaction().add(instruction);
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = authority;
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            transaction: transaction.serialize({ requireAllSignatures: false }).toString('base64'),
+            predictionPda: predictionPda.toBase58(),
+            blockhash,
+            lastValidBlockHeight,
+          },
+          meta: { action: 'resolve', outcome: body.outcome },
+        });
+      }
+
+      default:
+        return NextResponse.json(
+          { success: false, error: `Unknown action: ${action}`, validActions: ['initialize', 'record', 'resolve', 'derive-pda'] },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('[API v2/calibration] POST Error:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================================
+// GET /api/v2/calibration - Query stats
+// ============================================================================
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const wallet = searchParams.get('wallet');

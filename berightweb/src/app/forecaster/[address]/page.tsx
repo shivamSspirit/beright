@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 
 interface ForecasterProfile {
   address: string;
@@ -336,7 +336,7 @@ export default function ForecasterProfilePage() {
                     {pred.resolvedAt && <span>{pred.resolvedAt}</span>}
                     {pred.onChainTx && (
                       <a
-                        href={`https://solscan.io/tx/${pred.onChainTx}`}
+                        href={`https://orbmarkets.io/tx/${pred.onChainTx}?cluster=devnet&tab=summary`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-green-400 hover:text-green-300 flex items-center gap-1"

@@ -61,3 +61,98 @@ colosseum-agent.log
 # Solana test ledger (large files)
 beright-vault/test-ledger/
 staking-pool/target/
+
+# Anchor build artifacts
+**/target/
+**/.anchor/
+**/test-ledger/
+*.so
+
+# =============================================================================
+# CLAUDE CODE CONFIGURATION (Personal dev tool - not for public repo)
+# =============================================================================
+CLAUDE.md
+.claude/QUICK_REFERENCE.md
+.claude/SETUP_GUIDE.md
+.claude/mcp-config.md
+beright-ts/lib/*/CLAUDE.md
+beright-ts/services/CLAUDE.md
+
+# =============================================================================
+# INTERNAL ARCHITECTURE & PLANNING DOCS
+# =============================================================================
+beright-ts/ARCHITECTURE.md
+beright-escrow/ARCHITECTURE.md
+docs/STAKING_PRIMITIVE_DEFI_PLAN.md
+docs/DEMO_MODE.md
+docs/ARCHITECTURE_LAYERS.md
+
+# =============================================================================
+# GRANT APPLICATIONS & FUNDRAISING (Internal strategy)
+# =============================================================================
+GRANT_APPLICATION.md
+GRANT_FORM_ANSWERS.md
+GRANT_SUBMISSION_CHECKLIST.md
+docs/FUNDRAISING_STRATEGY.md
+docs/vc-pitch/
+
+# =============================================================================
+# PITCH & MARKETING DRAFTS (Internal)
+# =============================================================================
+PITCH.md
+PITCH_DECK_CONTENT.md
+
+# =============================================================================
+# RESEARCH & COMPETITIVE ANALYSIS (Internal reference)
+# =============================================================================
+docs/COMPETITIVE_ANALYSIS.md
+docs/MARKET_RESEARCH.md
+docs/lessons.md
+
+# =============================================================================
+# OLD/DUPLICATE LITEPAPERS (Keep only latest in berightweb/content)
+# =============================================================================
+docs/LITEPAPER.md
+docs/BERIGHT_LITEPAPER.md
+docs/BERIGHT_LITEPAPER_V2.md
+
+# =============================================================================
+# SOLANA REFERENCE DOCS (External reference material, not our code)
+# =============================================================================
+docs/solana-reference/
+
+# =============================================================================
+# DEPLOYMENT & INFRASTRUCTURE CONFIGS (Internal)
+# =============================================================================
+beright-ts/RAILWAY.md
+
+# =============================================================================
+# AGENT MEMORY & RUNTIME DATA (Generated at runtime)
+# =============================================================================
+beright-ts/MEMORY.md
+beright-ts/USER.md
+beright-ts/memory/daily/
+
+# =============================================================================
+# INTERNAL PLANNING & TESTING (Dev workflow)
+# =============================================================================
+COMPLETION_PLAN.md
+DEMO_TEST_PROMPT.md
+okok.md
+
+# =============================================================================
+# AI PROMPTS & VIBE CODING (Internal dev tools)
+# =============================================================================
+beright-escrow/VIBE_CODING_PROMPT.md
+
+# =============================================================================
+# SCREENSHOTS & TEMP IMAGES (At project root)
+# =============================================================================
+*.png
+*.jpg
+*.jpeg
+!**/public/**/*.png
+!**/public/**/*.jpg
+!**/public/**/*.jpeg
+!berightweb/src/**/*.png
+!berightweb/src/**/*.jpg

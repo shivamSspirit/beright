@@ -8,17 +8,16 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useForecastPool, PoolDisplayInfo, PoolTier, TIER_CONFIGS } from '@/hooks/useForecastPool';
+import React, { useState } from 'react';
+import { useForecastPool, PoolDisplayInfo } from '@/hooks/useForecastPool';
 import { StakeModal } from './StakeModal';
 
 interface PoolBrowserProps {
   onSelectPool?: (pool: PoolDisplayInfo) => void;
-  userBalance?: number;
 }
 
-export function PoolBrowser({ onSelectPool, userBalance = 0 }: PoolBrowserProps) {
-  const { pools, loading, error, stake, refreshPools } = useForecastPool();
+export function PoolBrowser({ onSelectPool }: PoolBrowserProps) {
+  const { pools, loading, error, refreshPools } = useForecastPool();
   const [selectedPool, setSelectedPool] = useState<PoolDisplayInfo | null>(null);
   const [stakeModalOpen, setStakeModalOpen] = useState(false);
   const [filterTier, setFilterTier] = useState<'all' | 'newbie' | 'pro'>('all');
@@ -43,16 +42,6 @@ export function PoolBrowser({ onSelectPool, userBalance = 0 }: PoolBrowserProps)
           return 0;
       }
     });
-
-  // Handle stake
-  const handleStake = async (poolAddress: string, amount: number): Promise<string | null> => {
-    const sig = await stake(poolAddress, amount);
-    if (sig) {
-      setStakeModalOpen(false);
-      refreshPools();
-    }
-    return sig;
-  };
 
   // Open stake modal
   const handleSelectPool = (pool: PoolDisplayInfo) => {
@@ -145,14 +134,23 @@ export function PoolBrowser({ onSelectPool, userBalance = 0 }: PoolBrowserProps)
       )}
 
       {/* Stake Modal */}
-      <StakeModal
-        isOpen={stakeModalOpen}
-        onClose={() => setStakeModalOpen(false)}
-        pool={selectedPool}
-        onStake={handleStake}
-        userBalance={userBalance}
-        loading={loading}
-      />
+      {selectedPool && (
+        <StakeModal
+          isOpen={stakeModalOpen}
+          onClose={() => setStakeModalOpen(false)}
+          poolAddress={selectedPool.address}
+          poolName={selectedPool.tier.name}
+          token={selectedPool.tier.token}
+          minDeposit={selectedPool.tier.minDeposit}
+          currentTvl={selectedPool.tvl}
+          maxCapacity={selectedPool.capacity}
+          onSuccess={(signature) => {
+            console.log('[PoolBrowser] Stake success:', signature);
+            setStakeModalOpen(false);
+            refreshPools();
+          }}
+        />
+      )}
     </div>
   );
 }

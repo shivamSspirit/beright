@@ -234,3 +234,40 @@ export function useNetworkLabel(): string {
   const { networkLabel } = useMode();
   return networkLabel;
 }
+
+// ============================================
+// MODE-AWARE FETCH HELPER
+// ============================================
+
+/**
+ * Create a fetch function that includes mode header
+ * Use this for API calls to ensure mode is always sent
+ */
+export function useModeAwareFetch() {
+  const { mode } = useMode();
+
+  return async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const headers = new Headers(options.headers);
+    headers.set('x-beright-mode', mode);
+    headers.set('x-beright-network', mode === 'production' ? 'mainnet-beta' : 'devnet');
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  };
+}
+
+/**
+ * Append mode to URL as query parameter
+ * Useful for GET requests where headers might not be preserved
+ */
+export function useAppendModeToUrl() {
+  const { mode } = useMode();
+
+  return (url: string): string => {
+    const urlObj = new URL(url, window.location.origin);
+    urlObj.searchParams.set('mode', mode);
+    return urlObj.toString();
+  };
+}

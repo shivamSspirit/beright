@@ -1004,11 +1004,26 @@ export async function getAgentSession(sessionId: string): Promise<{
 export interface GatewayResponse {
   success: boolean;
   text: string;           // Formatted for web (markdown stripped)
-  rawText: string;        // Original with Telegram markdown
+  rawText?: string;       // Original with Telegram markdown
   mood: string;
   data?: any;
-  sessionId: string;
+  sessionId?: string;
   error?: string;
+  // Async job fields (for long-running operations)
+  async?: boolean;        // True if this is an async job
+  jobId?: string;         // Job ID for polling
+  pollUrl?: string;       // URL to poll for status
+}
+
+export interface JobStatus {
+  id: string;
+  status: 'queued' | 'running' | 'complete' | 'failed';
+  progress: number;
+  progressMessage?: string;
+  result?: GatewayResponse;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -1035,6 +1050,55 @@ export async function sendToGateway(
       sessionId: options?.sessionId,
     }),
   });
+}
+
+/**
+ * Poll for async job status
+ * Used for long-running operations (research, analyze, etc.)
+ */
+export async function pollJobStatus(jobId: string): Promise<JobStatus> {
+  return apiFetch(`/api/jobs/${jobId}`);
+}
+
+/**
+ * Poll for job completion with progress callbacks
+ * Returns the final result when complete or throws on failure
+ */
+export async function waitForJob(
+  jobId: string,
+  options?: {
+    onProgress?: (progress: number, message?: string) => void;
+    maxAttempts?: number;
+    pollIntervalMs?: number;
+  }
+): Promise<GatewayResponse> {
+  const maxAttempts = options?.maxAttempts ?? 60;  // 60 attempts
+  const pollInterval = options?.pollIntervalMs ?? 2000;  // 2 seconds
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const status = await pollJobStatus(jobId);
+
+    // Report progress
+    if (options?.onProgress) {
+      options.onProgress(status.progress, status.progressMessage);
+    }
+
+    // Check if complete
+    if (status.status === 'complete' && status.result) {
+      return status.result;
+    }
+
+    // Check if failed
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Job failed');
+    }
+
+    // Wait before next poll (with exponential backoff, max 5s)
+    const waitTime = Math.min(pollInterval * Math.pow(1.2, Math.min(i, 5)), 5000);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+
+  throw new Error('Job timed out - please try again');
 }
 
 /**

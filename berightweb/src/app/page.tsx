@@ -1,22 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useUser } from '@/context/UserContext';
+import { useState, useEffect, useCallback } from 'react';
+import { useUser } from '@/hooks/useUnifiedUser';
 import { useMarkets } from '@/hooks/useMarkets';
+import { usePredictions } from '@/hooks/usePredictions';
+import { PageWrapper } from '@/components/ui';
 import SwipeCards from '@/components/SwipeCards';
 import LandingPage from '@/components/LandingPage';
+import { Prediction } from '@/lib/types';
+import styles from './page.module.css';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// BERIGHT HOME - Landing (before login) / Swipe Cards (after login)
-// Variant Design System - Direct HTML replica
-// ═══════════════════════════════════════════════════════════════════════════════
+// Home page - Shows landing page (unauthenticated) or swipe cards (authenticated)
 
 export default function Home() {
-  const { isAuthenticated, isLoading: authLoading } = useUser();
+  const { isAuthenticated, isLoading: authLoading, walletAddress } = useUser();
   const { predictions, loading: marketsLoading, dataSources } = useMarkets({
     mode: 'aggregated',  // Combine DFlow + Jupiter markets
     limit: 20
   });
+  const { savePrediction, isDemo } = usePredictions(walletAddress);
+
+  // Handle vote - save prediction to storage with optional on-chain tx signature
+  const handleVote = useCallback(async (
+    prediction: Prediction,
+    choice: 'YES' | 'NO',
+    txSignature?: string,
+    explorerUrl?: string
+  ) => {
+    console.log('[Vote]', choice, 'on:', prediction.question, txSignature ? `(tx: ${txSignature.slice(0, 16)}...)` : '');
+
+    // Save prediction with on-chain tx signature if available
+    const saved = await savePrediction(prediction, choice, txSignature, explorerUrl);
+    if (saved) {
+      console.log('[Vote] Prediction saved:', saved.id, isDemo ? '(demo mode - localStorage)' : '(production)');
+    } else {
+      console.error('[Vote] Failed to save prediction');
+    }
+  }, [savePrediction, isDemo]);
 
   // Log data sources for debugging
   useEffect(() => {
@@ -46,95 +66,52 @@ export default function Home() {
   // Show loading while checking auth (max 3 seconds)
   if (authLoading && !forceShow) {
     return (
-      <div className="app-loading">
-        <div className="loading-spinner" />
-        <style jsx>{`
-          .app-loading {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #080C14;
-          }
-          .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(0, 194, 255, 0.2);
-            border-top-color: #00C2FF;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
+      <PageWrapper showHeader={false} showFooter={false}>
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner} />
+        </div>
+      </PageWrapper>
     );
   }
 
-  // NOT LOGGED IN - Show landing page
+  // NOT LOGGED IN - Show landing page (has its own header/footer)
   if (!isAuthenticated) {
-    return <LandingPage />;
+    return (
+      <PageWrapper showHeader={false} showFooter={false}>
+        <LandingPage />
+      </PageWrapper>
+    );
   }
 
   // LOGGED IN - Show swipe cards
   if (marketsLoading) {
     return (
-      <div className="app-loading">
-        <div className="loading-spinner" />
-        <p style={{ color: '#94A3B8', marginTop: 16 }}>Loading predictions...</p>
-        <style jsx>{`
-          .app-loading {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: #080C14;
-          }
-          .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(0, 194, 255, 0.2);
-            border-top-color: #00C2FF;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
+      <PageWrapper showHeader={false} showFooter={false}>
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner} />
+          <p className={styles.loadingText}>Loading predictions...</p>
+        </div>
+      </PageWrapper>
     );
   }
 
   if (predictions.length === 0) {
     return (
-      <div className="no-predictions">
-        <p>No predictions available right now.</p>
-        <p>Check back soon!</p>
-        <style jsx>{`
-          .no-predictions {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: #080C14;
-            color: #94A3B8;
-            gap: 8px;
-          }
-        `}</style>
-      </div>
+      <PageWrapper showHeader={false} showFooter={false}>
+        <div className={styles.emptyContainer}>
+          <p className={styles.emptyText}>No predictions available right now.</p>
+          <p className={styles.emptyText}>Check back soon!</p>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <SwipeCards
-      predictions={predictions}
-      onVote={(prediction, choice) => {
-        console.log('Voted:', prediction.question, choice);
-      }}
-    />
+    <PageWrapper showHeader={false} showFooter={false}>
+      <SwipeCards
+        predictions={predictions}
+        onVote={handleVote}
+      />
+    </PageWrapper>
   );
 }

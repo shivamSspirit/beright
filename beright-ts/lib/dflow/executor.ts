@@ -24,7 +24,7 @@ import {
   TransactionConfirmationStrategy,
   Commitment,
 } from '@solana/web3.js';
-import { getDFlowClient, USDC_MINT, DFlowMarket, DFlowOrderResponse } from '../dflow';
+import { getDFlowClient, USDC_MINT, DFlowMarket, DFlowOrderResponse, getBuilderCodeConfig } from '../dflow';
 import { getFastConnectionPool, initializeFastConnection } from '../execution/fastConnection';
 import { getJitoBundleSubmitter } from '../execution/jitoBundle';
 import { getLatencyTracker, formatMicroseconds } from '../execution/latencyTracker';
@@ -131,6 +131,7 @@ export class DFlowExecutor {
 
   /**
    * Get a quote for a trade without executing
+   * Automatically includes Kalshi Builder Code fees if configured
    */
   async getQuote(
     params: TradeParams,
@@ -151,15 +152,29 @@ export class DFlowExecutor {
       // Convert USDC to atomic units (6 decimals)
       const amountLamports = Math.floor(amountUsdc * 1e6);
 
+      // Get Builder Code config for fee collection
+      const builderConfig = getBuilderCodeConfig();
+
       // Get quote from DFlow
       const client = getDFlowClient();
-      const quote = await client.getOrder({
+
+      // Build order params
+      const orderParams: Parameters<typeof client.getOrder>[0] = {
         inputMint: USDC_MINT,
         outputMint,
         amount: amountLamports,
         userPublicKey: walletAddress,
         slippageBps: slippageBps || DEFAULT_SLIPPAGE_BPS,
-      });
+      };
+
+      // Add Builder Code fee parameters if enabled
+      if (builderConfig.enabled && builderConfig.feeAccount) {
+        orderParams.platformFeeBps = builderConfig.platformFeeBps;
+        orderParams.platformFeeScale = builderConfig.platformFeeScale;
+        orderParams.feeAccount = builderConfig.feeAccount;
+      }
+
+      const quote = await client.getOrder(orderParams);
 
       // Calculate expected output
       const expectedShares = parseInt(quote.outAmount) / 1e6;

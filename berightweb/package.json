@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
+    "@gsap/react": "^2.1.2",
+    "@jup-ag/wallet-adapter": "^0.2.6",
     "@privy-io/react-auth": "^3.13.1",
     "@react-spring/web": "^10.0.3",
     "@solana-program/memo": "^0.11.0",
@@ -20,6 +22,7 @@
     "@use-gesture/react": "^10.3.1",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.33.0",
+    "gsap": "^3.14.2",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",

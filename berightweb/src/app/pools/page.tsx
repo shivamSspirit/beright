@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
+import { useMode } from '@/context/ModeContext';
 import {
   usePools,
   usePoolEligibility,
@@ -16,6 +17,7 @@ import {
   ForecasterTier,
   PoolStatus,
 } from '@/hooks/useDelegation';
+import { CreatePoolModal } from '@/components/CreatePoolModal';
 
 // ============================================================================
 // Icons
@@ -77,9 +79,10 @@ interface PoolCardProps {
     performanceFeeBps: number;
     createdAt: string;
   };
+  isDemo?: boolean;
 }
 
-function PoolCard({ pool }: PoolCardProps) {
+function PoolCard({ pool, isDemo = false }: PoolCardProps) {
   const tierColor = TIER_COLORS[pool.forecasterTier] || '#9E9E9E';
   const tierLabel = TIER_LABELS[pool.forecasterTier] || 'Unknown';
   const returnPercent = ((pool.navPerShare - 1) * 100);
@@ -153,7 +156,7 @@ function PoolCard({ pool }: PoolCardProps) {
             TVL
           </div>
           <div style={{ fontSize: '18px', fontWeight: 600, color: '#fff' }}>
-            {formatTvl(pool.tvl)}
+            {formatTvl(pool.tvl, isDemo)}
           </div>
         </div>
         <div>
@@ -297,7 +300,11 @@ function Filters({ status, setStatus, tier, setTier, sortBy, setSortBy }: Filter
 // Portfolio Summary Component
 // ============================================================================
 
-function PortfolioSummary() {
+interface PortfolioSummaryProps {
+  isDemo?: boolean;
+}
+
+function PortfolioSummary({ isDemo = false }: PortfolioSummaryProps) {
   const { portfolio, loading } = useDelegatorPortfolio();
 
   if (loading || !portfolio) return null;
@@ -321,7 +328,7 @@ function PortfolioSummary() {
         <div>
           <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '4px' }}>Total Value</div>
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#fff' }}>
-            {formatTvl(summary.totalCurrentValue)}
+            {formatTvl(summary.totalCurrentValue, isDemo)}
           </div>
         </div>
         <div>
@@ -333,7 +340,7 @@ function PortfolioSummary() {
               color: summary.totalPnl >= 0 ? '#10B981' : '#EF4444',
             }}
           >
-            {formatPnl(summary.totalPnl)} ({formatPercent(summary.totalPnlPercent)})
+            {formatPnl(summary.totalPnl, true, isDemo)} ({formatPercent(summary.totalPnlPercent)})
           </div>
         </div>
         <div>
@@ -361,15 +368,24 @@ function PortfolioSummary() {
 
 export default function PoolsPage() {
   const { isAuthenticated, walletAddress } = useUser();
-  const { eligibility } = usePoolEligibility();
+  const { isDemo } = useMode();
+  const { eligibility, loading: eligibilityLoading, error: eligibilityError } = usePoolEligibility();
 
   // Filter state
   const [status, setStatus] = useState<PoolStatus | 'all'>('all');
   const [tier, setTier] = useState<ForecasterTier | 'all'>('all');
   const [sortBy, setSortBy] = useState('tvl');
 
+  // Modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // In demo mode, allow creating pools even if eligibility API fails (for testing)
+  const canCreatePool = isDemo
+    ? isAuthenticated && walletAddress // Demo: just need to be connected
+    : isAuthenticated && eligibility?.eligible; // Production: need eligibility check
+
   // Fetch pools
-  const { pools, loading, error } = usePools({
+  const { pools, loading, error, refetch: refetchPools } = usePools({
     status: status === 'all' ? undefined : status,
     tier: tier === 'all' ? undefined : tier,
     sortBy: sortBy as any,
@@ -391,9 +407,9 @@ export default function PoolsPage() {
             </p>
           </div>
 
-          {isAuthenticated && eligibility?.eligible && (
-            <Link
-              href="/pools/create"
+          {canCreatePool && (
+            <button
+              onClick={() => setShowCreateModal(true)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -405,18 +421,17 @@ export default function PoolsPage() {
                 color: '#fff',
                 fontSize: '14px',
                 fontWeight: 600,
-                textDecoration: 'none',
                 cursor: 'pointer',
               }}
             >
               <PlusIcon />
               Create Pool
-            </Link>
+            </button>
           )}
         </div>
 
-        {/* Eligibility Banner (if not eligible) */}
-        {isAuthenticated && eligibility && !eligibility.eligible && (
+        {/* Eligibility Banner (if not eligible) - only show in production mode */}
+        {!isDemo && isAuthenticated && eligibility && !eligibility.eligible && (
           <div
             style={{
               background: 'rgba(245, 158, 11, 0.1)',
@@ -438,6 +453,26 @@ export default function PoolsPage() {
                 {eligibility.reason}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Debug Banner for Demo Mode */}
+        {isDemo && (
+          <div
+            style={{
+              background: 'rgba(139, 92, 246, 0.1)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              color: 'rgba(255, 255, 255, 0.7)',
+            }}
+          >
+            <strong style={{ color: '#8B5CF6' }}>Demo Mode</strong> |
+            Wallet: {isAuthenticated ? walletAddress?.slice(0, 8) + '...' : 'Not connected'} |
+            canCreatePool: {canCreatePool ? 'true' : 'false'}
           </div>
         )}
 
@@ -463,7 +498,7 @@ export default function PoolsPage() {
         )}
 
         {/* Portfolio Summary */}
-        {isAuthenticated && <PortfolioSummary />}
+        {isAuthenticated && <PortfolioSummary isDemo={isDemo} />}
 
         {/* Filters */}
         <Filters
@@ -513,9 +548,9 @@ export default function PoolsPage() {
             <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '24px' }}>
               Be the first to create a forecaster pool and start earning performance fees.
             </p>
-            {eligibility?.eligible && (
-              <Link
-                href="/pools/create"
+            {canCreatePool && (
+              <button
+                onClick={() => setShowCreateModal(true)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -527,12 +562,12 @@ export default function PoolsPage() {
                   color: '#fff',
                   fontSize: '14px',
                   fontWeight: 600,
-                  textDecoration: 'none',
+                  cursor: 'pointer',
                 }}
               >
                 <PlusIcon />
                 Create Pool
-              </Link>
+              </button>
             )}
           </div>
         )}
@@ -547,11 +582,26 @@ export default function PoolsPage() {
             }}
           >
             {pools.map((pool) => (
-              <PoolCard key={pool.id} pool={pool} />
+              <PoolCard key={pool.id} pool={pool} isDemo={isDemo} />
             ))}
           </div>
         )}
       </div>
+
+      {/* Create Pool Modal */}
+      <CreatePoolModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={(signature) => {
+          console.log('Pool created:', signature);
+          setShowCreateModal(false);
+          // Refresh the pools list after successful creation
+          // Small delay to ensure blockchain has confirmed
+          setTimeout(() => {
+            refetchPools();
+          }, 1000);
+        }}
+      />
     </div>
   );
 }

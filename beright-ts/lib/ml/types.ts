@@ -53,6 +53,62 @@ export interface MLMatchResult {
   // Timing
   closeDate?: Date;
   matchedAt: Date;
+
+  // LLM Classification (optional, added when LLM classifier is enabled)
+  classification?: {
+    type: 'exact' | 'related' | 'opposite' | 'unrelated';
+    confidence: number;
+    reasoning: string;
+  };
+
+  // Related markets (markets that are correlated but not exact matches)
+  relatedMarkets?: Array<{
+    eventId: string;
+    question: string;
+    relationship: 'related' | 'opposite';
+    confidence: number;
+  }>;
+
+  // EV analysis (optional, added when EV calculator is enabled)
+  evAnalysis?: {
+    bestPlatform: string;
+    effectiveOdds: number;
+    totalCostPct: number;
+    recommendation: string;
+  };
+
+  // Enhanced arbitrage with full EV analysis
+  arbitrageEV?: ArbitrageEVAnalysis;
+}
+
+/**
+ * Enhanced arbitrage analysis with EV calculations
+ */
+export interface ArbitrageEVAnalysis {
+  // Basic spread info
+  rawSpread: number;
+  effectiveSpread: number;
+
+  // Profitability
+  netProfit: number;
+  netProfitPct: number;
+  capitalRequired: number;
+  roi: number;
+
+  // Risk metrics
+  confidenceLevel: 'high' | 'medium' | 'low';
+  executionProbability: number;
+  isViable: boolean;
+
+  // Execution details
+  executionPlan: {
+    step1: string;
+    step2: string;
+    estimatedTimeSeconds: number;
+    risks: string[];
+  };
+
+  reasoning: string;
 }
 
 /**

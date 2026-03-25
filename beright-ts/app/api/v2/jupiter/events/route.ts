@@ -17,7 +17,7 @@ import {
   getHotEvents,
   JupiterEventsParams,
 } from '../../../../../lib/jupiter/prediction';
-import { isDemoFromRequest } from '../../../../../lib/mode';
+import { isDemoRequest } from '../../../../../lib/mode';
 import { getDemoMarketsWithJitter, searchDemoMarkets } from '../../../../../lib/demo/mockMarkets';
 
 /**
@@ -55,9 +55,8 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    // Get mode from cookie (UI toggle) or fall back to environment
-    const cookieHeader = request.headers.get('cookie');
-    const demoMode = isDemoFromRequest(cookieHeader);
+    // Get mode from middleware-injected header (instant, no parsing needed)
+    const demoMode = isDemoRequest(request);
 
     // ============================================
     // DEMO MODE: Return mock Jupiter events

@@ -20,6 +20,7 @@ import {
   MLMatchResult,
   PlatformMarket,
   ArbitrageOpportunity,
+  ArbitrageEVAnalysis,
   ExtractedEntities,
   ExtractedDate,
   ExtractedAmount,
@@ -32,6 +33,18 @@ import {
   FeedQuery,
   FeedResponse,
 } from './types';
+import {
+  getClassifier,
+  ClassificationInput,
+  ClassificationResult,
+  isClassificationAvailable,
+} from './classification';
+import {
+  getEVCalculator,
+  EVResult,
+  ArbitrageEVResult,
+  PlatformMarketData,
+} from '../ev';
 
 // =============================================================================
 // EMBEDDING CACHE
@@ -834,6 +847,370 @@ function detectArbitrage(
 }
 
 // =============================================================================
+// LLM CLASSIFICATION ENHANCEMENT
+// =============================================================================
+
+/**
+ * Configuration for LLM classification
+ */
+interface LLMClassificationOptions {
+  enabled: boolean;
+  onlyMultiPlatform: boolean;     // Only classify clusters with multiple platforms
+  minPreScore: number;            // Min pre-score for LLM classification
+  enhanceArbitrageOnly: boolean;  // Only enhance clusters with arbitrage
+}
+
+const DEFAULT_LLM_OPTIONS: LLMClassificationOptions = {
+  enabled: true,
+  onlyMultiPlatform: true,
+  minPreScore: 0.60,
+  enhanceArbitrageOnly: false,
+};
+
+/**
+ * Enhance match results with LLM classification
+ */
+async function enhanceWithLLMClassification(
+  results: MLMatchResult[],
+  embeddings: Map<string, number[]>,
+  config: MLMatchConfig,
+  options: Partial<LLMClassificationOptions> = {}
+): Promise<MLMatchResult[]> {
+  const opts = { ...DEFAULT_LLM_OPTIONS, ...options };
+
+  // Check if LLM classification is available and enabled
+  if (!opts.enabled || !isClassificationAvailable()) {
+    console.log('[ML Matcher] LLM classification disabled or unavailable');
+    return results;
+  }
+
+  const classifier = getClassifier();
+
+  // Filter results that need classification
+  const toClassify = results.filter(result => {
+    if (opts.onlyMultiPlatform && result.markets.length < 2) return false;
+    if (opts.enhanceArbitrageOnly && !result.arbitrage) return false;
+    return true;
+  });
+
+  if (toClassify.length === 0) {
+    return results;
+  }
+
+  console.log(`[ML Matcher] Enhancing ${toClassify.length} results with LLM classification...`);
+
+  // Build classification inputs for multi-market clusters
+  const classificationInputs: Array<{
+    resultIndex: number;
+    marketAIndex: number;
+    marketBIndex: number;
+    input: ClassificationInput;
+  }> = [];
+
+  for (let ri = 0; ri < toClassify.length; ri++) {
+    const result = toClassify[ri];
+    const resultIndex = results.indexOf(result);
+
+    // For each pair of markets in the cluster, create a classification input
+    for (let i = 0; i < result.markets.length; i++) {
+      for (let j = i + 1; j < result.markets.length; j++) {
+        const marketA = result.markets[i];
+        const marketB = result.markets[j];
+
+        // Get embeddings for pre-score
+        const keyA = `${marketA.platform}:${marketA.platformId}`;
+        const keyB = `${marketB.platform}:${marketB.platformId}`;
+        const embA = embeddings.get(keyA);
+        const embB = embeddings.get(keyB);
+
+        // Calculate pre-scores
+        const embeddingSimilarity = embA && embB
+          ? cosineSimilarity(embA, embB)
+          : textSimilarity(marketA.question, marketB.question);
+
+        const entitiesA = extractEntities(marketA.question);
+        const entitiesB = extractEntities(marketB.question);
+        const { entityScore } = compareEntitiesSimple(entitiesA, entitiesB);
+        const { dateScore } = compareDatesSimple(entitiesA.dates, entitiesB.dates);
+
+        if (embeddingSimilarity < opts.minPreScore) continue;
+
+        classificationInputs.push({
+          resultIndex,
+          marketAIndex: i,
+          marketBIndex: j,
+          input: {
+            marketA: {
+              id: marketA.platformId,
+              platform: marketA.platform,
+              question: marketA.question,
+              endDate: marketA.closeDate,
+            },
+            marketB: {
+              id: marketB.platformId,
+              platform: marketB.platform,
+              question: marketB.question,
+              endDate: marketB.closeDate,
+            },
+            preScore: {
+              embeddingSimilarity,
+              entityOverlap: entityScore,
+              dateAlignment: dateScore,
+            },
+          },
+        });
+      }
+    }
+  }
+
+  if (classificationInputs.length === 0) {
+    return results;
+  }
+
+  // Run LLM classification in batch
+  try {
+    const classifications = await classifier.classifyBatch(
+      classificationInputs.map(c => c.input)
+    );
+
+    // Aggregate classifications per result
+    const resultClassifications = new Map<number, ClassificationResult[]>();
+
+    for (let i = 0; i < classifications.length; i++) {
+      const { resultIndex } = classificationInputs[i];
+      const classification = classifications[i];
+
+      if (!resultClassifications.has(resultIndex)) {
+        resultClassifications.set(resultIndex, []);
+      }
+      resultClassifications.get(resultIndex)!.push(classification);
+    }
+
+    // Enhance results with classification data
+    for (const [resultIndex, clfs] of resultClassifications.entries()) {
+      const result = results[resultIndex];
+
+      // Determine overall classification (majority vote with confidence weighting)
+      const exactCount = clfs.filter(c => c.type === 'exact').length;
+      const relatedCount = clfs.filter(c => c.type === 'related').length;
+      const total = clfs.length;
+
+      // Calculate average confidence
+      const avgConfidence = clfs.reduce((sum, c) => sum + c.confidence, 0) / total;
+
+      // If mostly exact, keep as is with enhanced confidence
+      if (exactCount > relatedCount && exactCount >= total * 0.5) {
+        result.classification = {
+          type: 'exact',
+          confidence: Math.round(avgConfidence),
+          reasoning: `${exactCount}/${total} pairs classified as exact match`,
+        };
+      } else if (relatedCount > 0) {
+        // Mixed results - some pairs are related, not exact
+        result.classification = {
+          type: 'related',
+          confidence: Math.round(avgConfidence),
+          reasoning: `Mixed classification: ${exactCount} exact, ${relatedCount} related`,
+        };
+
+        // If originally had arbitrage but now classified as related, flag it
+        if (result.arbitrage) {
+          console.warn(
+            `[ML Matcher] Warning: Cluster ${result.eventId} has arbitrage but classified as 'related' - may be false positive`
+          );
+        }
+      }
+    }
+
+    console.log(`[ML Matcher] Enhanced ${resultClassifications.size} results with LLM classification`);
+  } catch (error) {
+    console.error('[ML Matcher] LLM classification failed:', error);
+    // Continue without classification
+  }
+
+  return results;
+}
+
+/**
+ * Simple entity comparison for pre-score calculation
+ */
+function compareEntitiesSimple(
+  entitiesA: ExtractedEntities,
+  entitiesB: ExtractedEntities
+): { entityScore: number } {
+  const allA = [
+    ...entitiesA.people,
+    ...entitiesA.organizations,
+    ...entitiesA.events,
+    ...entitiesA.locations,
+  ].map(e => e.toLowerCase());
+
+  const allB = [
+    ...entitiesB.people,
+    ...entitiesB.organizations,
+    ...entitiesB.events,
+    ...entitiesB.locations,
+  ].map(e => e.toLowerCase());
+
+  const setA = new Set(allA);
+  const setB = new Set(allB);
+
+  let matches = 0;
+  for (const e of setA) {
+    if (setB.has(e)) matches++;
+  }
+
+  const total = Math.max(setA.size, setB.size, 1);
+  return { entityScore: matches / total };
+}
+
+/**
+ * Simple date comparison for pre-score calculation
+ */
+function compareDatesSimple(
+  datesA: ExtractedDate[],
+  datesB: ExtractedDate[]
+): { dateScore: number } {
+  if (datesA.length === 0 && datesB.length === 0) return { dateScore: 0.5 };
+  if (datesA.length === 0 || datesB.length === 0) return { dateScore: 0.3 };
+
+  let minDiff = Infinity;
+  for (const a of datesA) {
+    for (const b of datesB) {
+      if (a.normalized && b.normalized) {
+        const diff = Math.abs(a.normalized.getTime() - b.normalized.getTime());
+        minDiff = Math.min(minDiff, diff);
+      }
+    }
+  }
+
+  if (minDiff === Infinity) return { dateScore: 0.3 };
+
+  const daysDiff = minDiff / (1000 * 60 * 60 * 24);
+  if (daysDiff === 0) return { dateScore: 1.0 };
+  if (daysDiff < 1) return { dateScore: 0.95 };
+  if (daysDiff < 7) return { dateScore: 0.8 };
+  if (daysDiff < 30) return { dateScore: 0.5 };
+  return { dateScore: 0.2 };
+}
+
+// =============================================================================
+// EV ANALYSIS ENHANCEMENT
+// =============================================================================
+
+/**
+ * Enhance match results with EV analysis for arbitrage opportunities
+ */
+async function enhanceWithEVAnalysis(
+  results: MLMatchResult[]
+): Promise<MLMatchResult[]> {
+  // Only process results with arbitrage opportunities
+  const arbResults = results.filter(r => r.arbitrage && r.arbitrage.netProfit > 0);
+
+  if (arbResults.length === 0) {
+    return results;
+  }
+
+  console.log(`[ML Matcher] Enhancing ${arbResults.length} results with EV analysis...`);
+
+  const evCalculator = getEVCalculator();
+
+  for (const result of arbResults) {
+    if (!result.arbitrage) continue;
+
+    const { buyPlatform, sellPlatform } = result.arbitrage;
+
+    // Find the buy and sell markets
+    const buyMarket = result.markets.find(m => m.platform === buyPlatform);
+    const sellMarket = result.markets.find(m => m.platform === sellPlatform);
+
+    if (!buyMarket || !sellMarket) continue;
+
+    try {
+      // Convert to PlatformMarketData format
+      const buyMarketData: PlatformMarketData = {
+        platform: buyMarket.platform,
+        yesPrice: buyMarket.yesPrice,
+        noPrice: buyMarket.noPrice,
+        volume24h: buyMarket.volume24h || 0,
+        liquidity: buyMarket.liquidity || 10000,
+        url: buyMarket.url || '',
+      };
+
+      const sellMarketData: PlatformMarketData = {
+        platform: sellMarket.platform,
+        yesPrice: sellMarket.yesPrice,
+        noPrice: sellMarket.noPrice,
+        volume24h: sellMarket.volume24h || 0,
+        liquidity: sellMarket.liquidity || 10000,
+        url: sellMarket.url || '',
+      };
+
+      // Calculate detailed EV for arbitrage
+      const arbEV = await evCalculator.calculateArbitrageEV(
+        buyMarketData,
+        sellMarketData,
+        1000, // Default $1000 analysis
+        'solana' // Default origin chain
+      );
+
+      // Add EV analysis to result
+      result.arbitrageEV = {
+        rawSpread: arbEV.rawSpread,
+        effectiveSpread: arbEV.effectiveSpread,
+        netProfit: arbEV.netProfit,
+        netProfitPct: arbEV.netProfitPct,
+        capitalRequired: arbEV.capitalRequired,
+        roi: arbEV.roi,
+        confidenceLevel: arbEV.confidenceLevel,
+        executionProbability: Math.min(
+          arbEV.buyLeg.risk.executionProbability,
+          arbEV.sellLeg.risk.executionProbability
+        ),
+        isViable: arbEV.isViable,
+        executionPlan: arbEV.executionPlan,
+        reasoning: arbEV.reasoning,
+      };
+
+      // Also add best platform EV for the result
+      const [buyEV, sellEV] = await Promise.all([
+        evCalculator.calculateTradeEV(buyMarketData, {
+          side: 'YES',
+          amount: 1000,
+          inputToken: 'USDC',
+          originChain: 'solana',
+        }),
+        evCalculator.calculateTradeEV(sellMarketData, {
+          side: 'YES',
+          amount: 1000,
+          inputToken: 'USDC',
+          originChain: 'solana',
+        }),
+      ]);
+
+      // Determine best platform by effective odds
+      const best = buyEV.effectiveOdds < sellEV.effectiveOdds
+        ? { platform: buyMarket.platform, ev: buyEV }
+        : { platform: sellMarket.platform, ev: sellEV };
+
+      result.evAnalysis = {
+        bestPlatform: best.platform,
+        effectiveOdds: best.ev.effectiveOdds,
+        totalCostPct: best.ev.costs.totalCostPct,
+        recommendation: best.ev.recommendation.reasoning,
+      };
+
+    } catch (error) {
+      console.warn(`[ML Matcher] EV analysis failed for ${result.eventId}:`, error);
+      // Continue without EV analysis
+    }
+  }
+
+  console.log(`[ML Matcher] EV analysis complete for ${arbResults.length} arbitrage opportunities`);
+  return results;
+}
+
+// =============================================================================
 // MAIN MATCHING FUNCTION
 // =============================================================================
 
@@ -844,18 +1221,23 @@ function detectArbitrage(
  *
  * @param markets - Raw markets from all platforms
  * @param config - ML configuration
+ * @param llmOptions - LLM classification options
  * @returns Array of matched results
  */
 export async function matchMarkets(
   markets: RawMarketData[],
-  config: MLMatchConfig = DEFAULT_ML_CONFIG
+  config: MLMatchConfig = DEFAULT_ML_CONFIG,
+  llmOptions?: Partial<LLMClassificationOptions>
 ): Promise<MLMatchResult[]> {
   if (markets.length === 0) return [];
 
   console.log(`[ML Matcher] Processing ${markets.length} markets...`);
 
+  // Get embeddings first (needed for both clustering and LLM pre-scores)
+  const embeddings = await batchGetEmbeddings(markets, config);
+
   // Cluster markets
-  const clustering = await clusterMarkets(markets, config);
+  const clustering = await clusterMarketsWithEmbeddings(markets, embeddings, config);
 
   console.log(`[ML Matcher] Created ${clustering.clusters.length} clusters, ${clustering.orphans.length} orphans`);
 
@@ -886,15 +1268,144 @@ export async function matchMarkets(
     });
   }
 
+  // Enhance with LLM classification (for multi-platform clusters)
+  const classifiedResults = await enhanceWithLLMClassification(
+    results,
+    embeddings,
+    config,
+    llmOptions
+  );
+
+  // Enhance arbitrage opportunities with EV analysis
+  const enhancedResults = await enhanceWithEVAnalysis(classifiedResults);
+
   // Sort by platform count (multi-platform first), then by volume
-  results.sort((a, b) => {
+  enhancedResults.sort((a, b) => {
     if (a.markets.length !== b.markets.length) {
       return b.markets.length - a.markets.length;
     }
     return b.totalVolume24h - a.totalVolume24h;
   });
 
-  return results;
+  return enhancedResults;
+}
+
+/**
+ * Cluster markets using pre-computed embeddings
+ */
+async function clusterMarketsWithEmbeddings(
+  markets: RawMarketData[],
+  embeddings: Map<string, number[]>,
+  config: MLMatchConfig
+): Promise<ClusteringResult> {
+  if (markets.length === 0) {
+    return {
+      clusters: [],
+      orphans: [],
+      stats: {
+        totalMarkets: 0,
+        totalClusters: 0,
+        avgClusterSize: 0,
+        avgConfidence: 0,
+      },
+    };
+  }
+
+  // Track which markets have been assigned
+  const assigned = new Set<string>();
+  const clusters: MarketCluster[] = [];
+  const orphans: PlatformMarket[] = [];
+
+  // Sort by volume (prioritize high volume markets as cluster seeds)
+  const sortedMarkets = [...markets].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+
+  for (const seedMarket of sortedMarkets) {
+    const seedKey = getCacheKey(seedMarket.platform, seedMarket.id);
+    if (assigned.has(seedKey)) continue;
+
+    const seedEmbedding = embeddings.get(seedKey);
+    const clusterMarkets: PlatformMarket[] = [];
+    const clusterEmbeddings: number[][] = [];
+    let totalConfidence = 0;
+
+    // Find similar markets
+    for (const candidateMarket of markets) {
+      const candidateKey = getCacheKey(candidateMarket.platform, candidateMarket.id);
+      if (assigned.has(candidateKey)) continue;
+      if (candidateMarket.platform === seedMarket.platform && candidateMarket.id === seedMarket.id) {
+        // Add seed to cluster
+        clusterMarkets.push(toPlatformMarket(seedMarket, seedEmbedding));
+        if (seedEmbedding) clusterEmbeddings.push(seedEmbedding);
+        assigned.add(seedKey);
+        continue;
+      }
+
+      const candidateEmbedding = embeddings.get(candidateKey);
+      const similarity = calculateSimilarity(
+        seedMarket,
+        candidateMarket,
+        seedEmbedding || null,
+        candidateEmbedding || null,
+        config
+      );
+
+      if (
+        similarity.overall >= config.minOverallScore &&
+        similarity.components.embedding >= config.minEmbeddingSimilarity * 0.9 &&
+        similarity.details.conflictingEntities.length === 0
+      ) {
+        clusterMarkets.push(toPlatformMarket(candidateMarket, candidateEmbedding));
+        if (candidateEmbedding) clusterEmbeddings.push(candidateEmbedding);
+        assigned.add(candidateKey);
+        totalConfidence += similarity.overall;
+      }
+    }
+
+    // Create cluster if we have matches
+    if (clusterMarkets.length >= 1) {
+      const avgConfidence = clusterMarkets.length > 1
+        ? totalConfidence / (clusterMarkets.length - 1)
+        : 1.0;
+
+      if (avgConfidence >= config.minClusterConfidence || clusterMarkets.length === 1) {
+        clusters.push({
+          clusterId: generateClusterId(),
+          centroid: calculateCentroid(clusterEmbeddings),
+          markets: clusterMarkets,
+          confidence: clusterMarkets.length === 1 ? 1.0 : avgConfidence,
+          canonicalQuestion: seedMarket.question || seedMarket.title,
+        });
+      } else {
+        // Low confidence - treat as orphans
+        for (const market of clusterMarkets) {
+          orphans.push(market);
+        }
+      }
+    }
+  }
+
+  // Collect any remaining unassigned markets as orphans
+  for (const market of markets) {
+    const key = getCacheKey(market.platform, market.id);
+    if (!assigned.has(key)) {
+      orphans.push(toPlatformMarket(market, embeddings.get(key)));
+    }
+  }
+
+  return {
+    clusters,
+    orphans,
+    stats: {
+      totalMarkets: markets.length,
+      totalClusters: clusters.length,
+      avgClusterSize: clusters.length > 0
+        ? clusters.reduce((sum, c) => sum + c.markets.length, 0) / clusters.length
+        : 0,
+      avgConfidence: clusters.length > 0
+        ? clusters.reduce((sum, c) => sum + c.confidence, 0) / clusters.length
+        : 0,
+    },
+  };
 }
 
 // =============================================================================

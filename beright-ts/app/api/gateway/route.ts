@@ -6,14 +6,35 @@
  *
  * POST /api/gateway
  * Body: { message: string, userId?: string, sessionId?: string }
+ *
+ * For long-running operations (analyze, research, etc.), returns immediately
+ * with a job ID. Client polls /api/jobs/:id for status and result.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { secureTelegramHandler } from '../../../lib/secureHandler';
 import { TelegramMessage } from '../../../types/index';
+import { createJob, updateJob } from '../../../lib/jobs/jobQueue';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+// Patterns that trigger async processing (operations that take 10+ seconds)
+const LONG_RUNNING_PATTERNS = [
+  /^analyze\b/i,
+  /^research\b/i,
+  /^\/research\b/i,
+  /^\/intelligence\b/i,
+  /^\/odds\b/i,
+  /deep\s*(dive|analysis)/i,
+  /probability.*estimate/i,
+  /superforecaster/i,
+  /calibrat(e|ion)/i,
+];
+
+function isLongRunningRequest(message: string): boolean {
+  return LONG_RUNNING_PATTERNS.some(p => p.test(message.trim()));
+}
 
 // Session context cache for web terminal (similar to Telegram chat context)
 interface SessionContext {
@@ -97,7 +118,27 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Gateway] Processing: "${message.slice(0, 50)}..." | Session: ${activeSessionId}`);
 
-    // Route through SECURE handler (rate limit + input sanitization + allowlist + output filter)
+    // Check if this is a long-running operation
+    if (isLongRunningRequest(message)) {
+      // Create job and return immediately
+      const job = createJob();
+      console.log(`[Gateway] Long-running request detected, created job: ${job.id}`);
+
+      // Process in background (fire and forget)
+      processJobInBackground(job.id, pseudoMessage, activeSessionId);
+
+      return NextResponse.json({
+        success: true,
+        async: true,
+        jobId: job.id,
+        pollUrl: `/api/jobs/${job.id}`,
+        text: 'Processing your request... This may take 15-30 seconds.',
+        mood: 'NEUTRAL',
+        sessionId: activeSessionId,
+      });
+    }
+
+    // Synchronous processing for fast commands
     const response = await secureTelegramHandler(pseudoMessage);
 
     // Record bot response in session
@@ -108,8 +149,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      async: false,
       text: formattedText,
-      rawText: response.text, // Original with Telegram markdown
+      rawText: response.text,
       mood: response.mood,
       data: response.data,
       sessionId: activeSessionId,
@@ -125,6 +167,53 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Process long-running job in background
+ * This function is NOT awaited - it runs after response is sent
+ */
+async function processJobInBackground(
+  jobId: string,
+  pseudoMessage: TelegramMessage,
+  sessionId: string
+) {
+  try {
+    updateJob(jobId, { status: 'running', progress: 10, progressMessage: 'Starting analysis...' });
+
+    // Execute the handler
+    const response = await secureTelegramHandler(pseudoMessage);
+
+    // Record in session
+    addToSessionHistory(sessionId, 'bot', response.text);
+
+    // Format response
+    const formattedText = formatResponseForWeb(response.text);
+
+    // Mark complete
+    updateJob(jobId, {
+      status: 'complete',
+      progress: 100,
+      progressMessage: 'Complete',
+      result: {
+        success: true,
+        text: formattedText,
+        rawText: response.text,
+        mood: response.mood,
+        data: response.data,
+        sessionId,
+      },
+    });
+
+    console.log(`[Gateway] Job ${jobId} completed successfully`);
+  } catch (error) {
+    console.error(`[Gateway] Job ${jobId} failed:`, error);
+    updateJob(jobId, {
+      status: 'failed',
+      progress: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }
 

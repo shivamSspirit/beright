@@ -3,45 +3,21 @@ paths: beright-ts/lib/dataFabric/**/*
 ---
 # Data Fabric Rules
 
-## Purpose
-Data Fabric provides unified access to all prediction market platforms.
-It abstracts platform-specific APIs into a common interface.
+Unified access to: Polymarket, Kalshi, Manifold, Limitless, DFlow
 
-## Supported Platforms
-- Polymarket (gamma-api.polymarket.com)
-- Kalshi (api.elections.kalshi.com)
-- Manifold (api.manifold.markets)
-- Limitless (api.limitless.exchange)
-- DFlow (pond.dflow.net)
+## Caching
+- Default: 30s TTL | Hot markets: 10s | Historical: 5min
+- LRU cache, max 1000 entries
 
-## Caching Strategy
-- Default TTL: 30 seconds
-- Hot markets: 10 seconds
-- Historical data: 5 minutes
-- Use LRU cache with max 1000 entries
-
-## Data Normalization
-All markets must be normalized to common schema:
+## Normalize to
 ```typescript
 interface NormalizedMarket {
-  id: string;
-  platform: Platform;
-  question: string;
-  probability: number;
-  volume24h: number;
-  liquidity: number;
-  closeTime: Date;
-  outcomes: Outcome[];
+  id: string; platform: Platform; question: string;
+  probability: number; volume24h: number; closeTime: Date;
 }
 ```
 
 ## Error Handling
-- Graceful degradation if one platform fails
-- Return partial data with platform status
-- Log API failures with response codes
-- Implement circuit breaker for repeated failures
-
-## Rate Limiting
-- Respect each platform's rate limits
-- Implement request queuing if needed
-- Log rate limit hits for monitoring
+- Graceful degradation if platform fails
+- Return partial data with status
+- Circuit breaker on repeated failures

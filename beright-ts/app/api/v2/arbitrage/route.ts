@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isDemoFromRequest } from '../../../../lib/mode';
+import { isDemoRequest } from '../../../../lib/mode';
 import { generateMockSignature } from '../../../../lib/demo/mockConfirmations';
 
 // ============================================
@@ -563,9 +563,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const minProfit = parseFloat(searchParams.get('minProfit') || '2');
   const limit = parseInt(searchParams.get('limit') || '10');
 
-  // Get mode from cookie (UI toggle) or fall back to environment
-  const cookieHeader = request.headers.get('cookie');
-  const demoMode = isDemoFromRequest(cookieHeader);
+  // Get mode from middleware-injected header (instant, no parsing needed)
+  const demoMode = isDemoRequest(request);
 
   // ============================================
   // DEMO MODE

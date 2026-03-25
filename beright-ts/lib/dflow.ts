@@ -31,6 +31,37 @@ export const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 export const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
 // ============================================
+// KALSHI BUILDER CODE CONFIGURATION
+// ============================================
+// Builder Codes allow BeRight to earn fees on every trade routed through DFlow
+// Apply at: https://kalshi.com/builders
+
+const DFLOW_FEE_ACCOUNT = process.env.DFLOW_FEE_ACCOUNT;
+const DFLOW_PLATFORM_FEE_BPS = process.env.DFLOW_PLATFORM_FEE_BPS
+  ? parseInt(process.env.DFLOW_PLATFORM_FEE_BPS)
+  : 50; // Default 0.5%
+const DFLOW_PLATFORM_FEE_SCALE = process.env.DFLOW_PLATFORM_FEE_SCALE
+  ? parseInt(process.env.DFLOW_PLATFORM_FEE_SCALE)
+  : 1;
+const DFLOW_FEE_ENABLED = process.env.DFLOW_FEE_ENABLED !== 'false';
+
+export interface BuilderCodeConfig {
+  feeAccount: string | undefined;
+  platformFeeBps: number;
+  platformFeeScale: number;
+  enabled: boolean;
+}
+
+export function getBuilderCodeConfig(): BuilderCodeConfig {
+  return {
+    feeAccount: DFLOW_FEE_ACCOUNT,
+    platformFeeBps: DFLOW_PLATFORM_FEE_BPS,
+    platformFeeScale: DFLOW_PLATFORM_FEE_SCALE,
+    enabled: DFLOW_FEE_ENABLED && !!DFLOW_FEE_ACCOUNT,
+  };
+}
+
+// ============================================
 // TYPES
 // ============================================
 
@@ -616,6 +647,9 @@ export async function getDFlowCategories(): Promise<Record<string, string[]>> {
 /**
  * Get order transaction for trading
  * Returns base64-encoded transaction to sign and submit
+ *
+ * Automatically includes Kalshi Builder Code fees if configured.
+ * Builder Code fees are sent to DFLOW_FEE_ACCOUNT on every trade.
  */
 export async function getDFlowOrderTransaction(params: {
   inputMint: string;
@@ -623,12 +657,43 @@ export async function getDFlowOrderTransaction(params: {
   amount: number;
   userPublicKey: string;
   slippageBps?: number;
+  /** Override Builder Code config (optional) */
+  builderCode?: {
+    feeAccount?: string;
+    platformFeeBps?: number;
+    platformFeeScale?: number;
+    enabled?: boolean;
+  };
 }): Promise<DFlowOrderResponse> {
   const client = getDFlowClient();
-  return client.getOrder({
-    ...params,
+  const builderConfig = getBuilderCodeConfig();
+
+  // Merge override with default config
+  const feeConfig = params.builderCode
+    ? { ...builderConfig, ...params.builderCode }
+    : builderConfig;
+
+  // Build order params with Builder Code fees if enabled
+  const orderParams: Parameters<typeof client.getOrder>[0] = {
+    inputMint: params.inputMint,
+    outputMint: params.outputMint,
+    amount: params.amount,
+    userPublicKey: params.userPublicKey,
     slippageBps: params.slippageBps || 50,
-  });
+  };
+
+  // Add Builder Code fee parameters if enabled and fee account is set
+  if (feeConfig.enabled && feeConfig.feeAccount) {
+    orderParams.platformFeeBps = feeConfig.platformFeeBps;
+    orderParams.platformFeeScale = feeConfig.platformFeeScale;
+    orderParams.feeAccount = feeConfig.feeAccount;
+
+    console.log(
+      `[DFlow] Builder Code enabled: ${feeConfig.platformFeeBps}bps → ${feeConfig.feeAccount.slice(0, 8)}...`
+    );
+  }
+
+  return client.getOrder(orderParams);
 }
 
 /**

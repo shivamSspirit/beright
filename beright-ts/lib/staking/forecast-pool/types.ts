@@ -63,7 +63,7 @@ export function getTierConfig(tier: PoolTier): TierConfig {
       token: 'SOL',
       maxBrier: 0.35,
       minPredictions: 10,
-      minDeposit: 0.05 * 1e9,
+      minDeposit: 0.1 * 1e9,
       isPro: false,
     },
     [PoolTier.BasicSol]: {

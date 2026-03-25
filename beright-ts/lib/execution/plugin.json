@@ -1,0 +1,33 @@
+{
+  "id": "execution-engine",
+  "name": "Execution Engine",
+  "description": "Fast trade execution with JITO bundles, Jupiter aggregation, and smart order routing",
+  "version": "1.0.0",
+  "author": "BeRight Protocol",
+  "provides": ["execution"],
+  "requires": {
+    "env": ["SOLANA_PRIVATE_KEY", "HELIUS_API_KEY"],
+    "plugins": ["data-fabric"]
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "maxSlippage": {
+        "type": "number",
+        "default": 0.01,
+        "description": "Maximum slippage tolerance (1%)"
+      },
+      "useJito": {
+        "type": "boolean",
+        "default": true,
+        "description": "Use JITO bundles for MEV protection"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false,
+        "description": "Simulate trades without execution"
+      }
+    }
+  },
+  "entry": "./index.ts"
+}

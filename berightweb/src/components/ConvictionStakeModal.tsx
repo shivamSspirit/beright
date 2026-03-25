@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useUser } from '@/hooks/useUnifiedUser';
 import { useConvictionEscrow } from '@/hooks/useConvictionEscrow';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 
@@ -50,6 +51,10 @@ export function ConvictionStakeModal({
   milestoneQuestion = 'Will we achieve our milestone?',
   suggestedResolver,
 }: ConvictionStakeModalProps) {
+  // Get wallet state from UserContext (same source as header)
+  const { walletAddress, isAuthenticated, isLoading: userLoading } = useUser();
+
+  // Escrow hook for on-chain operations
   const {
     escrowState,
     hasMarket,
@@ -58,13 +63,19 @@ export function ConvictionStakeModal({
     txLoading,
     error: escrowError,
     lastTx,
-    connected,
     ownerPubkey,
     createMarket,
     stake,
   } = useConvictionEscrow();
 
-  const walletBalance = useWalletBalance(ownerPubkey);
+  // Use wallet address from context or fallback to hook
+  const effectiveWallet = walletAddress || ownerPubkey;
+
+  // Connected = authenticated + wallet found
+  const isConnected = isAuthenticated && !!effectiveWallet;
+  const isWalletsLoading = userLoading;
+
+  const walletBalance = useWalletBalance(effectiveWallet);
   const balance = walletBalance.sol;
   const balanceLoading = walletBalance.isLoading;
 
@@ -185,15 +196,23 @@ export function ConvictionStakeModal({
           </button>
         </div>
 
-        {/* Not Connected State */}
-        {!connected && (
+        {/* Wallets Loading State */}
+        {isWalletsLoading && (
+          <div className="text-center py-8">
+            <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-400">Loading wallet...</p>
+          </div>
+        )}
+
+        {/* Not Connected State - only show after wallets are ready */}
+        {!isWalletsLoading && !isConnected && (
           <div className="text-center py-8">
             <p className="text-gray-400 mb-4">Connect your wallet to continue</p>
           </div>
         )}
 
         {/* Loading State */}
-        {connected && loading && (
+        {isConnected && loading && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
             <p className="text-gray-400">Loading escrow state...</p>
@@ -201,7 +220,7 @@ export function ConvictionStakeModal({
         )}
 
         {/* Existing Market - Pending Stake */}
-        {connected && !loading && hasMarket && canStake && step !== 'success' && (
+        {isConnected && !loading && hasMarket && canStake && step !== 'success' && (
           <div className="space-y-4">
             <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
               <p className="text-gray-400 text-sm mb-1">Market Status</p>
@@ -232,7 +251,7 @@ export function ConvictionStakeModal({
         )}
 
         {/* Existing Market - Active */}
-        {connected && !loading && hasMarket && escrowState?.status === 'active' && (
+        {isConnected && !loading && hasMarket && escrowState?.status === 'active' && (
           <div className="space-y-4">
             <div className="bg-[#161b22] rounded-lg p-4 border border-emerald-500/30">
               <p className="text-gray-400 text-sm mb-1">Market Status</p>
@@ -270,7 +289,7 @@ export function ConvictionStakeModal({
         )}
 
         {/* Create New Market Form */}
-        {connected && !loading && !hasMarket && step === 'form' && (
+        {isConnected && !loading && !hasMarket && step === 'form' && (
           <div className="space-y-4">
             {/* Project Info */}
             <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
@@ -425,7 +444,7 @@ export function ConvictionStakeModal({
             </p>
             {lastTx && (
               <a
-                href={`https://explorer.solana.com/tx/${lastTx}?cluster=devnet`}
+                href={`https://orbmarkets.io/tx/${lastTx}?cluster=devnet&tab=summary`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-emerald-400 text-sm hover:underline"

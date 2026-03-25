@@ -6,26 +6,28 @@
  * Handles creating conviction markets, staking SOL, resolving outcomes,
  * and claiming funds from the on-chain escrow program.
  *
+ * Supports both Demo mode (Jupiter wallet) and Production mode (Privy)
+ * by reading wallet state from window (exposed by both providers).
+ *
  * Usage:
  *   const { createMarket, stake, escrowState, loading } = useConvictionEscrow();
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useSignTransaction } from '@privy-io/react-auth/solana';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMode } from '@/context/ModeContext';
 import {
   Connection,
-  PublicKey,
   Transaction,
   VersionedTransaction,
-  LAMPORTS_PER_SOL,
+  PublicKey,
 } from '@solana/web3.js';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+// Conviction escrow runs on devnet - use devnet RPC
+const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
 const API_BASE = '';
 
 // ============================================================================
@@ -62,6 +64,19 @@ export interface EscrowPdas {
   vaultPda: string;
   marketBump: number;
   vaultBump: number;
+}
+
+// Window state interface (exposed by both providers)
+interface WalletState {
+  connected: boolean;
+  connecting: boolean;
+  publicKey: string | null;
+  walletName: string | null;
+}
+
+interface WalletFuncs {
+  signTransaction?: (tx: Transaction | VersionedTransaction | Uint8Array) => Promise<Transaction | VersionedTransaction | Uint8Array>;
+  disconnect?: () => Promise<void>;
 }
 
 // ============================================================================
@@ -211,13 +226,43 @@ async function buildClaimTx(
 }
 
 // ============================================================================
+// WINDOW STATE HELPERS
+// ============================================================================
+
+function getWalletState(): WalletState {
+  if (typeof window === 'undefined') {
+    return { connected: false, connecting: false, publicKey: null, walletName: null };
+  }
+  const state = (window as Window & { __BERIGHT_WALLET__?: WalletState }).__BERIGHT_WALLET__;
+  return state || { connected: false, connecting: false, publicKey: null, walletName: null };
+}
+
+function getWalletFuncs(): WalletFuncs {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  return (window as Window & { __BERIGHT_WALLET_FUNCS__?: WalletFuncs }).__BERIGHT_WALLET_FUNCS__ || {};
+}
+
+function getProvider(): 'jupiter' | 'privy' | null {
+  if (typeof window === 'undefined') return null;
+  return (window as Window & { __BERIGHT_PROVIDER__?: string }).__BERIGHT_PROVIDER__ as 'jupiter' | 'privy' | null;
+}
+
+// ============================================================================
 // HOOK
 // ============================================================================
 
 export function useConvictionEscrow(projectWallet?: string) {
-  const { ready, authenticated } = usePrivy();
-  const { wallets, ready: walletsReady } = useWallets();
-  const { signTransaction } = useSignTransaction();
+  const { isDemo } = useMode();
+
+  // Read wallet state from window (updated by provider bridges)
+  const [walletState, setWalletState] = useState<WalletState>({
+    connected: false,
+    connecting: true,
+    publicKey: null,
+    walletName: null,
+  });
 
   const [escrowState, setEscrowState] = useState<EscrowState | null>(null);
   const [pdas, setPdas] = useState<EscrowPdas | null>(null);
@@ -226,15 +271,66 @@ export function useConvictionEscrow(projectWallet?: string) {
   const [error, setError] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<string | null>(null);
 
-  // Pick the active Solana wallet (prefer external over embedded)
-  const wallet = wallets.find((w) => w.walletClientType !== 'privy') ?? wallets[0];
-  const ownerPubkey = wallet?.address || null;
+  // Subscribe to wallet state changes from window
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-  // Use provided projectWallet or connected wallet
+    const checkWalletState = () => {
+      const state = getWalletState();
+      setWalletState(prev => {
+        // Only update if something changed to avoid unnecessary re-renders
+        if (
+          prev.connected !== state.connected ||
+          prev.connecting !== state.connecting ||
+          prev.publicKey !== state.publicKey ||
+          prev.walletName !== state.walletName
+        ) {
+          return state;
+        }
+        return prev;
+      });
+    };
+
+    // Check immediately
+    checkWalletState();
+
+    // Poll for changes (providers update window state)
+    const interval = setInterval(checkWalletState, 300);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const ownerPubkey = walletState.publicKey;
   const targetWallet = projectWallet || ownerPubkey;
+  const connection = useMemo(() => new Connection(SOLANA_RPC, 'confirmed'), []);
+  const provider = getProvider();
 
-  // Connection for sending transactions
-  const connection = new Connection(SOLANA_RPC, 'confirmed');
+  // Debug: Log wallet state
+  useEffect(() => {
+    console.log('[useConvictionEscrow] Wallet state:', {
+      mode: isDemo ? 'demo' : 'production',
+      provider,
+      connected: walletState.connected,
+      connecting: walletState.connecting,
+      publicKey: ownerPubkey?.slice(0, 8) || 'none',
+      walletName: walletState.walletName || 'none',
+      rpc: SOLANA_RPC,
+    });
+  }, [isDemo, provider, walletState, ownerPubkey]);
+
+  // Debug: Expose to window
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    (window as Window & { __BERIGHT_ESCROW__?: unknown }).__BERIGHT_ESCROW__ = {
+      mode: isDemo ? 'demo' : 'production',
+      provider,
+      connected: walletState.connected,
+      ownerPubkey: ownerPubkey?.slice(0, 8) || 'none',
+      hasMarket: escrowState !== null,
+      escrowStatus: escrowState?.status || 'none',
+    };
+  }, [isDemo, provider, walletState, ownerPubkey, escrowState]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // FETCH STATE
@@ -264,38 +360,76 @@ export function useConvictionEscrow(projectWallet?: string) {
 
   // Auto-fetch on mount and wallet change
   useEffect(() => {
-    if (ready && walletsReady && targetWallet) {
+    if (walletState.connected && targetWallet) {
       fetchState();
     }
-  }, [ready, walletsReady, targetWallet, fetchState]);
+  }, [walletState.connected, targetWallet, fetchState]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SIGN AND SEND TRANSACTION
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const signAndSendTx = async (serializedTx: string): Promise<string> => {
-    // Deserialize transaction
+  const signAndSendTx = useCallback(async (serializedTx: string): Promise<string> => {
     const txBuffer = Buffer.from(serializedTx, 'base64');
-    const tx = Transaction.from(txBuffer);
+    const funcs = getWalletFuncs();
+    const currentProvider = getProvider();
 
-    // Sign with Privy - serialize for their API
-    const serialized = tx.serialize({ requireAllSignatures: false });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const signedTx = await signTransaction(serialized as any);
+    console.log('[useConvictionEscrow] Signing - publicKey:', ownerPubkey,
+      'connected:', walletState.connected,
+      'provider:', currentProvider,
+      'hasSignTransaction:', !!funcs.signTransaction);
+
+    if (!walletState.connected || !ownerPubkey) {
+      throw new Error('Wallet not connected. Please connect your wallet first.');
+    }
+
+    if (!funcs.signTransaction) {
+      throw new Error('signTransaction function not available. Please reconnect your wallet.');
+    }
+
+    // Try to deserialize as VersionedTransaction first, fall back to legacy Transaction
+    let transaction: Transaction | VersionedTransaction;
+    try {
+      transaction = VersionedTransaction.deserialize(txBuffer);
+    } catch {
+      transaction = Transaction.from(txBuffer);
+    }
+
+    // Sign using the provider's signTransaction function
+    console.log(`[useConvictionEscrow] Using ${currentProvider} signTransaction`);
+
+    let signedTx: Transaction | VersionedTransaction;
+
+    if (currentProvider === 'jupiter') {
+      // Jupiter wallet adapter returns the signed transaction directly
+      signedTx = await funcs.signTransaction(transaction) as Transaction | VersionedTransaction;
+    } else {
+      // Privy returns Uint8Array from window bridge
+      const serialized = transaction.serialize();
+      const signedBytes = await funcs.signTransaction(serialized) as Uint8Array;
+
+      // Deserialize the signed transaction
+      try {
+        signedTx = VersionedTransaction.deserialize(signedBytes);
+      } catch {
+        signedTx = Transaction.from(signedBytes);
+      }
+    }
 
     // Send transaction
-    const signature = await connection.sendRawTransaction(
-      (signedTx as unknown as Transaction).serialize()
-    );
+    const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
 
     // Confirm transaction
     await connection.confirmTransaction(signature, 'confirmed');
 
     return signature;
-  };
+  }, [walletState, ownerPubkey, connection]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // CREATE MARKET
+  // ACTIONS
   // ─────────────────────────────────────────────────────────────────────────────
 
   const createMarket = useCallback(
@@ -311,7 +445,7 @@ export function useConvictionEscrow(projectWallet?: string) {
             ? params.resolutionDate
             : Math.floor(params.resolutionDate.getTime() / 1000);
 
-        const { transaction, marketPda, vaultPda } = await buildCreateTx({
+        const { transaction } = await buildCreateTx({
           projectWallet: ownerPubkey,
           resolver: params.resolver,
           stakePosition: params.stakePosition || 'yes',
@@ -321,10 +455,7 @@ export function useConvictionEscrow(projectWallet?: string) {
 
         const signature = await signAndSendTx(transaction);
         setLastTx(signature);
-
-        // Refresh state
         await fetchState();
-
         return signature;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -337,10 +468,6 @@ export function useConvictionEscrow(projectWallet?: string) {
     [ownerPubkey, fetchState, signAndSendTx]
   );
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // STAKE
-  // ─────────────────────────────────────────────────────────────────────────────
-
   const stake = useCallback(async (): Promise<string> => {
     if (!ownerPubkey) throw new Error('Wallet not connected');
 
@@ -351,10 +478,7 @@ export function useConvictionEscrow(projectWallet?: string) {
       const { transaction } = await buildStakeTx(ownerPubkey);
       const signature = await signAndSendTx(transaction);
       setLastTx(signature);
-
-      // Refresh state
       await fetchState();
-
       return signature;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -364,10 +488,6 @@ export function useConvictionEscrow(projectWallet?: string) {
       setTxLoading(false);
     }
   }, [ownerPubkey, fetchState, signAndSendTx]);
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RESOLVE
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const resolve = useCallback(
     async (outcome: 'yes' | 'no' | 'invalid'): Promise<string> => {
@@ -380,10 +500,7 @@ export function useConvictionEscrow(projectWallet?: string) {
         const { transaction } = await buildResolveTx(targetWallet, ownerPubkey, outcome);
         const signature = await signAndSendTx(transaction);
         setLastTx(signature);
-
-        // Refresh state
         await fetchState();
-
         return signature;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -396,10 +513,6 @@ export function useConvictionEscrow(projectWallet?: string) {
     [ownerPubkey, targetWallet, fetchState, signAndSendTx]
   );
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CLAIM
-  // ─────────────────────────────────────────────────────────────────────────────
-
   const claim = useCallback(async (): Promise<string> => {
     if (!ownerPubkey || !targetWallet) throw new Error('Wallet not connected');
 
@@ -410,10 +523,7 @@ export function useConvictionEscrow(projectWallet?: string) {
       const { transaction } = await buildClaimTx(targetWallet, ownerPubkey);
       const signature = await signAndSendTx(transaction);
       setLastTx(signature);
-
-      // Refresh state
       await fetchState();
-
       return signature;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -441,6 +551,8 @@ export function useConvictionEscrow(projectWallet?: string) {
       (escrowState.stakePosition === 'no' && escrowState.outcome === 'no') ||
       escrowState.outcome === 'invalid');
 
+  const canSign = walletState.connected && !!getWalletFuncs().signTransaction;
+
   return {
     // State
     escrowState,
@@ -450,7 +562,9 @@ export function useConvictionEscrow(projectWallet?: string) {
     error,
     lastTx,
     ownerPubkey,
-    connected: !!ownerPubkey && authenticated,
+    connected: walletState.connected && !!ownerPubkey,
+    canSign,
+    walletsReady: !walletState.connecting,
 
     // Computed
     hasMarket,

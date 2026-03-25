@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useUser } from '@/hooks/useUnifiedUser';
+import { getTransactionUrl } from '@/lib/explorer';
 import { useVault } from '@/hooks/useVault';
 import {
   Shield, Lock, Unlock, TrendingDown, TrendingUp,
@@ -31,11 +32,8 @@ function shortKey(key: string): string {
   return `${key.slice(0, 4)}…${key.slice(-4)}`;
 }
 
-function solscanTx(sig: string): string {
-  const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'devnet';
-  const q = cluster === 'mainnet' ? '' : `?cluster=${cluster}`;
-  return `https://solscan.io/tx/${sig}${q}`;
-}
+// Explorer URL helper - uses Orb Markets for devnet visibility
+const solscanTx = (sig: string) => getTransactionUrl(sig, 'devnet');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUB-COMPONENTS
@@ -81,7 +79,9 @@ function TxLink({ sig }: { sig: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function VaultPage() {
-  const { login, authenticated, ready } = usePrivy();
+  const { login, isAuthenticated, isLoading } = useUser();
+  const authenticated = isAuthenticated;
+  const ready = !isLoading;
   const {
     vaultState, initialized, loading, txLoading, error, lastTx,
     initVault, deposit, withdraw, freezeVault, unfreezeVault,

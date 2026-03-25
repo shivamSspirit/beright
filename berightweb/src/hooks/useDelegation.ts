@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -361,7 +361,13 @@ export function usePoolActions(poolId: string) {
 // Helpers
 // ============================================================================
 
-export function formatTvl(tvl: number): string {
+export function formatTvl(tvl: number, isDemo: boolean = false): string {
+  if (isDemo) {
+    // Demo mode: display as SOL
+    if (tvl >= 1_000) return `${(tvl / 1_000).toFixed(2)}K SOL`;
+    return `${tvl.toFixed(4)} SOL`;
+  }
+  // Production: display as USD
   if (tvl >= 1_000_000) return `$${(tvl / 1_000_000).toFixed(2)}M`;
   if (tvl >= 1_000) return `$${(tvl / 1_000).toFixed(1)}K`;
   return `$${tvl.toFixed(2)}`;
@@ -371,8 +377,11 @@ export function formatNav(nav: number): string {
   return nav.toFixed(4);
 }
 
-export function formatPnl(pnl: number, showSign = true): string {
+export function formatPnl(pnl: number, showSign = true, isDemo: boolean = false): string {
   const sign = showSign && pnl > 0 ? '+' : '';
+  if (isDemo) {
+    return `${sign}${Math.abs(pnl).toFixed(4)} SOL`;
+  }
   return `${sign}$${Math.abs(pnl).toFixed(2)}`;
 }
 

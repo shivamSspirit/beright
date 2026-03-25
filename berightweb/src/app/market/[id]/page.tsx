@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { usePrivy } from '@privy-io/react-auth';
+import { useUser } from '@/hooks/useUnifiedUser';
 import {
   DFlowEvent,
   getDFlowEventByTicker,
@@ -95,7 +95,7 @@ export default function MarketDetailPage() {
   const params = useParams();
   const router = useRouter();
   const marketId = decodeURIComponent(params.id as string);
-  const { authenticated, login } = usePrivy();
+  const { isAuthenticated: authenticated, login } = useUser();
 
   const [market, setMarket] = useState<DFlowEvent | null>(null);
   const [loading, setLoading] = useState(true);

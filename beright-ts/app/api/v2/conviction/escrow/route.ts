@@ -24,7 +24,10 @@ import {
 // ============================================================================
 
 function getConnection(): Connection {
-  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+  // Conviction escrow runs on devnet - use Helius devnet RPC for reliability
+  const rpcUrl = process.env.HELIUS_RPC_DEVNET
+    || process.env.SOLANA_DEVNET_RPC_URL
+    || 'https://api.devnet.solana.com';
   return new Connection(rpcUrl, 'confirmed');
 }
 

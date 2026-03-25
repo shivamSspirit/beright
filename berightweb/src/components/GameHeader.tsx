@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 
 interface GameStats {
   streak: number;

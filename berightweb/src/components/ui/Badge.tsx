@@ -14,7 +14,7 @@ export type BadgeVariant =
   | 'fire'
   | 'gold';
 
-export type BadgeSize = 'sm' | 'md';
+export type BadgeSize = 'sm' | 'md' | 'lg';
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;

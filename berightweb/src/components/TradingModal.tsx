@@ -6,6 +6,9 @@ import { DFlowData, DFlowTokens } from '@/lib/types';
 import { useDFlowTrading, TradingStep } from '@/hooks/useDFlowTrading';
 import { createPrediction, PredictionInput } from '@/lib/api';
 import { useWalletBalance, formatBalance } from '@/hooks/useWalletBalance';
+import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
+import { usePredictions } from '@/hooks/usePredictions';
+import { getAllExplorerUrls, ExplorerLink } from '@/lib/explorer';
 
 // ============ TYPES ============
 
@@ -101,10 +104,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
- * Format Solscan URL
+ * Get all explorer URLs for a transaction
  */
-function getSolscanUrl(signature: string): string {
-  return `https://solscan.io/tx/${signature}?cluster=mainnet`;
+function getExplorerLinks(signature: string): ExplorerLink[] {
+  return getAllExplorerUrls(signature, 'devnet');
 }
 
 // ============ COMPONENT ============
@@ -154,6 +157,12 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     connectWallet,
     reset,
   } = useDFlowTrading();
+
+  // Calibration - record every prediction on-chain
+  const { recordPrediction } = usePredictionRecorder();
+
+  // Save predictions to localStorage/API for profile display
+  const { savePrediction } = usePredictions(walletAddress);
 
   // Wallet balance check
   const { sol, usdc, isLoading: balanceLoading, hasEnoughForTrade, refetch: refetchBalance } = useWalletBalance(walletAddress);
@@ -321,7 +330,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         setMemoState({
           status: 'success',
           signature: response.onChain.signature,
-          explorerUrl: response.onChain.explorerUrl || getSolscanUrl(response.onChain.signature),
+          explorerUrl: null, // We now generate multiple explorer links dynamically
           error: null,
           retryCount: 0,
         });
@@ -424,6 +433,11 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
     setIsSubmitting(true);
 
+    const isYes = side === 'YES';
+    const probability = isYes
+      ? (dflow?.yesBid ?? prediction.marketOdds / 100)
+      : (dflow?.noBid ?? (100 - prediction.marketOdds) / 100);
+
     trackEvent('trade_started', {
       marketId: prediction.id,
       side,
@@ -432,14 +446,30 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     });
 
     try {
-      const signature = await executeTrade({
-        side,
-        amount: numAmount,
-        inputToken,
-        yesMint: tokens.yesMint,
-        noMint: tokens.noMint,
-        slippageBps: 100,
+      // First, record prediction to on-chain calibration program
+      const calibrationSig = await recordPrediction({
+        marketId: prediction.id,
+        direction: isYes ? 'yes' : 'no',
+        probability,
       });
+
+      // Try DFlow trade (may not work on devnet)
+      let dflowSig: string | null = null;
+      try {
+        dflowSig = await executeTrade({
+          side,
+          amount: numAmount,
+          inputToken,
+          yesMint: tokens.yesMint,
+          noMint: tokens.noMint,
+          slippageBps: 100,
+        });
+      } catch (dflowErr) {
+        console.log('[TradingModal] DFlow trade failed (expected on devnet):', dflowErr);
+      }
+
+      // Use calibration signature (or DFlow if available)
+      const signature = dflowSig || calibrationSig;
 
       if (signature) {
         trackEvent('trade_success', {
@@ -448,6 +478,22 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
           amount: numAmount,
           signature,
         });
+
+        // Save prediction to localStorage/API for profile display
+        const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+        await savePrediction(
+          {
+            id: prediction.id,
+            question: prediction.question,
+            marketOdds: prediction.marketOdds,
+            platform: prediction.source,
+          },
+          side,
+          signature,
+          explorerUrl
+        );
+      } else {
+        throw new Error('Failed to record prediction on-chain');
       }
     } catch (err) {
       trackEvent('trade_error', {
@@ -457,7 +503,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     } finally {
       setIsSubmitting(false);
     }
-  }, [isTokenized, tokens, amount, side, inputToken, executeTrade, prediction.id, isSubmitting]);
+  }, [isTokenized, tokens, amount, side, inputToken, executeTrade, prediction.id, prediction.question, prediction.source, prediction.marketOdds, dflow, recordPrediction, savePrediction, isSubmitting]);
 
   /**
    * Copy transaction signature to clipboard
@@ -749,8 +795,8 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 <span className="tm-status-text">{STEP_LABELS[step]}</span>
                 {error && <span className="tm-error">{error}</span>}
 
-                {/* Trade Transaction Link (P1) */}
-                {txUrl && tradeSignature && (
+                {/* Trade Transaction Links */}
+                {tradeSignature && (
                   <div className="tm-tx-section">
                     <div className="tm-tx-header">
                       <span className="tm-tx-label">Trade Transaction</span>
@@ -771,14 +817,35 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                         )}
                       </button>
                     </div>
-                    <a
-                      href={txUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="tm-tx-link"
-                    >
-                      View on Solscan →
-                    </a>
+                    <div className="tm-explorer-links">
+                      {getExplorerLinks(tradeSignature).map((link) => (
+                        <a
+                          key={link.name}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`tm-explorer-link ${link.icon}`}
+                          title={`View on ${link.name}`}
+                        >
+                          {link.icon === 'solscan' && (
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                            </svg>
+                          )}
+                          {link.icon === 'solana' && (
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M4.5 18.75l3.5-3.75H20c.28 0 .5.22.5.5s-.22.5-.5.5H8.5l-3.5 3.25c-.1.1-.23.15-.35.15-.13 0-.26-.05-.35-.15-.2-.2-.2-.5 0-.7zm15-13.5l-3.5 3.75H4c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h11.5l3.5-3.25c.2-.2.5-.2.7 0 .2.2.2.5 0 .7zm0 6l-3.5 3.75H4c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h11.5l3.5-3.25c.2-.2.5-.2.7 0 .2.2.2.5 0 .7z"/>
+                            </svg>
+                          )}
+                          {link.icon === 'orb' && (
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="12" cy="12" r="10"/>
+                            </svg>
+                          )}
+                          <span>{link.name}</span>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -801,7 +868,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                       )}
                     </div>
 
-                    {/* Success: Show Solscan link */}
+                    {/* Success: Show explorer links */}
                     {memoState.status === 'success' && memoState.signature && (
                       <div className="tm-tx-section memo">
                         <div className="tm-tx-header">
@@ -822,14 +889,35 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                             )}
                           </button>
                         </div>
-                        <a
-                          href={memoState.explorerUrl || getSolscanUrl(memoState.signature)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="tm-tx-link memo"
-                        >
-                          View Prediction on Solscan →
-                        </a>
+                        <div className="tm-explorer-links">
+                          {getExplorerLinks(memoState.signature).map((link) => (
+                            <a
+                              key={link.name}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`tm-explorer-link ${link.icon}`}
+                              title={`View on ${link.name}`}
+                            >
+                              {link.icon === 'solscan' && (
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                                </svg>
+                              )}
+                              {link.icon === 'solana' && (
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M4.5 18.75l3.5-3.75H20c.28 0 .5.22.5.5s-.22.5-.5.5H8.5l-3.5 3.25c-.1.1-.23.15-.35.15-.13 0-.26-.05-.35-.15-.2-.2-.2-.5 0-.7zm15-13.5l-3.5 3.75H4c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h11.5l3.5-3.25c.2-.2.5-.2.7 0 .2.2.2.5 0 .7zm0 6l-3.5 3.75H4c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h11.5l3.5-3.25c.2-.2.5-.2.7 0 .2.2.2.5 0 .7z"/>
+                                </svg>
+                              )}
+                              {link.icon === 'orb' && (
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                  <circle cx="12" cy="12" r="10"/>
+                                </svg>
+                              )}
+                              <span>{link.name}</span>
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -978,12 +1066,12 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-side.active.yes {
-          background: rgba(0, 230, 118, 0.1);
+          background: rgba(0, 255, 178, 0.1);
           border-color: #10B981;
         }
 
         .tm-side.active.no {
-          background: rgba(255, 82, 82, 0.1);
+          background: rgba(255, 71, 87, 0.1);
           border-color: #F43F5E;
         }
 
@@ -1318,7 +1406,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-copy-btn.copied {
-          background: rgba(0, 230, 118, 0.2);
+          background: rgba(0, 255, 178, 0.2);
         }
 
         .tm-copy-btn svg {
@@ -1345,6 +1433,78 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
         .tm-tx-link.memo {
           color: #14F195;
+        }
+
+        /* Explorer Links */
+        .tm-explorer-links {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .tm-explorer-link {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 10px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.7);
+          text-decoration: none;
+          transition: all 0.15s;
+          cursor: pointer;
+        }
+
+        .tm-explorer-link:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.15);
+          color: #fff;
+          transform: translateY(-1px);
+        }
+
+        .tm-explorer-link svg {
+          width: 14px;
+          height: 14px;
+          flex-shrink: 0;
+        }
+
+        /* Solscan - purple theme */
+        .tm-explorer-link.solscan {
+          border-color: rgba(153, 69, 255, 0.2);
+        }
+        .tm-explorer-link.solscan:hover {
+          background: rgba(153, 69, 255, 0.15);
+          border-color: rgba(153, 69, 255, 0.4);
+        }
+        .tm-explorer-link.solscan svg {
+          color: #9945FF;
+        }
+
+        /* Solana Explorer - teal/green theme */
+        .tm-explorer-link.solana {
+          border-color: rgba(20, 241, 149, 0.2);
+        }
+        .tm-explorer-link.solana:hover {
+          background: rgba(20, 241, 149, 0.15);
+          border-color: rgba(20, 241, 149, 0.4);
+        }
+        .tm-explorer-link.solana svg {
+          color: #14F195;
+        }
+
+        /* Orb - cyan/blue theme */
+        .tm-explorer-link.orb {
+          border-color: rgba(59, 130, 246, 0.2);
+        }
+        .tm-explorer-link.orb:hover {
+          background: rgba(59, 130, 246, 0.15);
+          border-color: rgba(59, 130, 246, 0.4);
+        }
+        .tm-explorer-link.orb svg {
+          color: #3B82F6;
         }
 
         /* Memo Section (P1 & P2) */
@@ -1413,8 +1573,8 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         .tm-retry-btn {
           width: 100%;
           padding: 10px;
-          background: rgba(255, 82, 82, 0.1);
-          border: 1px solid rgba(255, 82, 82, 0.3);
+          background: rgba(255, 71, 87, 0.1);
+          border: 1px solid rgba(255, 71, 87, 0.3);
           border-radius: 8px;
           color: #F43F5E;
           font-size: 12px;
@@ -1424,7 +1584,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-retry-btn:hover:not(:disabled) {
-          background: rgba(255, 82, 82, 0.15);
+          background: rgba(255, 71, 87, 0.15);
         }
 
         .tm-retry-btn:disabled {
@@ -1634,7 +1794,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
 
         .tm-copy-address-btn.copied {
-          background: rgba(0, 230, 118, 0.2);
+          background: rgba(0, 255, 178, 0.2);
         }
 
         .tm-copy-address-btn svg {

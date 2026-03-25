@@ -11,7 +11,7 @@ type ChannelTier = 'free' | 'pro' | 'whale';
 
 interface SignalChannel {
   id: string;
-  forecaster_telegram_id: number;
+  forecaster_id: number;
   forecaster_display_name: string;
   name: string;
   description: string;
@@ -150,7 +150,7 @@ function ChannelCard({ channel, onClick }: { channel: SignalChannel; onClick: ()
         <span className="card-price">
           {channel.monthly_price_usd === 0 ? 'Free' : `$${channel.monthly_price_usd}/mo`}
         </span>
-        <span className="subscribe-hint">Subscribe on Telegram: /subscribe-channel {channel.slug}</span>
+        <span className="subscribe-hint">Subscribe in Terminal: /subscribe-channel {channel.slug}</span>
       </div>
     </motion.div>
   );
@@ -177,7 +177,7 @@ function SignalRow({ signal }: { signal: ChannelSignal }) {
           {Math.round(signal.probability * 100)}% · {signal.confidence} conf · {signal.time_horizon}
           {signal.on_chain_tx && (
             <a
-              href={`https://solscan.io/tx/${signal.on_chain_tx}`}
+              href={`https://orbmarkets.io/tx/${signal.on_chain_tx}?cluster=devnet&tab=summary`}
               target="_blank"
               rel="noopener noreferrer"
               className="sdr-chain-link"
@@ -267,7 +267,7 @@ function ChannelDetail({
             </div>
 
             <div className="modal-subscribe-box">
-              <span>Subscribe on Telegram:</span>
+              <span>Subscribe in Terminal:</span>
               <code className="modal-subscribe-cmd">/subscribe-channel {data.channel.slug}</code>
             </div>
 
@@ -308,7 +308,7 @@ export default function VaultsPage() {
         <div className="header-inner">
           <h1 className="header-title">◈ Signal Channels</h1>
           <p className="header-sub">
-            Subscribe to top forecasters. Get their predictions delivered to Telegram before the market moves.
+            Subscribe to top forecasters. Get their predictions delivered before the market moves.
           </p>
         </div>
       </header>
@@ -323,7 +323,7 @@ export default function VaultsPage() {
           <div className="empty-state">
             <div className="empty-icon">📡</div>
             <h3>No channels yet</h3>
-            <p>Be the first to create a signal channel on Telegram.</p>
+            <p>Be the first to create a signal channel.</p>
             <p className="empty-cmd">/create-channel [name]</p>
           </div>
         ) : (
@@ -347,7 +347,7 @@ export default function VaultsPage() {
             <div className="cta-steps">
               <div className="cta-step">
                 <span className="step-num">1</span>
-                <span>Open the BeRight bot on Telegram</span>
+                <span>Open the BeRight Terminal</span>
               </div>
               <div className="cta-step">
                 <span className="step-num">2</span>

@@ -1,17 +1,23 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-import { useWallets, useSignTransaction } from '@privy-io/react-auth/solana';
-import { Connection, VersionedTransaction } from '@solana/web3.js';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Connection, VersionedTransaction, Transaction, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { getDFlowOrder, getDFlowOrderStatus, DFlowOrderResponse, DFlowOrderStatus } from '@/lib/api';
+import { useMode } from '@/context/ModeContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 
-// Solana RPC endpoint
-const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.mainnet-beta.solana.com';
+// Solana RPC endpoints
+const MAINNET_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
 
-// Token mints
-const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+// Token mints - mainnet
+const USDC_MINT_MAINNET = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
+// Token mints - devnet (demo mode)
+const USDC_MINT_DEVNET = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
+
+// Memo program ID (same on mainnet and devnet)
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 export type TradingStep =
   | 'idle'
@@ -41,10 +47,15 @@ interface TradeParams {
 }
 
 export function useDFlowTrading() {
-  // Privy hooks for auth and wallet
-  const { ready, authenticated, login, logout } = usePrivy();
-  const { wallets: solanaWallets, ready: walletsReady } = useWallets();
-  const { signTransaction } = useSignTransaction();
+  // Mode context for demo vs production
+  const { isDemo, network, isLoading: modeLoading } = useMode();
+
+  // Unified user hook for auth (works in both demo and production)
+  const { isAuthenticated, login, logout, walletAddress, isLoading: userLoading } = useUser();
+
+  // Select RPC and USDC mint based on mode
+  const SOLANA_RPC = isDemo ? DEVNET_RPC : MAINNET_RPC;
+  const USDC_MINT = isDemo ? USDC_MINT_DEVNET : USDC_MINT_MAINNET;
 
   const [state, setState] = useState<TradingState>({
     step: 'idle',
@@ -55,52 +66,31 @@ export function useDFlowTrading() {
     txUrl: null,
   });
 
-  // Prioritize external wallets (Phantom, Backpack, Solflare) over embedded wallets
-  // External wallets typically have names like 'Phantom', 'Backpack', 'Solflare'
-  // Embedded wallets created by Privy have name 'Privy' or similar
-  const solanaWallet = useMemo(() => {
-    if (!solanaWallets || solanaWallets.length === 0) return null;
-
-    // Find external wallet first (not privy embedded)
-    // Check by wallet name - external wallets have names like 'Phantom', 'Backpack'
-    const externalWallet = solanaWallets.find((w) => {
-      const name = (w as { name?: string }).name?.toLowerCase() || '';
-      const walletClient = (w as { walletClientType?: string }).walletClientType?.toLowerCase() || '';
-      // Exclude privy embedded wallets
-      return !name.includes('privy') && walletClient !== 'privy';
-    });
-
-    // If external wallet found, use it; otherwise fall back to first wallet (embedded)
-    return externalWallet || solanaWallets[0];
-  }, [solanaWallets]);
-
   // Connection status
-  const isReady = ready && walletsReady;
-  const isConnected = isReady && authenticated && !!solanaWallet?.address;
+  const isReady = !modeLoading && !userLoading;
+  const isConnected = isReady && isAuthenticated && !!walletAddress;
 
-  // Connect wallet - opens Privy modal
+  // Connect wallet - opens login modal (Privy or Jupiter based on mode)
   const connectWallet = useCallback(async () => {
-    if (!ready) {
-      console.warn('[DFlowTrading] Privy not ready yet');
+    if (!isReady) {
+      console.warn('[DFlowTrading] Not ready yet');
       return;
     }
-    if (!authenticated) {
+    if (!isAuthenticated) {
       try {
-        // This opens the Privy login modal
         await login();
       } catch (error) {
-        // Privy handles its own error UI, just log
         console.warn('[DFlowTrading] Login error:', error);
       }
     }
-  }, [ready, authenticated, login]);
+  }, [isReady, isAuthenticated, login]);
 
   // Disconnect wallet
   const disconnectWallet = useCallback(async () => {
-    if (authenticated) {
+    if (isAuthenticated && logout) {
       logout();
     }
-  }, [authenticated, logout]);
+  }, [isAuthenticated, logout]);
 
   // Reset state
   const reset = useCallback(() => {
@@ -142,14 +132,114 @@ export function useDFlowTrading() {
     return null;
   }, []);
 
-  // Execute trade
+  // Execute trade - demo mode uses mock transactions, production uses real DFlow
   const executeTrade = useCallback(async (params: TradeParams): Promise<string | null> => {
-    if (!solanaWallet?.address) {
+    if (!walletAddress) {
       setState(prev => ({ ...prev, step: 'error', error: 'Wallet not connected' }));
       return null;
     }
 
     try {
+      // =====================================================
+      // DEMO MODE: Real devnet transaction with memo
+      // =====================================================
+      if (isDemo) {
+        console.log('[Demo] Executing real devnet prediction:', params);
+
+        // Step 1: Build prediction memo
+        setState(prev => ({ ...prev, step: 'getting-quote', error: null }));
+
+        const connection = new Connection(DEVNET_RPC, 'confirmed');
+        const outputMint = params.side === 'YES' ? params.yesMint : params.noMint;
+
+        // Create order info for display
+        const demoOrder: DFlowOrderResponse = {
+          inputMint: USDC_MINT_DEVNET,
+          outputMint,
+          inAmount: String(params.amount),
+          outAmount: String(params.amount * 0.98),
+          slippageBps: params.slippageBps || 200,
+          priceImpactPct: '0.5',
+          executionMode: 'demo-devnet',
+          transaction: '',
+        };
+        setState(prev => ({ ...prev, order: demoOrder }));
+
+        // Get wallet signing function
+        const walletFuncs = (window as Window & {
+          __BERIGHT_WALLET_FUNCS__?: {
+            signTransaction?: (tx: Transaction | VersionedTransaction) => Promise<Transaction | VersionedTransaction>;
+          };
+        }).__BERIGHT_WALLET_FUNCS__;
+
+        if (!walletFuncs?.signTransaction) {
+          throw new Error('Wallet not connected. Please connect your wallet first.');
+        }
+
+        // Step 2: Create and sign memo transaction
+        setState(prev => ({ ...prev, step: 'signing' }));
+
+        // Create memo with prediction details
+        const memoData = JSON.stringify({
+          type: 'beright_prediction',
+          side: params.side,
+          amount: params.amount,
+          market: outputMint.slice(0, 8),
+          timestamp: Date.now(),
+        });
+
+        const memoInstruction = new TransactionInstruction({
+          keys: [{ pubkey: new PublicKey(walletAddress), isSigner: true, isWritable: true }],
+          programId: MEMO_PROGRAM_ID,
+          data: Buffer.from(memoData),
+        });
+
+        // Build transaction
+        const transaction = new Transaction();
+        transaction.add(memoInstruction);
+        transaction.feePayer = new PublicKey(walletAddress);
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+        // Sign with wallet
+        const signedTx = await walletFuncs.signTransaction(transaction);
+
+        // Step 3: Submit to devnet
+        setState(prev => ({ ...prev, step: 'submitting' }));
+
+        const signature = await connection.sendRawTransaction(
+          (signedTx as Transaction).serialize(),
+          { skipPreflight: false, preflightCommitment: 'confirmed' }
+        );
+
+        const txUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
+        setState(prev => ({ ...prev, signature, txUrl }));
+
+        // Step 4: Confirm transaction
+        setState(prev => ({ ...prev, step: 'confirming' }));
+
+        await connection.confirmTransaction(signature, 'confirmed');
+
+        // Success!
+        const demoStatus: DFlowOrderStatus = {
+          status: 'closed',
+          inAmount: String(params.amount),
+          outAmount: String(params.amount * 0.98),
+        };
+
+        setState(prev => ({
+          ...prev,
+          step: 'success',
+          status: demoStatus,
+        }));
+
+        console.log('[Demo] Real devnet prediction recorded:', signature);
+        return signature;
+      }
+
+      // =====================================================
+      // PRODUCTION MODE: Real DFlow trade execution
+      // =====================================================
+
       // Step 1: Get order/quote from DFlow
       setState(prev => ({ ...prev, step: 'getting-quote', error: null }));
 
@@ -164,7 +254,7 @@ export function useDFlowTrading() {
         inputMint,
         outputMint,
         amount: amountInSmallestUnit,
-        userPublicKey: solanaWallet.address,
+        userPublicKey: walletAddress,
         slippageBps: params.slippageBps || 100,
       });
 
@@ -181,22 +271,19 @@ export function useDFlowTrading() {
       const transactionBuffer = Buffer.from(orderResponse.order.transaction, 'base64');
       const transaction = VersionedTransaction.deserialize(transactionBuffer);
 
-      // Sign with wallet using Privy's Solana signTransaction hook
-      if (!solanaWallet) {
-        throw new Error('No wallet connected');
+      // Get wallet signing function from window (set by DemoWalletProvider or PrivyProvider)
+      const walletFuncs = (window as Window & {
+        __BERIGHT_WALLET_FUNCS__?: {
+          signTransaction?: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
+        };
+      }).__BERIGHT_WALLET_FUNCS__;
+
+      if (!walletFuncs?.signTransaction) {
+        throw new Error('Wallet signing not available');
       }
 
-      // Serialize transaction to Uint8Array for signing
-      const serializedTx = transaction.serialize();
-
-      // Sign using Privy's signTransaction
-      const { signedTransaction: signedTxBytes } = await signTransaction({
-        transaction: serializedTx,
-        wallet: solanaWallet,
-      });
-
-      // Deserialize signed transaction
-      const signedTx = VersionedTransaction.deserialize(signedTxBytes);
+      // Sign the transaction
+      const signedTx = await walletFuncs.signTransaction(transaction);
 
       // Step 3: Submit transaction
       setState(prev => ({ ...prev, step: 'submitting' }));
@@ -210,7 +297,7 @@ export function useDFlowTrading() {
       setState(prev => ({
         ...prev,
         signature,
-        txUrl: `https://solscan.io/tx/${signature}`,
+        txUrl: `https://orbmarkets.io/tx/${signature}?cluster=devnet&tab=summary`,
       }));
 
       // Step 4: Confirm transaction
@@ -241,17 +328,20 @@ export function useDFlowTrading() {
       setState(prev => ({ ...prev, step: 'error', error: message }));
       return null;
     }
-  }, [solanaWallet, signTransaction, pollStatus]);
+  }, [walletAddress, pollStatus, isDemo, SOLANA_RPC, USDC_MINT]);
 
   return {
     ...state,
-    walletAddress: solanaWallet?.address || null,
+    walletAddress,
     isConnected,
     isReady,
-    authenticated,
+    authenticated: isAuthenticated,
     executeTrade,
     connectWallet,
     disconnectWallet,
     reset,
+    // Demo mode info
+    isDemo,
+    network,
   };
 }

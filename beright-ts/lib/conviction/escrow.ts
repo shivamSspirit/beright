@@ -376,9 +376,9 @@ export class ConvictionEscrowClient {
     resolutionDate: number,
     stakeAmount: number
   ): TransactionInstruction {
-    // Anchor discriminator for create_market
+    // Anchor discriminator for create_market (from IDL)
     const discriminator = Buffer.from([
-      143, 102, 179, 96, 44, 99, 221, 30, // sighash of "global:create_market"
+      103, 226, 97, 235, 200, 188, 251, 254,
     ]);
 
     // Instruction data
@@ -437,9 +437,9 @@ export class ConvictionEscrowClient {
     resolver: PublicKey,
     outcome: number
   ): TransactionInstruction {
-    // Anchor discriminator for resolve
+    // Anchor discriminator for resolve (from IDL)
     const discriminator = Buffer.from([
-      234, 246, 167, 121, 161, 119, 197, 113, // sighash of "global:resolve"
+      246, 150, 236, 206, 108, 63, 58, 10,
     ]);
 
     const data = Buffer.alloc(1);

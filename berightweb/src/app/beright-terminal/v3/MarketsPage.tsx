@@ -102,7 +102,7 @@ export default function MarketsPage() {
 }
 
 /**
- * MLFeedTable - Enhanced table with ML matching data
+ * MLFeedTable - Enhanced table with ML matching data and trading actions
  */
 function MLFeedTable({ markets }: { markets: FeedMarket[] }) {
   const router = useRouter();
@@ -128,8 +128,22 @@ function MLFeedTable({ markets }: { markets: FeedMarket[] }) {
   };
 
   const formatQuestion = (q: string) => {
-    if (q.length > 50) return q.slice(0, 47) + '...';
+    if (q.length > 45) return q.slice(0, 42) + '...';
     return q;
+  };
+
+  // Get platform trading URL
+  const getPlatformUrl = (platform: string, platformId: string): string => {
+    switch (platform) {
+      case 'dflow':
+        return `https://dflow.net/market/${platformId}`;
+      case 'kalshi':
+        return `https://kalshi.com/markets/${platformId}`;
+      case 'polymarket':
+        return `https://polymarket.com/event/${platformId}`;
+      default:
+        return '#';
+    }
   };
 
   if (markets.length === 0) {
@@ -137,79 +151,117 @@ function MLFeedTable({ markets }: { markets: FeedMarket[] }) {
   }
 
   return (
-    <table className={styles.marketTable}>
-      <thead>
-        <tr>
-          <th>Question</th>
-          <th>Prob</th>
-          <th>Platforms</th>
-          <th>Confidence</th>
-          <th>Vol (24H)</th>
-          <th>Arb</th>
-        </tr>
-      </thead>
-      <tbody>
-        {markets.map((market, index) => {
-          const prob = Math.round(market.consensusPrice * 100);
-          const arbSpread = market.arbitrage ? (market.arbitrage.spread * 100).toFixed(1) : null;
+    <div className={styles.mlFeedContainer}>
+      {markets.map((market, index) => {
+        const prob = Math.round(market.consensusPrice * 100);
+        const arbSpread = market.arbitrage ? (market.arbitrage.spread * 100).toFixed(1) : null;
+        const dflowPlatform = market.platforms.find(p => p.platform === 'dflow');
+        const primaryPlatform = dflowPlatform || market.platforms[0];
+        const marketDetailUrl = dflowPlatform?.platformId
+          ? `/market/${encodeURIComponent(dflowPlatform.platformId)}`
+          : null;
+        const tradingUrl = primaryPlatform
+          ? getPlatformUrl(primaryPlatform.platform, primaryPlatform.platformId)
+          : null;
 
-          // Get DFlow platform ID for navigation (only DFlow markets are supported for detail view)
-          const dflowPlatform = market.platforms.find(p => p.platform === 'dflow');
-          const marketDetailId = dflowPlatform?.platformId || null;
-
-          return (
-            <tr
-              key={market.id}
-              onMouseEnter={() => setHoveredRow(index)}
-              onMouseLeave={() => setHoveredRow(null)}
-              onClick={() => marketDetailId && router.push(`/market/${encodeURIComponent(marketDetailId)}`)}
-              style={{
-                background: hoveredRow === index ? 'rgba(255,255,255,0.02)' : 'transparent',
-                cursor: marketDetailId ? 'pointer' : 'default'
-              }}
-            >
-              <td>
-                <div className={styles.marketQuestion}>
-                  <span className={styles.questionText}>{formatQuestion(market.question)}</span>
-                  {market.entities.people.length > 0 && (
-                    <span className={styles.entityTag}>{market.entities.people[0]}</span>
-                  )}
-                </div>
-              </td>
-              <td>
-                <span className={`${styles.marketProb} ${getProbClass(prob)}`}>
-                  {prob}%
+        return (
+          <div
+            key={market.id}
+            className={styles.mlFeedCard}
+            onMouseEnter={() => setHoveredRow(index)}
+            onMouseLeave={() => setHoveredRow(null)}
+            style={{
+              borderColor: hoveredRow === index ? 'rgba(0, 255, 178, 0.3)' : undefined,
+            }}
+          >
+            {/* Question and metadata row */}
+            <div className={styles.mlFeedHeader}>
+              <div className={styles.mlFeedQuestion}>
+                <span
+                  className={styles.questionText}
+                  onClick={() => marketDetailUrl && router.push(marketDetailUrl)}
+                  style={{ cursor: marketDetailUrl ? 'pointer' : 'default' }}
+                >
+                  {formatQuestion(market.question)}
                 </span>
-              </td>
-              <td>
-                <div className={styles.platformBadges}>
-                  {market.platforms.slice(0, 3).map((p, i) => (
-                    <span key={i} className={styles.platformBadge}>
-                      {p.platform.slice(0, 3).toUpperCase()}
-                    </span>
-                  ))}
-                  {market.platformCount > 3 && (
-                    <span className={styles.platformMore}>+{market.platformCount - 3}</span>
-                  )}
-                </div>
-              </td>
-              <td>
-                <span className={`${styles.confidence} ${getConfidenceClass(market.matchConfidence)}`}>
+                {market.entities.people.length > 0 && (
+                  <span className={styles.entityTag}>{market.entities.people[0]}</span>
+                )}
+              </div>
+              {arbSpread && (
+                <span className={styles.arbBadgeInline}>ARB +{arbSpread}%</span>
+              )}
+            </div>
+
+            {/* Stats row */}
+            <div className={styles.mlFeedStats}>
+              <div className={styles.mlFeedStat}>
+                <span className={`${styles.mlFeedProb} ${getProbClass(prob)}`}>{prob}%</span>
+                <span className={styles.mlFeedStatLabel}>YES</span>
+              </div>
+              <div className={styles.mlFeedStat}>
+                <span className={styles.mlFeedVol}>{formatVolume(market.totalVolume24h)}</span>
+                <span className={styles.mlFeedStatLabel}>24h Vol</span>
+              </div>
+              <div className={styles.mlFeedStat}>
+                <span className={`${styles.mlFeedConf} ${getConfidenceClass(market.matchConfidence)}`}>
                   {(market.matchConfidence * 100).toFixed(0)}%
                 </span>
-              </td>
-              <td className={styles.marketVol}>{formatVolume(market.totalVolume24h)}</td>
-              <td>
-                {arbSpread ? (
-                  <span className={styles.arbBadge}>+{arbSpread}%</span>
-                ) : (
-                  <span className={styles.noArb}>-</span>
+                <span className={styles.mlFeedStatLabel}>Conf</span>
+              </div>
+              <div className={styles.mlFeedPlatforms}>
+                {market.platforms.slice(0, 2).map((p, i) => (
+                  <span key={i} className={styles.platformBadge}>
+                    {p.platform.slice(0, 3).toUpperCase()}
+                  </span>
+                ))}
+                {market.platformCount > 2 && (
+                  <span className={styles.platformMore}>+{market.platformCount - 2}</span>
                 )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+              </div>
+            </div>
+
+            {/* Action buttons row */}
+            <div className={styles.mlFeedActions}>
+              <button
+                className={styles.mlFeedBtnYes}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (tradingUrl) window.open(tradingUrl, '_blank');
+                }}
+              >
+                <span className={styles.mlFeedBtnSide}>YES</span>
+                <span className={styles.mlFeedBtnPrice}>{prob}c</span>
+              </button>
+              <button
+                className={styles.mlFeedBtnNo}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (tradingUrl) window.open(tradingUrl, '_blank');
+                }}
+              >
+                <span className={styles.mlFeedBtnSide}>NO</span>
+                <span className={styles.mlFeedBtnPrice}>{100 - prob}c</span>
+              </button>
+              {marketDetailUrl && (
+                <button
+                  className={styles.mlFeedBtnView}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(marketDetailUrl);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15,3 21,3 21,9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }

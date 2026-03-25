@@ -3,6 +3,7 @@
  *
  * Advanced scoring metrics for forecaster reputation:
  * - Brier Score (standard)
+ * - Decaying Brier Score (time-weighted, recent matters more)
  * - Volume-Weighted Brier (big bets count more)
  * - Sharpe Ratio (risk-adjusted returns)
  * - Kelly Compliance (position sizing discipline)
@@ -11,6 +12,21 @@
  *
  * @author BeRight Protocol
  */
+
+import {
+  calculateDecayingBrier,
+  calculateTierFromDecayingBrier,
+  checkSlashingThreshold,
+  calculateDecayWeight,
+  calculateHalfLife,
+  calculateLambdaFromHalfLife,
+  DecayConfig,
+  DecayingBrierResult,
+  DECAY_PRESETS,
+  DEFAULT_DECAY_CONFIG,
+  type DecayablePrediction,
+  type ForecasterTier,
+} from './decay';
 
 // =============================================================================
 // TYPES
@@ -34,6 +50,12 @@ export interface ScoringResult {
   brierScore: number;                   // 0-1, lower = better
   brierScorePercentile: number;         // 0-100, higher = better
 
+  // Decaying Brier (NEW - time-weighted)
+  decayingBrier: number;                // 0-1, lower = better (recent weighted)
+  decayImprovement: number;             // How much better recent vs overall
+  decayHalfLifeDays: number;            // Half-life used for decay
+  decayEffectiveSampleSize: number;     // Effective sample after decay weighting
+
   // Volume-Weighted Brier
   volumeWeightedBrier: number;          // 0-1, lower = better
   totalVolume: number;                  // Total USD wagered
@@ -56,10 +78,14 @@ export interface ScoringResult {
   skillRating: number;                  // Elo-style rating (baseline 1000)
   compositeScore: number;               // 0-10000 (higher = better)
   percentile: number;                   // 0-100 global percentile
+
+  // Tier (based on decaying Brier)
+  tier: ForecasterTier;                 // unranked | rookie | verified | elite | super
 }
 
 export interface ScoringWeights {
   brierOverall: number;
+  decayingBrier: number;
   volumeWeightedBrier: number;
   roi: number;
   sharpeRatio: number;
@@ -76,10 +102,11 @@ export interface ScoringWeights {
  * Total should equal 1.0
  */
 export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
-  brierOverall: 0.25,           // Primary accuracy measure
-  volumeWeightedBrier: 0.20,    // Conviction-adjusted accuracy
-  roi: 0.20,                    // Profit generation
-  sharpeRatio: 0.15,            // Risk-adjusted returns
+  brierOverall: 0.15,           // Historical accuracy measure
+  decayingBrier: 0.20,          // Recent accuracy (time-weighted) - most important
+  volumeWeightedBrier: 0.15,    // Conviction-adjusted accuracy
+  roi: 0.18,                    // Profit generation
+  sharpeRatio: 0.12,            // Risk-adjusted returns
   kellyCompliance: 0.10,        // Position sizing discipline
   predictionCount: 0.10,        // Activity (min threshold)
 };
@@ -100,7 +127,9 @@ const SKILL_RATING = {
 export const POOL_ELIGIBILITY = {
   MIN_PREDICTIONS: 20,
   MIN_RESOLVED: 10,
-  MAX_BRIER: 0.35,              // Must be below this
+  MAX_BRIER: 0.35,              // Must be below this (standard)
+  MAX_DECAYING_BRIER: 0.30,     // Must be below this (time-weighted) - stricter
+  MIN_TIER: 'verified' as ForecasterTier,  // Minimum tier required
   MIN_PERCENTILE: 90,           // Top 10%
   MIN_COMPOSITE_SCORE: 6000,    // Out of 10000
   MIN_ACCOUNT_AGE_DAYS: 7,
@@ -525,11 +554,27 @@ export function calculateCompositeScore(
 // =============================================================================
 
 /**
+ * Convert ResolvedPrediction to DecayablePrediction
+ */
+function toDecayablePrediction(pred: ResolvedPrediction): DecayablePrediction {
+  return {
+    id: pred.id,
+    probability: pred.probability,
+    direction: pred.direction,
+    outcome: pred.outcome,
+    resolvedAt: pred.resolvedAt,
+    stakeUsd: pred.stakeUsd,
+    category: pred.domain,
+  };
+}
+
+/**
  * Calculate all scoring metrics for a forecaster
  */
 export function calculateFullScoring(
   predictions: ResolvedPrediction[],
-  bankroll: number = 10000
+  bankroll: number = 10000,
+  decayConfig: DecayConfig = DEFAULT_DECAY_CONFIG
 ): ScoringResult {
   const brier = calculateAverageBrier(predictions);
   const { score: vwBrier, totalVolume } = calculateVolumeWeightedBrier(predictions);
@@ -539,12 +584,30 @@ export function calculateFullScoring(
   const maxDrawdown = calculateMaxDrawdown(predictions);
   const { compliance: kelly, avgDeviation: kellyDev } = calculateKellyCompliance(predictions, bankroll);
   const skill = calculateSkillRating(predictions);
-  const composite = calculateCompositeScore(predictions, DEFAULT_SCORING_WEIGHTS, bankroll);
   const percentile = brierToPercentile(brier);
+
+  // Calculate decaying Brier score
+  const decayablePreds = predictions.map(toDecayablePrediction);
+  const decayResult = calculateDecayingBrier(decayablePreds, decayConfig);
+
+  // Calculate tier based on decaying Brier
+  const tier = calculateTierFromDecayingBrier(decayResult, predictions.length);
+
+  // Calculate composite score with decay included
+  const composite = calculateCompositeScoreWithDecay(
+    predictions,
+    decayResult,
+    DEFAULT_SCORING_WEIGHTS,
+    bankroll
+  );
 
   return {
     brierScore: brier,
     brierScorePercentile: percentile,
+    decayingBrier: decayResult.decayingBrier,
+    decayImprovement: decayResult.decayImprovement,
+    decayHalfLifeDays: decayResult.halfLifeDays,
+    decayEffectiveSampleSize: decayResult.effectiveSampleSize,
     volumeWeightedBrier: vwBrier,
     totalVolume,
     accuracy,
@@ -558,7 +621,58 @@ export function calculateFullScoring(
     skillRating: skill,
     compositeScore: composite,
     percentile,
+    tier,
   };
+}
+
+/**
+ * Calculate composite score including decaying Brier
+ */
+function calculateCompositeScoreWithDecay(
+  predictions: ResolvedPrediction[],
+  decayResult: DecayingBrierResult,
+  weights: ScoringWeights,
+  bankroll: number
+): number {
+  if (predictions.length === 0) return 0;
+
+  // Calculate all metrics
+  const brier = calculateAverageBrier(predictions);
+  const { score: vwBrier } = calculateVolumeWeightedBrier(predictions);
+  const roi = calculateROI(predictions);
+  const sharpe = calculateSharpeRatio(predictions);
+  const { compliance: kelly } = calculateKellyCompliance(predictions, bankroll);
+  const count = predictions.length;
+
+  // Normalize each component to 0-1 (higher = better)
+  const normalize = (value: number, min: number, max: number, invert = false): number => {
+    const clamped = Math.max(min, Math.min(max, value));
+    const normalized = (clamped - min) / (max - min);
+    return invert ? 1 - normalized : normalized;
+  };
+
+  const components = {
+    brier: normalize(brier, 0, 0.5, true),                    // 0.5 = worst, 0 = best
+    decayingBrier: normalize(decayResult.decayingBrier, 0, 0.5, true),
+    vwBrier: normalize(vwBrier, 0, 0.5, true),
+    roi: normalize(roi, -1, 2, false),                        // -100% to +200%
+    sharpe: normalize(sharpe, -2, 3, false),                  // -2 to +3
+    kelly: kelly,                                              // already 0-1
+    count: normalize(count, 0, 100, false),                   // 0-100 predictions
+  };
+
+  // Calculate weighted sum
+  const score =
+    components.brier * weights.brierOverall +
+    components.decayingBrier * weights.decayingBrier +
+    components.vwBrier * weights.volumeWeightedBrier +
+    components.roi * weights.roi +
+    components.sharpe * weights.sharpeRatio +
+    components.kelly * weights.kellyCompliance +
+    components.count * weights.predictionCount;
+
+  // Scale to 0-10000
+  return Math.round(score * 10000);
 }
 
 // =============================================================================
@@ -573,11 +687,22 @@ export interface EligibilityResult {
     predictions: { current: number; required: number; met: boolean };
     resolved: { current: number; required: number; met: boolean };
     brier: { current: number; required: number; met: boolean };
+    decayingBrier: { current: number; required: number; met: boolean };
     percentile: { current: number; required: number; met: boolean };
     composite: { current: number; required: number; met: boolean };
     accountAge: { current: number; required: number; met: boolean };
+    tier: { current: ForecasterTier; required: ForecasterTier; met: boolean };
   };
 }
+
+/** Tier ordering for comparison */
+const TIER_ORDER: Record<ForecasterTier, number> = {
+  unranked: 0,
+  rookie: 1,
+  verified: 2,
+  elite: 3,
+  super: 4,
+};
 
 /**
  * Check if a forecaster is eligible to create pools
@@ -617,6 +742,11 @@ export function checkPoolEligibility(
       required: POOL_ELIGIBILITY.MAX_BRIER,
       met: scoring.brierScore <= POOL_ELIGIBILITY.MAX_BRIER,
     },
+    decayingBrier: {
+      current: scoring.decayingBrier,
+      required: POOL_ELIGIBILITY.MAX_DECAYING_BRIER,
+      met: scoring.decayingBrier <= POOL_ELIGIBILITY.MAX_DECAYING_BRIER,
+    },
     percentile: {
       current: percentile,
       required: POOL_ELIGIBILITY.MIN_PERCENTILE,
@@ -631,6 +761,11 @@ export function checkPoolEligibility(
       current: accountAgeDays,
       required: POOL_ELIGIBILITY.MIN_ACCOUNT_AGE_DAYS,
       met: accountAgeDays >= POOL_ELIGIBILITY.MIN_ACCOUNT_AGE_DAYS,
+    },
+    tier: {
+      current: scoring.tier,
+      required: POOL_ELIGIBILITY.MIN_TIER,
+      met: TIER_ORDER[scoring.tier] >= TIER_ORDER[POOL_ELIGIBILITY.MIN_TIER],
     },
   };
 
@@ -650,6 +785,11 @@ export function checkPoolEligibility(
       `Brier score too high (${scoring.brierScore.toFixed(3)} > ${POOL_ELIGIBILITY.MAX_BRIER})`
     );
   }
+  if (!requirements.decayingBrier.met) {
+    reasons.push(
+      `Recent performance too low (decaying Brier ${scoring.decayingBrier.toFixed(3)} > ${POOL_ELIGIBILITY.MAX_DECAYING_BRIER})`
+    );
+  }
   if (!requirements.percentile.met) {
     reasons.push(
       `Need top ${100 - POOL_ELIGIBILITY.MIN_PERCENTILE}% (currently ${percentile.toFixed(0)}th percentile)`
@@ -663,6 +803,11 @@ export function checkPoolEligibility(
   if (!requirements.accountAge.met) {
     reasons.push(
       `Account too new (${accountAgeDays} < ${POOL_ELIGIBILITY.MIN_ACCOUNT_AGE_DAYS} days)`
+    );
+  }
+  if (!requirements.tier.met) {
+    reasons.push(
+      `Tier too low (${scoring.tier} < ${POOL_ELIGIBILITY.MIN_TIER} required)`
     );
   }
 
@@ -682,3 +827,21 @@ export function checkPoolEligibility(
 export {
   SKILL_RATING,
 };
+
+// Re-export decay module for convenience
+export {
+  calculateDecayingBrier,
+  calculateTierFromDecayingBrier,
+  checkSlashingThreshold,
+  calculateDecayWeight,
+  calculateHalfLife,
+  calculateLambdaFromHalfLife,
+  DECAY_PRESETS,
+  DEFAULT_DECAY_CONFIG,
+  type DecayConfig,
+  type DecayingBrierResult,
+  type DecayablePrediction,
+  type ForecasterTier,
+} from './decay';
+
+export { decay } from './decay';

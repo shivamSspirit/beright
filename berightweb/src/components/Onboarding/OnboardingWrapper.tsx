@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { useUser } from '@/context/UserContext';
 import OnboardingModal, { useOnboarding } from './OnboardingModal';
 
 // Pages where onboarding should NOT show
@@ -12,11 +10,16 @@ const EXCLUDED_PATHS = [
   '/landing',
   '/coming-soon',
   '/embed',
+  '/', // Don't show on landing page
 ];
 
-export default function OnboardingWrapper() {
+interface OnboardingWrapperProps {
+  isAuthenticated?: boolean;
+  walletAddress?: string | null;
+}
+
+export default function OnboardingWrapper({ isAuthenticated = false, walletAddress = null }: OnboardingWrapperProps) {
   const pathname = usePathname();
-  const { isAuthenticated, walletAddress } = useUser();
   const {
     hasCompletedOnboarding,
     showOnboarding,

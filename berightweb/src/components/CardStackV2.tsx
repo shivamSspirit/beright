@@ -148,7 +148,7 @@ function ResultOverlay({
         }
 
         .highlight-cyan {
-          color: #00C2FF;
+          color: #00FFB2;
           font-weight: 600;
         }
 
@@ -187,7 +187,7 @@ function CompletionScreen({
       particleCount: 100,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ['#10B981', '#00C2FF', '#FBBF24'],
+      colors: ['#10B981', '#00FFB2', '#FBBF24'],
     });
   }, []);
 
@@ -338,8 +338,8 @@ function CompletionScreen({
         }
 
         .next-session-card {
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.1), rgba(139, 92, 246, 0.1));
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          background: linear-gradient(135deg, rgba(0, 255, 178, 0.1), rgba(139, 92, 246, 0.1));
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 16px;
           padding: 16px 24px;
           text-align: center;
@@ -351,7 +351,7 @@ function CompletionScreen({
         .next-session-text {
           font-size: 14px;
           font-weight: 500;
-          color: #00C2FF;
+          color: #00FFB2;
         }
 
         .next-session-sub {
@@ -510,7 +510,7 @@ export default function CardStackV2({ predictions, onComplete }: CardStackV2Prop
           left: -20%;
           width: 140%;
           height: 60%;
-          background: radial-gradient(ellipse at center, rgba(0, 194, 255, 0.12), transparent 70%);
+          background: radial-gradient(ellipse at center, rgba(0, 255, 178, 0.12), transparent 70%);
           pointer-events: none;
           z-index: 0;
           filter: blur(60px);

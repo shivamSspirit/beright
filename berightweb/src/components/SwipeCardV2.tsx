@@ -23,7 +23,7 @@ interface SwipeCardV2Props {
 const CATEGORY_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   crypto: { color: '#FBBF24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.2)' },
   politics: { color: '#A78BFA', bg: 'rgba(167, 139, 250, 0.1)', border: 'rgba(167, 139, 250, 0.2)' },
-  tech: { color: '#00C2FF', bg: 'rgba(0, 194, 255, 0.1)', border: 'rgba(0, 194, 255, 0.2)' },
+  tech: { color: '#00FFB2', bg: 'rgba(0, 255, 178, 0.1)', border: 'rgba(0, 255, 178, 0.2)' },
   economics: { color: '#10B981', bg: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)' },
   sports: { color: '#FB923C', bg: 'rgba(251, 146, 60, 0.1)', border: 'rgba(251, 146, 60, 0.2)' },
 };
@@ -484,7 +484,7 @@ export default function SwipeCardV2({
           right: -20px;
           width: 100px;
           height: 100px;
-          background: #00C2FF;
+          background: #00FFB2;
         }
 
         .dc-purple {
@@ -513,7 +513,7 @@ export default function SwipeCardV2({
           padding: 6px 10px;
           border-radius: 8px;
           border: 1px solid;
-          box-shadow: 0 0 10px rgba(0, 194, 255, 0.1);
+          box-shadow: 0 0 10px rgba(0, 255, 178, 0.1);
         }
 
         .icon-btn-v2 {

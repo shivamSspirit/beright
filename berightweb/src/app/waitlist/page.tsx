@@ -215,7 +215,7 @@ const styles = `
   }
 
   .position {
-    color: #00C2FF;
+    color: #00FFB2;
     font-weight: 500;
     margin-top: 16px;
   }
@@ -276,7 +276,7 @@ const styles = `
 
   input:focus {
     outline: none;
-    border-color: #00C2FF;
+    border-color: #00FFB2;
   }
 
   input::placeholder {
@@ -312,8 +312,8 @@ const styles = `
   }
 
   .tier-btn.active {
-    border-color: #00C2FF;
-    background: rgba(0, 194, 255, 0.1);
+    border-color: #00FFB2;
+    background: rgba(0, 255, 178, 0.1);
   }
 
   .tier-name {
@@ -337,7 +337,7 @@ const styles = `
   }
 
   .submit-btn {
-    background: linear-gradient(135deg, #00C2FF 0%, #0066FF 100%);
+    background: linear-gradient(135deg, #00FFB2 0%, #0066FF 100%);
     border: none;
     border-radius: 8px;
     padding: 14px 24px;
@@ -387,7 +387,7 @@ const styles = `
   }
 
   .footer a {
-    color: #00C2FF;
+    color: #00FFB2;
     text-decoration: none;
   }
 

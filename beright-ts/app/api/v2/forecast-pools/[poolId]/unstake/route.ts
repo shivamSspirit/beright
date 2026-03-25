@@ -2,7 +2,7 @@
  * Unstake from Forecast Pool API
  *
  * POST /api/v2/forecast-pools/[poolId]/unstake
- * Build a transaction to unstake from a forecast pool
+ * Build a transaction to withdraw (unstake) from a forecast pool using the real on-chain program.
  *
  * @author BeRight Protocol
  */
@@ -10,17 +10,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { z } from 'zod';
+import { BN } from '@coral-xyz/anchor';
 import { isDemo } from '../../../../../../lib/mode';
 
 const UnstakeSchema = z.object({
   delegator: z.string().min(32).max(44),
-  shares: z.number().int().positive(),
+  shares: z.number().int().positive(), // Share tokens to redeem
 });
 
 // Withdrawal fees (bps)
 const NORMAL_WITHDRAWAL_FEE_BPS = 50; // 0.5%
 const EARLY_WITHDRAWAL_FEE_BPS = 200; // 2%
-const LOCKUP_DAYS = 7;
 
 export async function POST(
   req: NextRequest,
@@ -44,9 +44,10 @@ export async function POST(
 
     // Validate addresses
     let delegatorPk: PublicKey;
+    let poolPk: PublicKey;
     try {
       delegatorPk = new PublicKey(delegator);
-      new PublicKey(poolId); // Validate pool address format
+      poolPk = new PublicKey(poolId);
     } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid address' },
@@ -54,63 +55,67 @@ export async function POST(
       );
     }
 
-    // Demo mode
-    if (isDemo()) {
-      const sharePrice = 1_000_000; // 1.0 in 6 decimals
-      const grossValue = Math.floor(shares * sharePrice / 1_000_000);
-      const fee = Math.floor(grossValue * NORMAL_WITHDRAWAL_FEE_BPS / 10000);
-      const netValue = grossValue - fee;
+    // Use appropriate RPC
+    const rpcUrl = isDemo()
+      ? process.env.HELIUS_RPC_DEVNET || 'https://api.devnet.solana.com'
+      : process.env.SOLANA_RPC_URL || process.env.HELIUS_RPC_MAINNET || 'https://api.mainnet-beta.solana.com';
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          transaction: 'DEMO_UNSTAKE_TRANSACTION_BASE64_PLACEHOLDER',
-          poolAddress: poolId,
-          delegator,
-          shares: shares.toString(),
-          grossValue: grossValue.toString(),
-          fee: fee.toString(),
-          feeType: 'normal',
-          netValue: netValue.toString(),
-          _demo: true,
-        },
-        meta: { latencyMs: Date.now() - startTime },
-      });
+    const network = isDemo() ? 'devnet' : 'mainnet';
+    const connection = new Connection(rpcUrl, 'confirmed');
+
+    console.log(`[API v2/forecast-pools/unstake] Mode: ${isDemo() ? 'demo' : 'production'}, Network: ${network}, Pool: ${poolId.slice(0, 8)}...`);
+
+    // Import Anchor client for proper IDL-based transaction building
+    const { getStakingPoolClient } = await import('../../../../../../lib/staking/forecast-pool');
+
+    const client = getStakingPoolClient(connection, { network });
+
+    // Verify pool exists
+    const poolState = await client.getPoolState(poolPk);
+    if (!poolState) {
+      return NextResponse.json(
+        { success: false, error: 'Pool not found' },
+        { status: 404 }
+      );
     }
 
-    // Production mode
-    const connection = new Connection(
-      process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-      'confirmed'
-    );
+    // Check depositor state for lockup info
+    const depositorState = await client.getDepositorState(poolPk, delegatorPk);
+    let feeType: 'normal' | 'early' = 'normal';
 
-    // Import SDK
-    const { getForecastPoolClient } = await import('../../../../../../lib/staking/forecast-pool');
+    if (depositorState) {
+      // Check if still in lockup period (7 days default)
+      const depositedAt = (depositorState as { depositedAt?: bigint }).depositedAt;
+      if (depositedAt) {
+        const lockupEndTime = Number(depositedAt) + (7 * 24 * 60 * 60); // 7 days in seconds
+        if (Date.now() / 1000 < lockupEndTime) {
+          feeType = 'early';
+        }
+      }
+    }
 
-    const client = getForecastPoolClient(connection, { network: 'devnet' });
-
-    // Build unstake transaction
-    const tx = await client.buildUnstakeTx(delegatorPk, {
-      poolAddress: poolId,
-      shares,
+    // Build withdraw transaction using Anchor client
+    const tx = await client.buildWithdrawTx(delegatorPk, {
+      poolAddress: poolPk,
+      shares: new BN(shares),
     });
 
-    // Calculate value and fees (assume default share price 1.0)
-    const sharePrice = 1_000_000; // 1.0 in 6 decimals
-    const grossValue = Math.floor(shares * sharePrice / 1_000_000);
-
-    // For now, assume normal fee (lockup check would require fetching delegation state)
-    const feeType: 'normal' | 'early' = 'normal';
-    const feeBps = feeType === 'early' ? EARLY_WITHDRAWAL_FEE_BPS : NORMAL_WITHDRAWAL_FEE_BPS;
-    const fee = Math.floor(grossValue * feeBps / 10000);
-    const netValue = grossValue - fee;
-
-    // Serialize transaction
+    // Get blockhash and set transaction details
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
     tx.recentBlockhash = blockhash;
     tx.feePayer = delegatorPk;
 
+    // Serialize transaction (delegator needs to sign)
     const serialized = tx.serialize({ requireAllSignatures: false }).toString('base64');
+
+    // Calculate estimated values
+    const sharePrice = 1_000_000; // Default 1.0 in 6 decimals
+    const grossValue = Math.floor(shares * sharePrice / 1_000_000);
+    const feeBps = feeType === 'early' ? EARLY_WITHDRAWAL_FEE_BPS : NORMAL_WITHDRAWAL_FEE_BPS;
+    const fee = Math.floor(grossValue * feeBps / 10000);
+    const netValue = grossValue - fee;
+
+    console.log(`[API v2/forecast-pools/unstake] Built withdraw tx for ${shares} shares from pool ${poolId.slice(0, 8)}...`);
 
     return NextResponse.json({
       success: true,
@@ -125,8 +130,10 @@ export async function POST(
         netValue: netValue.toString(),
         blockhash,
         lastValidBlockHeight,
+        network,
+        rpcUrl, // Return RPC URL for frontend consistency
       },
-      meta: { latencyMs: Date.now() - startTime },
+      meta: { source: 'blockchain', network, latencyMs: Date.now() - startTime },
     });
   } catch (error) {
     console.error('[API v2/forecast-pools/unstake] Error:', error);

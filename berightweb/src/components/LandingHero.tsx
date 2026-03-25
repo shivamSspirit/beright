@@ -730,9 +730,9 @@ function TerminalPreview() {
   ];
 
   const agents = [
-    { name: 'SCOUT', status: 'ACTIVE', color: '#00C2FF', task: 'Scanning live markets...' },
-    { name: 'ANALYST', status: 'PROCESSING', color: '#00C2FF', task: 'Deep dive: BTC $150K' },
-    { name: 'TRADER', status: 'READY', color: '#00C2FF', task: 'Awaiting signal' },
+    { name: 'SCOUT', status: 'ACTIVE', color: '#00FFB2', task: 'Scanning live markets...' },
+    { name: 'ANALYST', status: 'PROCESSING', color: '#00FFB2', task: 'Deep dive: BTC $150K' },
+    { name: 'TRADER', status: 'READY', color: '#00FFB2', task: 'Awaiting signal' },
   ];
 
   const signals = [
@@ -1479,9 +1479,9 @@ export default function LandingHero() {
           --color-text-secondary: #94A3B8;
           --color-text-tertiary: #64748B;
           /* Primary accent - Electric Teal */
-          --color-accent: #00C2FF;
-          --color-accent-dim: rgba(0, 194, 255, 0.12);
-          --color-accent-glow: rgba(0, 194, 255, 0.25);
+          --color-accent: #00FFB2;
+          --color-accent-dim: rgba(0, 255, 178, 0.12);
+          --color-accent-glow: rgba(0, 255, 178, 0.25);
           /* Functional colors - Refined */
           --color-green: #10B981;
           --color-red: #F43F5E;
@@ -1525,7 +1525,7 @@ export default function LandingHero() {
           align-items: center;
           gap: 12px;
           padding: 16px 24px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 194, 255, 0.1));
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 255, 178, 0.1));
           border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 16px;
           backdrop-filter: blur(20px);
@@ -1601,7 +1601,7 @@ export default function LandingHero() {
           height: 500px;
           left: -200px;
           top: 30%;
-          background: radial-gradient(circle, rgba(0, 194, 255, 0.06) 0%, transparent 60%);
+          background: radial-gradient(circle, rgba(0, 255, 178, 0.06) 0%, transparent 60%);
           filter: blur(60px);
         }
 
@@ -2055,7 +2055,7 @@ export default function LandingHero() {
         }
 
         .flow-outcome {
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(0, 194, 255, 0.05) 100%);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(0, 255, 178, 0.05) 100%);
           border-color: rgba(16, 185, 129, 0.3);
         }
 
@@ -2387,7 +2387,7 @@ export default function LandingHero() {
           display: inline-block;
           padding: 8px 16px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 100px;
           font-size: 13px;
           font-weight: 600;
@@ -2489,7 +2489,7 @@ export default function LandingHero() {
           gap: 16px;
           padding: 20px 24px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.15);
+          border: 1px solid rgba(0, 255, 178, 0.15);
           border-radius: 16px;
           max-width: 800px;
           margin: 0 auto;
@@ -2530,7 +2530,7 @@ export default function LandingHero() {
           display: inline-block;
           padding: 6px 14px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 20px;
           font-size: 12px;
           font-weight: 600;
@@ -2598,7 +2598,7 @@ export default function LandingHero() {
         .ai-tag {
           padding: 4px 10px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 6px;
           font-size: 11px;
           color: var(--color-accent);
@@ -2629,7 +2629,7 @@ export default function LandingHero() {
 
         .ai-bubble {
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           align-self: flex-start;
           margin-right: 10%;
         }
@@ -2905,7 +2905,7 @@ export default function LandingHero() {
           gap: 12px;
           padding: 20px 28px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 16px;
           max-width: 700px;
           margin: 0 auto;
@@ -2946,8 +2946,8 @@ export default function LandingHero() {
         .terminal-badge {
           display: inline-block;
           padding: 6px 14px;
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
-          border: 1px solid rgba(0, 194, 255, 0.3);
+          background: linear-gradient(135deg, rgba(0, 255, 178, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
+          border: 1px solid rgba(0, 255, 178, 0.3);
           border-radius: 20px;
           font-size: 12px;
           font-weight: 600;
@@ -2981,10 +2981,10 @@ export default function LandingHero() {
 
         .terminal-window {
           background: linear-gradient(180deg, #0a0a0c 0%, #050506 100%);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 0 60px rgba(0, 194, 255, 0.1), 0 0 120px rgba(0, 194, 255, 0.05);
+          box-shadow: 0 0 60px rgba(0, 255, 178, 0.1), 0 0 120px rgba(0, 255, 178, 0.05);
         }
 
         .terminal-title-bar {
@@ -3378,13 +3378,13 @@ export default function LandingHero() {
         }
 
         .terminal-btn.web {
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
-          border: 1px solid rgba(0, 194, 255, 0.3);
+          background: linear-gradient(135deg, rgba(0, 255, 178, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
+          border: 1px solid rgba(0, 255, 178, 0.3);
           color: var(--color-cyan);
         }
 
         .terminal-btn.web:hover {
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.25) 0%, rgba(16, 185, 129, 0.15) 100%);
+          background: linear-gradient(135deg, rgba(0, 255, 178, 0.25) 0%, rgba(16, 185, 129, 0.15) 100%);
           border-color: var(--color-cyan);
           transform: translateY(-2px);
         }
@@ -3420,8 +3420,8 @@ export default function LandingHero() {
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(rgba(0, 194, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 194, 255, 0.03) 1px, transparent 1px);
+            linear-gradient(rgba(0, 255, 178, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 178, 0.03) 1px, transparent 1px);
           background-size: 40px 40px;
           mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black, transparent);
         }
@@ -3433,7 +3433,7 @@ export default function LandingHero() {
           left: -100px;
           top: 50%;
           transform: translateY(-50%);
-          background: radial-gradient(circle, rgba(0, 194, 255, 0.15) 0%, transparent 60%);
+          background: radial-gradient(circle, rgba(0, 255, 178, 0.15) 0%, transparent 60%);
           filter: blur(80px);
           animation: glowPulse 4s ease-in-out infinite;
         }
@@ -3505,7 +3505,7 @@ export default function LandingHero() {
           align-items: center;
           gap: 8px;
           padding: 8px 18px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(0, 194, 255, 0.1) 100%);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(0, 255, 178, 0.1) 100%);
           border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 100px;
           margin-bottom: 20px;
@@ -3606,7 +3606,7 @@ export default function LandingHero() {
           position: relative;
           width: 100%;
           height: 2px;
-          background: linear-gradient(90deg, rgba(0, 194, 255, 0.3), rgba(16, 185, 129, 0.3));
+          background: linear-gradient(90deg, rgba(0, 255, 178, 0.3), rgba(16, 185, 129, 0.3));
         }
 
         .flow-particle {
@@ -3657,7 +3657,7 @@ export default function LandingHero() {
         }
 
         .forecasters .side-glow {
-          background: radial-gradient(ellipse at center, rgba(0, 194, 255, 0.15) 0%, transparent 70%);
+          background: radial-gradient(ellipse at center, rgba(0, 255, 178, 0.15) 0%, transparent 70%);
         }
 
         .capitalists .side-glow {
@@ -3679,7 +3679,7 @@ export default function LandingHero() {
         }
 
         .forecasters .side-inner {
-          border-color: rgba(0, 194, 255, 0.2);
+          border-color: rgba(0, 255, 178, 0.2);
         }
 
         .capitalists .side-inner {
@@ -3692,8 +3692,8 @@ export default function LandingHero() {
         }
 
         .forecasters:hover .side-inner {
-          border-color: rgba(0, 194, 255, 0.4);
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 194, 255, 0.1);
+          border-color: rgba(0, 255, 178, 0.4);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 255, 178, 0.1);
         }
 
         .capitalists:hover .side-inner {
@@ -3726,7 +3726,7 @@ export default function LandingHero() {
         }
 
         .forecasters .icon-ring {
-          border: 2px solid rgba(0, 194, 255, 0.3);
+          border: 2px solid rgba(0, 255, 178, 0.3);
         }
 
         .capitalists .icon-ring {
@@ -3774,9 +3774,9 @@ export default function LandingHero() {
         }
 
         .side-badge.elite {
-          background: rgba(0, 194, 255, 0.15);
+          background: rgba(0, 255, 178, 0.15);
           color: var(--color-cyan);
-          border: 1px solid rgba(0, 194, 255, 0.3);
+          border: 1px solid rgba(0, 255, 178, 0.3);
         }
 
         .side-badge.whale {
@@ -3826,7 +3826,7 @@ export default function LandingHero() {
         .metric-icon-wrap.cyan,
         .metric-icon-wrap.green {
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.15);
+          border: 1px solid rgba(0, 255, 178, 0.15);
         }
 
         .metric-icon-wrap svg {
@@ -4028,14 +4028,14 @@ export default function LandingHero() {
 
         .orbit-2 {
           inset: -10px;
-          border-color: rgba(0, 194, 255, 0.15);
+          border-color: rgba(0, 255, 178, 0.15);
           animation-duration: 15s;
           animation-direction: reverse;
         }
 
         .orbit-3 {
           inset: -30px;
-          border-color: rgba(0, 194, 255, 0.1);
+          border-color: rgba(0, 255, 178, 0.1);
           animation-duration: 20s;
         }
 
@@ -4078,14 +4078,14 @@ export default function LandingHero() {
         .core-glow-mid {
           width: 120px;
           height: 120px;
-          background: radial-gradient(circle, rgba(0, 194, 255, 0.15) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 255, 178, 0.15) 0%, transparent 70%);
           animation: coreGlowPulse 3s ease-in-out infinite 0.5s;
         }
 
         .core-glow-inner {
           width: 80px;
           height: 80px;
-          background: radial-gradient(circle, rgba(0, 194, 255, 0.2) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 255, 178, 0.2) 0%, transparent 70%);
           animation: coreGlowPulse 3s ease-in-out infinite 1s;
         }
 
@@ -4226,7 +4226,7 @@ export default function LandingHero() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(0, 194, 255, 0.15) 100%);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(0, 255, 178, 0.15) 100%);
           border: 1px solid rgba(16, 185, 129, 0.3);
           border-radius: 16px;
           flex-shrink: 0;
@@ -4696,7 +4696,7 @@ export default function LandingHero() {
         }
 
         .ticker-badge {
-          background: rgba(0, 194, 255, 0.2);
+          background: rgba(0, 255, 178, 0.2);
           color: var(--color-cyan);
           padding: 2px 8px;
           border-radius: 4px;
@@ -4765,7 +4765,7 @@ export default function LandingHero() {
           display: inline-block;
           padding: 8px 16px;
           background: var(--color-accent-dim);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 100px;
           color: var(--color-accent);
           font-family: var(--font-mono);
@@ -4935,7 +4935,7 @@ export default function LandingHero() {
           transform: translate(-50%, -50%);
           width: 600px;
           height: 600px;
-          background: radial-gradient(circle, rgba(0, 194, 255, 0.08) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(0, 255, 178, 0.08) 0%, transparent 70%);
           filter: blur(60px);
         }
 
@@ -4948,8 +4948,8 @@ export default function LandingHero() {
         .identity-badge {
           display: inline-block;
           padding: 8px 16px;
-          background: rgba(0, 194, 255, 0.1);
-          border: 1px solid rgba(0, 194, 255, 0.2);
+          background: rgba(0, 255, 178, 0.1);
+          border: 1px solid rgba(0, 255, 178, 0.2);
           border-radius: 100px;
           color: var(--color-cyan);
           font-family: var(--font-mono);

@@ -94,7 +94,7 @@
 .dot.active {
   width: 24px;
   border-radius: 4px;
-  background: linear-gradient(90deg, #10B981, #00C2FF);
+  background: linear-gradient(90deg, #10B981, #00FFB2);
 }
 
 .dot.completed {
@@ -133,7 +133,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 194, 255, 0.15));
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 255, 178, 0.15));
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: 20px;
   color: #10B981;
@@ -163,7 +163,7 @@
 .highlight {
   display: inline-flex;
   padding: 10px 20px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 194, 255, 0.1));
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 255, 178, 0.1));
   border: 1px solid rgba(16, 185, 129, 0.2);
   border-radius: 12px;
   font-size: 14px;
@@ -222,7 +222,7 @@
 }
 
 .completeBtn {
-  background: linear-gradient(135deg, #10B981, #00C2FF);
+  background: linear-gradient(135deg, #10B981, #00FFB2);
   animation: pulse 2s infinite;
 }
 

@@ -42,7 +42,7 @@
 }
 
 .loader-icon {
-  color: #00C2FF;
+  color: #00FFB2;
   font-size: 32px;
   animation: pulse-loader 1.5s ease-in-out infinite;
 }
@@ -75,7 +75,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid rgba(30, 58, 95, 0.3);
-  border-top-color: #00C2FF;
+  border-top-color: #00FFB2;
   border-radius: 50%;
   animation: spin-loader 0.8s linear infinite;
 }
@@ -306,7 +306,7 @@ body::before {
 .pill-tech {
   background: var(--accent-subtle);
   color: var(--accent);
-  border: 1px solid rgba(0, 194, 255, 0.25);
+  border: 1px solid rgba(0, 255, 178, 0.25);
 }
 
 .pill-sports {

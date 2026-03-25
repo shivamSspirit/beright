@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useBackendStatus } from '@/hooks/useMarkets';
 import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData, getJupiterHotEvents, searchJupiterEvents, JupiterEvent } from '@/lib/api';
 import TradingModal from '@/components/TradingModal';
+import { PageWrapper } from '@/components/ui';
+import styles from './markets.module.css';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES & CONFIG
@@ -104,7 +106,7 @@ function Dropdown<T extends string>({ value, onChange, options }: DropdownProps<
   const menuContent = isOpen && mounted && menuPosition.width > 0 ? createPortal(
     <div
       ref={menuRef}
-      className="portal-dropdown-menu"
+      className={styles.portalMenu}
       style={{
         position: 'fixed',
         top: menuPosition.top,
@@ -116,20 +118,20 @@ function Dropdown<T extends string>({ value, onChange, options }: DropdownProps<
       {options.map((option) => (
         <button
           key={option.id}
-          className={`portal-dropdown-item ${value === option.id ? 'selected' : ''}`}
+          className={`${styles.portalItem} ${value === option.id ? styles.portalItemSelected : ''}`}
           onClick={() => {
             onChange(option.id);
             setIsOpen(false);
           }}
           type="button"
         >
-          {option.icon && <span className="item-icon">{option.icon}</span>}
+          {option.icon && <span className={styles.itemIcon}>{option.icon}</span>}
           {option.color && !option.icon && (
-            <span className="item-dot" style={{ background: option.color }} />
+            <span className={styles.itemDot} style={{ background: option.color }} />
           )}
-          <span className="item-label">{option.label}</span>
+          <span className={styles.itemLabel}>{option.label}</span>
           {value === option.id && (
-            <svg className="item-check" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <svg className={styles.itemCheck} width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 7L6 10L11 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           )}
@@ -140,16 +142,16 @@ function Dropdown<T extends string>({ value, onChange, options }: DropdownProps<
   ) : null;
 
   return (
-    <div className={`dropdown ${isOpen ? 'open' : ''}`}>
+    <div className={`${styles.dropdown} ${isOpen ? styles.dropdownOpen : ''}`}>
       <button
         ref={triggerRef}
-        className="dropdown-trigger"
+        className={styles.dropdownTrigger}
         onClick={() => setIsOpen(!isOpen)}
         type="button"
       >
-        {selectedOption?.icon && <span className="dropdown-icon">{selectedOption.icon}</span>}
-        <span className="dropdown-label">{selectedOption?.label}</span>
-        <svg className="dropdown-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
+        {selectedOption?.icon && <span className={styles.dropdownIcon}>{selectedOption.icon}</span>}
+        <span className={styles.dropdownLabel}>{selectedOption?.label}</span>
+        <svg className={styles.dropdownArrow} width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
@@ -320,7 +322,7 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
   const pulseGlowId = `pulse-glow-${marketId.replace(/[^a-zA-Z0-9]/g, '')}`;
 
   return (
-    <div className="viral-spark">
+    <div className={styles.viralSpark}>
       <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <defs>
           {/* Gradient fill under the line */}
@@ -367,7 +369,7 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
           cy={lastY}
           r="5"
           fill={isUp ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'}
-          className="pulse-ring"
+          className={styles.pulseRing}
         />
 
         {/* Main pulse dot */}
@@ -377,7 +379,7 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
           r="3"
           fill={isUp ? '#10B981' : '#F43F5E'}
           filter={`url(#${pulseGlowId})`}
-          className="pulse-dot"
+          className={styles.pulseDot}
         />
 
         {/* Inner bright dot */}
@@ -391,9 +393,9 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
       </svg>
 
       {/* Change percentage badge */}
-      <div className={`spark-badge ${isUp ? 'up' : 'down'}`}>
-        <span className="spark-arrow">{isUp ? '↑' : '↓'}</span>
-        <span className="spark-pct">{Math.abs(parseFloat(changePercent))}%</span>
+      <div className={`${styles.sparkBadge} ${isUp ? styles.sparkBadgeUp : styles.sparkBadgeDown}`}>
+        <span className={styles.sparkArrow}>{isUp ? '↑' : '↓'}</span>
+        <span className={styles.sparkPct}>{Math.abs(parseFloat(changePercent))}%</span>
       </div>
     </div>
   );
@@ -441,7 +443,7 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
   return (
     <Link
       href={marketDetailUrl || '#'}
-      className="compact-card"
+      className={styles.compactCard}
       style={{ '--delay': `${index * 35}ms` } as React.CSSProperties}
       onClick={(e) => {
         // If no detail URL, prevent navigation
@@ -452,46 +454,46 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
     >
       {/* Only show image if API provides one and it loads successfully */}
       {showImage && (
-        <div className="card-media">
+        <div className={styles.cardMedia}>
           <img
             src={imageUrl}
             alt={marketTitle}
-            className="media-img"
+            className={styles.mediaImg}
             loading="lazy"
             onError={() => setImgError(true)}
           />
-          <div className="media-overlay" />
+          <div className={styles.mediaOverlay} />
         </div>
       )}
 
       {/* Content Section */}
-      <div className="card-content">
+      <div className={styles.cardContent}>
         {/* Title */}
-        <h3 className="card-title">{marketTitle}</h3>
+        <h3 className={styles.cardTitle}>{marketTitle}</h3>
 
         {/* Price Row - YES/NO with spread */}
-        <div className="price-row">
-          <div className="price-yes">
-            <span className="price-label">YES</span>
-            <span className="price-value">{market.yesPct}c</span>
+        <div className={styles.priceRow}>
+          <div className={styles.priceYes}>
+            <span className={styles.priceLabel}>YES</span>
+            <span className={styles.priceValue}>{market.yesPct}c</span>
           </div>
-          <div className="price-spread">
-            <span className="spread-value">{spread > 0 ? `${spread.toFixed(0)}c` : '-'}</span>
-            <span className="spread-label">spread</span>
+          <div className={styles.priceSpread}>
+            <span className={styles.spreadValue}>{spread > 0 ? `${spread.toFixed(0)}c` : '-'}</span>
+            <span className={styles.spreadLabel}>spread</span>
           </div>
-          <div className="price-no">
-            <span className="price-label">NO</span>
-            <span className="price-value">{market.noPct}c</span>
+          <div className={styles.priceNo}>
+            <span className={styles.priceLabel}>NO</span>
+            <span className={styles.priceValue}>{market.noPct}c</span>
           </div>
         </div>
 
         {/* Probability Bar */}
-        <div className="prob-bar">
-          <div className="prob-fill" style={{ width: `${market.yesPct}%` }} />
+        <div className={styles.probBar}>
+          <div className={styles.probFill} style={{ width: `${market.yesPct}%` }} />
         </div>
 
         {/* Sparkline */}
-        <div className="spark-row">
+        <div className={styles.sparkRow}>
           <ViralSparkline
             price={market.yesPct}
             marketId={market.id || market.title}
@@ -500,30 +502,30 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
         </div>
 
         {/* Stats Row */}
-        <div className="stats-row">
-          <div className="stat">
-            <span className="stat-value">{formatVolume(market.volume)}</span>
-            <span className="stat-label">vol</span>
+        <div className={styles.statsRow}>
+          <div className={styles.stat}>
+            <span className={styles.statValue}>{formatVolume(market.volume)}</span>
+            <span className={styles.statLabel}>vol</span>
           </div>
-          <div className={`stat change ${isUp ? 'up' : 'down'}`}>
-            <span className="stat-value">{isUp ? '+' : ''}{change24h.toFixed(1)}%</span>
-            <span className="stat-label">24h</span>
+          <div className={`${styles.stat} ${isUp ? styles.statChangeUp : styles.statChangeDown}`}>
+            <span className={styles.statValue}>{isUp ? '+' : ''}{change24h.toFixed(1)}%</span>
+            <span className={styles.statLabel}>24h</span>
           </div>
-          <div className={`stat time ${isLive ? 'live' : ''}`}>
-            <span className="stat-value">{timeLeft}</span>
-            <span className="stat-label">{isLive ? 'live' : 'left'}</span>
+          <div className={`${styles.stat} ${isLive ? styles.statTimeLive : ''}`}>
+            <span className={styles.statValue}>{timeLeft}</span>
+            <span className={styles.statLabel}>{isLive ? 'live' : 'left'}</span>
           </div>
         </div>
       </div>
 
       {/* Source badge & Trade button */}
-      <div className="card-footer">
-        <span className={`source-badge ${hasDFlow ? 'dflow' : 'jupiter'}`}>
+      <div className={styles.cardFooter}>
+        <span className={`${styles.sourceBadge} ${hasDFlow ? styles.sourceBadgeDflow : styles.sourceBadgeJupiter}`}>
           {hasDFlow ? 'DFlow' : 'Jupiter'}
         </span>
         {isTradeable && (
           <button
-            className="trade-btn"
+            className={styles.tradeBtn}
             type="button"
             onClick={(e) => {
               e.preventDefault();
@@ -545,14 +547,14 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
 
 function SkeletonCard({ index }: { index: number }) {
   return (
-    <div className="skeleton-card" style={{ animationDelay: `${index * 50}ms` }}>
-      <div className="skeleton-title" />
-      <div className="skeleton-date" />
-      <div className="skeleton-outcomes">
-        <div className="skeleton-outcome" />
-        <div className="skeleton-outcome" />
+    <div className={styles.skeletonCard} style={{ animationDelay: `${index * 50}ms` }}>
+      <div className={styles.skeletonTitle} />
+      <div className={styles.skeletonDate} />
+      <div className={styles.skeletonOutcomes}>
+        <div className={styles.skeletonOutcome} />
+        <div className={styles.skeletonOutcome} />
       </div>
-      <div className="skeleton-footer" />
+      <div className={styles.skeletonFooter} />
     </div>
   );
 }
@@ -776,905 +778,151 @@ export default function MarketsPage() {
   };
 
   return (
-    <div className="markets-page">
-      {/* Search & Filters */}
-      <header className="markets-header">
-        {/* Search */}
-        <div className="search-container">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search markets..."
-          />
-          {searchQuery && (
-            <button className="search-clear" onClick={() => setSearchQuery('')} type="button">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10.5 3.5L3.5 10.5M3.5 3.5l7 7" />
+    <PageWrapper showHeader={false} showFooter={false}>
+      <div className={styles.marketsPage}>
+        {/* Compact Search & Filters Header */}
+        <header className={styles.marketsHeader}>
+          <div className={styles.headerRow}>
+            {/* Search - compact on desktop */}
+            <div className={styles.searchContainer}>
+              <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
               </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Filters */}
-        <div className="filters-container">
-          <Dropdown
-            value={selectedSort}
-            onChange={setSelectedSort}
-            options={sortOptions}
-          />
-          <Dropdown
-            value={selectedCategory}
-            onChange={setSelectedCategory}
-            options={categories}
-          />
-        </div>
-
-        {/* Results info */}
-        <div className="results-info">
-          <span className="results-count">{filteredMarkets.length} markets</span>
-          <div className="data-sources">
-            {dataSources.dflow.success && (
-              <span className="data-source dflow">
-                <span className="source-dot" />
-                DFlow ({dataSources.dflow.count})
-              </span>
-            )}
-            {dataSources.jupiter.success && (
-              <span className="data-source jupiter">
-                <span className="source-dot" />
-                Jupiter ({dataSources.jupiter.count})
-              </span>
-            )}
-            {!dataSources.dflow.success && !dataSources.jupiter.success && (
-              <span className="data-source offline">
-                <span className="source-dot" />
-                Offline
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Market Grid */}
-      <main className="markets-main">
-        {loading ? (
-          <div className="markets-grid">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <SkeletonCard key={i} index={i} />
-            ))}
-          </div>
-        ) : filteredMarkets.length === 0 ? (
-          <div className="empty-state">
-            <p className="empty-title">No markets found</p>
-            <p className="empty-hint">Try adjusting your filters</p>
-          </div>
-        ) : (
-          <>
-            <div className="markets-grid">
-              {filteredMarkets.map((market, index) => (
-                <MarketCard
-                  key={market.id}
-                  market={market}
-                  onTrade={setTradingMarket}
-                  index={index}
-                />
-              ))}
+              <input
+                type="text"
+                className={styles.searchInput}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+              />
+              {searchQuery && (
+                <button className={styles.searchClear} onClick={() => setSearchQuery('')} type="button">
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10.5 3.5L3.5 10.5M3.5 3.5l7 7" />
+                  </svg>
+                </button>
+              )}
             </div>
 
-            {/* Pagination / Load More */}
-            {hasMore && (
-              <div className="load-more-container">
-                <button
-                  className={`load-more-btn ${loadingMore ? 'loading' : ''}`}
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <span className="spinner" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                      Load More Markets
-                    </>
-                  )}
-                </button>
-                <span className="pagination-info">
-                  Showing {filteredMarkets.length} of {totalLoaded}+ markets
-                </span>
+            {/* Filters - inline with search on desktop */}
+            <div className={styles.filtersContainer}>
+              <Dropdown
+                value={selectedSort}
+                onChange={setSelectedSort}
+                options={sortOptions}
+              />
+              <Dropdown
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={categories}
+              />
+            </div>
+
+            {/* Results count - inline on desktop */}
+            <div className={styles.resultsInfo}>
+              <span className={styles.resultsCount}>{filteredMarkets.length}</span>
+              <span className={styles.resultsLabel}>markets</span>
+              {/* Source indicators - compact dots */}
+              <div className={styles.sourceIndicators}>
+                {dataSources.dflow.success && (
+                  <span className={`${styles.sourceIndicator} ${styles.sourceIndicatorDflow}`} title={`DFlow: ${dataSources.dflow.count} markets`} />
+                )}
+                {dataSources.jupiter.success && (
+                  <span className={`${styles.sourceIndicator} ${styles.sourceIndicatorJupiter}`} title={`Jupiter: ${dataSources.jupiter.count} markets`} />
+                )}
+                {!dataSources.dflow.success && !dataSources.jupiter.success && (
+                  <span className={`${styles.sourceIndicator} ${styles.sourceIndicatorOffline}`} title="Offline" />
+                )}
               </div>
-            )}
-          </>
+            </div>
+          </div>
+        </header>
+
+        {/* Market Grid */}
+        <main className={styles.marketsMain}>
+          {loading ? (
+            <div className={styles.marketsGrid}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonCard key={i} index={i} />
+              ))}
+            </div>
+          ) : filteredMarkets.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p className={styles.emptyTitle}>No markets found</p>
+              <p className={styles.emptyHint}>Try adjusting your filters</p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.marketsGrid}>
+                {filteredMarkets.map((market, index) => (
+                  <MarketCard
+                    key={market.id}
+                    market={market}
+                    onTrade={setTradingMarket}
+                    index={index}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination / Load More */}
+              {hasMore && (
+                <div className={styles.loadMoreContainer}>
+                  <button
+                    className={`${styles.loadMoreBtn} ${loadingMore ? styles.loadMoreBtnLoading : ''}`}
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <>
+                        <span className={styles.spinner} />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Load More Markets
+                      </>
+                    )}
+                  </button>
+                  <span className={styles.paginationInfo}>
+                    Showing {filteredMarkets.length} of {totalLoaded}+ markets
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+
+        {/* Trading Modal */}
+        {tradingMarket && tradingMarket.dflow && (
+          <TradingModal
+            isOpen={true}
+            onClose={() => setTradingMarket(null)}
+            prediction={{
+              id: tradingMarket.id || tradingMarket.dflow.ticker,
+              question: tradingMarket.question || tradingMarket.title,
+              marketOdds: tradingMarket.yesPct,
+              source: 'dflow',
+              endDate: tradingMarket.endDate ?? undefined,
+              dflow: {
+                ticker: tradingMarket.dflow.ticker,
+                seriesTicker: tradingMarket.dflow.seriesTicker || '',
+                volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
+                openInterest: tradingMarket.dflow.openInterest || 0,
+                yesBid: tradingMarket.dflow.yesBid || 0,
+                yesAsk: tradingMarket.dflow.yesAsk || 0,
+                noBid: tradingMarket.dflow.noBid || 0,
+                noAsk: tradingMarket.dflow.noAsk || 0,
+                spread: tradingMarket.dflow.spread || 0,
+                tokens: tradingMarket.dflow.tokens,
+              },
+            }}
+          />
         )}
-      </main>
-
-      {/* Trading Modal */}
-      {tradingMarket && tradingMarket.dflow && (
-        <TradingModal
-          isOpen={true}
-          onClose={() => setTradingMarket(null)}
-          prediction={{
-            id: tradingMarket.id || tradingMarket.dflow.ticker,
-            question: tradingMarket.question || tradingMarket.title,
-            marketOdds: tradingMarket.yesPct,
-            source: 'dflow',
-            endDate: tradingMarket.endDate ?? undefined,
-            dflow: {
-              ticker: tradingMarket.dflow.ticker,
-              seriesTicker: tradingMarket.dflow.seriesTicker || '',
-              volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
-              openInterest: tradingMarket.dflow.openInterest || 0,
-              yesBid: tradingMarket.dflow.yesBid || 0,
-              yesAsk: tradingMarket.dflow.yesAsk || 0,
-              noBid: tradingMarket.dflow.noBid || 0,
-              noAsk: tradingMarket.dflow.noAsk || 0,
-              spread: tradingMarket.dflow.spread || 0,
-              tokens: tradingMarket.dflow.tokens,
-            },
-          }}
-        />
-      )}
-
-      <style jsx>{`
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           VIRAL MARKET CARDS - Premium Trading Aesthetic
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-        .markets-page {
-          min-height: 100dvh;
-          background: linear-gradient(180deg, #080C14 0%, #0D1117 50%, #080C14 100%);
-          padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-        }
-
-        /* ━━━ HEADER ━━━ */
-        .markets-header {
-          position: sticky;
-          top: 72px; /* Account for global header */
-          z-index: 50;
-          background: rgba(10, 10, 12, 0.85);
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-          padding-top: env(safe-area-inset-top, 0px);
-        }
-
-        /* ━━━ SEARCH ━━━ */
-        .search-container {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin: 8px 16px 10px;
-          padding: 10px 14px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
-          transition: all 0.2s;
-        }
-        .search-container:focus-within {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(16, 185, 129, 0.3);
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08);
-        }
-        .search-container svg { color: rgba(255, 255, 255, 0.3); flex-shrink: 0; }
-        .search-container input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          font-size: 14px;
-          font-weight: 500;
-          color: #fff;
-        }
-        .search-container input::placeholder { color: rgba(255, 255, 255, 0.3); }
-        .search-clear {
-          width: 20px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          border-radius: 6px;
-          color: rgba(255, 255, 255, 0.5);
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .search-clear:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
-
-        /* ━━━ FILTERS ━━━ */
-        .filters-container {
-          display: flex;
-          gap: 8px;
-          padding: 0 16px 8px;
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-        .filters-container::-webkit-scrollbar { display: none; }
-        .filters-container :global(.dropdown) { position: relative; flex-shrink: 0; }
-        .filters-container :global(.dropdown-trigger) {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 7px 12px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.7);
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-        .filters-container :global(.dropdown-trigger:hover) {
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(255, 255, 255, 0.12);
-        }
-        .filters-container :global(.dropdown.open .dropdown-trigger) {
-          background: rgba(16, 185, 129, 0.1);
-          border-color: rgba(16, 185, 129, 0.3);
-          color: #10B981;
-        }
-        .filters-container :global(.dropdown-icon) { font-size: 11px; }
-        .filters-container :global(.dropdown-label) { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
-        .filters-container :global(.dropdown-arrow) { color: rgba(255, 255, 255, 0.4); transition: transform 0.2s; flex-shrink: 0; }
-        .filters-container :global(.dropdown.open .dropdown-arrow) { transform: rotate(180deg); color: #10B981; }
-
-        /* Portal dropdown */
-        :global(.portal-dropdown-menu) {
-          padding: 6px;
-          background: rgba(20, 20, 24, 0.95);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.8);
-          animation: dropEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes dropEnter {
-          from { opacity: 0; transform: translateY(-8px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        :global(.portal-dropdown-item) {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          padding: 9px 12px;
-          background: transparent;
-          border: none;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.7);
-          cursor: pointer;
-          transition: all 0.15s;
-          text-align: left;
-        }
-        :global(.portal-dropdown-item:hover) { background: rgba(255, 255, 255, 0.06); color: #fff; }
-        :global(.portal-dropdown-item.selected) { background: rgba(16, 185, 129, 0.12); color: #10B981; }
-        :global(.portal-dropdown-item .item-icon) { font-size: 14px; width: 20px; text-align: center; }
-        :global(.portal-dropdown-item .item-label) { flex: 1; }
-        :global(.portal-dropdown-item .item-check) { color: #10B981; flex-shrink: 0; }
-
-        /* Results info */
-        .results-info {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 6px 16px 10px;
-        }
-        .results-count {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.35);
-          font-family: 'SF Mono', monospace;
-          font-weight: 500;
-        }
-        .data-sources {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .data-source {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 4px 10px;
-          border-radius: 12px;
-          font-size: 10px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-        }
-        .data-source.dflow { background: rgba(16, 185, 129, 0.1); color: #10B981; }
-        .data-source.jupiter { background: rgba(196, 181, 253, 0.1); color: #C4B5FD; }
-        .data-source.offline { background: rgba(239, 68, 68, 0.1); color: #EF4444; }
-        .source-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse-glow 2s infinite; }
-
-        /* ━━━ MAIN GRID ━━━ */
-        .markets-main {
-          padding: 8px 12px;
-          max-width: 1400px;
-          margin: 0 auto;
-        }
-        .markets-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           COMPACT CARD - Clean Data-Rich Design (FIXED HEIGHT)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        .markets-grid :global(.compact-card) {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          height: 250px;
-          min-height: 250px;
-          max-height: 250px;
-          background: rgba(14, 14, 18, 0.95);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
-          overflow: hidden;
-          animation: cardPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-          animation-delay: var(--delay);
-          transition: all 0.2s ease;
-        }
-        @keyframes cardPop {
-          from { opacity: 0; transform: scale(0.96) translateY(8px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        .markets-grid :global(.compact-card:hover) {
-          border-color: rgba(255, 255, 255, 0.12);
-          box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
-        }
-
-        /* ━━━ IMAGE SECTION (Only when API provides image) ━━━ */
-        .markets-grid :global(.card-media) {
-          position: relative;
-          height: 70px;
-          flex-shrink: 0;
-          overflow: hidden;
-        }
-        .markets-grid :global(.media-img) {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        .markets-grid :global(.media-overlay) {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(to top, rgba(14, 14, 18, 1) 0%, transparent 100%);
-          pointer-events: none;
-        }
-
-        /* ━━━ CONTENT SECTION ━━━ */
-        .markets-grid :global(.card-content) {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          padding: 10px;
-          text-decoration: none;
-          color: inherit;
-          flex: 1;
-          min-height: 0;
-          overflow: hidden;
-        }
-        .markets-grid :global(.card-title) {
-          font-size: 11px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.88);
-          line-height: 1.35;
-          height: 30px;
-          min-height: 30px;
-          max-height: 30px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          letter-spacing: -0.01em;
-        }
-
-        /* ━━━ PRICE ROW - YES/NO/SPREAD ━━━ */
-        .markets-grid :global(.price-row) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 4px;
-        }
-        .markets-grid :global(.price-yes),
-        .markets-grid :global(.price-no) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1px;
-        }
-        .markets-grid :global(.price-label) {
-          font-size: 8px;
-          font-weight: 700;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-        }
-        .markets-grid :global(.price-yes .price-label) { color: #10B981; }
-        .markets-grid :global(.price-no .price-label) { color: #F43F5E; }
-        .markets-grid :global(.price-value) {
-          font-size: 14px;
-          font-weight: 800;
-          font-family: 'SF Mono', 'Fira Code', monospace;
-          letter-spacing: -0.02em;
-        }
-        .markets-grid :global(.price-yes .price-value) { color: #10B981; }
-        .markets-grid :global(.price-no .price-value) { color: #F43F5E; }
-        .markets-grid :global(.price-spread) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1px;
-          padding: 2px 6px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 4px;
-        }
-        .markets-grid :global(.spread-value) {
-          font-size: 10px;
-          font-weight: 700;
-          font-family: 'SF Mono', monospace;
-          color: rgba(255, 255, 255, 0.5);
-        }
-        .markets-grid :global(.spread-label) {
-          font-size: 7px;
-          color: rgba(255, 255, 255, 0.3);
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-        }
-
-        /* ━━━ PROBABILITY BAR ━━━ */
-        .markets-grid :global(.prob-bar) {
-          height: 3px;
-          background: rgba(244, 63, 94, 0.2);
-          border-radius: 2px;
-          overflow: hidden;
-        }
-        .markets-grid :global(.prob-fill) {
-          height: 100%;
-          background: #10B981;
-          border-radius: 2px;
-          transition: width 0.3s ease;
-        }
-
-        /* ━━━ SPARKLINE ROW - Visual Centerpiece ━━━ */
-        .markets-grid :global(.spark-row) {
-          height: 48px;
-          min-height: 48px;
-          flex-shrink: 0;
-          margin: 4px 0;
-          position: relative;
-        }
-        .markets-grid :global(.viral-spark) {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .markets-grid :global(.viral-spark svg) {
-          display: block;
-          flex: 1;
-          height: 100%;
-          min-width: 0;
-        }
-
-        /* Pulse ring animation */
-        .markets-grid :global(.pulse-ring) {
-          animation: pulse-ring 2s ease-in-out infinite;
-          transform-origin: center;
-        }
-        @keyframes pulse-ring {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 0.2; transform: scale(1.4); }
-        }
-
-        /* Pulse dot glow */
-        .markets-grid :global(.pulse-dot) {
-          animation: pulse-dot 2s ease-in-out infinite;
-        }
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-
-        /* Change badge - inline next to chart */
-        .markets-grid :global(.spark-badge) {
-          position: relative;
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          gap: 2px;
-          padding: 3px 6px;
-          border-radius: 4px;
-          font-size: 9px;
-          font-weight: 700;
-          font-family: 'SF Mono', 'Fira Code', monospace;
-        }
-        .markets-grid :global(.spark-badge.up) {
-          background: rgba(16, 185, 129, 0.12);
-          color: #10B981;
-        }
-        .markets-grid :global(.spark-badge.down) {
-          background: rgba(244, 63, 94, 0.12);
-          color: #F43F5E;
-        }
-        .markets-grid :global(.spark-arrow) {
-          font-size: 8px;
-        }
-        .markets-grid :global(.spark-pct) {
-          letter-spacing: -0.02em;
-        }
-
-        .markets-grid :global(.spark-change) {
-          display: none;
-        }
-
-        /* ━━━ STATS ROW ━━━ */
-        .markets-grid :global(.stats-row) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 4px;
-          margin-top: auto;
-        }
-        .markets-grid :global(.stat) {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1px;
-        }
-        .markets-grid :global(.stat-value) {
-          font-size: 10px;
-          font-weight: 700;
-          font-family: 'SF Mono', monospace;
-          color: rgba(255, 255, 255, 0.7);
-        }
-        .markets-grid :global(.stat-label) {
-          font-size: 7px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.3);
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-        }
-        .markets-grid :global(.stat.change.up .stat-value) { color: #10B981; }
-        .markets-grid :global(.stat.change.down .stat-value) { color: #F43F5E; }
-        .markets-grid :global(.stat.time.live .stat-value) { color: #10B981; }
-        .markets-grid :global(.stat.time.live .stat-label) { color: #10B981; }
-
-        /* ━━━ CARD FOOTER ━━━ */
-        .markets-grid :global(.card-footer) {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-          margin: 0 10px 8px;
-        }
-        .markets-grid :global(.source-badge) {
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-size: 8px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .markets-grid :global(.source-badge.dflow) {
-          background: rgba(16, 185, 129, 0.1);
-          color: #10B981;
-        }
-        .markets-grid :global(.source-badge.jupiter) {
-          background: rgba(196, 181, 253, 0.1);
-          color: #C4B5FD;
-        }
-
-        /* ━━━ TRADE BUTTON ━━━ */
-        .markets-grid :global(.trade-btn) {
-          flex: 1;
-          padding: 7px;
-          background: transparent;
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          border-radius: 6px;
-          font-size: 10px;
-          font-weight: 700;
-          color: #10B981;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-        .markets-grid :global(.trade-btn:hover) {
-          background: rgba(16, 185, 129, 0.1);
-          border-color: rgba(16, 185, 129, 0.5);
-        }
-        .markets-grid :global(.trade-btn:active) {
-          transform: scale(0.98);
-        }
-
-        /* ━━━ SKELETON ━━━ */
-        .markets-grid :global(.skeleton-card) {
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: 16px;
-          animation: skeleton-pulse 1.5s ease-in-out infinite;
-        }
-        @keyframes skeleton-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-        .markets-grid :global(.skeleton-title),
-        .markets-grid :global(.skeleton-date),
-        .markets-grid :global(.skeleton-outcome),
-        .markets-grid :global(.skeleton-footer) {
-          background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 6px;
-        }
-        .markets-grid :global(.skeleton-title) { height: 12px; width: 85%; margin-bottom: 8px; }
-        .markets-grid :global(.skeleton-date) { height: 32px; width: 50%; margin-bottom: 10px; }
-        .markets-grid :global(.skeleton-outcomes) { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-        .markets-grid :global(.skeleton-outcome) { height: 4px; }
-        .markets-grid :global(.skeleton-footer) { height: 28px; margin-top: 8px; }
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-
-        /* ━━━ EMPTY STATE ━━━ */
-        .empty-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 60px 20px;
-          text-align: center;
-        }
-        .empty-title { font-size: 16px; font-weight: 700; color: rgba(255, 255, 255, 0.8); margin-bottom: 6px; }
-        .empty-hint { font-size: 13px; color: rgba(255, 255, 255, 0.4); }
-
-        /* ━━━ LOAD MORE ━━━ */
-        .load-more-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-          padding: 24px 0;
-          margin-top: 8px;
-        }
-        .load-more-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 14px 28px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          font-size: 13px;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.8);
-          cursor: pointer;
-          transition: all 0.2s;
-          min-width: 180px;
-          text-transform: uppercase;
-          letter-spacing: 0.02em;
-        }
-        .load-more-btn:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(16, 185, 129, 0.3);
-          color: #fff;
-        }
-        .load-more-btn:disabled { cursor: not-allowed; opacity: 0.6; }
-        .load-more-btn.loading {
-          background: rgba(16, 185, 129, 0.08);
-          border-color: rgba(16, 185, 129, 0.2);
-          color: #10B981;
-        }
-        .load-more-btn svg { stroke: currentColor; }
-        .load-more-btn .spinner {
-          width: 14px;
-          height: 14px;
-          border: 2px solid rgba(16, 185, 129, 0.3);
-          border-top-color: #10B981;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .pagination-info {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.3);
-          font-family: 'SF Mono', monospace;
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - SMALL PHONES (<420px) - SINGLE COLUMN
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (max-width: 419px) {
-          .search-container { margin: 0 12px 10px; padding: 10px 12px; }
-          .search-container input { font-size: 14px; }
-
-          .filters-container { padding: 0 12px 8px; gap: 6px; }
-          .filters-container :global(.dropdown-trigger) { padding: 8px 12px; font-size: 12px; }
-          .filters-container :global(.dropdown-label) { max-width: 70px; }
-
-          .results-info { padding: 0 12px 8px; }
-          .results-count { font-size: 11px; }
-          .data-source { font-size: 10px; padding: 4px 8px; }
-
-          .markets-main { padding: 8px 12px; }
-          .markets-grid { grid-template-columns: 1fr; gap: 12px; }
-
-          .markets-grid :global(.compact-card) { height: auto; min-height: 180px; max-height: none; }
-          .markets-grid :global(.card-media) { height: 100px; }
-          .markets-grid :global(.card-content) { padding: 12px; gap: 8px; }
-          .markets-grid :global(.card-title) { font-size: 15px; height: auto; min-height: auto; max-height: none; -webkit-line-clamp: 3; line-height: 1.4; }
-          .markets-grid :global(.price-value) { font-size: 18px; }
-          .markets-grid :global(.price-label) { font-size: 10px; }
-          .markets-grid :global(.spark-row) { height: 56px; min-height: 56px; }
-          .markets-grid :global(.spark-badge) { padding: 4px 8px; font-size: 11px; }
-          .markets-grid :global(.stat-value) { font-size: 12px; }
-          .markets-grid :global(.stat-label) { font-size: 9px; }
-          .markets-grid :global(.card-footer) { margin: 0 12px 10px; }
-          .markets-grid :global(.trade-btn) { padding: 10px; font-size: 12px; border-radius: 8px; }
-          .markets-grid :global(.source-badge) { font-size: 10px; padding: 4px 10px; }
-
-          .load-more-btn { padding: 12px 20px; font-size: 13px; min-width: 160px; }
-          .pagination-info { font-size: 11px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - MEDIUM PHONES (420-519px) - 2 COLUMNS
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 420px) and (max-width: 519px) {
-          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-          .markets-grid :global(.compact-card) { height: 260px; min-height: 260px; max-height: 260px; }
-          .markets-grid :global(.card-media) { height: 65px; }
-          .markets-grid :global(.card-content) { padding: 10px; gap: 6px; }
-          .markets-grid :global(.card-title) { font-size: 12px; height: 32px; min-height: 32px; max-height: 32px; }
-          .markets-grid :global(.price-value) { font-size: 14px; }
-          .markets-grid :global(.price-label) { font-size: 8px; }
-          .markets-grid :global(.spark-row) { height: 48px; min-height: 48px; }
-          .markets-grid :global(.spark-badge) { padding: 3px 6px; font-size: 10px; }
-          .markets-grid :global(.stat-value) { font-size: 11px; }
-          .markets-grid :global(.trade-btn) { padding: 8px; font-size: 10px; }
-          .filters-container :global(.dropdown-label) { max-width: 80px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - LARGE PHONES (520-639px)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 520px) and (max-width: 639px) {
-          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-          .markets-grid :global(.compact-card) { height: 270px; min-height: 270px; max-height: 270px; }
-          .markets-grid :global(.card-media) { height: 70px; }
-          .markets-grid :global(.card-content) { padding: 12px; gap: 6px; }
-          .markets-grid :global(.card-title) { font-size: 13px; height: 34px; min-height: 34px; max-height: 34px; }
-          .markets-grid :global(.price-value) { font-size: 15px; }
-          .markets-grid :global(.spark-row) { height: 50px; min-height: 50px; }
-          .markets-grid :global(.stat-value) { font-size: 11px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - SMALL TABLETS (640-767px)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 640px) and (max-width: 767px) {
-          .search-container { margin: 0 20px 14px; }
-          .filters-container { padding: 0 20px 12px; }
-          .results-info { padding: 0 20px 12px; }
-          .markets-main { padding: 14px 20px; }
-          .markets-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-          .markets-grid :global(.compact-card) { height: 260px; min-height: 260px; max-height: 260px; }
-          .markets-grid :global(.card-media) { height: 70px; }
-          .markets-grid :global(.card-title) { font-size: 12px; height: 32px; min-height: 32px; max-height: 32px; }
-          .markets-grid :global(.price-value) { font-size: 15px; }
-          .markets-grid :global(.spark-row) { height: 50px; min-height: 50px; }
-          .filters-container :global(.dropdown-label) { max-width: 100px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - TABLETS (768-1023px)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 768px) and (max-width: 1023px) {
-          .search-container { margin: 0 24px 16px; padding: 12px 16px; }
-          .filters-container { padding: 0 24px 14px; gap: 10px; }
-          .filters-container :global(.dropdown-trigger) { padding: 10px 14px; }
-          .filters-container :global(.dropdown-label) { max-width: 120px; }
-          .results-info { padding: 0 24px 14px; }
-          .markets-main { padding: 16px 24px; }
-          .markets-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
-          .markets-grid :global(.compact-card) { height: 270px; min-height: 270px; max-height: 270px; }
-          .markets-grid :global(.card-media) { height: 75px; }
-          .markets-grid :global(.card-title) { font-size: 12px; height: 32px; min-height: 32px; max-height: 32px; }
-          .markets-grid :global(.price-value) { font-size: 16px; }
-          .markets-grid :global(.spark-row) { height: 52px; min-height: 52px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - DESKTOP (1024px+)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 1024px) {
-          .markets-header { padding-left: 24px; padding-right: 24px; }
-          .search-container { max-width: 1400px; margin: 0 auto 18px; padding: 14px 18px; }
-          .filters-container { max-width: 1400px; margin: 0 auto; padding: 0 0 16px; gap: 12px; }
-          .filters-container :global(.dropdown-trigger) { padding: 10px 16px; border-radius: 12px; }
-          .filters-container :global(.dropdown-label) { max-width: none; }
-          .results-info { max-width: 1400px; margin: 0 auto; padding: 0 0 16px; }
-          .markets-main { padding: 20px 24px; }
-          .markets-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
-          .markets-grid :global(.compact-card) { height: 280px; min-height: 280px; max-height: 280px; }
-          .markets-grid :global(.card-media) { height: 80px; }
-          .markets-grid :global(.card-title) { font-size: 13px; height: 34px; min-height: 34px; max-height: 34px; }
-          .markets-grid :global(.price-value) { font-size: 16px; }
-          .markets-grid :global(.spark-row) { height: 54px; min-height: 54px; }
-          .load-more-btn { padding: 14px 32px; font-size: 14px; min-width: 200px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - LARGE DESKTOP (1280px+)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 1280px) {
-          .markets-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; }
-          .markets-grid :global(.compact-card) { height: 290px; min-height: 290px; max-height: 290px; }
-          .markets-grid :global(.card-media) { height: 85px; }
-          .markets-grid :global(.card-title) { font-size: 13px; height: 34px; min-height: 34px; max-height: 34px; }
-          .markets-grid :global(.price-value) { font-size: 17px; }
-          .markets-grid :global(.spark-row) { height: 56px; min-height: 56px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           RESPONSIVE - EXTRA LARGE (1536px+)
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (min-width: 1536px) {
-          .markets-grid { grid-template-columns: repeat(5, 1fr); gap: 20px; }
-          .markets-grid :global(.compact-card) { height: 300px; min-height: 300px; max-height: 300px; }
-          .markets-grid :global(.card-media) { height: 90px; }
-          .markets-grid :global(.card-title) { font-size: 14px; height: 36px; min-height: 36px; max-height: 36px; }
-          .markets-grid :global(.price-value) { font-size: 18px; }
-          .markets-grid :global(.spark-row) { height: 58px; min-height: 58px; }
-        }
-
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           LANDSCAPE MODE
-           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-        @media (max-height: 500px) and (orientation: landscape) {
-          .markets-header { position: relative; }
-          .search-container { margin: 0 16px 8px; padding: 8px 12px; }
-          .filters-container { padding: 0 16px 8px; }
-          .filters-container :global(.dropdown-trigger) { padding: 6px 10px; }
-          .results-info { padding: 0 16px 8px; }
-          .markets-main { padding: 10px 16px; }
-          .markets-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-          .markets-grid :global(.compact-card) { height: 170px; min-height: 170px; max-height: 170px; }
-          .markets-grid :global(.card-media) { height: 45px; }
-          .markets-grid :global(.card-title) { font-size: 9px; height: 24px; min-height: 24px; max-height: 24px; }
-          .markets-grid :global(.price-value) { font-size: 11px; }
-          .markets-grid :global(.spark-row) { height: 32px; min-height: 32px; }
-          .markets-grid :global(.spark-badge) { display: none; }
-          .markets-grid :global(.trade-btn) { display: none; }
-        }
-
-        /* Landscape for larger phones */
-        @media (min-width: 640px) and (max-height: 500px) and (orientation: landscape) {
-          .markets-grid { grid-template-columns: repeat(3, 1fr); }
-          .markets-grid :global(.compact-card) { height: 180px; min-height: 180px; max-height: 180px; }
-          .markets-grid :global(.spark-row) { height: 36px; min-height: 36px; }
-        }
-      `}</style>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

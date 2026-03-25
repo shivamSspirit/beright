@@ -340,14 +340,14 @@ export default function ResolutionPage() {
       {/* CTA */}
       <section className="page-cta">
         <h2>Questions about resolution?</h2>
-        <p>Check our FAQ or reach out to the community</p>
+        <p>Check our FAQ or try the Terminal</p>
         <div className="cta-buttons">
           <Link href="/docs/faq#resolution" className="cta-btn primary">
             Resolution FAQ
           </Link>
-          <a href="https://t.me/berightaii" className="cta-btn secondary" target="_blank" rel="noopener">
-            Ask on Telegram
-          </a>
+          <Link href="/beright-terminal" className="cta-btn secondary">
+            Open Terminal
+          </Link>
         </div>
       </section>
 
@@ -358,7 +358,6 @@ export default function ResolutionPage() {
           <span className="logo-right">Right</span>
         </div>
         <div className="footer-links">
-          <Link href="/docs/fees">Fees</Link>
           <Link href="/docs/api">API</Link>
           <Link href="/docs/faq">FAQ</Link>
         </div>
@@ -395,7 +394,7 @@ export default function ResolutionPage() {
 
         .logo-be { color: #fff; }
         .logo-right {
-          background: linear-gradient(135deg, #10B981, #00C2FF, #8B5CF6);
+          background: linear-gradient(135deg, #10B981, #00FFB2, #8B5CF6);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -499,7 +498,7 @@ export default function ResolutionPage() {
           justify-content: center;
           width: 32px;
           height: 32px;
-          background: linear-gradient(135deg, #10B981, #00C2FF);
+          background: linear-gradient(135deg, #10B981, #00FFB2);
           border-radius: 50%;
           font-size: 14px;
           font-weight: 800;
@@ -650,10 +649,10 @@ export default function ResolutionPage() {
 
         .source-tag {
           padding: 4px 10px;
-          background: rgba(0, 194, 255, 0.1);
+          background: rgba(0, 255, 178, 0.1);
           border-radius: 6px;
           font-size: 12px;
-          color: #00C2FF;
+          color: #00FFB2;
         }
 
         .source-examples ul {

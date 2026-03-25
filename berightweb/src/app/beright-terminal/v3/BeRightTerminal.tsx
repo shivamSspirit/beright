@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { getHotMarketsFeed, sendToGateway, fetchTerminalData, GatewayResponse, ApiMarket, getFeed, FeedMarket } from '@/lib/api';
+import { Connection, Transaction, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useUser } from '@/hooks/useUnifiedUser';
+import { useMode } from '@/context/ModeContext';
+import { getHotMarketsFeed, sendToGateway, fetchTerminalData, GatewayResponse, ApiMarket, getFeed, FeedMarket, waitForJob } from '@/lib/api';
+import { getAllExplorerUrls } from '@/lib/explorer';
 import { useSignalStream } from '@/hooks/useSignalStream';
 
 // Portfolio data structure from API
@@ -36,6 +40,10 @@ import { AgentLog, generateId } from '../components/types';
 import styles from '../beright.module.css';
 import BrandLogo from '@/components/BrandLogo';
 
+// Solana devnet RPC and Memo Program
+const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+
 /**
  * BeRight Terminal v3
  *
@@ -43,8 +51,16 @@ import BrandLogo from '@/components/BrandLogo';
  * Design inspired by high-end financial terminals.
  */
 export default function BeRightTerminal() {
-  const { authenticated, login, ready, user } = usePrivy();
-  const { wallets } = useWallets();
+  const { isAuthenticated, login, isLoading: userLoading, walletAddress } = useUser();
+  const { isDemo, isLoading: modeLoading } = useMode();
+
+  // Use wallet adapter directly for demo mode signing
+  const wallet = useWallet();
+  const { signTransaction: walletSignTransaction } = wallet;
+
+  // Derived state for compatibility
+  const ready = !userLoading && !modeLoading;
+  const authenticated = isAuthenticated;
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>('BERIGHT');
@@ -83,16 +99,8 @@ export default function BeRightTerminal() {
   // Refresh interval ref
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Get user's Solana wallet pubkey
-  const solanaWallet = useMemo(() => {
-    // Find Solana wallet - check walletClientType or type field
-    const wallet = wallets?.find(w =>
-      w.walletClientType === 'solana' ||
-      (w as any).type === 'solana' ||
-      w.walletClientType?.includes('solana')
-    );
-    return wallet?.address;
-  }, [wallets]);
+  // Get user's Solana wallet pubkey (from unified hook)
+  const solanaWallet = walletAddress;
 
   // Add chat message
   const addChatMessage = useCallback((
@@ -101,14 +109,28 @@ export default function BeRightTerminal() {
     agent?: ChatMessage['agent'],
     mood?: string
   ) => {
+    const id = generateId();
     setChatMessages(prev => [...prev, {
-      id: generateId(),
+      id,
       role,
       agent,
       content,
       timestamp: new Date(),
       mood,
     }]);
+    return id;
+  }, []);
+
+  // Update the last agent message (for async progress updates)
+  const updateLastAgentMessage = useCallback((content: string, mood?: string) => {
+    setChatMessages(prev => {
+      const lastAgentIdx = [...prev].reverse().findIndex(m => m.role === 'agent');
+      if (lastAgentIdx === -1) return prev;
+      const idx = prev.length - 1 - lastAgentIdx;
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], content, mood: mood || updated[idx].mood };
+      return updated;
+    });
   }, []);
 
   // Add agent log
@@ -242,13 +264,52 @@ export default function BeRightTerminal() {
       // Pass wallet pubkey for trade execution
       const response: GatewayResponse = await sendToGateway(cmd, {
         sessionId: gatewaySessionId || undefined,
-        userId: solanaWallet, // Pass wallet for execution context
+        userId: solanaWallet || undefined, // Pass wallet for execution context
       });
 
       if (response.sessionId && response.sessionId !== gatewaySessionId) {
         setGatewaySessionId(response.sessionId);
       }
 
+      // Handle async jobs (long-running operations)
+      if (response.async && response.jobId) {
+        // Show initial processing message
+        addChatMessage('agent', `${response.text}\n\n⏳ Progress: 0%`, agent, 'NEUTRAL');
+        addAgentLog(agent, `Async job started: ${response.jobId}`, 'info');
+
+        try {
+          // Poll for completion with progress updates
+          const finalResponse = await waitForJob(response.jobId, {
+            onProgress: (progress, message) => {
+              const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+              updateLastAgentMessage(
+                `Processing your request...\n\n${progressBar} ${progress}%${message ? `\n${message}` : ''}`
+              );
+              addAgentLog(agent, `Progress: ${progress}% - ${message || 'Working...'}`, 'info');
+            },
+          });
+
+          // Update with final result
+          updateLastAgentMessage(finalResponse.text, finalResponse.mood);
+          addAgentLog(agent, `Analysis complete (${finalResponse.mood || 'NEUTRAL'})`, 'success');
+
+          // Handle data from final response
+          if (finalResponse.data) {
+            if (Array.isArray(finalResponse.data) && finalResponse.data.length > 0 && finalResponse.data[0].title) {
+              setMarkets(finalResponse.data);
+            }
+          }
+        } catch (jobError) {
+          const errorMsg = jobError instanceof Error ? jobError.message : 'Job failed';
+          updateLastAgentMessage(`❌ ${errorMsg}\n\nPlease try again.`, 'ERROR');
+          addAgentLog(agent, `Job failed: ${errorMsg}`, 'error');
+        }
+
+        setIsProcessing(false);
+        return;
+      }
+
+      // Handle synchronous response
       if (response.success) {
         // Add agent response to chat
         addChatMessage('agent', response.text, agent, response.mood);
@@ -278,7 +339,7 @@ export default function BeRightTerminal() {
     }
 
     setIsProcessing(false);
-  }, [gatewaySessionId, addAgentLog, addChatMessage, solanaWallet]);
+  }, [gatewaySessionId, addAgentLog, addChatMessage, updateLastAgentMessage, solanaWallet]);
 
   // Check if agent response contains a transaction that needs signing
   const checkForPendingTransaction = useCallback((data: any): boolean => {
@@ -307,22 +368,177 @@ export default function BeRightTerminal() {
       return;
     }
 
+    // Demo mode - record prediction to calibration program on devnet
+    if (isDemo) {
+      addAgentLog('TRADER', 'Recording prediction to calibration program...', 'info');
+      addChatMessage('agent', '🔐 Signing prediction on Solana Devnet (Calibration Program)...', 'TRADER');
+
+      try {
+        const connection = new Connection(DEVNET_RPC, 'confirmed');
+
+        // Use wallet adapter signTransaction for demo mode
+        if (!walletSignTransaction || !walletAddress) {
+          throw new Error('Wallet not connected. Please connect your wallet first.');
+        }
+
+        // Parse direction from description (e.g., "BUY YES on market" or "SELL NO")
+        const descLower = pendingTx.description.toLowerCase();
+        const direction: 'yes' | 'no' = descLower.includes('no') ? 'no' : 'yes';
+
+        // Generate a market ID from the market title
+        const marketId = `terminal_${pendingTx.marketTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().slice(0, 32)}`;
+
+        // Default probability based on direction (YES = 0.7, NO = 0.3)
+        const probability = direction === 'yes' ? 0.7 : 0.3;
+
+        // First, call calibration API to build the record transaction
+        const res = await fetch('/api/v2/calibration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'record',
+            authority: walletAddress,
+            marketId,
+            predictedProbability: probability,
+            direction,
+            category: 0,
+          }),
+        });
+
+        const json = await res.json();
+
+        if (!json.success) {
+          // If forecaster not initialized, initialize first
+          if (json.code === 'NOT_INITIALIZED') {
+            addAgentLog('TRADER', 'Initializing forecaster account...', 'info');
+
+            const initRes = await fetch('/api/v2/calibration', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'initialize',
+                authority: walletAddress,
+              }),
+            });
+
+            const initJson = await initRes.json();
+            if (initJson.success) {
+              const initTxBytes = Buffer.from(initJson.data.transaction, 'base64');
+              const initTransaction = Transaction.from(initTxBytes);
+
+              // CRITICAL: Get fresh blockhash to avoid "Blockhash not found" error
+              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+              initTransaction.recentBlockhash = blockhash;
+
+              try {
+                const signedInitTx = await walletSignTransaction(initTransaction);
+                const initSig = await connection.sendRawTransaction(
+                  (signedInitTx as Transaction).serialize(),
+                  { skipPreflight: false, preflightCommitment: 'confirmed' }
+                );
+                await connection.confirmTransaction({
+                  signature: initSig,
+                  blockhash,
+                  lastValidBlockHeight,
+                }, 'confirmed');
+                addAgentLog('TRADER', `Forecaster initialized: ${initSig.slice(0, 16)}...`, 'success');
+              } catch (initErr) {
+                // Handle "account already in use" - forecaster exists but RPC cache was stale
+                const errMsg = initErr instanceof Error ? initErr.message : String(initErr);
+                if (errMsg.includes('already in use') || errMsg.includes('0x0')) {
+                  addAgentLog('TRADER', 'Forecaster already exists (RPC cache was stale)', 'info');
+                } else {
+                  throw initErr;
+                }
+              }
+            } else if (initJson.code === 'ALREADY_INITIALIZED') {
+              addAgentLog('TRADER', 'Forecaster already initialized', 'info');
+            }
+
+            // Wait for RPC propagation then retry record
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const retryRes = await fetch('/api/v2/calibration', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'record',
+                authority: walletAddress,
+                marketId,
+                predictedProbability: probability,
+                direction,
+                category: 0,
+              }),
+            });
+            const retryJson = await retryRes.json();
+            if (!retryJson.success) {
+              throw new Error(retryJson.error || 'Failed to build record transaction');
+            }
+            Object.assign(json, retryJson);
+          } else {
+            throw new Error(json.error || 'Failed to build transaction');
+          }
+        }
+
+        // Build and sign record transaction
+        const txBytes = Buffer.from(json.data.transaction, 'base64');
+        const transaction = Transaction.from(txBytes);
+
+        // CRITICAL: Get fresh blockhash to avoid "Blockhash not found" error
+        const { blockhash: recordBlockhash, lastValidBlockHeight: recordBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = recordBlockhash;
+
+        const signedTx = await walletSignTransaction(transaction);
+
+        // Submit to devnet
+        const signature = await connection.sendRawTransaction(
+          (signedTx as Transaction).serialize(),
+          { skipPreflight: false, preflightCommitment: 'confirmed' }
+        );
+
+        addAgentLog('TRADER', `Transaction submitted: ${signature.slice(0, 16)}...`, 'info');
+
+        // Confirm transaction with proper blockhash
+        await connection.confirmTransaction({
+          signature,
+          blockhash: recordBlockhash,
+          lastValidBlockHeight: recordBlockHeight,
+        }, 'confirmed');
+
+        // Get all explorer links
+        const explorerLinks = getAllExplorerUrls(signature, 'devnet');
+        const linksText = explorerLinks.map(l => `• [${l.name}](${l.url})`).join('\n');
+
+        addChatMessage('agent', `✅ Prediction recorded on Calibration Program!\n\n${pendingTx.description}\n\n**View transaction:**\n${linksText}`, 'TRADER', 'BULLISH');
+        addAgentLog('TRADER', `Prediction confirmed: ${signature.slice(0, 16)}...`, 'success');
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Transaction failed';
+        addChatMessage('agent', `❌ Prediction failed: ${errorMsg}`, 'TRADER', 'ERROR');
+        addAgentLog('TRADER', `Prediction failed: ${errorMsg}`, 'error');
+      } finally {
+        setPendingTx(null);
+      }
+      return;
+    }
+
     addAgentLog('TRADER', 'Signing transaction...', 'info');
     addChatMessage('agent', '🔐 Signing transaction with your wallet...', 'TRADER');
 
     try {
-      // Get the Solana wallet from Privy
-      const wallet = wallets?.find(w => w.address === solanaWallet);
-      if (!wallet) {
-        throw new Error('Wallet not found');
+      // In production mode, use window wallet signing
+      const walletFuncs = (window as Window & {
+        __BERIGHT_WALLET_FUNCS__?: {
+          signTransaction?: (tx: Uint8Array) => Promise<Uint8Array>;
+        };
+      }).__BERIGHT_WALLET_FUNCS__;
+
+      if (!walletFuncs?.signTransaction) {
+        throw new Error('Wallet signing not available');
       }
 
       // Decode and sign the transaction
       const txBytes = Buffer.from(pendingTx.transaction, 'base64');
-
-      // Use Privy's wallet signing method
-      // @ts-ignore - Privy wallet signing
-      const signedTx = await wallet.signTransaction(txBytes);
+      const signedTx = await walletFuncs.signTransaction(txBytes);
 
       // Submit to Solana
       const response = await fetch('/api/v2/jupiter/submit', {
@@ -351,7 +567,7 @@ export default function BeRightTerminal() {
     } finally {
       setPendingTx(null);
     }
-  }, [pendingTx, solanaWallet, wallets, addAgentLog, addChatMessage, fetchData]);
+  }, [pendingTx, solanaWallet, isDemo, addAgentLog, addChatMessage, fetchData, walletSignTransaction, walletAddress]);
 
   // Auto-sign when pendingTx is set (agent-driven execution)
   useEffect(() => {
@@ -468,8 +684,10 @@ export default function BeRightTerminal() {
         {renderContent()}
       </div>
 
-      {/* CLI Input */}
-      <CLIInput onCommand={processCommand} isProcessing={isProcessing} />
+      {/* CLI Input - Only show on BERIGHT (chat) tab */}
+      {activeTab === 'BERIGHT' && (
+        <CLIInput onCommand={processCommand} isProcessing={isProcessing} />
+      )}
     </div>
   );
 }

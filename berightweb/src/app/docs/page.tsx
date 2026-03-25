@@ -1,36 +1,237 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useStagger } from '@/components/ui';
+import BrandLogo from '@/components/BrandLogo';
+import styles from './docs.module.css';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// BERIGHT DOCUMENTATION - Product Overview, Vision, Roadmap
+// BERIGHT DOCUMENTATION - Accurate content based on actual codebase
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const CURRENT_PHASE = 1;
-
-// Navigation sections for prev/next
 const NAV_SECTIONS = [
   { id: 'overview', label: 'What is BeRight?' },
-  { id: 'vision', label: 'Vision' },
-  { id: 'current', label: 'Current State' },
-  { id: 'features', label: 'Features' },
+  { id: 'agents', label: 'AI Agents' },
+  { id: 'signals', label: 'Intelligence Signals' },
   { id: 'platforms', label: 'Supported Platforms' },
-  { id: 'telegram', label: 'Telegram Bot' },
-  { id: 'roadmap', label: 'Product Roadmap' },
+  { id: 'commands', label: 'Commands' },
+  { id: 'api', label: 'API Reference' },
+  { id: 'roadmap', label: 'Roadmap' },
+  { id: 'litepaper', label: 'Litepaper', isLink: true, href: '/docs/litepaper' },
 ];
 
-const ROADMAP_PHASES = [
+// SVG Icon components for agents
+const AgentIcons: Record<string, React.ReactNode> = {
+  scout: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  ),
+  analyst: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  ),
+  trader: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  ),
+  xdegen: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 11 18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </svg>
+  ),
+};
+
+// AI Agents - Actual capabilities from beright-ts/agents/
+const AGENTS = [
+  {
+    name: 'Scout',
+    role: 'Junior Analyst',
+    iconKey: 'scout',
+    description: 'Fast pattern recognition and market scanning. Finds hot markets, arbitrage opportunities, and whale activity across all platforms.',
+    tools: ['Hot Markets', 'Search', 'Arbitrage', 'Whale Tracking', 'Compare Odds'],
+    speed: '< 2s',
+  },
+  {
+    name: 'Analyst',
+    role: 'Senior Research',
+    iconKey: 'analyst',
+    description: 'Deep reasoning using Tetlock superforecasting methodology. Estimates probabilities with evidence gathering and calibration tracking.',
+    tools: ['Research', 'Probability Estimation', 'Evidence Gathering', 'Calibration'],
+    speed: '5-15s',
+  },
+  {
+    name: 'Trader',
+    role: 'Execution Desk',
+    iconKey: 'trader',
+    description: 'Risk calculation and trade execution. Uses Kelly criterion for position sizing, routes to best execution venues.',
+    tools: ['Positions', 'Kelly Sizing', 'Execute Trade', 'Risk Check', 'Alerts'],
+    speed: '2-3s',
+  },
+  {
+    name: 'xDegen',
+    role: 'Alpha Generator',
+    iconKey: 'xdegen',
+    description: 'Social content generation for market alpha. Creates viral posts about arbitrage alerts, hot markets, and market narratives.',
+    tools: ['Alpha Posts', 'Thread Generation', 'Market Narratives', 'Scheduling'],
+    speed: '2-5s',
+  },
+];
+
+// SVG Icon components for signals
+const SignalIcons: Record<string, React.ReactNode> = {
+  volumeSurge: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m22 7-8.5 8.5-5-5L2 17" />
+      <path d="M16 7h6v6" />
+    </svg>
+  ),
+  oddsShift: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  ),
+  arbitrage: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v12M9 10h6M9 14h6" />
+    </svg>
+  ),
+  resolution: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
+  newMarket: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9" />
+      <path d="M19 3v4M17 5h4" />
+    </svg>
+  ),
+  smartMoney: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  ),
+  narrative: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </svg>
+  ),
+  crossMarket: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  ),
+  insider: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  consensus: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  ),
+  whale: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+      <path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+      <path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+    </svg>
+  ),
+  social: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+};
+
+// 12 Intelligence Signals - Actual detectors from beright-ts/lib/signals/
+const SIGNALS = [
+  { iconKey: 'volumeSurge', name: 'Volume Surge', description: 'Detects volume spikes indicating increased market activity' },
+  { iconKey: 'oddsShift', name: 'Odds Shift', description: 'Rapid price movements signaling momentum' },
+  { iconKey: 'arbitrage', name: 'Arbitrage Opportunity', description: 'Price discrepancies >3% across platforms' },
+  { iconKey: 'resolution', name: 'Resolution Imminent', description: 'Markets resolving within 24-48 hours' },
+  { iconKey: 'newMarket', name: 'New Market', description: 'Newly launched markets for early opportunities' },
+  { iconKey: 'smartMoney', name: 'Smart Money', description: 'Large positions from skilled traders' },
+  { iconKey: 'narrative', name: 'Narrative Emergence', description: 'Breaking social/news narratives' },
+  { iconKey: 'crossMarket', name: 'Cross-Market', description: 'Correlated movements across related markets' },
+  { iconKey: 'insider', name: 'Insider Pattern', description: 'Unusual trading patterns suggesting info edge' },
+  { iconKey: 'consensus', name: 'Consensus Flip', description: 'Market consensus reversals' },
+  { iconKey: 'whale', name: 'Whale Entry', description: 'Large wallet positions entering markets' },
+  { iconKey: 'social', name: 'Social Mention', description: 'Social media buzz threshold (coming soon)' },
+];
+
+// Supported Platforms - 6+ platforms from beright-ts/lib/dataFabric/providers/
+const PLATFORMS = [
+  { name: 'Polymarket', type: 'Crypto', chain: 'Polygon', status: 'live', volume: '$33.4B (2025)' },
+  { name: 'Kalshi', type: 'Regulated', chain: 'USD', status: 'live', volume: '$22.88B (2025)' },
+  { name: 'Jupiter/DFlow', type: 'Crypto', chain: 'Solana', status: 'live', volume: '$28.6M (Jan)', highlight: true },
+  { name: 'Manifold', type: 'Play Money', chain: 'Off-chain', status: 'live', volume: 'Experimentation' },
+  { name: 'Limitless', type: 'Crypto', chain: 'Base', status: 'live', volume: 'Growing' },
+  { name: 'Metaculus', type: 'Forecasting', chain: 'Off-chain', status: 'soon', volume: 'Long-range' },
+];
+
+// Commands - Available in the BeRight Terminal
+const COMMANDS = [
+  { cmd: '/hot', desc: 'Trending markets with high activity', category: 'Discovery' },
+  { cmd: '/brief', desc: 'Market brief with hot markets, signals, and news', category: 'Discovery' },
+  { cmd: '/arb', desc: 'Current arbitrage opportunities across platforms', category: 'Discovery' },
+  { cmd: '/signals', desc: 'Real-time intelligence signal feed', category: 'Discovery' },
+  { cmd: '/research <topic>', desc: 'Deep analysis using Analyst agent', category: 'Research' },
+  { cmd: '/predict <market>', desc: 'Make and record predictions', category: 'Research' },
+  { cmd: '/recommend', desc: 'AI-generated trading recommendations', category: 'Research' },
+  { cmd: '/calibration', desc: 'Check your forecasting accuracy', category: 'Research' },
+  { cmd: '/trade <market>', desc: 'Execute trades with smart routing', category: 'Trading' },
+  { cmd: '/positions', desc: 'View current holdings across platforms', category: 'Trading' },
+  { cmd: '/portfolio', desc: 'Full portfolio with P&L analysis', category: 'Trading' },
+  { cmd: '/whale', desc: 'Track smart money movements', category: 'Trading' },
+  { cmd: '/leaderboard', desc: 'Community forecaster rankings', category: 'Social' },
+  { cmd: '/follow <user>', desc: 'Follow top forecasters', category: 'Social' },
+  { cmd: '/alerts', desc: 'Set up real-time alerts', category: 'Social' },
+];
+
+// API Endpoints - Actual routes from beright-ts/app/api/
+const API_ENDPOINTS = [
+  { method: 'GET', path: '/api/v2/markets', description: 'Search and list markets' },
+  { method: 'GET', path: '/api/v2/markets/trending', description: 'Get trending markets' },
+  { method: 'GET', path: '/api/v2/markets/[id]', description: 'Get market details' },
+  { method: 'GET', path: '/api/v2/arbitrage', description: 'Find arbitrage opportunities' },
+  { method: 'POST', path: '/api/v2/execution', description: 'Execute trades' },
+  { method: 'GET', path: '/api/v2/portfolio', description: 'Get user portfolio' },
+  { method: 'GET', path: '/api/v2/feed', description: 'ML-powered market feed' },
+  { method: 'POST', path: '/api/v2/fact-check', description: 'AI fact-checking' },
+  { method: 'GET', path: '/api/v2/calibration', description: 'User calibration data' },
+  { method: 'GET', path: '/api/v2/yield/apy', description: 'Yield pool APY' },
+];
+
+// Roadmap - Aligned with Litepaper V2
+const ROADMAP = [
   {
     phase: 1,
     title: 'Foundation',
     status: 'current',
     items: [
-      { label: 'Telegram Bot Launch', done: false, soon: true },
-      { label: 'Market Aggregation (5 platforms)', done: true },
-      { label: 'AI Intent Classification', done: true },
+      { label: 'AI Agent System (4 agents)', done: true },
+      { label: '12 Intelligence Signals', done: true },
+      { label: '6-Platform Aggregation', done: true },
       { label: 'Arbitrage Detection', done: true },
-      { label: 'Landing Page Launch', done: true },
+      { label: 'Web Swipe Interface', done: true },
+      { label: 'BeRight Terminal', done: true },
+      { label: 'AI Edge Detection', done: true },
+      { label: 'Privy Wallet Integration', done: true },
     ],
   },
   {
@@ -38,11 +239,12 @@ const ROADMAP_PHASES = [
     title: 'Intelligence Layer',
     status: 'next',
     items: [
-      { label: 'AI-Powered Market Analysis', done: false },
-      { label: 'Smart Money / Whale Tracking', done: false },
-      { label: 'Real-time Signal Alerts', done: false },
-      { label: 'Forecaster Profiles & Scoring', done: false },
-      { label: 'Web App Beta', done: false },
+      { label: 'Jupiter Zero-Fee Trading', done: true },
+      { label: 'On-Chain Predictions (Solana)', done: true },
+      { label: 'Forecaster Profiles & Brier Scoring', done: false },
+      { label: 'Whale Tracking Alerts', done: false },
+      { label: 'Social Signal Integration', done: false },
+      { label: 'Mobile App Beta', done: false },
     ],
   },
   {
@@ -50,184 +252,35 @@ const ROADMAP_PHASES = [
     title: 'DeFi Integration',
     status: 'future',
     items: [
-      { label: 'Solana Smart Contracts', done: false },
-      { label: 'Prediction Vaults (Auto-strategies)', done: false },
-      { label: 'Forecaster Vaults', done: false },
-      { label: 'Cross-platform Trading', done: false },
-      { label: 'Liquidity Aggregation', done: false },
+      { label: 'Conviction Pools Launch', done: false },
+      { label: 'Forecaster Staking', done: false },
+      { label: 'Sanctum INF Yield (6.4% APY)', done: false },
+      { label: 'Cross-Platform Liquidity', done: false },
+      { label: 'Auto-Execution Strategies', done: false },
     ],
   },
   {
     phase: 4,
-    title: 'Mobile App',
-    status: 'future',
-    items: [
-      { label: 'iOS & Android Native Apps', done: false },
-      { label: 'Solana dApp Store Launch', done: false },
-      { label: 'Push Notifications', done: false },
-      { label: 'Biometric Authentication', done: false },
-    ],
-  },
-  {
-    phase: 5,
     title: 'Protocol',
     status: 'future',
     items: [
-      { label: 'Decentralized Resolution Oracle', done: false },
-      { label: 'BeRight Token & Governance', done: false },
-      { label: 'Forecaster Reputation System', done: false },
+      { label: 'Mobile Apps (iOS/Android)', done: false },
       { label: 'API Marketplace', done: false },
-      { label: 'Institutional Features', done: false },
+      { label: 'Decentralized Resolution', done: false },
+      { label: 'Multi-Chain Expansion', done: false },
     ],
   },
-  {
-    phase: 6,
-    title: 'Flex Integration',
-    status: 'future',
-    items: [
-      { label: 'BeRight as Prediction Primitive', done: false },
-      { label: 'Flex Social Platform Integration', done: false },
-      { label: 'Multi-Private Group Markets', done: false },
-      { label: 'Social Betting Features', done: false },
-    ],
-  },
-];
-
-const PLATFORMS = [
-  { name: 'Polymarket', type: 'Crypto', chain: 'Polygon', status: 'live' },
-  { name: 'Kalshi', type: 'Regulated', chain: 'USD', status: 'live' },
-  { name: 'Manifold', type: 'Play Money', chain: 'Off-chain', status: 'live' },
-  { name: 'Metaculus', type: 'Forecasting', chain: 'Off-chain', status: 'live' },
-  { name: 'Limitless', type: 'Crypto', chain: 'Base', status: 'live' },
-];
-
-// Access Gateways
-const GATEWAYS = [
-  {
-    id: 'terminal',
-    title: 'Web Terminal',
-    status: 'Soon',
-    statusType: 'launching',
-    description: 'Full-featured web interface with real-time data, charts, and advanced trading tools.',
-    features: ['Real-time market data', 'Portfolio tracking', 'Advanced charting', 'Multi-platform view'],
-  },
-  {
-    id: 'telegram',
-    title: 'Telegram Bot',
-    status: 'Soon',
-    statusType: 'launching',
-    description: 'Trade and analyze markets directly from Telegram. No app download required.',
-    features: ['Natural language queries', 'Instant alerts', 'Quick commands', 'Mobile-first'],
-  },
-  {
-    id: 'mobile',
-    title: 'Mobile App',
-    status: 'Q2 2026',
-    statusType: 'future',
-    description: 'Native iOS and Android apps with push notifications and seamless trading.',
-    features: ['Push notifications', 'Biometric auth', 'Offline support', 'Native performance'],
-  },
-];
-
-// Core Features
-const CORE_FEATURES = [
-  {
-    icon: '01',
-    title: 'Swipe-to-Trade UI',
-    tag: 'Signature Feature',
-    description: 'Tinder-style interface for prediction markets. Swipe right to go YES, left for NO. Fast, intuitive, and addictive.',
-    details: [
-      'Instant position taking with swipe gestures',
-      'AI-generated market summaries on each card',
-      'Fact-check badges showing verification status',
-      'Quick stake selection before confirming',
-    ],
-  },
-  {
-    icon: '02',
-    title: 'AI Fact-Checking',
-    tag: 'Intelligence',
-    description: 'Every market is analyzed by AI to verify claims, check sources, and highlight potential misinformation.',
-    details: [
-      'Automatic source verification',
-      'Claim analysis against known facts',
-      'Confidence scores for market accuracy',
-      'Red flags for misleading markets',
-    ],
-  },
-  {
-    icon: '03',
-    title: 'Multi-Platform Aggregation',
-    tag: 'Data',
-    description: 'See odds from Polymarket, Kalshi, Manifold, Metaculus, and Limitless in one unified view.',
-    details: [
-      'Real-time price synchronization',
-      'Cross-platform comparison',
-      'Unified search across all markets',
-      'Best price routing',
-    ],
-  },
-  {
-    icon: '04',
-    title: 'Arbitrage Detection',
-    tag: 'Alpha',
-    description: 'Automated scanning for price discrepancies. Get alerts when profitable spreads appear across platforms.',
-    details: [
-      'Real-time opportunity scanning',
-      'Profit calculation with fees included',
-      'One-click execution (coming soon)',
-      'Historical arb tracking',
-    ],
-  },
-  {
-    icon: '05',
-    title: '11 Intelligence Signals',
-    tag: 'Signals',
-    description: 'Comprehensive signal layer including arbitrage, momentum, whale activity, sentiment, and more.',
-    details: [
-      'Whale movement tracking',
-      'Momentum and trend signals',
-      'Sentiment analysis',
-      'Volume spike detection',
-    ],
-  },
-  {
-    icon: '06',
-    title: 'Smart Trading Strategies',
-    tag: 'Strategy',
-    description: 'Next-level trading tools powered by quantitative analysis and market intelligence.',
-    details: [
-      'Position sizing recommendations',
-      'Risk-adjusted returns analysis',
-      'Portfolio correlation warnings',
-      'Entry/exit timing signals',
-    ],
-  },
-];
-
-// Coming Soon Features
-const COMING_FEATURES = [
-  { title: 'Mobile App', description: 'Native iOS and Android apps', timeline: 'Q2 2026' },
-  { title: 'Auto-Trading Vaults', description: 'Set strategies, let AI execute', timeline: 'Q2 2026' },
-  { title: 'Cross-Platform Execution', description: 'Trade on multiple platforms from one interface', timeline: 'Q3 2026' },
-  { title: 'Social Features', description: 'Follow top forecasters, copy trades', timeline: 'Q3 2026' },
-  { title: 'API Access', description: 'Build your own tools on BeRight data', timeline: 'Q3 2026' },
-];
-
-const BOT_COMMANDS = [
-  { cmd: '/hot', desc: 'Trending markets with high activity' },
-  { cmd: '/arb', desc: 'Current arbitrage opportunities' },
-  { cmd: '/research <topic>', desc: 'Deep analysis on any topic' },
-  { cmd: '/whale', desc: 'Smart money movements' },
-  { cmd: '/odds <market>', desc: 'Current odds across platforms' },
-  { cmd: '/subscribe', desc: 'Get real-time alerts' },
 ];
 
 export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Get prev/next sections for navigation
+  // GSAP stagger animations for grids
+  const agentsGridRef = useStagger<HTMLDivElement>({ stagger: 0.1 });
+  const signalsGridRef = useStagger<HTMLDivElement>({ stagger: 0.05 });
+
   const currentIndex = NAV_SECTIONS.findIndex(s => s.id === activeSection);
   const prevSection = currentIndex > 0 ? NAV_SECTIONS[currentIndex - 1] : null;
   const nextSection = currentIndex < NAV_SECTIONS.length - 1 ? NAV_SECTIONS[currentIndex + 1] : null;
@@ -238,704 +291,475 @@ export default function DocsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
-    <div className="docs-page">
-      {/* Mobile Header */}
-      <header className="mobile-header">
-        <Link href="/" className="mobile-logo">
-          <span className="logo-icon">◉</span>
-          <span className="logo-text">BeRight</span>
-        </Link>
-        <button
-          className="mobile-menu-btn"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 12h18M3 6h18M3 18h18" />
-            </svg>
-          )}
-        </button>
-      </header>
+  // Filter commands by search
+  const filteredCommands = useMemo(() => {
+    if (!searchQuery) return COMMANDS;
+    const q = searchQuery.toLowerCase();
+    return COMMANDS.filter(c =>
+      c.cmd.toLowerCase().includes(q) ||
+      c.desc.toLowerCase().includes(q) ||
+      c.category.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
 
+  return (
+    <div className={styles.docsPage}>
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="mobile-overlay" onClick={() => setMobileMenuOpen(false)} />
+        <div
+          className={styles.mobileOverlay}
+          onClick={() => setMobileMenuOpen(false)}
+        />
       )}
 
       {/* Sidebar Navigation */}
-      <aside className={`docs-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-        <Link href="/" className="sidebar-logo">
-          <span className="logo-icon">◉</span>
-          <span className="logo-text">BeRight</span>
-        </Link>
+      <aside className={`${styles.sidebar} ${mobileMenuOpen ? styles.sidebarOpen : ''}`}>
+        <div className={styles.searchContainer}>
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Search docs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
 
-        <nav className="sidebar-nav">
-          <div className="nav-section">
-            <span className="nav-label">Getting Started</span>
-            <button
-              className={`nav-item ${activeSection === 'overview' ? 'active' : ''}`}
-              onClick={() => handleNavClick('overview')}
-            >
-              What is BeRight?
-            </button>
-            <button
-              className={`nav-item ${activeSection === 'vision' ? 'active' : ''}`}
-              onClick={() => handleNavClick('vision')}
-            >
-              Vision
-            </button>
-            <button
-              className={`nav-item ${activeSection === 'current' ? 'active' : ''}`}
-              onClick={() => handleNavClick('current')}
-            >
-              Current State
-            </button>
+        <nav className={styles.sidebarNav}>
+          <div className={styles.navSection}>
+            <span className={styles.navLabel}>Getting Started</span>
+            {NAV_SECTIONS.slice(0, 1).map(section => (
+              <button
+                key={section.id}
+                className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ''}`}
+                onClick={() => handleNavClick(section.id)}
+              >
+                {section.label}
+              </button>
+            ))}
           </div>
 
-          <div className="nav-section">
-            <span className="nav-label">Product</span>
-            <button
-              className={`nav-item ${activeSection === 'features' ? 'active' : ''}`}
-              onClick={() => handleNavClick('features')}
-            >
-              Features
-            </button>
-            <button
-              className={`nav-item ${activeSection === 'platforms' ? 'active' : ''}`}
-              onClick={() => handleNavClick('platforms')}
-            >
-              Supported Platforms
-            </button>
-            <button
-              className={`nav-item ${activeSection === 'telegram' ? 'active' : ''}`}
-              onClick={() => handleNavClick('telegram')}
-            >
-              Telegram Bot
-            </button>
+          <div className={styles.navSection}>
+            <span className={styles.navLabel}>Core Features</span>
+            {NAV_SECTIONS.slice(1, 5).map(section => (
+              <button
+                key={section.id}
+                className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ''}`}
+                onClick={() => handleNavClick(section.id)}
+              >
+                {section.label}
+              </button>
+            ))}
           </div>
 
-          <div className="nav-section">
-            <span className="nav-label">Roadmap</span>
-            <button
-              className={`nav-item ${activeSection === 'roadmap' ? 'active' : ''}`}
-              onClick={() => handleNavClick('roadmap')}
-            >
-              Product Roadmap
-            </button>
+          <div className={styles.navSection}>
+            <span className={styles.navLabel}>Developers</span>
+            {NAV_SECTIONS.slice(5, 6).map(section => (
+              <button
+                key={section.id}
+                className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ''}`}
+                onClick={() => handleNavClick(section.id)}
+              >
+                {section.label}
+              </button>
+            ))}
           </div>
 
-          <div className="nav-section">
-            <span className="nav-label">Resources</span>
-            <Link href="/docs/faq" className="nav-item">FAQ</Link>
+          <div className={styles.navSection}>
+            <span className={styles.navLabel}>Future</span>
+            {NAV_SECTIONS.slice(6, 7).map(section => (
+              <button
+                key={section.id}
+                className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ''}`}
+                onClick={() => handleNavClick(section.id)}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.navSection}>
+            <span className={styles.navLabel}>Resources</span>
+            <Link href="/docs/litepaper" className={styles.navItem}>Litepaper</Link>
+            <Link href="/docs/faq" className={styles.navItem}>FAQ</Link>
           </div>
         </nav>
 
-        <div className="sidebar-cta">
-          <a href="https://t.me/berightaii" target="_blank" rel="noopener noreferrer" className="cta-btn">
-            Try Telegram Bot →
-          </a>
+        <div className={styles.sidebarCta}>
+          <Link href="/beright-terminal" className={styles.ctaBtn}>
+            Open Terminal
+          </Link>
         </div>
       </aside>
 
+      {/* Mobile Menu Button */}
+      <button
+        className={styles.mobileMenuBtn}
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Toggle menu"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {mobileMenuOpen ? (
+            <path d="M18 6L6 18M6 6l12 12" />
+          ) : (
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          )}
+        </svg>
+      </button>
+
       {/* Main Content */}
-      <main className="docs-main">
+      <main className={styles.main}>
         {/* Overview Section */}
         {activeSection === 'overview' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge">Overview</span>
-              <h1>What is BeRight?</h1>
-              <p className="section-subtitle gradient-text">
-                The Bloomberg Terminal for prediction markets
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionBadge}>Overview</span>
+              <h1 className={styles.sectionTitle}>What is BeRight?</h1>
+              <p className={`${styles.sectionSubtitle} ${styles.gradientText}`}>
+                AI-powered prediction market intelligence
               </p>
             </div>
 
-            <div className="content-block highlight-box">
-              <span className="callout-label">What We Do</span>
-              <p className="highlight-text">
-                <strong>BeRight</strong> is a middle layer that connects forecasters to capital.
-                We're building a prediction market ecosystem aggregator with automated tools
-                that make betting easier and more profitable.
+            <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
+              <span className={styles.calloutLabel}>Stop Guessing. Start Proving.</span>
+              <p className={styles.paragraph} style={{ margin: 0, fontSize: '17px' }}>
+                <strong>BeRight</strong> is the AI-powered intelligence and reputation layer for prediction markets.
+                We aggregate data from 6+ platforms, provide AI edge detection on every market, and build
+                verifiable on-chain forecaster track records. Forecasting skill is an asset class.
               </p>
             </div>
 
-            <div className="section-divider" />
-
-            <h2><span className="h2-accent" />The Problem</h2>
-            <p>
-              Prediction markets have massive potential, but critical gaps hold them back:
-            </p>
-            <div className="problem-card">
-              <ul className="problem-list">
-                <li><strong>Forecasters need capital</strong> — Skilled predictors can't monetize their knowledge without risking their own money</li>
-                <li><strong>No automation</strong> — Finding arbitrage, hot markets, and trending opportunities across platforms requires constant manual monitoring</li>
-                <li><strong>Fragmented ecosystem</strong> — Data is scattered across Polymarket, Kalshi, Manifold, and others with no unified view</li>
-                <li><strong>Slow execution</strong> — By the time you spot an opportunity and execute, the edge is often gone</li>
-                <li><strong>No agentic tools</strong> — Markets need automated systems that can act on your behalf when conditions are right</li>
-              </ul>
-            </div>
-
-            <h2><span className="h2-accent" />The Solution</h2>
-            <p>
-              BeRight is building the infrastructure layer for prediction markets:
-            </p>
-            <div className="solution-grid">
-              <div className="solution-card">
-                <h3>Forecaster Economy</h3>
-                <p>We connect forecasters to capitalists. Build your track record, prove your edge, and monetize your knowledge without risking your own capital.</p>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Why BeRight?</h2>
+            <div className={styles.grid3}>
+              <div className={`${styles.card} ${styles.solutionCard}`}>
+                <h3 className={styles.h3}>AI Edge Detection</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Replace 30 minutes of research with a 3-second insight. One-line analysis comparing AI view to market odds.</p>
               </div>
-              <div className="solution-card">
-                <h3>Agentic Automation</h3>
-                <p>Using OpenClaw tech, we automate complex operations — arbitrage detection, hot market scanning, whale tracking — and deliver them simply via Terminal and Telegram.</p>
+              <div className={`${styles.card} ${styles.solutionCard}`}>
+                <h3 className={styles.h3}>6+ Platforms</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Unified access to Polymarket, Kalshi, Jupiter/DFlow, Manifold, Limitless, and more.</p>
               </div>
-              <div className="solution-card">
-                <h3>Unified Gateway</h3>
-                <p>One interface to all prediction markets. We're integrating every gateway — Telegram, Terminal, API — into a seamless experience for power users.</p>
+              <div className={`${styles.card} ${styles.solutionCard}`}>
+                <h3 className={styles.h3}>On-Chain Reputation</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Verifiable Brier scores and calibration curves on Solana. Build provable track records.</p>
               </div>
             </div>
 
-            <h2><span className="h2-accent" />Who is it for?</h2>
-            <div className="persona-grid">
-              <div className="persona-card">
-                <h3>Forecasters</h3>
-                <p>Build your reputation, prove your accuracy with Brier scores, and attract capital to back your predictions.</p>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Who is it for?</h2>
+            <div className={styles.grid2}>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>Forecasters</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Build verifiable track records with on-chain Brier scores. Prove your edge and attract capital through Conviction Pools.</p>
               </div>
-              <div className="persona-card">
-                <h3>Capital Providers</h3>
-                <p>Find skilled forecasters with verified track records. Deploy capital to proven predictors and share in their success.</p>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>Active Traders</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Get AI-powered edge detection, real-time arbitrage alerts, and whale tracking. Execute with zero fees on Jupiter.</p>
               </div>
-              <div className="persona-card">
-                <h3>Active Traders</h3>
-                <p>Get instant alerts on arbitrage, momentum, and whale movements. Execute faster with automated tools.</p>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>Capital Providers</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Invest in forecasting skill via Conviction Pools. Delegate capital to proven predictors, earn 80% of profits.</p>
               </div>
-              <div className="persona-card">
-                <h3>Developers</h3>
-                <p>Access aggregated data, market intelligence, and prediction signals via our API. Build on top of BeRight.</p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Vision Section */}
-        {activeSection === 'vision' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge">Vision</span>
-              <h1>Our Vision</h1>
-              <p className="section-subtitle gradient-text">
-                Be the Bloomberg for prediction markets
-              </p>
-            </div>
-
-            <div className="vision-statement">
-              <blockquote>
-                We're building a middle layer that connects forecasters to capital —
-                creating an ecosystem where skilled predictors can monetize their knowledge
-                and capital providers can access verified forecasting talent.
-              </blockquote>
-            </div>
-
-            <h2><span className="h2-accent" />What We're Building</h2>
-            <div className="vision-pillars">
-              <div className="pillar-card">
-                <div className="pillar-number">01</div>
-                <div className="pillar-content">
-                  <h3>Prediction Market Intelligence Layer</h3>
-                  <p>
-                    A comprehensive intelligence layer powered by 11 distinct signals — arbitrage, momentum,
-                    whale activity, sentiment, and more — giving you an edge no single platform can provide.
-                  </p>
-                </div>
-              </div>
-              <div className="pillar-card">
-                <div className="pillar-number">02</div>
-                <div className="pillar-content">
-                  <h3>Prediction Market Aggregator</h3>
-                  <p>
-                    A unified ecosystem that aggregates every prediction market platform into one interface.
-                    Real-time data, cross-platform comparison, and comprehensive market intelligence.
-                  </p>
-                </div>
-              </div>
-              <div className="pillar-card">
-                <div className="pillar-number">03</div>
-                <div className="pillar-content">
-                  <h3>Forecaster-Capital Bridge</h3>
-                  <p>
-                    A middle layer connecting forecasters to capitalists. Skilled predictors can build track records
-                    and attract capital. Investors can back proven forecasters without managing trades themselves.
-                  </p>
-                </div>
-              </div>
-              <div className="pillar-card">
-                <div className="pillar-number">04</div>
-                <div className="pillar-content">
-                  <h3>Automated Trading Tools</h3>
-                  <p>
-                    Tools that make betting easier in prediction markets. Automated arbitrage detection,
-                    instant execution, and agentic systems that act when opportunities arise.
-                  </p>
-                </div>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>Developers</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Access aggregated market data, signals, and forecaster profiles via our API. Build on the intelligence layer.</p>
               </div>
             </div>
 
-            <h2><span className="h2-accent" />Why Now?</h2>
-            <ul className="why-now-list">
-              <li>
-                <strong>Market Growth:</strong> Prediction markets are experiencing exponential growth.
-                Polymarket alone has seen billions in volume.
-              </li>
-              <li>
-                <strong>Regulatory Clarity:</strong> Kalshi's CFTC approval has opened the door for
-                regulated prediction markets in the US.
-              </li>
-              <li>
-                <strong>AI Capabilities:</strong> Modern LLMs and agentic systems can now automate
-                complex trading operations that were previously manual.
-              </li>
-              <li>
-                <strong>Creator Economy:</strong> Forecasters are the next wave of creators —
-                they need infrastructure to monetize their knowledge.
-              </li>
-            </ul>
-          </section>
-        )}
-
-        {/* Current State Section */}
-        {activeSection === 'current' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge live">Live Now</span>
-              <h1>Current State</h1>
-              <p className="section-subtitle">
-                Shipping fast for prediction market power users
-              </p>
-            </div>
-
-            <div className="content-block highlight-box green">
-              <h3>Phase 1: Foundation Complete</h3>
-              <p>
-                Our Telegram bot is live with basic commands. We're continuously shipping new features
-                to serve prediction market power users who need instant access to market intelligence.
-              </p>
-            </div>
-
-            <h2><span className="h2-accent" />What's Live Now</h2>
-            <div className="live-features">
-              <div className="live-feature">
-                <span className="live-status">●</span>
-                <div>
-                  <h3>Telegram Bot (@berightbot)</h3>
-                  <p>Full functionality via Telegram. Natural language queries, market data, and real-time alerts.</p>
-                </div>
-              </div>
-              <div className="live-feature">
-                <span className="live-status">●</span>
-                <div>
-                  <h3>5-Platform Aggregation</h3>
-                  <p>Real-time data from Polymarket, Kalshi, Manifold, Metaculus, and Limitless.</p>
-                </div>
-              </div>
-              <div className="live-feature">
-                <span className="live-status">●</span>
-                <div>
-                  <h3>AI-Powered Understanding</h3>
-                  <p>Ask anything in plain English. The bot understands your intent and delivers relevant data.</p>
-                </div>
-              </div>
-              <div className="live-feature">
-                <span className="live-status">●</span>
-                <div>
-                  <h3>Arbitrage Detection</h3>
-                  <p>Automated scanning for price discrepancies across all supported platforms.</p>
-                </div>
-              </div>
-              <div className="live-feature">
-                <span className="live-status">●</span>
-                <div>
-                  <h3>Hot Markets & Trending</h3>
-                  <p>Discover high-activity markets and momentum opportunities across the ecosystem.</p>
-                </div>
-              </div>
-            </div>
-
-            <h2><span className="h2-accent" />Coming Next</h2>
-            <div className="coming-features">
-              <div className="coming-feature">
-                <span className="coming-status">○</span>
-                <div>
-                  <h3>Web Terminal</h3>
-                  <p>Full web interface with charts, portfolio tracking, and advanced trading tools.</p>
-                </div>
-              </div>
-              <div className="coming-feature">
-                <span className="coming-status">○</span>
-                <div>
-                  <h3>Whale Tracking</h3>
-                  <p>Follow smart money movements and get alerts on large trades in real-time.</p>
-                </div>
-              </div>
-              <div className="coming-feature">
-                <span className="coming-status">○</span>
-                <div>
-                  <h3>Forecaster Profiles</h3>
-                  <p>Build your track record with verified Brier scores and attract capital backers.</p>
-                </div>
-              </div>
-            </div>
-
-            <h2>Try It Now</h2>
-            <div className="try-cta">
-              <p>The Telegram bot is live and free to use. Start exploring prediction markets today.</p>
-              <a href="https://t.me/berightaii" target="_blank" rel="noopener noreferrer" className="try-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+            <div className={styles.tryCta}>
+              <p className={styles.paragraph}>Start exploring prediction markets with AI assistance.</p>
+              <Link href="/beright-terminal" className={styles.tryBtn}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 17l6-6-6-6M12 19h8" />
                 </svg>
-                Open @berightbot on Telegram
-              </a>
+                Open Terminal
+              </Link>
             </div>
           </section>
         )}
 
-        {/* Features Section */}
-        {activeSection === 'features' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge">Product</span>
-              <h1>Features</h1>
-              <p className="section-subtitle">
-                The complete toolkit for prediction market success
+        {/* Agents Section */}
+        {activeSection === 'agents' && (
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>Live</span>
+              <h1 className={styles.sectionTitle}>AI Agents</h1>
+              <p className={styles.sectionSubtitle}>
+                Four specialized agents work together to find and execute opportunities
               </p>
             </div>
 
-            {/* Access Gateways */}
-            <h2><span className="h2-accent" />Access Your Way</h2>
-            <p className="section-intro">
-              BeRight gives you multiple ways to access prediction markets. Choose the interface that fits your workflow.
-            </p>
-            <div className="gateways-grid">
-              {GATEWAYS.map((gateway) => (
-                <div key={gateway.id} className={`gateway-card ${gateway.statusType === 'future' ? 'coming-soon' : ''}`}>
-                  <div className="gateway-header">
-                    <h3>{gateway.title}</h3>
-                    <span className={`gateway-status ${gateway.statusType}`}>
-                      {gateway.status}
-                    </span>
+            <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
+              <span className={styles.calloutLabel}>Agentic Architecture</span>
+              <p className={styles.paragraph} style={{ margin: 0 }}>
+                Each agent has a specialized role and set of tools. The LLM decides which tools to use
+                based on your request - not hardcoded routing. This means natural, intelligent responses
+                to complex queries.
+              </p>
+            </div>
+
+            <div ref={agentsGridRef} className={styles.grid2}>
+              {AGENTS.map(agent => (
+                <div key={agent.name} className={styles.agentCard}>
+                  <div className={styles.agentHeader}>
+                    <span className={styles.agentEmoji}>{AgentIcons[agent.iconKey]}</span>
+                    <div>
+                      <h3 className={styles.agentName}>{agent.name}</h3>
+                      <p className={styles.agentRole}>{agent.role} • {agent.speed}</p>
+                    </div>
                   </div>
-                  <p className="gateway-desc">{gateway.description}</p>
-                  <ul className="gateway-features">
-                    {gateway.features.map((f, i) => (
-                      <li key={i}>{f}</li>
+                  <p className={styles.agentDesc}>{agent.description}</p>
+                  <div className={styles.agentTools}>
+                    {agent.tools.map(tool => (
+                      <span key={tool} className={styles.agentTool}>{tool}</span>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Core Features */}
-            <h2><span className="h2-accent" />Core Features</h2>
-            <div className="core-features-grid">
-              {CORE_FEATURES.map((feature, i) => (
-                <div key={i} className="core-feature-card">
-                  <div className="feature-top">
-                    <span className="feature-number">{feature.icon}</span>
-                    <span className="feature-tag">{feature.tag}</span>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />How It Works</h2>
+            <div className={styles.grid3}>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>1. You Ask</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Natural language query via the Terminal</p>
+              </div>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>2. Agent Routes</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Orchestrator picks the right specialist agent</p>
+              </div>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>3. Tools Execute</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Agent uses tools to gather data and execute</p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Signals Section */}
+        {activeSection === 'signals' && (
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>Live</span>
+              <h1 className={styles.sectionTitle}>Intelligence Signals</h1>
+              <p className={styles.sectionSubtitle}>
+                12 real-time detectors scanning for actionable opportunities
+              </p>
+            </div>
+
+            <div className={`${styles.contentBlock} ${styles.highlightBoxGreen}`}>
+              <p className={styles.paragraph} style={{ margin: 0 }}>
+                Signals run in parallel across all supported platforms. Each signal is evaluated by our
+                Scout LLM which determines: <strong>ALERT</strong> (act now), <strong>WATCH</strong> (monitor),
+                or <strong>SKIP</strong> (noise).
+              </p>
+            </div>
+
+            <div ref={signalsGridRef} className={styles.grid3}>
+              {SIGNALS.map(signal => (
+                <div key={signal.name} className={styles.signalCard}>
+                  <span className={styles.signalEmoji}>{SignalIcons[signal.iconKey]}</span>
+                  <div className={styles.signalContent}>
+                    <h4>{signal.name}</h4>
+                    <p>{signal.description}</p>
                   </div>
-                  <h3>{feature.title}</h3>
-                  <p className="feature-desc">{feature.description}</p>
-                  <ul className="feature-details">
-                    {feature.details.map((detail, j) => (
-                      <li key={j}>{detail}</li>
-                    ))}
-                  </ul>
                 </div>
               ))}
             </div>
 
-            {/* Swipe UI Highlight */}
-            <div className="feature-highlight">
-              <div className="highlight-content">
-                <span className="highlight-badge">Signature Experience</span>
-                <h2>Swipe-to-Trade</h2>
-                <p>
-                  We reimagined how you interact with prediction markets. Our Tinder-style interface
-                  lets you browse markets naturally — swipe right for YES, left for NO. Each card shows
-                  you everything you need: AI-generated summaries, fact-check status, current odds, and
-                  quick stake options.
-                </p>
-                <div className="highlight-points">
-                  <div className="point">
-                    <span className="point-icon">→</span>
-                    <span>Swipe Right = YES Position</span>
-                  </div>
-                  <div className="point">
-                    <span className="point-icon">←</span>
-                    <span>Swipe Left = NO Position</span>
-                  </div>
-                  <div className="point">
-                    <span className="point-icon">↑</span>
-                    <span>Swipe Up = Save for Later</span>
-                  </div>
-                </div>
-              </div>
-              <div className="highlight-visual">
-                <div className="mock-card">
-                  <div className="mock-badge">AI Verified</div>
-                  <div className="mock-title">Will BTC hit $150K by Dec 2026?</div>
-                  <div className="mock-odds">
-                    <span className="yes">YES 42%</span>
-                    <span className="no">NO 58%</span>
-                  </div>
-                  <div className="mock-swipe">← NO &nbsp;&nbsp; YES →</div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Fact-Checking */}
-            <div className="feature-highlight alt">
-              <div className="highlight-visual">
-                <div className="fact-check-demo">
-                  <div className="fc-header">AI Analysis</div>
-                  <div className="fc-item verified">
-                    <span className="fc-icon">✓</span>
-                    <span>Source verified: Reuters, AP</span>
-                  </div>
-                  <div className="fc-item verified">
-                    <span className="fc-icon">✓</span>
-                    <span>Historical accuracy: 87%</span>
-                  </div>
-                  <div className="fc-item warning">
-                    <span className="fc-icon">!</span>
-                    <span>Market may resolve ambiguously</span>
-                  </div>
-                  <div className="fc-score">
-                    <span>Confidence Score</span>
-                    <span className="score">8.4/10</span>
-                  </div>
-                </div>
-              </div>
-              <div className="highlight-content">
-                <span className="highlight-badge">Intelligence</span>
-                <h2>AI Fact-Checking</h2>
-                <p>
-                  Not all markets are created equal. Our AI analyzes every market to verify claims,
-                  check source reliability, and flag potential issues. You see a confidence score
-                  and detailed breakdown before you trade.
-                </p>
-                <ul className="highlight-list">
-                  <li>Automatic source verification against trusted outlets</li>
-                  <li>Historical accuracy tracking for market creators</li>
-                  <li>Red flags for ambiguous resolution criteria</li>
-                  <li>Real-time updates as new information emerges</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Coming Soon */}
-            <h2><span className="h2-accent" />Coming Soon</h2>
-            <p className="section-intro">
-              We are shipping continuously. Here is what is next on our roadmap.
-            </p>
-            <div className="coming-soon-grid">
-              {COMING_FEATURES.map((feature, i) => (
-                <div key={i} className="coming-card">
-                  <div className="coming-header">
-                    <h4>{feature.title}</h4>
-                    <span className="coming-timeline">{feature.timeline}</span>
-                  </div>
-                  <p>{feature.description}</p>
-                </div>
-              ))}
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Signal Pipeline</h2>
+            <div className={styles.card} style={{ padding: '24px' }}>
+              <p className={styles.paragraph}>
+                <code style={{ color: '#00FFB2' }}>12 Detectors</code> →
+                <code style={{ color: '#A78BFA' }}> Groq Scout Eval</code> →
+                <code style={{ color: '#10B981' }}> Supabase</code> →
+                <code style={{ color: '#F59E0B' }}> Alert Queue</code>
+              </p>
+              <p style={{ fontSize: '14px', margin: 0, color: 'rgba(255,255,255,0.6)' }}>
+                Top 15 signals by strength are evaluated. Only actionable signals (ALERT + WATCH) are
+                sent to users with reasoning and data citations.
+              </p>
             </div>
           </section>
         )}
 
         {/* Platforms Section */}
         {activeSection === 'platforms' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge">Integration</span>
-              <h1>Supported Platforms</h1>
-              <p className="section-subtitle">
-                All major prediction markets in one place
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionBadge}>Integration</span>
+              <h1 className={styles.sectionTitle}>Supported Platforms</h1>
+              <p className={styles.sectionSubtitle}>
+                Unified access to major prediction markets
               </p>
             </div>
 
-            <div className="platforms-table">
-              <div className="table-header">
+            <div className={styles.platformTable}>
+              <div className={styles.tableHeader}>
                 <span>Platform</span>
                 <span>Type</span>
                 <span>Settlement</span>
                 <span>Status</span>
               </div>
-              {PLATFORMS.map((platform, i) => (
-                <div key={i} className="table-row">
-                  <span className="platform-name">{platform.name}</span>
-                  <span className="platform-type">{platform.type}</span>
-                  <span className="platform-chain">{platform.chain}</span>
-                  <span className={`platform-status ${platform.status}`}>
-                    {platform.status === 'live' ? '● Live' : '○ Coming'}
+              {PLATFORMS.map(platform => (
+                <div key={platform.name} className={styles.tableRow} style={platform.highlight ? { background: 'rgba(0, 255, 178, 0.05)' } : undefined}>
+                  <span className={styles.platformName}>
+                    {platform.name}
+                    {platform.highlight && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#00FFB2' }}>Zero Fees</span>}
+                  </span>
+                  <span className={styles.platformType}>{platform.type}</span>
+                  <span className={styles.platformChain}>{platform.chain}</span>
+                  <span className={platform.status === 'live' ? styles.statusLive : styles.statusSoon}>
+                    {platform.status === 'live' ? '● Live' : '○ Soon'}
                   </span>
                 </div>
               ))}
             </div>
 
-            <h2>Platform Details</h2>
-            <div className="platform-details">
-              <div className="platform-card">
-                <h3>Polymarket</h3>
-                <p>The largest crypto prediction market. High liquidity, USDC settlement on Polygon.</p>
-                <div className="platform-stats">
-                  <span>💰 High Volume</span>
-                  <span>⚡ Instant Settlement</span>
-                  <span>🔗 Polygon</span>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Jupiter Integration</h2>
+            <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
+              <span className={styles.calloutLabel}>Zero Payout Fees</span>
+              <p className={styles.paragraph} style={{ margin: 0 }}>
+                Jupiter aggregates Polymarket + Kalshi liquidity on Solana. Winners get the full $1/contract
+                with no payout fees. On-chain settlement in ~400ms with low transaction fees.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* Commands Section */}
+        {activeSection === 'commands' && (
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionBadge}>Reference</span>
+              <h1 className={styles.sectionTitle}>Commands</h1>
+              <p className={styles.sectionSubtitle}>
+                40+ commands available in the BeRight Terminal
+              </p>
+            </div>
+
+            <div className={styles.searchContainer}>
+              <input
+                type="text"
+                className={styles.searchInput}
+                placeholder="Search commands..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.commandsList}>
+              {filteredCommands.map(cmd => (
+                <div key={cmd.cmd} className={styles.commandRow}>
+                  <code className={styles.commandCode}>{cmd.cmd}</code>
+                  <span className={styles.commandDesc}>{cmd.desc}</span>
                 </div>
+              ))}
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Natural Language</h2>
+            <p className={styles.paragraph}>
+              You don't need to memorize commands. Just ask in plain English:
+            </p>
+            <div className={styles.grid2}>
+              <div className={styles.card}>
+                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>"What are the odds on the Fed cutting rates?"</p>
+                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Returns odds from all platforms</p>
               </div>
-              <div className="platform-card">
-                <h3>Kalshi</h3>
-                <p>CFTC-regulated US exchange. Legal for US users, USD settlement.</p>
-                <div className="platform-stats">
-                  <span>✅ Regulated</span>
-                  <span>🇺🇸 US Legal</span>
-                  <span>💵 USD</span>
-                </div>
+              <div className={styles.card}>
+                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>"Find me arbitrage opportunities"</p>
+                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Lists current spreads with profit potential</p>
               </div>
-              <div className="platform-card">
-                <h3>Manifold</h3>
-                <p>Play money markets with high engagement. Great for research and calibration.</p>
-                <div className="platform-stats">
-                  <span>🎮 Play Money</span>
-                  <span>📈 High Activity</span>
-                  <span>🔬 Research</span>
-                </div>
+              <div className={styles.card}>
+                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>"What's hot right now?"</p>
+                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Trending markets by volume</p>
               </div>
-              <div className="platform-card">
-                <h3>Metaculus</h3>
-                <p>Forecasting platform focused on accuracy. Detailed scoring and analysis.</p>
-                <div className="platform-stats">
-                  <span>🎯 Accuracy Focus</span>
-                  <span>📊 Calibration</span>
-                  <span>🏆 Leaderboards</span>
-                </div>
-              </div>
-              <div className="platform-card">
-                <h3>Limitless</h3>
-                <p>New platform on Base. Fast settlement, low fees, growing liquidity.</p>
-                <div className="platform-stats">
-                  <span>🆕 New</span>
-                  <span>⚡ Fast</span>
-                  <span>🔵 Base</span>
-                </div>
+              <div className={styles.card}>
+                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>"Analyze the Bitcoin ETF market"</p>
+                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Deep research with probability estimate</p>
               </div>
             </div>
           </section>
         )}
 
-        {/* Telegram Section */}
-        {activeSection === 'telegram' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge">Bot</span>
-              <h1>Telegram Bot</h1>
-              <p className="section-subtitle">
-                Full BeRight functionality in your favorite messaging app
+        {/* API Section */}
+        {activeSection === 'api' && (
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionBadge}>Developers</span>
+              <h1 className={styles.sectionTitle}>API Reference</h1>
+              <p className={styles.sectionSubtitle}>
+                REST API for building on BeRight data
               </p>
             </div>
 
-            <div className="content-block highlight-box">
-              <p>
-                <strong>@berightbot</strong> is the fastest way to access prediction market intelligence.
-                Ask questions in natural language, get alerts, and analyze markets - all without leaving Telegram.
+            <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
+              <span className={styles.calloutLabel}>Base URL</span>
+              <code style={{ color: '#00FFB2', fontSize: '16px' }}>https://api.beright.fun/api/v2</code>
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Endpoints</h2>
+            <table className={styles.apiTable}>
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Endpoint</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {API_ENDPOINTS.map(endpoint => (
+                  <tr key={endpoint.path}>
+                    <td className={endpoint.method === 'GET' ? styles.methodGet : styles.methodPost}>
+                      {endpoint.method}
+                    </td>
+                    <td className={styles.endpoint}>{endpoint.path}</td>
+                    <td style={{ color: 'rgba(255,255,255,0.6)' }}>{endpoint.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Authentication</h2>
+            <div className={styles.card} style={{ padding: '24px' }}>
+              <p className={styles.paragraph} style={{ margin: 0 }}>
+                Public endpoints require no authentication. Trading and portfolio endpoints require
+                a Solana wallet signature. Include the signature in the <code>X-Wallet-Signature</code> header.
               </p>
-            </div>
-
-            <h2>Commands</h2>
-            <div className="commands-list">
-              {BOT_COMMANDS.map((cmd, i) => (
-                <div key={i} className="command-row">
-                  <code className="command-code">{cmd.cmd}</code>
-                  <span className="command-desc">{cmd.desc}</span>
-                </div>
-              ))}
-            </div>
-
-            <h2>Natural Language</h2>
-            <p>
-              You don't need to memorize commands. Just ask questions in plain English:
-            </p>
-            <div className="nl-examples">
-              <div className="nl-example">
-                <span className="user-msg">"What are the odds on Trump winning?"</span>
-                <span className="bot-response">Returns current odds across all platforms</span>
-              </div>
-              <div className="nl-example">
-                <span className="user-msg">"Find me arbitrage opportunities"</span>
-                <span className="bot-response">Lists current arb spreads with profit potential</span>
-              </div>
-              <div className="nl-example">
-                <span className="user-msg">"Analyze the Fed rate cut market"</span>
-                <span className="bot-response">Deep research with probability estimates</span>
-              </div>
-              <div className="nl-example">
-                <span className="user-msg">"What's hot right now?"</span>
-                <span className="bot-response">Trending markets with high activity</span>
-              </div>
-            </div>
-
-            <h2>Get Started</h2>
-            <div className="telegram-cta">
-              <a href="https://t.me/berightaii" target="_blank" rel="noopener noreferrer" className="telegram-btn">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                </svg>
-                Open @berightbot
-              </a>
-              <p className="telegram-note">Free to use. No registration required.</p>
             </div>
           </section>
         )}
 
         {/* Roadmap Section */}
         {activeSection === 'roadmap' && (
-          <section className="content-section">
-            <div className="section-header">
-              <span className="section-badge">Future</span>
-              <h1>Product Roadmap</h1>
-              <p className="section-subtitle">
-                Our journey to becoming the Bloomberg Terminal of prediction markets
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionBadge}>Future</span>
+              <h1 className={styles.sectionTitle}>Roadmap</h1>
+              <p className={styles.sectionSubtitle}>
+                Building the prediction market intelligence layer
               </p>
             </div>
 
-            <div className="roadmap-timeline">
-              {ROADMAP_PHASES.map((phase, i) => (
-                <div key={i} className={`roadmap-phase ${phase.status}`}>
-                  <div className="phase-indicator">
-                    <span className={`phase-dot ${phase.status}`}>
-                      {phase.status === 'current' ? '●' : phase.status === 'next' ? '○' : '○'}
+            <div style={{ marginTop: '32px' }}>
+              {ROADMAP.map((phase, i) => (
+                <div key={phase.phase} className={styles.roadmapPhase}>
+                  <div className={styles.phaseIndicator}>
+                    <span className={`${styles.phaseDot} ${phase.status === 'current' ? styles.phaseDotCurrent : phase.status === 'next' ? styles.phaseDotNext : ''}`}>
+                      {phase.status === 'current' ? '●' : '○'}
                     </span>
-                    {i < ROADMAP_PHASES.length - 1 && <div className="phase-line" />}
+                    {i < ROADMAP.length - 1 && <div className={styles.phaseLine} />}
                   </div>
-                  <div className="phase-content">
-                    <div className="phase-header">
-                      <span className="phase-number">Phase {phase.phase}</span>
-                      <h3 className="phase-title">{phase.title}</h3>
-                      {phase.status === 'current' && <span className="status-badge current">In Progress</span>}
-                      {phase.status === 'next' && <span className="status-badge next">Up Next</span>}
+                  <div className={styles.phaseContent}>
+                    <div className={styles.phaseHeader}>
+                      <span className={styles.phaseNumber}>Phase {phase.phase}</span>
+                      <h3 className={styles.phaseTitle}>{phase.title}</h3>
+                      {phase.status === 'current' && <span className={`${styles.statusBadge} ${styles.statusBadgeCurrent}`}>In Progress</span>}
+                      {phase.status === 'next' && <span className={`${styles.statusBadge} ${styles.statusBadgeNext}`}>Up Next</span>}
                     </div>
-                    <ul className="phase-items">
+                    <ul className={styles.phaseItems}>
                       {phase.items.map((item, j) => (
-                        <li key={j} className={`${item.done ? 'done' : ''} ${item.soon ? 'soon' : ''}`}>
-                          <span className="item-check">
-                            {item.done ? '✓' : item.soon ? '◉' : '○'}
-                          </span>
-                          <span className="item-label">{item.label}</span>
-                          {item.soon && <span className="soon-badge">Soon</span>}
+                        <li key={j} className={`${styles.phaseItem} ${item.done ? styles.phaseItemDone : ''}`}>
+                          <span className={styles.itemCheck}>{item.done ? '✓' : '○'}</span>
+                          <span>{item.label}</span>
                         </li>
                       ))}
                     </ul>
@@ -943,1581 +767,45 @@ export default function DocsPage() {
                 </div>
               ))}
             </div>
-
-            <h2><span className="h2-accent" />Long-Term Vision</h2>
-            <div className="vision-cards">
-              <div className="vision-card">
-                <h3>Universal Market Access</h3>
-                <p>Trade any prediction market from any platform through a single unified interface.</p>
-              </div>
-              <div className="vision-card">
-                <h3>Autonomous Trading</h3>
-                <p>AI agents that execute trades on your behalf when conditions are optimal.</p>
-              </div>
-              <div className="vision-card">
-                <h3>Prediction Vaults</h3>
-                <p>Automated strategies that compound your forecasting edge with capital backing.</p>
-              </div>
-              <div className="vision-card">
-                <h3>Forecaster Economy</h3>
-                <p>Infrastructure where skilled predictors monetize their knowledge.</p>
-              </div>
-            </div>
           </section>
         )}
 
-        {/* Prev/Next Navigation */}
-        <nav className="page-nav">
+        {/* Page Navigation */}
+        <nav className={styles.pageNav}>
           {prevSection ? (
-            <button className="page-nav-btn prev" onClick={() => handleNavClick(prevSection.id)}>
-              <span className="nav-direction">← Previous</span>
-              <span className="nav-page-title">{prevSection.label}</span>
+            <button className={`${styles.pageNavBtn} ${styles.pageNavPrev}`} onClick={() => handleNavClick(prevSection.id)}>
+              <span className={styles.navDirection}>← Previous</span>
+              <span className={styles.navPageTitle}>{prevSection.label}</span>
             </button>
           ) : (
             <div />
           )}
           {nextSection ? (
-            <button className="page-nav-btn next" onClick={() => handleNavClick(nextSection.id)}>
-              <span className="nav-direction">Next →</span>
-              <span className="nav-page-title">{nextSection.label}</span>
+            <button className={`${styles.pageNavBtn} ${styles.pageNavNext}`} onClick={() => handleNavClick(nextSection.id)}>
+              <span className={styles.navDirection}>Next →</span>
+              <span className={styles.navPageTitle}>{nextSection.label}</span>
             </button>
           ) : (
-            <Link href="/docs/faq" className="page-nav-btn next">
-              <span className="nav-direction">Next →</span>
-              <span className="nav-page-title">FAQ</span>
+            <Link href="/docs/faq" className={`${styles.pageNavBtn} ${styles.pageNavNext}`}>
+              <span className={styles.navDirection}>Next →</span>
+              <span className={styles.navPageTitle}>FAQ</span>
             </Link>
           )}
         </nav>
 
         {/* Footer */}
-        <footer className="docs-footer">
-          <div className="footer-brand">
-            <span className="logo-icon">◉</span>
+        <footer className={styles.footer}>
+          <div className={styles.footerBrand}>
+            <BrandLogo size={20} />
             <span>BeRight</span>
           </div>
-          <div className="footer-links">
-            <a href="https://t.me/berightaii" target="_blank" rel="noopener noreferrer">Telegram</a>
+          <div className={styles.footerLinks}>
+            <Link href="/beright-terminal">Terminal</Link>
             <a href="https://x.com/AgentBEright" target="_blank" rel="noopener noreferrer">Twitter</a>
           </div>
-          <p className="footer-copyright">© 2026 BeRight Protocol</p>
+          <p className={styles.footerCopyright}>© 2026 BeRight Protocol</p>
         </footer>
       </main>
-
-      <style jsx>{`
-        .docs-page {
-          display: flex;
-          min-height: 100vh;
-          background: #080C14;
-          color: #fff;
-          font-family: 'Satoshi', system-ui, sans-serif;
-        }
-
-        /* Mobile Header */
-        .mobile-header {
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 64px;
-          background: rgba(10, 10, 11, 0.95);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-          padding: 0 20px;
-          align-items: center;
-          justify-content: space-between;
-          z-index: 100;
-        }
-
-        .mobile-logo {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          text-decoration: none;
-        }
-
-        .mobile-menu-btn {
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-          color: #fff;
-          cursor: pointer;
-        }
-
-        .mobile-overlay {
-          display: none;
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          z-index: 90;
-        }
-
-        /* Sidebar */
-        .docs-sidebar {
-          width: 280px;
-          background: #0D1117;
-          border-right: 1px solid rgba(255, 255, 255, 0.06);
-          padding: 24px;
-          position: fixed;
-          top: 0;
-          left: 0;
-          bottom: 0;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .sidebar-logo {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          text-decoration: none;
-          margin-bottom: 32px;
-        }
-
-        .logo-icon {
-          font-size: 24px;
-          color: #00C2FF;
-        }
-
-        .logo-text {
-          font-size: 20px;
-          font-weight: 800;
-          color: #fff;
-          padding-left: 4px;
-        }
-
-        .sidebar-nav {
-          flex: 1;
-        }
-
-        .nav-section {
-          margin-bottom: 24px;
-        }
-
-        .nav-label {
-          display: block;
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: rgba(255, 255, 255, 0.4);
-          margin-bottom: 12px;
-          padding-left: 12px;
-        }
-
-        .nav-item {
-          display: block;
-          width: 100%;
-          padding: 10px 12px;
-          background: none;
-          border: none;
-          border-left: 3px solid transparent;
-          border-radius: 0 8px 8px 0;
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 14px;
-          font-family: inherit;
-          text-align: left;
-          text-decoration: none;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .nav-item:hover {
-          color: #fff;
-          background: rgba(255, 255, 255, 0.05);
-          border-left-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .nav-item.active {
-          color: #00C2FF;
-          background: rgba(0, 194, 255, 0.1);
-          border-left-color: #00C2FF;
-          font-weight: 600;
-        }
-
-        .sidebar-cta {
-          margin-top: auto;
-          padding-top: 24px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .cta-btn {
-          display: block;
-          width: 100%;
-          padding: 12px;
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.15), rgba(0, 194, 255, 0.1));
-          border: 1px solid rgba(0, 194, 255, 0.2);
-          border-radius: 8px;
-          color: #00C2FF;
-          font-size: 14px;
-          font-weight: 600;
-          text-align: center;
-          text-decoration: none;
-          transition: all 0.2s ease;
-        }
-
-        .cta-btn:hover {
-          background: rgba(0, 194, 255, 0.2);
-        }
-
-        /* Main Content */
-        .docs-main {
-          flex: 1;
-          margin-left: 280px;
-          padding: 48px 64px;
-          max-width: 900px;
-        }
-
-        .content-section {
-          animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .section-header {
-          margin-bottom: 40px;
-        }
-
-        .section-badge {
-          display: inline-block;
-          padding: 6px 12px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 100px;
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: rgba(255, 255, 255, 0.6);
-          margin-bottom: 16px;
-        }
-
-        .section-badge.live {
-          background: rgba(16, 185, 129, 0.1);
-          border-color: rgba(16, 185, 129, 0.2);
-          color: #10B981;
-        }
-
-        .section-header h1 {
-          font-size: 42px;
-          font-weight: 800;
-          margin: 0 0 12px;
-          letter-spacing: -1px;
-        }
-
-        .section-subtitle {
-          font-size: 18px;
-          color: rgba(255, 255, 255, 0.6);
-          margin: 0;
-        }
-
-        .section-subtitle.gradient-text {
-          font-size: 20px;
-          font-weight: 600;
-          background: linear-gradient(135deg, #00C2FF, #A78BFA);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .section-divider {
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-          margin: 48px 0;
-        }
-
-        .callout-label {
-          display: block;
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: #00C2FF;
-          margin-bottom: 12px;
-        }
-
-        h2 {
-          font-size: 28px;
-          font-weight: 800;
-          margin: 48px 0 20px;
-          letter-spacing: -0.5px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .h2-accent {
-          width: 4px;
-          height: 28px;
-          background: linear-gradient(180deg, #00C2FF, #A78BFA);
-          border-radius: 2px;
-        }
-
-        h3 {
-          font-size: 18px;
-          font-weight: 700;
-          margin: 0 0 8px;
-        }
-
-        p {
-          font-size: 16px;
-          line-height: 1.7;
-          color: rgba(255, 255, 255, 0.75);
-          margin: 0 0 16px;
-        }
-
-        /* Content Blocks */
-        .content-block {
-          padding: 24px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          margin-bottom: 32px;
-        }
-
-        .highlight-box {
-          border-left: 3px solid #00C2FF;
-        }
-
-        .highlight-box.green {
-          border-left-color: #10B981;
-          background: rgba(16, 185, 129, 0.05);
-        }
-
-        .highlight-text {
-          font-size: 17px;
-          margin: 0;
-        }
-
-        /* Problem Card */
-        .problem-card {
-          padding: 24px;
-          background: rgba(244, 63, 94, 0.05);
-          border: 1px solid rgba(244, 63, 94, 0.15);
-          border-radius: 16px;
-          margin-bottom: 32px;
-        }
-
-        /* Problem List */
-        .problem-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .problem-list li {
-          padding: 12px 0 12px 32px;
-          border-bottom: 1px solid rgba(244, 63, 94, 0.1);
-          color: rgba(255, 255, 255, 0.7);
-          position: relative;
-        }
-
-        .problem-list li:last-child {
-          border-bottom: none;
-          padding-bottom: 0;
-        }
-
-        .problem-list li::before {
-          content: '✗';
-          position: absolute;
-          left: 0;
-          color: #F43F5E;
-        }
-
-        /* Solution Grid */
-        .solution-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
-          margin: 24px 0;
-        }
-
-        .solution-card {
-          padding: 24px;
-          background: rgba(16, 185, 129, 0.05);
-          border: 1px solid rgba(16, 185, 129, 0.15);
-          border-radius: 16px;
-        }
-
-        .solution-icon {
-          font-size: 32px;
-          display: block;
-          margin-bottom: 16px;
-        }
-
-        .solution-card h3 {
-          color: #10B981;
-        }
-
-        .solution-card p {
-          font-size: 14px;
-          margin: 0;
-        }
-
-        /* Persona Grid */
-        .persona-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
-        }
-
-        .persona-card {
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-        }
-
-        .persona-icon {
-          font-size: 28px;
-          display: block;
-          margin-bottom: 12px;
-        }
-
-        .persona-card p {
-          font-size: 14px;
-          margin: 0;
-        }
-
-        /* Vision */
-        .vision-statement blockquote {
-          font-size: 22px;
-          font-style: italic;
-          line-height: 1.6;
-          color: rgba(255, 255, 255, 0.9);
-          border-left: 3px solid #00C2FF;
-          padding-left: 24px;
-          margin: 32px 0;
-        }
-
-        .vision-pillars {
-          display: grid;
-          gap: 20px;
-        }
-
-        .pillar-card {
-          padding: 28px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          display: grid;
-          grid-template-columns: 60px 1fr;
-          gap: 20px;
-        }
-
-        .pillar-number {
-          font-size: 32px;
-          font-weight: 800;
-          color: #00C2FF;
-          opacity: 0.5;
-        }
-
-        .pillar-content h3 {
-          margin-bottom: 8px;
-        }
-
-        .pillar-content p {
-          margin: 0;
-          font-size: 15px;
-        }
-
-        .why-now-list {
-          list-style: none;
-          padding: 0;
-        }
-
-        .why-now-list li {
-          padding: 16px 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .why-now-list strong {
-          color: #00C2FF;
-        }
-
-        /* Live Features */
-        .live-features, .coming-features {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .live-feature, .coming-feature {
-          display: flex;
-          gap: 16px;
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-        }
-
-        .live-status {
-          color: #10B981;
-          font-size: 12px;
-        }
-
-        .coming-status {
-          color: rgba(255, 255, 255, 0.3);
-          font-size: 12px;
-        }
-
-        .live-feature h3, .coming-feature h3 {
-          margin-bottom: 4px;
-        }
-
-        .live-feature p, .coming-feature p {
-          font-size: 14px;
-          margin: 0;
-        }
-
-        /* Try CTA */
-        .try-cta {
-          margin-top: 40px;
-          padding: 32px;
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.1), rgba(167, 139, 250, 0.05));
-          border: 1px solid rgba(0, 194, 255, 0.2);
-          border-radius: 16px;
-          text-align: center;
-        }
-
-        .try-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px 32px;
-          background: linear-gradient(135deg, #00C2FF, #A78BFA);
-          border-radius: 12px;
-          color: #000;
-          font-size: 16px;
-          font-weight: 700;
-          text-decoration: none;
-          transition: all 0.2s ease;
-        }
-
-        .try-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 194, 255, 0.3);
-        }
-
-        /* Features Grid */
-        .features-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
-        }
-
-        .feature-card {
-          padding: 24px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-        }
-
-        .feature-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          font-size: 14px;
-          font-weight: 700;
-          color: #00C2FF;
-          background: rgba(0, 194, 255, 0.1);
-          border: 1px solid rgba(0, 194, 255, 0.2);
-          border-radius: 8px;
-          margin-bottom: 16px;
-        }
-
-        .feature-card p {
-          font-size: 14px;
-          margin: 0;
-        }
-
-        /* Section Intro */
-        .section-intro {
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 15px;
-          line-height: 1.6;
-          margin-bottom: 24px;
-          max-width: 600px;
-        }
-
-        /* Gateways Grid */
-        .gateways-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
-          margin-bottom: 48px;
-        }
-
-        .gateway-card {
-          padding: 24px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          transition: all 0.2s ease;
-        }
-
-        .gateway-card:hover {
-          border-color: rgba(0, 194, 255, 0.3);
-          transform: translateY(-2px);
-        }
-
-        .gateway-card.coming-soon {
-          opacity: 0.6;
-        }
-
-        .gateway-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-        }
-
-        .gateway-header h3 {
-          margin: 0;
-          font-size: 18px;
-        }
-
-        .gateway-status {
-          font-size: 10px;
-          font-weight: 600;
-          padding: 4px 8px;
-          border-radius: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-
-        .gateway-status.live {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10B981;
-        }
-
-        .gateway-status.launching {
-          background: rgba(16, 185, 129, 0.12);
-          color: #10B981;
-          border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .gateway-status.future {
-          background: rgba(255, 255, 255, 0.08);
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        .gateway-desc {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.6);
-          margin-bottom: 16px;
-        }
-
-        .gateway-features {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .gateway-features li {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.5);
-          padding-left: 16px;
-          position: relative;
-        }
-
-        .gateway-features li::before {
-          content: '•';
-          position: absolute;
-          left: 0;
-          color: #00C2FF;
-        }
-
-        /* Core Features Grid */
-        .core-features-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 24px;
-          margin-bottom: 48px;
-        }
-
-        .core-feature-card {
-          padding: 28px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          transition: all 0.2s ease;
-        }
-
-        .core-feature-card:hover {
-          border-color: rgba(0, 194, 255, 0.2);
-        }
-
-        .feature-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-        }
-
-        .feature-number {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          font-size: 14px;
-          font-weight: 700;
-          color: #00C2FF;
-          background: rgba(0, 194, 255, 0.1);
-          border: 1px solid rgba(0, 194, 255, 0.2);
-          border-radius: 8px;
-        }
-
-        .feature-tag {
-          font-size: 10px;
-          font-weight: 600;
-          padding: 4px 10px;
-          border-radius: 20px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          background: rgba(0, 176, 255, 0.15);
-          color: #00C2FF;
-        }
-
-        .core-feature-card h3 {
-          font-size: 18px;
-          margin: 0 0 12px 0;
-        }
-
-        .feature-desc {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.6);
-          line-height: 1.5;
-          margin-bottom: 16px;
-        }
-
-        .feature-details {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .feature-details li {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.5);
-          padding-left: 20px;
-          position: relative;
-        }
-
-        .feature-details li::before {
-          content: '✓';
-          position: absolute;
-          left: 0;
-          color: #10B981;
-          font-size: 12px;
-        }
-
-        /* Feature Highlight */
-        .feature-highlight {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 40px;
-          padding: 40px;
-          background: linear-gradient(135deg, rgba(0, 194, 255, 0.05) 0%, rgba(167, 139, 250, 0.05) 100%);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
-          margin-bottom: 48px;
-          align-items: center;
-        }
-
-        .feature-highlight.alt {
-          background: linear-gradient(135deg, rgba(0, 176, 255, 0.05) 0%, rgba(138, 43, 226, 0.05) 100%);
-        }
-
-        .feature-highlight.alt .highlight-visual {
-          order: -1;
-        }
-
-        .highlight-badge {
-          display: inline-block;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 6px 14px;
-          border-radius: 20px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          background: rgba(0, 194, 255, 0.15);
-          color: #00C2FF;
-          margin-bottom: 16px;
-        }
-
-        .highlight-content h2 {
-          font-size: 28px;
-          margin: 0 0 16px 0;
-        }
-
-        .highlight-content p {
-          font-size: 15px;
-          color: rgba(255, 255, 255, 0.7);
-          line-height: 1.7;
-          margin-bottom: 24px;
-        }
-
-        .highlight-points {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .highlight-points .point {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          font-size: 15px;
-        }
-
-        .point-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          font-size: 14px;
-          color: #00C2FF;
-          background: rgba(0, 194, 255, 0.1);
-          border-radius: 6px;
-        }
-
-        .highlight-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .highlight-list li {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.7);
-          padding-left: 24px;
-          position: relative;
-        }
-
-        .highlight-list li::before {
-          content: '✓';
-          position: absolute;
-          left: 0;
-          color: #10B981;
-        }
-
-        /* Mock Card */
-        .mock-card {
-          padding: 24px;
-          background: rgba(13, 13, 18, 0.9);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 16px;
-          text-align: center;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .mock-badge {
-          display: inline-block;
-          font-size: 10px;
-          font-weight: 600;
-          padding: 4px 10px;
-          border-radius: 20px;
-          text-transform: uppercase;
-          background: rgba(0, 194, 255, 0.15);
-          color: #00C2FF;
-          margin-bottom: 16px;
-        }
-
-        .mock-title {
-          font-size: 16px;
-          font-weight: 600;
-          margin-bottom: 20px;
-          line-height: 1.4;
-        }
-
-        .mock-odds {
-          display: flex;
-          justify-content: center;
-          gap: 24px;
-          margin-bottom: 20px;
-        }
-
-        .mock-odds .yes {
-          color: #10B981;
-          font-weight: 700;
-          font-size: 18px;
-        }
-
-        .mock-odds .no {
-          color: #F43F5E;
-          font-weight: 700;
-          font-size: 18px;
-        }
-
-        .mock-swipe {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.4);
-          padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        /* Fact Check Demo */
-        .fact-check-demo {
-          padding: 24px;
-          background: rgba(13, 13, 18, 0.9);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 16px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .fc-header {
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: rgba(255, 255, 255, 0.5);
-          margin-bottom: 16px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .fc-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 0;
-          font-size: 14px;
-        }
-
-        .fc-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          font-size: 11px;
-          font-weight: 700;
-        }
-
-        .fc-item.verified .fc-icon {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10B981;
-        }
-
-        .fc-item.warning .fc-icon {
-          background: rgba(255, 193, 7, 0.15);
-          color: #FFC107;
-        }
-
-        .fc-score {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 16px;
-          padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.6);
-        }
-
-        .fc-score .score {
-          font-size: 20px;
-          font-weight: 700;
-          color: #00C2FF;
-        }
-
-        /* Coming Soon Grid */
-        .coming-soon-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-        }
-
-        .coming-card {
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
-        }
-
-        .coming-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 8px;
-        }
-
-        .coming-header h4 {
-          margin: 0;
-          font-size: 15px;
-        }
-
-        .coming-timeline {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.4);
-          font-weight: 500;
-        }
-
-        .coming-card p {
-          margin: 0;
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Platforms Table */
-        .platforms-table {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          overflow: hidden;
-        }
-
-        .table-header, .table-row {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr;
-          padding: 16px 20px;
-        }
-
-        .table-header {
-          background: rgba(255, 255, 255, 0.05);
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        .table-row {
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .platform-name {
-          font-weight: 600;
-        }
-
-        .platform-type, .platform-chain {
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 14px;
-        }
-
-        .platform-status.live {
-          color: #10B981;
-        }
-
-        /* Platform Details */
-        .platform-details {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
-          margin-top: 24px;
-        }
-
-        .platform-card {
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-        }
-
-        .platform-card p {
-          font-size: 14px;
-        }
-
-        .platform-stats {
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .platform-stats span {
-          padding: 4px 10px;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 6px;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.6);
-        }
-
-        /* Commands */
-        .commands-list {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          overflow: hidden;
-        }
-
-        .command-row {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-          padding: 16px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .command-row:last-child {
-          border-bottom: none;
-        }
-
-        .command-code {
-          min-width: 180px;
-          padding: 6px 12px;
-          background: rgba(0, 194, 255, 0.1);
-          border-radius: 6px;
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 14px;
-          color: #00C2FF;
-        }
-
-        .command-desc {
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 14px;
-        }
-
-        /* NL Examples */
-        .nl-examples {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .nl-example {
-          padding: 16px 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .user-msg {
-          color: #00C2FF;
-          font-style: italic;
-        }
-
-        .bot-response {
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 14px;
-        }
-
-        /* Telegram CTA */
-        .telegram-cta {
-          text-align: center;
-          margin-top: 40px;
-        }
-
-        .telegram-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 12px;
-          padding: 20px 40px;
-          background: linear-gradient(135deg, #0088CC, #00AAFF);
-          border-radius: 12px;
-          color: #fff;
-          font-size: 18px;
-          font-weight: 700;
-          text-decoration: none;
-          transition: all 0.2s ease;
-        }
-
-        .telegram-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 136, 204, 0.3);
-        }
-
-        .telegram-note {
-          margin-top: 12px;
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.4);
-        }
-
-        /* Roadmap */
-        .roadmap-timeline {
-          margin: 32px 0;
-        }
-
-        .roadmap-phase {
-          display: flex;
-          gap: 24px;
-        }
-
-        .phase-indicator {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          width: 24px;
-        }
-
-        .phase-dot {
-          width: 16px;
-          height: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 16px;
-        }
-
-        .phase-dot.current {
-          color: #10B981;
-        }
-
-        .phase-dot.next {
-          color: #00C2FF;
-        }
-
-        .phase-line {
-          flex: 1;
-          width: 2px;
-          background: rgba(255, 255, 255, 0.1);
-          margin: 8px 0;
-        }
-
-        .phase-content {
-          flex: 1;
-          padding-bottom: 40px;
-        }
-
-        .phase-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 16px;
-        }
-
-        .phase-number {
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: rgba(255, 255, 255, 0.4);
-        }
-
-        .phase-title {
-          font-size: 20px;
-          margin: 0;
-        }
-
-        .status-badge {
-          padding: 4px 10px;
-          border-radius: 100px;
-          font-size: 11px;
-          font-weight: 600;
-        }
-
-        .status-badge.current {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10B981;
-        }
-
-        .status-badge.next {
-          background: rgba(0, 176, 255, 0.15);
-          color: #00C2FF;
-        }
-
-        .phase-items {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .phase-items li {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 0;
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 15px;
-        }
-
-        .phase-items li.done {
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .item-check {
-          font-size: 14px;
-        }
-
-        .phase-items li.done .item-check {
-          color: #10B981;
-        }
-
-        .phase-items li.soon {
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .phase-items li.soon .item-check {
-          color: #10B981;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        .soon-badge {
-          font-size: 9px;
-          font-weight: 600;
-          padding: 2px 6px;
-          border-radius: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          background: rgba(16, 185, 129, 0.15);
-          color: #10B981;
-          margin-left: 8px;
-        }
-
-        /* Vision Cards */
-        .vision-cards {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
-        }
-
-        .vision-card {
-          padding: 24px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-        }
-
-        .vision-card h3 {
-          margin-bottom: 8px;
-        }
-
-        .vision-card p {
-          font-size: 14px;
-          margin: 0;
-        }
-
-        /* Page Navigation */
-        .page-nav {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 64px;
-          padding-top: 32px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .page-nav-btn {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          padding: 16px 24px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          color: #fff;
-          text-decoration: none;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .page-nav-btn:hover {
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(0, 194, 255, 0.2);
-        }
-
-        .page-nav-btn.prev {
-          align-items: flex-start;
-        }
-
-        .page-nav-btn.next {
-          align-items: flex-end;
-        }
-
-        .nav-direction {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.4);
-        }
-
-        .nav-page-title {
-          font-size: 15px;
-          font-weight: 600;
-          color: #00C2FF;
-        }
-
-        /* Footer */
-        .docs-footer {
-          margin-top: 48px;
-          padding: 32px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 16px;
-        }
-
-        .footer-brand {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 700;
-        }
-
-        .footer-links {
-          display: flex;
-          gap: 24px;
-        }
-
-        .footer-links a {
-          color: rgba(255, 255, 255, 0.5);
-          text-decoration: none;
-          font-size: 14px;
-        }
-
-        .footer-links a:hover {
-          color: #fff;
-        }
-
-        .footer-copyright {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-          .mobile-header {
-            display: flex;
-          }
-
-          .mobile-overlay {
-            display: block;
-          }
-
-          .docs-sidebar {
-            position: fixed;
-            left: -300px;
-            top: 0;
-            bottom: 0;
-            z-index: 95;
-            transition: left 0.3s ease;
-          }
-
-          .docs-sidebar.open {
-            left: 0;
-          }
-
-          .docs-main {
-            margin-left: 0;
-            padding: 88px 24px 32px;
-          }
-
-          .page-nav {
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .page-nav-btn.prev,
-          .page-nav-btn.next {
-            align-items: flex-start;
-          }
-        }
-
-        @media (max-width: 900px) {
-          .solution-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .features-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 768px) {
-          .solution-grid,
-          .persona-grid,
-          .features-grid,
-          .platform-details,
-          .vision-cards {
-            grid-template-columns: 1fr;
-          }
-
-          .section-header h1 {
-            font-size: 32px;
-          }
-
-          .pillar-card {
-            grid-template-columns: 1fr;
-          }
-
-          .docs-footer {
-            flex-direction: column;
-            text-align: center;
-          }
-
-          .gateways-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .core-features-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .feature-highlight {
-            grid-template-columns: 1fr;
-            padding: 24px;
-            gap: 24px;
-          }
-
-          .feature-highlight.alt .highlight-visual {
-            order: 0;
-          }
-
-          .highlight-content h2 {
-            font-size: 24px;
-          }
-
-          .coming-soon-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .cat-btn {
-            padding: 8px 14px;
-            font-size: 13px;
-          }
-
-          .search-input {
-            font-size: 14px;
-          }
-
-          .feature-highlight {
-            padding: 20px;
-          }
-
-          .mock-card,
-          .fact-check-demo {
-            padding: 16px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { forwardRef, HTMLAttributes, ReactNode } from 'react';
 import styles from './Card.module.css';
 
-export type CardVariant = 'default' | 'elevated' | 'glass' | 'outline' | 'terminal';
+export type CardVariant = 'default' | 'elevated' | 'glass' | 'outline' | 'terminal' | 'interactive';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {

@@ -36,6 +36,7 @@ export { compareHandler } from './handlers/compare';
 // Predictions & Intelligence handlers
 export { predictHandler } from './handlers/predict';
 export { smartPredictHandler } from './handlers/smartPredict';
+export { semanticPredictHandler } from './handlers/semanticPredict';
 export { intelligenceHandler } from './handlers/intelligence';
 export { recommendationsHandler } from './handlers/recommendations';
 export { feedbackHandler } from './handlers/feedback';

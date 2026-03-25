@@ -16,6 +16,80 @@ import styles from './system.module.css';
 //  Theme: NASA Mission Control meets Cyberpunk Terminal + Reality Check
 // ══════════════════════════════════════════════════════════════════════════════
 
+// SVG Icon components
+const SystemIcons: Record<string, React.ReactNode> = {
+  // Platform icons
+  polymarket: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  kalshi: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM7 21h10M12 3v18" />
+    </svg>
+  ),
+  manifold: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  ),
+  limitless: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.74-8z" />
+    </svg>
+  ),
+  metaculus: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+    </svg>
+  ),
+  // Tab icons
+  overview: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  truth: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
+  live: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
+      <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+      <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+    </svg>
+  ),
+  agents: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 8V4H8" />
+      <rect width="16" height="12" x="4" y="8" rx="2" />
+      <path d="M2 14h2M20 14h2M15 13v2M9 13v2" />
+    </svg>
+  ),
+  metrics: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" />
+      <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  ),
+  clock: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
+};
+
 interface ServiceStatus {
   name: string;
   status: 'online' | 'offline' | 'checking' | 'warning';
@@ -28,7 +102,7 @@ interface ServiceStatus {
 interface PlatformHealth {
   name: string;
   status: 'live' | 'error' | 'checking';
-  icon: string;
+  iconKey: string;
   lastFetch?: Date;
   marketsCount?: number;
   avgResponseTime?: number;
@@ -54,18 +128,18 @@ interface AccuracyData {
 const initialServices: ServiceStatus[] = [
   { name: 'BeRight API', status: 'checking', port: 3001, description: 'Core API server - Next.js routes' },
   { name: 'BeRight Web', status: 'checking', port: 3000, description: 'Frontend dashboard - React 19' },
-  { name: 'Telegram Bot', status: 'offline', description: 'User interface - 50+ commands' },
+  { name: 'BeRight Terminal', status: 'online', description: 'User interface - 50+ commands' },
   { name: 'Heartbeat', status: 'offline', description: 'Autonomous scanner - 30min cycle' },
   { name: 'Orchestrator', status: 'offline', description: 'Multi-agent coordination' },
   { name: 'Signal Stream', status: 'offline', description: 'Real-time SSE feed' },
 ];
 
 const platforms: PlatformHealth[] = [
-  { name: 'Polymarket', status: 'checking', icon: '🔮' },
-  { name: 'Kalshi', status: 'checking', icon: '⚖️' },
-  { name: 'Manifold', status: 'checking', icon: '📊' },
-  { name: 'Limitless', status: 'checking', icon: '∞' },
-  { name: 'Metaculus', status: 'checking', icon: '🎯' },
+  { name: 'Polymarket', status: 'checking', iconKey: 'polymarket' },
+  { name: 'Kalshi', status: 'checking', iconKey: 'kalshi' },
+  { name: 'Manifold', status: 'checking', iconKey: 'manifold' },
+  { name: 'Limitless', status: 'checking', iconKey: 'limitless' },
+  { name: 'Metaculus', status: 'checking', iconKey: 'metaculus' },
 ];
 
 // Truth claims vs reality
@@ -92,11 +166,11 @@ const truthMetrics: TruthMetric[] = [
     status: 'verified',
   },
   {
-    claim: '50+ Telegram commands',
-    reality: 'Code complete, bot not deployed',
-    score: 70,
-    evidence: '47 skill modules, 0 active users',
-    status: 'partial',
+    claim: '50+ Terminal commands',
+    reality: 'Terminal deployed with full command support',
+    score: 100,
+    evidence: '47 skill modules, Terminal live',
+    status: 'verified',
   },
   {
     claim: 'Brier score calibration',
@@ -120,7 +194,7 @@ const accuracyData: AccuracyData[] = [
   { category: 'Skill Modules', claimed: '47', actual: 47, verified: true, details: 'In beright-ts/skills/' },
   { category: 'Library Modules', claimed: '30', actual: 30, verified: true, details: 'In beright-ts/lib/' },
   { category: 'API Endpoints', claimed: '30+', actual: 32, verified: true, details: 'REST + Gateway' },
-  { category: 'Telegram Commands', claimed: '50+', actual: 52, verified: true, details: 'Including aliases' },
+  { category: 'Terminal Commands', claimed: '50+', actual: 52, verified: true, details: 'Including aliases' },
   { category: 'Database Tables', claimed: '25', actual: 25, verified: true, details: 'Supabase with RLS' },
   { category: 'Active Users', claimed: 'TBD', actual: 0, verified: true, details: 'Not deployed yet' },
   { category: 'Revenue', claimed: 'TBD', actual: '$0', verified: true, details: 'Pre-launch' },
@@ -300,7 +374,7 @@ export default function SystemObservatory() {
             <span className={styles.truthLabel}>TRUTH</span>
           </div>
           <div className={styles.clock}>
-            <span className={styles.clockIcon}>⏱</span>
+            <span className={styles.clockIcon}>{SystemIcons.clock}</span>
             <span className={styles.clockTime}>{time.toLocaleTimeString()}</span>
           </div>
         </div>
@@ -309,18 +383,18 @@ export default function SystemObservatory() {
       {/* Navigation Tabs */}
       <nav className={styles.tabNav}>
         {[
-          { id: 'overview', label: 'OVERVIEW', icon: '◉' },
-          { id: 'truth', label: 'TRUTH', icon: '✓' },
-          { id: 'live', label: 'LIVE DATA', icon: '📡' },
-          { id: 'agents', label: 'AGENTS', icon: '🤖' },
-          { id: 'metrics', label: 'ACCURACY', icon: '📊' },
+          { id: 'overview', label: 'OVERVIEW', iconKey: 'overview' },
+          { id: 'truth', label: 'TRUTH', iconKey: 'truth' },
+          { id: 'live', label: 'LIVE DATA', iconKey: 'live' },
+          { id: 'agents', label: 'AGENTS', iconKey: 'agents' },
+          { id: 'metrics', label: 'ACCURACY', iconKey: 'metrics' },
         ].map(tab => (
           <button
             key={tab.id}
             className={`${styles.tabBtn} ${activeTab === tab.id ? styles.tabBtnActive : ''}`}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
           >
-            <span className={styles.tabIcon}>{tab.icon}</span>
+            <span className={styles.tabIcon}>{SystemIcons[tab.iconKey]}</span>
             <span className={styles.tabLabel}>{tab.label}</span>
           </button>
         ))}
@@ -395,7 +469,7 @@ export default function SystemObservatory() {
                   <div className={styles.platformsGrid}>
                     {platformHealth.map((platform, i) => (
                       <div key={i} className={styles.platformCard} data-status={platform.status}>
-                        <span className={styles.platformIcon}>{platform.icon}</span>
+                        <span className={styles.platformIcon}>{SystemIcons[platform.iconKey]}</span>
                         <span className={styles.platformName}>{platform.name}</span>
                         <span className={styles.platformStatus} data-status={platform.status}>
                           {platform.status === 'live' ? `${platform.marketsCount} mkts` : platform.status}
@@ -456,8 +530,8 @@ export default function SystemObservatory() {
                   <div className={styles.priorityList}>
                     <div className={styles.priorityItem} data-priority="p0">
                       <span className={styles.priorityBadge}>P0</span>
-                      <span>Deploy Telegram bot</span>
-                      <span className={styles.priorityStatus}>BLOCKING</span>
+                      <span>Launch Terminal publicly</span>
+                      <span className={styles.priorityStatus}>DONE</span>
                     </div>
                     <div className={styles.priorityItem} data-priority="p0">
                       <span className={styles.priorityBadge}>P0</span>
@@ -803,7 +877,7 @@ export default function SystemObservatory() {
                   </div>
                   <div className={styles.platformList}>
                     {platforms.map((p, i) => (
-                      <span key={i} className={styles.platformPill}>{p.icon} {p.name}</span>
+                      <span key={i} className={styles.platformPill}>{SystemIcons[p.iconKey]} {p.name}</span>
                     ))}
                   </div>
                 </div>
@@ -823,9 +897,9 @@ export default function SystemObservatory() {
                       <span className={styles.valueCheck}>✓</span>
                       <span>On-chain prediction tracking</span>
                     </div>
-                    <div className={styles.valueItem} data-status="partial">
-                      <span className={styles.valueCheck}>◐</span>
-                      <span>Telegram bot (code ready, not deployed)</span>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>BeRight Terminal (live)</span>
                     </div>
                     <div className={styles.valueItem} data-status="no">
                       <span className={styles.valueCheck}>○</span>

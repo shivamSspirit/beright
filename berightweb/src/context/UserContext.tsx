@@ -100,6 +100,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
     linkedWalletAddress ||
     null;
 
+  // Debug: Log wallet sources
+  console.log('[UserContext] Wallet Debug:', {
+    walletsFromHook: wallets?.map(w => ({ address: w.address?.slice(0, 8), type: w.walletClientType })),
+    externalWallet: externalWallet?.address?.slice(0, 8) || 'none',
+    embeddedWallet: embeddedWalletFromHook?.address?.slice(0, 8) || 'none',
+    linkedWallet: linkedWalletAddress?.slice(0, 8) || 'none',
+    selectedWallet: walletAddress?.slice(0, 8) || 'none',
+    source: externalWallet ? 'EXTERNAL' : embeddedWalletFromHook ? 'EMBEDDED' : linkedWalletAddress ? 'LINKED' : 'NONE',
+  });
+
   // Wrapped login function with error handling
   const login = async () => {
     try {

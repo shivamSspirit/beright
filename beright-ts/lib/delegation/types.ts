@@ -33,7 +33,7 @@ export const TIER_REQUIREMENTS: Record<ForecasterTier, TierRequirements> = {
   super: { maxBrier: 0.12, minPredictions: 100, capacity: Infinity },
   elite: { maxBrier: 0.18, minPredictions: 50, capacity: 1_000_000 },
   verified: { maxBrier: 0.25, minPredictions: 20, capacity: 100_000 },
-  rookie: { maxBrier: 1.0, minPredictions: 10, capacity: 10_000 },
+  rookie: { maxBrier: 1.0, minPredictions: 0, capacity: 10_000 }, // TODO: Restore to 10 for production
   unranked: { maxBrier: 1.0, minPredictions: 0, capacity: 0 },
 };
 

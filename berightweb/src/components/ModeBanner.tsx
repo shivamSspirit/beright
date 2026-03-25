@@ -1,20 +1,92 @@
 'use client';
 
 import { useMode } from '@/context/ModeContext';
+import { useProductionAccess } from '@/hooks/useProductionAccess';
 
 /**
  * Mode Toggle Component
  *
- * Compact toggle button for switching between demo and production modes.
- * Designed to integrate cleanly into the header navigation.
+ * Shows mode indicator in header:
+ * - Owner (shivamssoni6@gmail.com): Toggle button to switch demo/production
+ * - Everyone else: Static "Demo" badge (no toggle capability)
  */
 export function ModeToggle() {
-  const { isDemo, isLoading, toggleMode } = useMode();
+  const { isLoading, toggleMode } = useMode();
+  const { canToggle, isEffectiveDemo } = useProductionAccess();
 
   if (isLoading) {
     return null;
   }
 
+  const isDemo = isEffectiveDemo;
+
+  // Non-owners: show static Demo badge (no toggle capability)
+  if (!canToggle) {
+    return (
+      <div className="demo-badge" title="Demo Mode - Paper Trading">
+        <span className="demo-dot" />
+        <span className="demo-label">Demo</span>
+
+        <style jsx>{`
+          /* Matches Header.tsx nav-btn sizing system */
+          .demo-badge {
+            --btn-height: 36px;
+            --btn-padding: 0 14px;
+            --btn-font: 12px;
+            --btn-radius: 8px;
+            --btn-gap: 6px;
+
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--btn-gap);
+            height: var(--btn-height);
+            padding: var(--btn-padding);
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-radius: var(--btn-radius);
+            color: #F59E0B;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: var(--btn-font);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+          }
+
+          .demo-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #F59E0B;
+            animation: pulse 2s infinite;
+          }
+
+          .demo-label {
+            text-transform: uppercase;
+          }
+
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+
+          @media (max-width: 768px) {
+            .demo-badge {
+              --btn-height: 32px;
+              --btn-padding: 0 12px;
+              --btn-font: 11px;
+            }
+
+            .demo-dot {
+              width: 5px;
+              height: 5px;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Owner: show toggle button
   return (
     <button
       className={`mode-toggle ${isDemo ? 'demo' : 'production'}`}
@@ -23,22 +95,31 @@ export function ModeToggle() {
     >
       <span className="mode-dot" />
       <span className="mode-label">{isDemo ? 'Demo' : 'Live'}</span>
-      <svg className="mode-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg className="mode-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <polyline points="6,9 12,15 18,9" />
       </svg>
 
       <style jsx>{`
+        /* Matches Header.tsx nav-btn sizing system */
         .mode-toggle {
+          --btn-height: 36px;
+          --btn-padding: 0 14px;
+          --btn-font: 12px;
+          --btn-radius: 8px;
+          --btn-gap: 6px;
+
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 8px 12px;
+          justify-content: center;
+          gap: var(--btn-gap);
+          height: var(--btn-height);
+          padding: var(--btn-padding);
           background: transparent;
           border: 1px solid rgba(148, 163, 184, 0.2);
-          border-radius: 8px;
+          border-radius: var(--btn-radius);
           color: #94A3B8;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-          font-size: 12px;
+          font-size: var(--btn-font);
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -96,13 +177,20 @@ export function ModeToggle() {
           50% { opacity: 0.5; }
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
           .mode-toggle {
-            padding: 6px 10px;
+            --btn-height: 32px;
+            --btn-padding: 0 12px;
+            --btn-font: 11px;
           }
 
           .mode-chevron {
             display: none;
+          }
+
+          .mode-dot {
+            width: 5px;
+            height: 5px;
           }
         }
       `}</style>
@@ -134,19 +222,25 @@ export function ModeBannerSpacer() {
 
 /**
  * Compact mode indicator for header/nav
+ * Shows effective mode (respects access control - non-owners always see Demo)
  */
 export function ModeIndicator() {
-  const { isDemo, networkLabel, isLoading } = useMode();
+  const { networkLabel, isLoading } = useMode();
+  const { isEffectiveDemo } = useProductionAccess();
 
   if (isLoading) {
     return null;
   }
 
+  // Non-owners always see demo mode
+  const isDemo = isEffectiveDemo;
+  const effectiveNetworkLabel = isDemo ? 'Devnet' : networkLabel;
+
   return (
     <div className={`mode-indicator ${isDemo ? 'demo' : 'production'}`}>
       <span className="mode-dot" />
       <span className="mode-label">{isDemo ? 'Demo' : 'Live'}</span>
-      <span className="mode-network">{networkLabel}</span>
+      <span className="mode-network">{effectiveNetworkLabel}</span>
 
       <style jsx>{`
         .mode-indicator {

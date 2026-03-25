@@ -2,7 +2,7 @@
  * Stake to Forecast Pool API
  *
  * POST /api/v2/forecast-pools/[poolId]/stake
- * Build a transaction to stake to a forecast pool
+ * Build a transaction to deposit (stake) to a forecast pool using the real on-chain program.
  *
  * @author BeRight Protocol
  */
@@ -10,11 +10,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { z } from 'zod';
+import { BN } from '@coral-xyz/anchor';
 import { isDemo } from '../../../../../../lib/mode';
 
 const StakeSchema = z.object({
   delegator: z.string().min(32).max(44),
-  amount: z.number().int().positive(),
+  amount: z.number().int().positive(), // Amount in lamports/base units
 });
 
 export async function POST(
@@ -39,9 +40,10 @@ export async function POST(
 
     // Validate addresses
     let delegatorPk: PublicKey;
+    let poolPk: PublicKey;
     try {
       delegatorPk = new PublicKey(delegator);
-      new PublicKey(poolId); // Validate pool address format
+      poolPk = new PublicKey(poolId);
     } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid address' },
@@ -49,53 +51,50 @@ export async function POST(
       );
     }
 
-    // Demo mode
-    if (isDemo()) {
-      // Simulate share calculation
-      const sharePrice = 1_000_000; // 1.0 in 6 decimals
-      const shares = Math.floor(amount / sharePrice * 1_000_000);
+    // Use appropriate RPC
+    const rpcUrl = isDemo()
+      ? process.env.HELIUS_RPC_DEVNET || 'https://api.devnet.solana.com'
+      : process.env.SOLANA_RPC_URL || process.env.HELIUS_RPC_MAINNET || 'https://api.mainnet-beta.solana.com';
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          transaction: 'DEMO_STAKE_TRANSACTION_BASE64_PLACEHOLDER',
-          poolAddress: poolId,
-          delegator,
-          amount: amount.toString(),
-          estimatedShares: shares.toString(),
-          _demo: true,
-        },
-        meta: { latencyMs: Date.now() - startTime },
-      });
+    const network = isDemo() ? 'devnet' : 'mainnet';
+    const connection = new Connection(rpcUrl, 'confirmed');
+
+    console.log(`[API v2/forecast-pools/stake] Mode: ${isDemo() ? 'demo' : 'production'}, Network: ${network}, Pool: ${poolId.slice(0, 8)}...`);
+
+    // Import Anchor client for proper IDL-based transaction building
+    const { getStakingPoolClient } = await import('../../../../../../lib/staking/forecast-pool');
+
+    const client = getStakingPoolClient(connection, { network });
+
+    // Verify pool exists
+    const poolState = await client.getPoolState(poolPk);
+    if (!poolState) {
+      return NextResponse.json(
+        { success: false, error: 'Pool not found' },
+        { status: 404 }
+      );
     }
 
-    // Production mode
-    const connection = new Connection(
-      process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-      'confirmed'
-    );
-
-    // Import SDK
-    const { getForecastPoolClient } = await import('../../../../../../lib/staking/forecast-pool');
-
-    const client = getForecastPoolClient(connection, { network: 'devnet' });
-
-    // Build stake transaction
-    const tx = await client.buildStakeTx(delegatorPk, {
-      poolAddress: poolId,
-      amount,
+    // Build deposit transaction using Anchor client
+    const tx = await client.buildDepositTx(delegatorPk, {
+      poolAddress: poolPk,
+      amount: new BN(amount),
     });
 
-    // Serialize transaction
+    // Get blockhash and set transaction details
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
     tx.recentBlockhash = blockhash;
     tx.feePayer = delegatorPk;
 
+    // Serialize transaction (delegator needs to sign)
     const serialized = tx.serialize({ requireAllSignatures: false }).toString('base64');
 
-    // Estimate shares (assuming 1:1 share price for new pools)
-    const sharePrice = 1_000_000; // Default share price 1.0 in 6 decimals
+    // Estimate shares based on pool state
+    // For now, use 1:1 ratio (will be more sophisticated once we parse pool state properly)
+    const sharePrice = 1_000_000; // Default 1.0 in 6 decimals
     const estimatedShares = Math.floor(amount / sharePrice * 1_000_000).toString();
+
+    console.log(`[API v2/forecast-pools/stake] Built deposit tx for ${amount} to pool ${poolId.slice(0, 8)}...`);
 
     return NextResponse.json({
       success: true,
@@ -107,8 +106,10 @@ export async function POST(
         estimatedShares,
         blockhash,
         lastValidBlockHeight,
+        network,
+        rpcUrl, // Return RPC URL for frontend consistency
       },
-      meta: { latencyMs: Date.now() - startTime },
+      meta: { source: 'blockchain', network, latencyMs: Date.now() - startTime },
     });
   } catch (error) {
     console.error('[API v2/forecast-pools/stake] Error:', error);

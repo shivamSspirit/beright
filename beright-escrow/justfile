@@ -1,0 +1,62 @@
+# BeRight Conviction Escrow - Anchor Build Commands
+
+# Default recipe
+default:
+    @just --list
+
+# Install dependencies
+install:
+    pnpm install
+    cargo fetch
+
+# Build program
+build:
+    anchor build
+
+# Run tests
+test:
+    anchor test
+
+# Run tests with logs
+test-logs:
+    anchor test -- --features "cpi"
+
+# Deploy to localnet
+deploy-local:
+    anchor deploy --provider.cluster localnet
+
+# Deploy to devnet
+deploy-devnet:
+    anchor deploy --provider.cluster devnet
+
+# Deploy to mainnet (requires confirmation)
+deploy-mainnet:
+    @echo "WARNING: Deploying to mainnet!"
+    @read -p "Are you sure? (y/N) " confirm && [ "$$confirm" = "y" ]
+    anchor deploy --provider.cluster mainnet
+
+# Generate IDL
+idl:
+    anchor idl init --filepath target/idl/conviction_escrow.json
+
+# Format code
+fmt:
+    cargo fmt --all
+    pnpm prettier --write .
+
+# Lint
+lint:
+    cargo clippy --all-targets -- -D warnings
+
+# Clean
+clean:
+    anchor clean
+    rm -rf node_modules target
+
+# Verify program on devnet
+verify-devnet:
+    anchor verify --provider.cluster devnet BRconv1ct1onEscworProgram11111111111111111
+
+# Full build + test
+full: build test
+    @echo "Build and tests complete!"

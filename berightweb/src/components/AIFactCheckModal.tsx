@@ -610,15 +610,15 @@ export default function AIFactCheckModal({
         }
 
         .choice-badge.yes {
-          background: rgba(0, 230, 118, 0.15);
+          background: rgba(0, 255, 178, 0.15);
           color: #10B981;
-          border: 1px solid rgba(0, 230, 118, 0.3);
+          border: 1px solid rgba(0, 255, 178, 0.3);
         }
 
         .choice-badge.no {
-          background: rgba(255, 82, 82, 0.15);
+          background: rgba(255, 71, 87, 0.15);
           color: #F43F5E;
-          border: 1px solid rgba(255, 82, 82, 0.3);
+          border: 1px solid rgba(255, 71, 87, 0.3);
         }
 
         /* Question */
@@ -851,25 +851,25 @@ export default function AIFactCheckModal({
         }
 
         .decision-btn.yes {
-          background: rgba(0, 230, 118, 0.1);
-          color: rgba(0, 230, 118, 0.7);
-          border-color: rgba(0, 230, 118, 0.2);
+          background: rgba(0, 255, 178, 0.1);
+          color: rgba(0, 255, 178, 0.7);
+          border-color: rgba(0, 255, 178, 0.2);
         }
 
         .decision-btn.yes.active {
-          background: rgba(0, 230, 118, 0.2);
+          background: rgba(0, 255, 178, 0.2);
           color: #10B981;
           border-color: #10B981;
         }
 
         .decision-btn.no {
-          background: rgba(255, 82, 82, 0.1);
-          color: rgba(255, 82, 82, 0.7);
-          border-color: rgba(255, 82, 82, 0.2);
+          background: rgba(255, 71, 87, 0.1);
+          color: rgba(255, 71, 87, 0.7);
+          border-color: rgba(255, 71, 87, 0.2);
         }
 
         .decision-btn.no.active {
-          background: rgba(255, 82, 82, 0.2);
+          background: rgba(255, 71, 87, 0.2);
           color: #F43F5E;
           border-color: #F43F5E;
         }

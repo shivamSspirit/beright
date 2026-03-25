@@ -78,9 +78,25 @@ export type {
   ResolvePredictionParams,
 } from './types';
 
-// Client
+// Client (legacy manual encoding)
 export {
   ForecastPoolClient,
   getForecastPoolClient,
   resetForecastPoolClient,
 } from './client';
+
+// Anchor Client (proper IDL-based)
+export {
+  StakingPoolAnchorClient,
+  getStakingPoolClient,
+  resetStakingPoolClient,
+  PoolType,
+  DEFAULT_POOL_CONFIG,
+} from './anchor-client';
+
+export type {
+  PoolConfig,
+  CreatePoolParams as AnchorCreatePoolParams,
+  DepositParams,
+  WithdrawParams,
+} from './anchor-client';

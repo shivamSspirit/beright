@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useUser } from '@/context/UserContext';
-import { usePrivy } from '@privy-io/react-auth';
+import { useUser } from '@/hooks/useUnifiedUser';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES
@@ -13,7 +12,7 @@ type BillingInterval = 'month' | 'year';
 
 interface TierFeatures {
   dashboardAccess: boolean;
-  telegramBot: boolean;
+  terminalAccess: boolean;
   apiAccess: boolean;
   scoutAgent: boolean;
   analystAgent: boolean;
@@ -65,7 +64,7 @@ const TIERS: Tier[] = [
     priceYearly: 0,
     features: {
       dashboardAccess: true,
-      telegramBot: true,
+      terminalAccess: true,
       apiAccess: false,
       scoutAgent: true,
       analystAgent: false,
@@ -101,7 +100,7 @@ const TIERS: Tier[] = [
     priceYearly: 290,
     features: {
       dashboardAccess: true,
-      telegramBot: true,
+      terminalAccess: true,
       apiAccess: true,
       scoutAgent: true,
       analystAgent: false,
@@ -137,7 +136,7 @@ const TIERS: Tier[] = [
     priceYearly: 790,
     features: {
       dashboardAccess: true,
-      telegramBot: true,
+      terminalAccess: true,
       apiAccess: true,
       scoutAgent: true,
       analystAgent: true,
@@ -173,7 +172,7 @@ const TIERS: Tier[] = [
     priceYearly: 1990,
     features: {
       dashboardAccess: true,
-      telegramBot: true,
+      terminalAccess: true,
       apiAccess: true,
       scoutAgent: true,
       analystAgent: true,
@@ -209,7 +208,7 @@ const TIERS: Tier[] = [
     priceYearly: 4990,
     features: {
       dashboardAccess: true,
-      telegramBot: true,
+      terminalAccess: true,
       apiAccess: true,
       scoutAgent: true,
       analystAgent: true,
@@ -400,8 +399,7 @@ export default function SubscriptionPage() {
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
-  const { user, isAuthenticated, isLoading: authLoading } = useUser();
-  const { login } = usePrivy();
+  const { user, isAuthenticated, isLoading: authLoading, login } = useUser();
 
   // Fetch current subscription on mount
   useEffect(() => {

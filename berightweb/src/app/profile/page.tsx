@@ -1,21 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 import { useUserPredictions, useBackendStatus } from '@/hooks/useMarkets';
 import { useSubscription } from '@/hooks/useSubscription';
+import { usePredictions } from '@/hooks/usePredictions';
 import {
   TrendingUp, Flame, ChevronRight, Copy,
   ExternalLink, Check, Bell, Settings, HelpCircle, Zap, RefreshCw,
   Info, Star, Wallet, ArrowUp, LogOut, BookOpen, Crown, CreditCard
 } from 'lucide-react';
+import { PageWrapper } from '@/components/ui';
 import styles from './profile.module.css';
 import { getLeagueInfo, getLevelProgress } from '@/lib/leagues';
 import { formatNumber, formatAddress, formatCompactNumber } from '@/lib/format';
 import ReferralCard from '@/components/ReferralCard';
 import ShareButton from '@/components/ShareButton';
 import { useOnboarding } from '@/components/Onboarding';
+import { useMode } from '@/context/ModeContext';
 
 // ═══════════════════════════════════════════════════════════════
 // PROFILE PAGE - Industrial Metallic Design
@@ -45,6 +48,20 @@ interface ActivityItem {
   highlight: string;
   time: string;
   type: 'amber' | 'indigo';
+  onChainTx?: string;
+  explorerUrl?: string;
+  // Full prediction data for modal
+  predictionData?: {
+    id: string;
+    marketId: string;
+    probability: number;
+    direction: 'YES' | 'NO';
+    createdAt: string;
+    resolvedAt?: string;
+    outcome?: boolean;
+    brierScore?: number;
+    onChainTx?: string;
+  };
 }
 
 // Achievement definitions
@@ -167,14 +184,16 @@ const StatsPanel = ({
   fetchBalance,
   performanceStats,
   activities,
+  onPredictionClick,
 }: {
   solBalance: number | null;
   loadingBalance: boolean;
   fetchBalance: () => void;
   performanceStats: PerformanceStat[];
   activities: ActivityItem[];
+  onPredictionClick?: (prediction: ActivityItem['predictionData']) => void;
 }) => (
-  <div className={styles.rightPanel}>
+  <>
     {/* Wallet Balance */}
     <Plate>
       <Inset>
@@ -225,22 +244,50 @@ const StatsPanel = ({
 
     {/* Recent Activity */}
     <div className={styles.activitySection}>
-      <h2 className={styles.sectionTitle}>Recent Activity</h2>
-      {activities.map((activity, i) => (
-        <div
-          key={i}
-          className={`${styles.activityItem} ${activity.type === 'indigo' ? styles.activityItemIndigo : ''}`}
-        >
-          <div>
-            <div className={styles.activityText}>
-              {activity.text} <strong>{activity.highlight}</strong>
-            </div>
-            <span className={styles.activityTime}>{activity.time}</span>
-          </div>
+      <h2 className={styles.sectionTitle}>
+        Recent Activity
+        <span style={{ fontSize: '10px', marginLeft: '6px', color: '#818CF8', fontWeight: 400 }}>
+          On-Chain
+        </span>
+      </h2>
+      {activities.length === 0 ? (
+        <div className={styles.activityEmpty}>
+          <span style={{ opacity: 0.5 }}>No predictions yet</span>
         </div>
-      ))}
+      ) : (
+        activities.map((activity, i) => (
+          <div
+            key={i}
+            className={`${styles.activityItem} ${activity.type === 'indigo' ? styles.activityItemIndigo : ''}`}
+            onClick={() => activity.predictionData && onPredictionClick?.(activity.predictionData)}
+            style={{ cursor: activity.predictionData ? 'pointer' : 'default' }}
+          >
+            <div style={{ flex: 1 }}>
+              <div className={styles.activityText}>
+                {activity.text} <strong>{activity.highlight}</strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={styles.activityTime}>{activity.time}</span>
+                {activity.onChainTx && (
+                  <a
+                    href={`https://explorer.solana.com/tx/${activity.onChainTx}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.activityChainLink}
+                    title="View on Solana Explorer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ExternalLink size={10} />
+                    <span>On-chain</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
-  </div>
+  </>
 );
 
 // Subscription info interface
@@ -270,13 +317,12 @@ const SettingsPanel = ({
   isConnected,
   copiedAddress,
   handleCopyAddress,
-  telegramConnected,
-  onTelegramLink,
   notificationCount,
   onNotificationsClick,
   onLogout,
   onReplayOnboarding,
   subscriptionInfo,
+  solBalance,
 }: {
   walletAddress: string | null;
   displayName: string;
@@ -284,15 +330,14 @@ const SettingsPanel = ({
   isConnected: boolean;
   copiedAddress: boolean;
   handleCopyAddress: () => void;
-  telegramConnected: boolean;
-  onTelegramLink: () => void;
   notificationCount: number;
   onNotificationsClick: () => void;
   onLogout: () => void;
   onReplayOnboarding: () => void;
   subscriptionInfo: SubscriptionInfo;
+  solBalance: number | null;
 }) => (
-  <div className={styles.rightPanel}>
+  <>
     {/* Wallet Card */}
     <Plate>
       <Inset className={styles.settingsInset}>
@@ -309,7 +354,7 @@ const SettingsPanel = ({
         <div style={{ marginBottom: '12px' }}>
           <div className={styles.fieldLabel}>PARA FREE BALANCE</div>
           <div className={styles.balanceValue}>
-            <span className={styles.balanceAmount} style={{ fontSize: '26px' }}>0.0000</span>
+            <span className={styles.balanceAmount} style={{ fontSize: '26px' }}>{solBalance?.toFixed(4) ?? '0.0000'}</span>
             <span className={styles.balanceUnit} style={{ fontSize: '13px' }}>SOL</span>
           </div>
         </div>
@@ -329,6 +374,32 @@ const SettingsPanel = ({
           <div className={styles.addressHint}>Send SOL to this address to connect funds</div>
         </div>
 
+        {/* Network indicator for demo mode */}
+        <div style={{ marginBottom: '14px' }}>
+          <div className={styles.fieldLabel}>NETWORK</div>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            background: 'rgba(99, 102, 241, 0.15)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            fontSize: '12px',
+            fontWeight: 500,
+            color: '#818CF8',
+          }}>
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: '#818CF8',
+              animation: 'pulse 2s infinite',
+            }} />
+            Devnet (Demo Mode)
+          </div>
+        </div>
+
         <div className={styles.buttonGroup}>
           <button className={styles.btnIndigo}>
             <ArrowUp size={12} />
@@ -336,7 +407,7 @@ const SettingsPanel = ({
           </button>
           <button className={styles.btnSecondary} style={{ fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
             <ExternalLink size={12} />
-            View on Solscan
+            View on Orb
           </button>
         </div>
 
@@ -493,17 +564,6 @@ const SettingsPanel = ({
             <ChevronRight size={14} className={styles.menuItemArrow} />
           </button>
 
-          <button className={styles.menuItem} onClick={onTelegramLink}>
-            <Zap size={16} className={styles.menuItemIcon} />
-            <div className={styles.menuItemContent}>
-              <div className={styles.menuItemTitle}>Telegram Bot</div>
-              <div className={styles.menuItemDesc}>
-                {telegramConnected ? 'Connected' : 'Chat integration'}
-              </div>
-            </div>
-            <ChevronRight size={14} className={styles.menuItemArrow} />
-          </button>
-
           <button className={styles.menuItem}>
             <HelpCircle size={16} className={styles.menuItemIcon} />
             <div className={styles.menuItemContent}>
@@ -538,15 +598,23 @@ const SettingsPanel = ({
     <div className={styles.profileLink}>
       <a href="#" className={styles.link}>View public profile →</a>
     </div>
-  </div>
+  </>
 );
 
 // Main Profile Page Component
 export default function ProfilePage() {
-  const { user, isAuthenticated, isLoading, login, logout, walletAddress, linkTelegram, referralCode } = useUser();
+  const { user, isAuthenticated, isLoading, login, logout, walletAddress, referralCode } = useUser();
   const { isConnected } = useBackendStatus();
   const { stats: apiStats } = useUserPredictions();
   const { resetOnboarding } = useOnboarding();
+  const { isDemo, network } = useMode();
+
+  // Local predictions from usePredictions hook (localStorage in demo mode)
+  const {
+    predictions: localPredictions,
+    getStats: getLocalStats,
+    isLoading: predictionsLoading,
+  } = usePredictions(walletAddress);
   const {
     tier,
     tierConfig,
@@ -568,15 +636,18 @@ export default function ProfilePage() {
   // Notifications
   const [notificationCount, setNotificationCount] = useState(0);
 
-  // Telegram linking
-  const [showTelegramLink, setShowTelegramLink] = useState(false);
-
-  // Fetch SOL balance
+  // Fetch SOL balance - uses devnet in demo mode, mainnet in production
   const fetchBalance = useCallback(async () => {
     if (!walletAddress) return;
     setLoadingBalance(true);
     try {
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+      // Use devnet RPC in demo mode, mainnet in production
+      const rpcUrl = isDemo
+        ? (process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com')
+        : (process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+
+      console.log(`[Profile] Fetching balance from ${isDemo ? 'devnet' : 'mainnet'}:`, walletAddress);
+
       const response = await fetch(rpcUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -589,14 +660,16 @@ export default function ProfilePage() {
       });
       const data = await response.json();
       if (data.result?.value !== undefined) {
-        setSolBalance(data.result.value / 1e9);
+        const balance = data.result.value / 1e9;
+        console.log(`[Profile] Balance: ${balance} SOL`);
+        setSolBalance(balance);
       }
     } catch (error) {
       console.error('Failed to fetch balance:', error);
     } finally {
       setLoadingBalance(false);
     }
-  }, [walletAddress]);
+  }, [walletAddress, isDemo]);
 
   // Fetch notifications count
   const fetchNotifications = useCallback(async () => {
@@ -629,12 +702,19 @@ export default function ProfilePage() {
     }
   };
 
-  // Computed stats
-  const stats = {
-    totalPredictions: user?.totalPredictions ?? apiStats?.totalPredictions ?? 0,
-    accuracy: user?.accuracy ?? apiStats?.accuracy ?? 0,
-    winStreak: user?.streak ?? (apiStats as any)?.streak?.current ?? 0,
-  };
+  // Computed stats - include local predictions in demo mode
+  const localStats = getLocalStats();
+  const stats = useMemo(() => {
+    // In demo mode, prioritize local predictions count
+    const localCount = localPredictions?.length ?? 0;
+    const apiCount = user?.totalPredictions ?? apiStats?.totalPredictions ?? 0;
+
+    return {
+      totalPredictions: isDemo ? Math.max(localCount, apiCount) : apiCount,
+      accuracy: user?.accuracy ?? apiStats?.accuracy ?? localStats.accuracy ?? 0,
+      winStreak: user?.streak ?? (apiStats as any)?.streak?.current ?? 0,
+    };
+  }, [user, apiStats, isDemo, localPredictions, localStats]);
 
   // Calculate XP and league (using shared utilities)
   const xp = Math.floor(stats.totalPredictions * 10 + stats.accuracy * 5);
@@ -660,8 +740,61 @@ export default function ProfilePage() {
     { label: 'Global Rank', value: user?.rank ? `#${formatNumber(user.rank)}` : '--', color: 'amber' },
   ];
 
-  // Activity items - empty until real activity data is fetched from API
-  const activities: ActivityItem[] = [];
+  // Activity items - populated from on-chain predictions
+  // State for prediction detail modal
+  const [selectedPrediction, setSelectedPrediction] = useState<ActivityItem['predictionData'] | null>(null);
+
+  const activities: ActivityItem[] = useMemo(() => {
+    if (!localPredictions || localPredictions.length === 0) {
+      return [];
+    }
+
+    // Convert predictions to activity items - only show predictions with on-chain transactions
+    return localPredictions
+      .filter((pred) => pred.onChainTx) // Only show predictions with valid tx hash
+      .slice(0, 10) // Show last 10 predictions
+      .map((pred) => {
+        const timeAgo = getTimeAgo(new Date(pred.createdAt));
+        const questionShort = pred.question && pred.question.length > 40
+          ? pred.question.substring(0, 40) + '...'
+          : (pred.question || `Market ${pred.marketId.slice(0, 8)}...`);
+
+        return {
+          text: `Predicted ${pred.direction} on`,
+          highlight: questionShort,
+          time: timeAgo,
+          type: pred.direction === 'YES' ? 'amber' : 'indigo',
+          onChainTx: pred.onChainTx,
+          explorerUrl: pred.explorerUrl,
+          predictionData: {
+            id: pred.id,
+            marketId: pred.marketId,
+            probability: pred.probability,
+            direction: pred.direction,
+            createdAt: pred.createdAt,
+            resolvedAt: pred.resolvedAt,
+            outcome: pred.outcome,
+            brierScore: pred.brierScore,
+            onChainTx: pred.onChainTx,
+          },
+        } as ActivityItem;
+      });
+  }, [localPredictions]);
+
+  // Helper function for time ago
+  function getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
 
   // Format XP display (using shared utility)
   const formatXp = (xp: number) => formatCompactNumber(xp);
@@ -669,45 +802,50 @@ export default function ProfilePage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className={styles.page}>
-        <div className={styles.ambientLight} />
-        <div className={styles.loadingState}>
-          <div className={styles.spinner} />
-          Loading profile...
+      <PageWrapper showHeader={false} showFooter={false}>
+        <div className={styles.page}>
+          <div className={styles.ambientLight} />
+          <div className={styles.loadingState}>
+            <div className={styles.spinner} />
+            Loading profile...
+          </div>
         </div>
-      </div>
+      </PageWrapper>
     );
   }
 
   // Not authenticated state
   if (!isAuthenticated) {
     return (
-      <div className={styles.page}>
-        <div className={styles.ambientLight} />
-        <div className={styles.layoutGrid}>
-          <div className={styles.fullWidth}>
-            <Plate>
-              <Inset className={styles.connectState}>
-                <h2 className={styles.connectTitle}>Connect Your Wallet</h2>
-                <p className={styles.connectDesc}>
-                  Connect your wallet to view your profile, stats, and achievements.
-                </p>
-                <button className={styles.connectBtn} onClick={login}>
-                  Connect Wallet
-                </button>
-              </Inset>
-            </Plate>
+      <PageWrapper showHeader={false} showFooter={false}>
+        <div className={styles.page}>
+          <div className={styles.ambientLight} />
+          <div className={styles.layoutGrid}>
+            <div className={styles.fullWidth}>
+              <Plate>
+                <Inset className={styles.connectState}>
+                  <h2 className={styles.connectTitle}>Connect Your Wallet</h2>
+                  <p className={styles.connectDesc}>
+                    Connect your wallet to view your profile, stats, and achievements.
+                  </p>
+                  <button className={styles.connectBtn} onClick={login}>
+                    Connect Wallet
+                  </button>
+                </Inset>
+              </Plate>
+            </div>
           </div>
         </div>
-      </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.ambientLight} />
+    <PageWrapper showHeader={false} showFooter={false}>
+      <div className={styles.page}>
+        <div className={styles.ambientLight} />
 
-      <div className={styles.layoutGrid}>
+        <div className={styles.layoutGrid}>
         {/* Desktop Sidebar */}
         <aside className={styles.sidebar}>
           <nav className={styles.nav}>
@@ -921,6 +1059,7 @@ export default function ProfilePage() {
               fetchBalance={fetchBalance}
               performanceStats={performanceStats}
               activities={activities}
+              onPredictionClick={(pred) => setSelectedPrediction(pred)}
             />
           ) : (
             <SettingsPanel
@@ -930,8 +1069,6 @@ export default function ProfilePage() {
               isConnected={!!isConnected}
               copiedAddress={copiedAddress}
               handleCopyAddress={handleCopyAddress}
-              telegramConnected={!!user?.telegramId}
-              onTelegramLink={() => setShowTelegramLink(true)}
               notificationCount={notificationCount}
               onNotificationsClick={() => {}}
               onLogout={logout}
@@ -949,11 +1086,117 @@ export default function ProfilePage() {
                 limits: { queriesPerDay: limits.queriesPerDay },
                 openBillingPortal,
               }}
+              solBalance={solBalance}
             />
           )}
         </aside>
       </div>
 
-    </div>
+      {/* Prediction Detail Modal */}
+      {selectedPrediction && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedPrediction(null)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Prediction Details</h3>
+              <button
+                className={styles.modalClose}
+                onClick={() => setSelectedPrediction(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <div className={styles.predictionField}>
+                <span className={styles.predictionLabel}>Market ID</span>
+                <span className={styles.predictionValue} style={{ fontFamily: 'var(--pf-font-mono)', fontSize: '11px' }}>
+                  {selectedPrediction.marketId}
+                </span>
+              </div>
+
+              <div className={styles.predictionField}>
+                <span className={styles.predictionLabel}>Direction</span>
+                <span
+                  className={styles.predictionValue}
+                  style={{
+                    color: selectedPrediction.direction === 'YES' ? 'var(--pf-emerald)' : 'var(--pf-indigo)',
+                    fontWeight: 700,
+                  }}
+                >
+                  {selectedPrediction.direction}
+                </span>
+              </div>
+
+              <div className={styles.predictionField}>
+                <span className={styles.predictionLabel}>Probability</span>
+                <span className={styles.predictionValue} style={{ fontFamily: 'var(--pf-font-mono)', fontWeight: 700 }}>
+                  {(selectedPrediction.probability * 100).toFixed(0)}%
+                </span>
+              </div>
+
+              <div className={styles.predictionField}>
+                <span className={styles.predictionLabel}>Created</span>
+                <span className={styles.predictionValue}>
+                  {new Date(selectedPrediction.createdAt).toLocaleString()}
+                </span>
+              </div>
+
+              {selectedPrediction.resolvedAt && (
+                <div className={styles.predictionField}>
+                  <span className={styles.predictionLabel}>Resolved</span>
+                  <span className={styles.predictionValue}>
+                    {new Date(selectedPrediction.resolvedAt).toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {selectedPrediction.outcome !== undefined && (
+                <div className={styles.predictionField}>
+                  <span className={styles.predictionLabel}>Outcome</span>
+                  <span
+                    className={styles.predictionValue}
+                    style={{
+                      color: selectedPrediction.outcome ? 'var(--pf-emerald)' : '#F43F5E',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {selectedPrediction.outcome ? 'Correct' : 'Incorrect'}
+                  </span>
+                </div>
+              )}
+
+              {selectedPrediction.brierScore !== undefined && (
+                <div className={styles.predictionField}>
+                  <span className={styles.predictionLabel}>Brier Score</span>
+                  <span className={styles.predictionValue} style={{ fontFamily: 'var(--pf-font-mono)' }}>
+                    {selectedPrediction.brierScore.toFixed(4)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.modalFooter}>
+              {selectedPrediction.onChainTx ? (
+                <a
+                  href={`https://explorer.solana.com/tx/${selectedPrediction.onChainTx}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.modalExplorerLink}
+                >
+                  <ExternalLink size={14} />
+                  View on Solana Explorer
+                </a>
+              ) : (
+                <span className={styles.modalExplorerLink} style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                  <ExternalLink size={14} />
+                  No transaction recorded
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </PageWrapper>
   );
 }

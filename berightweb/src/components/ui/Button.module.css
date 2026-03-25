@@ -23,6 +23,29 @@
   overflow: hidden;
 }
 
+/* Material Design 3 State Layer */
+.button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-smooth);
+  pointer-events: none;
+}
+
+.button:hover:not(:disabled)::before {
+  opacity: var(--state-hover);
+}
+
+.button:focus-visible::before {
+  opacity: var(--state-focus);
+}
+
+.button:active:not(:disabled)::before {
+  opacity: var(--state-pressed);
+}
+
 .button:focus {
   outline: none;
 }
@@ -44,10 +67,11 @@
 .primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
   box-shadow: var(--shadow-glow-green);
+  transform: translateY(-2px);
 }
 
 .primary:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: translateY(0) scale(0.98);
 }
 
 /* Secondary - Green outline */

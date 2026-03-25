@@ -5,8 +5,11 @@ import { createPortal } from 'react-dom';
 import { animated, useSpring, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import { Prediction } from '@/lib/types';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 import { getDFlowCandlesticks, DFlowCandleData } from '@/lib/api';
+import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
+import { usePredictions } from '@/hooks/usePredictions';
+import { useMode } from '@/context/ModeContext';
 
 interface SwipeCardProps {
   prediction: Prediction;
@@ -360,15 +363,26 @@ function TradingSheet({
   direction,
   onConfirm,
   onClose,
+  walletAddress,
 }: {
   prediction: Prediction;
   isVisible: boolean;
   direction: 'left' | 'right' | null;
   onConfirm: (traded: boolean) => void;
   onClose: () => void;
+  walletAddress: string | null;
 }) {
   const [amount, setAmount] = useState(5);
   const [isTrading, setIsTrading] = useState(false);
+
+  // Calibration - record every prediction on-chain
+  const { recordPrediction } = usePredictionRecorder();
+
+  // Save predictions to localStorage/API for profile display
+  const { savePrediction } = usePredictions(walletAddress);
+
+  // Check if in demo mode
+  const { isDemo } = useMode();
 
   const side = direction === 'right' ? 'YES' : 'NO';
   const isYes = direction === 'right';
@@ -383,7 +397,9 @@ function TradingSheet({
   const potentialProfit = potentialPayout - amount;
 
   // Check if trading is available
-  const canTrade = prediction.dflow?.tokens?.isInitialized;
+  // In demo mode, always allow trading (we record to calibration program, not DFlow)
+  // In production, require DFlow tokens to be initialized
+  const canTrade = isDemo || prediction.dflow?.tokens?.isInitialized;
 
   // Spring animation for sheet
   const sheetSpring = useSpring({
@@ -407,11 +423,45 @@ function TradingSheet({
 
   const handleTrade = async () => {
     setIsTrading(true);
-    // TODO: Integrate actual DFlow trading here
-    // For now, simulate a short delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setIsTrading(false);
-    onConfirm(true);
+
+    try {
+      // Use the selected price as the user's confidence level
+      const probability = isYes ? selectedPrice : 1 - selectedPrice;
+
+      // Record prediction to on-chain calibration program
+      const signature = await recordPrediction({
+        marketId: prediction.id,
+        direction: isYes ? 'yes' : 'no',
+        probability,
+      });
+
+      if (!signature) {
+        throw new Error('Failed to record prediction on-chain');
+      }
+
+      console.log('[SwipeCard] Prediction recorded on-chain:', signature);
+
+      // Save to localStorage with the calibration tx signature
+      const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+      await savePrediction(
+        {
+          id: prediction.id,
+          question: prediction.question,
+          marketOdds: prediction.marketOdds,
+          platform: prediction.platform,
+        },
+        side,
+        signature,
+        explorerUrl
+      );
+
+      setIsTrading(false);
+      onConfirm(true);
+    } catch (err) {
+      console.error('[SwipeCard] Trade error:', err);
+      setIsTrading(false);
+      onConfirm(false);
+    }
   };
 
   const handleSkip = () => {
@@ -500,12 +550,12 @@ function TradingSheet({
             onClick={handleTrade}
             disabled={!canTrade || isTrading}
           >
-            {isTrading ? 'Trading...' : canTrade ? `Confirm ${side}` : 'Trading Unavailable'}
+            {isTrading ? 'Recording...' : isDemo ? `Record ${side}` : (canTrade ? `Confirm ${side}` : 'Trading Unavailable')}
           </button>
         </div>
 
-        {/* DFlow Link */}
-        {!canTrade && (
+        {/* DFlow Link - only show in production when not available */}
+        {!isDemo && !canTrade && (
           <p className="ts-dflow-note">
             <a href="https://dflow.net/proof" target="_blank" rel="noopener noreferrer">
               Verify wallet at DFlow
@@ -693,9 +743,9 @@ function TradingSheet({
         }
 
         .ts-amount-btn.active {
-          background: rgba(0, 194, 255, 0.15);
-          border-color: rgba(0, 194, 255, 0.4);
-          color: #00C2FF;
+          background: rgba(0, 255, 178, 0.15);
+          border-color: rgba(0, 255, 178, 0.4);
+          color: #00FFB2;
         }
 
         .ts-returns {
@@ -727,7 +777,7 @@ function TradingSheet({
         }
 
         .ts-return-value.highlight {
-          color: #00C2FF;
+          color: #00FFB2;
         }
 
         .ts-return-value.profit {
@@ -794,7 +844,7 @@ function TradingSheet({
         }
 
         .ts-dflow-note a {
-          color: #00C2FF;
+          color: #00FFB2;
           text-decoration: none;
         }
 
@@ -1865,7 +1915,7 @@ function getUrgencyBadge(prediction: Prediction, seed: number): { text: string; 
 }
 
 export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet, onTradeComplete, isTop, stackIndex }: SwipeCardProps) {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, walletAddress } = useUser();
   const [pressed, setPressed] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [showTooltips, setShowTooltips] = useState(false);
@@ -2101,6 +2151,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
         direction={pendingDirection}
         onConfirm={handleTradingConfirm}
         onClose={handleTradingClose}
+        walletAddress={walletAddress}
       />
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -2273,8 +2324,8 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
 
         /* ═══ THE CARD ═══ */
         .nb-card {
-          --yes: #00E676;
-          --no: #FF5252;
+          --yes: #00FFB2;
+          --no: #FF4757;
           --amber: #FFB300;
           --accent: #00D9FF;
 
@@ -2306,26 +2357,34 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           position: relative;
           height: 30%;
           min-height: 120px;
+          margin: 12px 12px 0 12px;
+          border-radius: 12px;
           background-size: cover;
           background-position: center;
           background-color: #1f2937;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          overflow: hidden;
+          box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         .nb-hook-overlay {
           position: absolute;
           inset: 0;
           background: linear-gradient(180deg,
-            rgba(0, 0, 0, 0.3) 0%,
-            rgba(0, 0, 0, 0.5) 50%,
-            rgba(15, 15, 26, 1) 100%
+            rgba(0, 0, 0, 0.2) 0%,
+            rgba(0, 0, 0, 0.3) 40%,
+            rgba(15, 15, 26, 0.95) 100%
           );
+          border-radius: 12px;
         }
 
         .nb-hook-top {
           position: absolute;
-          top: 12px;
-          left: 12px;
-          right: 12px;
+          top: 10px;
+          left: 10px;
+          right: 10px;
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
@@ -2403,7 +2462,8 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
 
         /* ═══ ZONE 2: THE QUESTION ═══ */
         .nb-question-zone {
-          padding: 16px 16px 12px;
+          padding: 14px 16px 12px;
+          margin-top: -4px;
         }
 
         .nb-question {
@@ -2463,12 +2523,12 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
 
         .nb-gauge-fill.hot-yes {
           background: linear-gradient(90deg, var(--yes), #00FF88);
-          box-shadow: 0 0 20px rgba(0, 230, 118, 0.5);
+          box-shadow: 0 0 20px rgba(0, 255, 178, 0.5);
         }
 
         .nb-gauge-fill.hot-no {
           background: linear-gradient(90deg, var(--no), #FF7777);
-          box-shadow: 0 0 20px rgba(255, 82, 82, 0.5);
+          box-shadow: 0 0 20px rgba(255, 71, 87, 0.5);
         }
 
         .nb-gauge-fill.contested {
@@ -2490,8 +2550,8 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           line-height: 1;
         }
 
-        .nb-odds-value.hot-yes { color: var(--yes); text-shadow: 0 0 30px rgba(0, 230, 118, 0.5); }
-        .nb-odds-value.hot-no { color: var(--no); text-shadow: 0 0 30px rgba(255, 82, 82, 0.5); }
+        .nb-odds-value.hot-yes { color: var(--yes); text-shadow: 0 0 30px rgba(0, 255, 178, 0.5); }
+        .nb-odds-value.hot-no { color: var(--no); text-shadow: 0 0 30px rgba(255, 71, 87, 0.5); }
         .nb-odds-value.contested { color: var(--amber); text-shadow: 0 0 30px rgba(255, 179, 0, 0.5); }
 
         .nb-odds-label {
@@ -2590,7 +2650,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           right: 20px;
           color: var(--yes);
           border-color: var(--yes);
-          background: rgba(0, 230, 118, 0.15);
+          background: rgba(0, 255, 178, 0.15);
           transform: translateY(-50%) rotate(15deg);
         }
 
@@ -2598,7 +2658,7 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           left: 20px;
           color: var(--no);
           border-color: var(--no);
-          background: rgba(255, 82, 82, 0.15);
+          background: rgba(255, 71, 87, 0.15);
         }
 
         /* ═══ EDGE GLOW EFFECTS ═══ */
@@ -2612,12 +2672,12 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
 
         .nb-glow-yes {
           right: 0;
-          background: linear-gradient(270deg, rgba(0, 230, 118, 0.3) 0%, transparent 100%);
+          background: linear-gradient(270deg, rgba(0, 255, 178, 0.3) 0%, transparent 100%);
         }
 
         .nb-glow-no {
           left: 0;
-          background: linear-gradient(90deg, rgba(255, 82, 82, 0.3) 0%, transparent 100%);
+          background: linear-gradient(90deg, rgba(255, 71, 87, 0.3) 0%, transparent 100%);
         }
 
         /* ═══ SWIPE LABELS ═══ */

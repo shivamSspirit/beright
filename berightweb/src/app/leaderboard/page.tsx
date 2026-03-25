@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { useLeaderboard, useOnChainLeaderboard, useBackendStatus } from '@/hooks/useMarkets';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 import { Layers, Shield } from 'lucide-react';
+import { PageWrapper } from '@/components/ui';
 import styles from './leaderboard.module.css';
 import { computeLeague, computeLevel, computeLeagueFromAccuracy, getXpToNextLeague } from '@/lib/leagues';
 import { formatCurrency, formatAddress } from '@/lib/format';
@@ -209,7 +210,47 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className={styles.pageContainer}>
+    <PageWrapper showHeader={false} showFooter={false}>
+      <div className={styles.pageContainer}>
+
+      {/* DESKTOP USER BAR - Full width, ABOVE filters, below global header */}
+      <div className={styles.desktopUserBar}>
+        <div className={styles.userBarContent}>
+          <div className={styles.userBarInfo}>
+            <div className={styles.userBarAvatar}>
+              {user?.username?.charAt(0) || 'Y'}
+            </div>
+            <div className={styles.userBarMeta}>
+              <span className={styles.userBarName}>{getUserDisplay()}</span>
+              <span className={styles.userBarLeague}>{userLeague} League</span>
+            </div>
+          </div>
+          <div className={styles.userBarStats}>
+            <div className={styles.userBarStat}>
+              <span className={styles.userBarStatLabel}>Rank</span>
+              <span className={styles.userBarStatValue}>#{userRank}</span>
+            </div>
+            <div className={styles.userBarStat}>
+              <span className={styles.userBarStatLabel}>Level</span>
+              <span className={styles.userBarStatValue}>{userLevel}</span>
+            </div>
+            <div className={styles.userBarStat}>
+              <span className={styles.userBarStatLabel}>XP</span>
+              <span className={styles.userBarStatValue}>{(userXp / 1000).toFixed(1)}K</span>
+            </div>
+          </div>
+          <ShareButton
+            context={{
+              type: 'leaderboard',
+              data: { rank: userRank, username: user?.username || 'Anon', xp: userXp },
+            }}
+            referralCode={referralCode || undefined}
+            variant="button"
+            size="sm"
+          />
+        </div>
+      </div>
+
       {/* DESKTOP FILTERS - Single row with all filters */}
       <header className={styles.desktopHeader}>
         <div className={styles.headerFilters}>
@@ -465,48 +506,6 @@ export default function LeaderboardPage() {
 
         {/* DESKTOP RIGHT PANEL */}
         <section className={styles.rightPanel}>
-          {/* Desktop User Standing - Top of right panel */}
-          <div className={styles.desktopUserStanding}>
-            <div className={styles.desktopUserCard}>
-              <div className={styles.desktopUserInfo}>
-                <div className={styles.desktopUserAvatar}>
-                  {user?.username?.charAt(0) || 'Y'}
-                </div>
-                <div className={styles.desktopUserMeta}>
-                  <span className={styles.desktopUserName}>{getUserDisplay()}</span>
-                  <span className={styles.desktopUserLeague}>{userLeague} League</span>
-                </div>
-              </div>
-              <div className={styles.desktopUserStats}>
-                <div className={styles.desktopStatItem}>
-                  <span className={styles.desktopStatLabel}>Rank</span>
-                  <span className={styles.desktopStatValue}>#{userRank}</span>
-                </div>
-                <div className={styles.desktopStatItem}>
-                  <span className={styles.desktopStatLabel}>Level</span>
-                  <span className={styles.desktopStatValue}>{userLevel}</span>
-                </div>
-                <div className={styles.desktopStatItem}>
-                  <span className={styles.desktopStatLabel}>XP</span>
-                  <span className={styles.desktopStatValue}>{(userXp / 1000).toFixed(1)}K</span>
-                </div>
-              </div>
-              <ShareButton
-                context={{
-                  type: 'leaderboard',
-                  data: {
-                    rank: userRank,
-                    username: user?.username || 'Anon',
-                    xp: userXp,
-                  },
-                }}
-                referralCode={referralCode || undefined}
-                variant="button"
-                size="sm"
-              />
-            </div>
-          </div>
-
           <div className={styles.listHeader}>
             <div>Rnk</div>
             <div>Trader</div>
@@ -604,6 +603,7 @@ export default function LeaderboardPage() {
         </div>
       </main>
 
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

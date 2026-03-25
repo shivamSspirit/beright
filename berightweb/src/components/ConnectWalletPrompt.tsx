@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 
 interface ConnectWalletPromptProps {
   title?: string;
@@ -217,10 +217,10 @@ export default function ConnectWalletPrompt({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(0, 230, 118, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
+          background: linear-gradient(135deg, rgba(0, 255, 178, 0.2) 0%, rgba(0, 176, 255, 0.2) 100%);
           border-radius: 50%;
           margin: 0 auto 20px;
-          box-shadow: 0 0 40px rgba(0, 230, 118, 0.15);
+          box-shadow: 0 0 40px rgba(0, 255, 178, 0.15);
         }
 
         .cwp-icon svg {
@@ -268,7 +268,7 @@ export default function ConnectWalletPrompt({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(0, 230, 118, 0.15);
+          background: rgba(0, 255, 178, 0.15);
           border-radius: 50%;
           color: #10B981;
           font-size: 11px;
@@ -283,7 +283,7 @@ export default function ConnectWalletPrompt({
           gap: 10px;
           width: 100%;
           padding: 14px 20px;
-          background: linear-gradient(135deg, #10B981 0%, #00C2FF 100%);
+          background: linear-gradient(135deg, #00FFB2 0%, #00E6A0 100%);
           border: none;
           border-radius: 14px;
           font-size: 15px;
@@ -291,12 +291,12 @@ export default function ConnectWalletPrompt({
           color: #000;
           cursor: pointer;
           transition: all 0.2s;
-          box-shadow: 0 4px 20px rgba(0, 230, 118, 0.3);
+          box-shadow: 0 4px 20px rgba(0, 255, 178, 0.3);
         }
 
         .cwp-button:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 32px rgba(0, 230, 118, 0.4);
+          box-shadow: 0 8px 32px rgba(0, 255, 178, 0.4);
         }
 
         .cwp-button:active:not(:disabled) {

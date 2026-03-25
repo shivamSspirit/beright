@@ -8,7 +8,7 @@ import ConnectWalletPrompt from './ConnectWalletPrompt';
 // Note: AIFactCheckModal and TradingModal are no longer used
 // Trading is now handled inline via TradingSheet in SwipeCard
 import { Prediction, DFlowData } from '@/lib/types';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 import confetti from 'canvas-confetti';
 
 // ═══════════════════════════════════════════════════════════
@@ -166,7 +166,7 @@ function CompletionScreen({
       <div className="grid grid-cols-2 gap-4 w-full max-w-xs mb-6">
         <div
           className="p-4 rounded-xl text-center"
-          style={{ background: 'var(--yes-subtle)', border: '1px solid rgba(0, 230, 118, 0.3)' }}
+          style={{ background: 'var(--yes-subtle)', border: '1px solid rgba(0, 255, 178, 0.3)' }}
         >
           <div className="text-2xl font-bold font-mono" style={{ color: 'var(--yes)' }}>
             {yesCount}

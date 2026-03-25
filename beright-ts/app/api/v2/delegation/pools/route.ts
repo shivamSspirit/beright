@@ -1,180 +1,192 @@
 /**
  * Delegation Pools API
  *
- * GET /api/v2/delegation/pools - List pools with filters
- * POST /api/v2/delegation/pools - Create pool (returns unsigned transaction)
+ * GET /api/v2/delegation/pools - List pools from BLOCKCHAIN (not Supabase)
+ *
+ * Fetches all staking pools directly from Solana, no database needed.
+ *
+ * @author BeRight Protocol
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Connection, PublicKey, Keypair } from '@solana/web3.js';
-import {
-  listPools,
-  checkPoolEligibility,
-  createDelegationPoolClient,
-  TIER_REQUIREMENTS,
-} from '@/lib/delegation';
-import type { PoolFilterOptions, OnChainPoolStatus, ForecasterTier } from '@/lib/delegation';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { isDemo } from '@/lib/mode';
 
-// Devnet RPC
-const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+// Tier mapping for display
+const TIER_LABELS: Record<string, string> = {
+  rookie: 'Rookie',
+  verified: 'Verified',
+  elite: 'Elite',
+  super: 'Super Forecaster',
+  unranked: 'Unranked',
+};
+
+// Parse pool type from Anchor enum
+function parsePoolType(poolType: any): string {
+  if (poolType?.tournament) return 'tournament';
+  if (poolType?.alphaVault) return 'alpha_vault';
+  if (poolType?.indexPool) return 'index_pool';
+  return 'alpha_vault';
+}
+
+// Parse pool status from Anchor enum
+function parsePoolStatus(status: any): string {
+  if (status?.pending) return 'pending';
+  if (status?.open) return 'open';
+  if (status?.active) return 'active';
+  if (status?.paused) return 'paused';
+  if (status?.settling) return 'settling';
+  if (status?.closed) return 'closed';
+  return 'open';
+}
+
+// Determine tier from Brier score
+function determineTier(brierScore: number | null): string {
+  if (brierScore === null) return 'unranked';
+  if (brierScore <= 0.15) return 'super';
+  if (brierScore <= 0.20) return 'elite';
+  if (brierScore <= 0.25) return 'verified';
+  return 'rookie';
+}
 
 /**
  * GET /api/v2/delegation/pools
  *
- * List pools with optional filters
+ * List all pools from blockchain
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { searchParams } = new URL(request.url);
+    const statusFilter = searchParams.get('status');
+    const tierFilter = searchParams.get('tier');
+    const sortBy = searchParams.get('sortBy') || 'tvl';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const limit = parseInt(searchParams.get('limit') || '50');
 
-    const filters: PoolFilterOptions = {
-      status: parseStatus(searchParams.get('status')),
-      tier: parseTier(searchParams.get('tier')),
-      minTvl: searchParams.get('minTvl')
-        ? parseFloat(searchParams.get('minTvl')!)
-        : undefined,
-      maxTvl: searchParams.get('maxTvl')
-        ? parseFloat(searchParams.get('maxTvl')!)
-        : undefined,
-      sortBy: (searchParams.get('sortBy') as any) || 'tvl',
-      sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
-      limit: parseInt(searchParams.get('limit') || '20'),
-      offset: parseInt(searchParams.get('offset') || '0'),
-    };
+    // Get RPC URL
+    const rpcUrl = isDemo()
+      ? process.env.HELIUS_RPC_DEVNET || 'https://api.devnet.solana.com'
+      : process.env.SOLANA_RPC_URL || process.env.HELIUS_RPC_MAINNET || 'https://api.mainnet-beta.solana.com';
 
-    const pools = await listPools(filters);
+    const network = isDemo() ? 'devnet' : 'mainnet';
+    const connection = new Connection(rpcUrl, 'confirmed');
+
+    console.log(`[API delegation/pools] Fetching pools from blockchain (${network})...`);
+
+    // Import Anchor client
+    const { getStakingPoolClient } = await import('@/lib/staking/forecast-pool');
+    const client = getStakingPoolClient(connection, { network });
+
+    // Fetch all pools from blockchain
+    const onChainPools = await client.getAllPools();
+
+    console.log(`[API delegation/pools] Found ${onChainPools.length} pools on-chain`);
+
+    // Token decimals: SOL = 9, USDC = 6
+    const demoMode = isDemo();
+    const tokenDecimals = demoMode ? 1e9 : 1e6;
+
+    // Transform to API format
+    let pools = onChainPools.map((pool) => {
+      const state = pool.state as any;
+
+      // Extract values from on-chain state
+      const totalDeposits = state.totalDeposits ? Number(state.totalDeposits.toString()) : 0;
+      const navPerShare = state.navPerShare ? Number(state.navPerShare.toString()) / 1e9 : 1;
+      const depositorCount = state.depositorCount || 0;
+      const performanceFeeBps = state.config?.performanceFeeBps || 2000;
+      const forecaster = state.forecaster?.toBase58() || '';
+
+      // Determine tier based on pool config or default
+      const brierScore = state.avgBrierScore || null;
+      const tier = determineTier(brierScore);
+
+      return {
+        id: pool.address.toBase58(),
+        poolPda: pool.address.toBase58(),
+        slug: null,
+        name: `Pool ${pool.address.toBase58().slice(0, 8)}...`,
+        forecasterWallet: forecaster,
+        forecasterTier: tier,
+        forecasterBrier: brierScore,
+        status: parsePoolStatus(state.status),
+        tvl: totalDeposits / tokenDecimals, // Convert to token units (SOL or USDC)
+        navPerShare: navPerShare,
+        delegatorCount: depositorCount,
+        performanceFeeBps: performanceFeeBps,
+        createdAt: state.createdAt
+          ? new Date(Number(state.createdAt.toString()) * 1000).toISOString()
+          : new Date().toISOString(),
+      };
+    });
+
+    // Apply filters
+    if (statusFilter && statusFilter !== 'all') {
+      const statuses = statusFilter.split(',');
+      pools = pools.filter((p) => statuses.includes(p.status));
+    }
+
+    if (tierFilter && tierFilter !== 'all') {
+      const tiers = tierFilter.split(',');
+      pools = pools.filter((p) => tiers.includes(p.forecasterTier));
+    }
+
+    // Apply sorting
+    pools.sort((a, b) => {
+      let aVal: number, bVal: number;
+
+      switch (sortBy) {
+        case 'tvl':
+          aVal = a.tvl;
+          bVal = b.tvl;
+          break;
+        case 'nav':
+          aVal = a.navPerShare;
+          bVal = b.navPerShare;
+          break;
+        case 'delegators':
+          aVal = a.delegatorCount;
+          bVal = b.delegatorCount;
+          break;
+        case 'brier':
+          aVal = a.forecasterBrier || 1;
+          bVal = b.forecasterBrier || 1;
+          break;
+        case 'created':
+          aVal = new Date(a.createdAt).getTime();
+          bVal = new Date(b.createdAt).getTime();
+          break;
+        default:
+          aVal = a.tvl;
+          bVal = b.tvl;
+      }
+
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+
+    // Apply limit
+    pools = pools.slice(0, limit);
 
     return NextResponse.json({
       success: true,
       data: pools,
       meta: {
         count: pools.length,
-        filters: {
-          status: filters.status,
-          tier: filters.tier,
-          sortBy: filters.sortBy,
-        },
+        source: 'blockchain',
+        network,
+        latencyMs: Date.now() - startTime,
       },
     });
   } catch (error) {
-    console.error('[API] Failed to list pools:', error);
+    console.error('[API delegation/pools] Error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to list pools',
+        error: error instanceof Error ? error.message : 'Failed to list pools',
       },
       { status: 500 }
     );
   }
-}
-
-/**
- * POST /api/v2/delegation/pools
- *
- * Create a new pool (returns unsigned transaction)
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { forecasterWallet, name, description, poolType, baseMint, config } = body;
-
-    if (!forecasterWallet) {
-      return NextResponse.json(
-        { success: false, error: 'forecasterWallet is required' },
-        { status: 400 }
-      );
-    }
-
-    // Check eligibility
-    const eligibility = await checkPoolEligibility(forecasterWallet);
-
-    if (!eligibility.eligible) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Not eligible to create pool',
-          eligibility,
-        },
-        { status: 403 }
-      );
-    }
-
-    // Build transaction
-    const connection = new Connection(RPC_URL, 'confirmed');
-
-    // Create dummy wallet for building transaction (user will sign client-side)
-    const dummyKeypair = Keypair.generate();
-    const dummyWallet = {
-      publicKey: new PublicKey(forecasterWallet),
-      signTransaction: async (tx: any) => tx,
-      signAllTransactions: async (txs: any[]) => txs,
-    };
-
-    const client = createDelegationPoolClient(connection, dummyWallet as any);
-
-    // Determine max capacity from tier
-    const maxCapacityUsd = TIER_REQUIREMENTS[eligibility.tier].capacity;
-    const maxCapacity =
-      maxCapacityUsd === Infinity
-        ? BigInt(Number.MAX_SAFE_INTEGER)
-        : BigInt(maxCapacityUsd) * BigInt(1_000000);
-
-    const { transaction, poolPda, poolMint } = await client.buildInitializePoolTx({
-      forecaster: new PublicKey(forecasterWallet),
-      poolType: poolType || 'alpha_vault',
-      baseMint: new PublicKey(baseMint || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'), // USDC
-      config: {
-        ...config,
-        maxCapacity,
-      },
-      avgBrierScore: eligibility.brierScore || 0.25,
-      resolvedPredictions: eligibility.predictionCount,
-    });
-
-    // Serialize transaction for client signing
-    const serializedTx = transaction
-      .serialize({ requireAllSignatures: false })
-      .toString('base64');
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        transaction: serializedTx,
-        poolPda: poolPda.toBase58(),
-        poolMint: poolMint.toBase58(),
-        eligibility,
-        poolConfig: {
-          name,
-          description,
-          maxCapacity: maxCapacityUsd,
-          tier: eligibility.tier,
-        },
-      },
-    });
-  } catch (error) {
-    console.error('[API] Failed to create pool:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create pool',
-      },
-      { status: 500 }
-    );
-  }
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function parseStatus(value: string | null): OnChainPoolStatus | OnChainPoolStatus[] | undefined {
-  if (!value) return undefined;
-  const statuses = value.split(',') as OnChainPoolStatus[];
-  return statuses.length === 1 ? statuses[0] : statuses;
-}
-
-function parseTier(value: string | null): ForecasterTier | ForecasterTier[] | undefined {
-  if (!value) return undefined;
-  const tiers = value.split(',') as ForecasterTier[];
-  return tiers.length === 1 ? tiers[0] : tiers;
 }
