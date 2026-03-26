@@ -90,11 +90,43 @@ function PrivyWalletBridge({ children }: { children: ReactNode }) {
       login,
       logout,
       signTransaction: signTransaction ? async (tx: Uint8Array) => {
-        if (!solanaWallet) throw new Error('No Solana wallet available');
+        // Helper to get current wallet from window state (live reference)
+        const getCurrentWallet = () => {
+          const rawWallet = (window as Window & { __BERIGHT_WALLET_RAW__?: unknown }).__BERIGHT_WALLET_RAW__;
+          return rawWallet || null;
+        };
+
+        // Wait for wallet to be ready (with timeout)
+        let currentWallet = getCurrentWallet();
+        let attempts = 0;
+        const maxAttempts = 10; // 5 seconds max wait
+
+        while (!currentWallet && attempts < maxAttempts) {
+          console.log(`[Privy] Waiting for wallet initialization (attempt ${attempts + 1}/${maxAttempts})...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+          currentWallet = getCurrentWallet(); // Re-check live wallet state
+        }
+
+        if (!currentWallet) {
+          const debugState = (window as Window & { __BERIGHT_PRIVY__?: Record<string, unknown> }).__BERIGHT_PRIVY__;
+          console.error('[Privy] Wallet not ready after timeout', debugState);
+          throw new Error(
+            'Solana wallet not ready. Please ensure you are logged in and wallet is connected.'
+          );
+        }
+
+        console.log('[Privy] Signing transaction with wallet:', {
+          address: (currentWallet as { address?: string }).address?.slice(0, 8),
+          type: (currentWallet as { walletClientType?: string }).walletClientType,
+        });
+
+        // Cast to any to bypass type checking - we've already validated the wallet exists
         const { signedTransaction } = await signTransaction({
           transaction: tx,
-          wallet: solanaWallet,
+          wallet: currentWallet as any,
         });
+
         return signedTransaction;
       } : null,
       // Raw Privy signTransaction for advanced use

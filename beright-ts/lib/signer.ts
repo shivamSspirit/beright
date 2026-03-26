@@ -24,6 +24,7 @@ import {
   Commitment,
 } from '@solana/web3.js';
 import { secrets, SecretNotConfiguredError } from './secrets';
+import { getMode, getSolanaNetwork } from './mode';
 
 export interface SignerConfig {
   rpcUrl?: string;
@@ -41,6 +42,28 @@ export interface SignerInfo {
 }
 
 /**
+ * Detect Solana network from RPC URL
+ */
+function detectNetworkFromRpc(rpcUrl: string): 'devnet' | 'mainnet-beta' | 'unknown' {
+  const url = rpcUrl.toLowerCase();
+
+  if (url.includes('devnet')) {
+    return 'devnet';
+  }
+
+  if (url.includes('mainnet') || url.includes('mainnet-beta')) {
+    return 'mainnet-beta';
+  }
+
+  // Check for common mainnet RPC providers (without explicit 'mainnet' in URL)
+  if (url.includes('helius') && !url.includes('devnet')) {
+    return 'mainnet-beta'; // Helius defaults to mainnet unless devnet specified
+  }
+
+  return 'unknown';
+}
+
+/**
  * Secure Solana signer
  *
  * Usage:
@@ -55,7 +78,42 @@ export class SolanaSigner {
   constructor(config: SignerConfig = {}) {
     const rpcUrl = config.rpcUrl || secrets.getHeliusRpcUrl();
     this.commitment = config.commitment || 'confirmed';
+
+    // Validate RPC network matches mode configuration
+    const currentMode = getMode();
+    const expectedNetwork = getSolanaNetwork();
+    const detectedNetwork = detectNetworkFromRpc(rpcUrl);
+
+    // Only validate if we can detect the network
+    if (detectedNetwork !== 'unknown' && detectedNetwork !== expectedNetwork) {
+      const errorMsg = [
+        `❌ RPC Network Mismatch Detected!`,
+        ``,
+        `Mode: ${currentMode}`,
+        `Expected Network: ${expectedNetwork}`,
+        `Detected RPC Network: ${detectedNetwork}`,
+        `RPC URL: ${rpcUrl.substring(0, 50)}...`,
+        ``,
+        `This mismatch will cause transaction signing failures.`,
+        ``,
+        `Fix: Set BERIGHT_MODE=${detectedNetwork === 'devnet' ? 'demo' : 'production'} in your environment variables.`,
+      ].join('\n');
+
+      console.error(errorMsg);
+
+      // Throw error to prevent silent failures
+      throw new Error(
+        `RPC network mismatch: ${currentMode} mode expects ${expectedNetwork} but RPC is ${detectedNetwork}. ` +
+        `Set BERIGHT_MODE environment variable correctly.`
+      );
+    }
+
     this.connection = new Connection(rpcUrl, this.commitment);
+
+    // Log successful initialization with network info
+    if (detectedNetwork !== 'unknown') {
+      console.log(`✅ SolanaSigner initialized: ${currentMode} mode, ${detectedNetwork} network`);
+    }
   }
 
   /**

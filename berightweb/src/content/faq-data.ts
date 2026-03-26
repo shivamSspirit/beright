@@ -63,7 +63,7 @@ export const FAQ_ITEMS: FAQItem[] = [
 • **On-chain calibration** - Build a verifiable forecasting track record with Brier scores on Solana
 • **Real-time signals** - Whale movements, price alerts, and market intelligence
 • **Swipe-to-trade** - Mobile-first trading experience via the web app
-• **Conviction Pools** - Delegate capital to top forecasters with 60/20/20 profit split (60% to you, 20% to forecaster, 20% to protocol)
+• **Conviction Pools** - Delegate capital to top forecasters with 50/30/20 profit split (50% to forecaster, 30% to you, 20% to protocol)
 
 Think of BeRight as your AI copilot for prediction markets.`,
   },
@@ -557,11 +557,11 @@ The terminal remembers context, so follow-up questions work naturally.`,
 1. Elite/Superforecaster creates a pool
 2. You deposit SOL/USDC to the pool
 3. Forecaster makes predictions on your behalf
-4. Profits are distributed via the 60/20/20 model
+4. Profits are distributed via the 50/30/20 model
 
 **Profit Split:**
-• **60%** → Capital Providers (you, the delegator)
-• **20%** → Forecaster (performance incentive)
+• **50%** → Forecaster (performance incentive)
+• **30%** → Capital Providers (you, the delegator)
 • **20%** → BeRight Protocol (platform fee)
 
 **Pool Types:**
@@ -612,7 +612,7 @@ The terminal remembers context, so follow-up questions work naturally.`,
 **Active Trading (Primary):**
 • Forecaster makes predictions on markets
 • Profitable predictions generate returns
-• Returns split: 60% to you, 20% to forecaster, 20% to protocol
+• Returns split: 50% to forecaster, 30% to you, 20% to protocol
 
 **Yield Allocation (Passive):**
 • Idle pool capital earns yield via Sanctum INF (~6.4% APY)
@@ -626,7 +626,7 @@ The terminal remembers context, so follow-up questions work naturally.`,
 
 **Example returns:**
 • Elite forecaster generates 30% gross profit
-• Your share (60%): 18% net to you
+• Your share (30%): 9% net to you
 • Plus passive yield (~6% APY) on idle capital
 
 **Note:** Past performance doesn't guarantee future results. Prediction markets carry risk.`,

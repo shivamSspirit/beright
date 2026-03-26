@@ -228,11 +228,11 @@ export interface RevenueSplit {
 }
 
 /**
- * Default revenue split: 30/50/20
+ * Default revenue split: 50/30/20
  */
 export const DEFAULT_REVENUE_SPLIT: RevenueSplit = {
-  forecasterBps: 3000, // 30%
-  delegatorBps: 5000,  // 50%
+  forecasterBps: 5000, // 50%
+  delegatorBps: 3000,  // 30%
   platformBps: 2000,   // 20%
 };
 

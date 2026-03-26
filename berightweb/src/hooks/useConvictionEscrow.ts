@@ -28,6 +28,7 @@ import {
 
 // Conviction escrow runs on devnet - use devnet RPC
 const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+const SOLANA_NETWORK = 'devnet'; // Conviction escrow is ALWAYS on devnet
 const API_BASE = '';
 
 // ============================================================================
@@ -393,6 +394,23 @@ export function useConvictionEscrow(projectWallet?: string) {
       transaction = VersionedTransaction.deserialize(txBuffer);
     } catch {
       transaction = Transaction.from(txBuffer);
+    }
+
+    // IMPORTANT: Log network info for debugging
+    console.log(`[useConvictionEscrow] 🔐 Signing transaction:`, {
+      network: SOLANA_NETWORK,
+      rpc: SOLANA_RPC.substring(0, 40),
+      provider: currentProvider,
+      txType: transaction instanceof VersionedTransaction ? 'VersionedTransaction' : 'Transaction',
+    });
+
+    // CRITICAL: Warn if mode/network mismatch detected
+    const currentMode = (window as Window & { __BERIGHT_MODE__?: string }).__BERIGHT_MODE__;
+    if (currentMode === 'production' && SOLANA_NETWORK === 'devnet') {
+      console.warn(
+        '⚠️  NETWORK MISMATCH: Running in production mode but conviction escrow uses devnet. ' +
+        'This is expected - conviction escrow is deployed on devnet only.'
+      );
     }
 
     // Sign using the provider's signTransaction function

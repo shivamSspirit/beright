@@ -113,9 +113,9 @@ impl Default for ForecastPoolStatus {
 /// Total must equal 10000 (100%)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
 pub struct RevenueSplit {
-    /// Forecaster share (default: 3000 = 30%)
+    /// Forecaster share (default: 5000 = 50%)
     pub forecaster_bps: u16,
-    /// Delegator share (default: 5000 = 50%)
+    /// Delegator share (default: 3000 = 30%)
     pub delegator_bps: u16,
     /// Platform share (default: 2000 = 20%)
     pub platform_bps: u16,
@@ -124,8 +124,8 @@ pub struct RevenueSplit {
 impl Default for RevenueSplit {
     fn default() -> Self {
         Self {
-            forecaster_bps: 3000, // 30%
-            delegator_bps: 5000,  // 50%
+            forecaster_bps: 5000, // 50%
+            delegator_bps: 3000,  // 30%
             platform_bps: 2000,   // 20%
         }
     }

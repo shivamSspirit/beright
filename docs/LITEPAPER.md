@@ -56,8 +56,8 @@ Prediction markets offer a unique mechanism for aggregating information and fore
                                     ▼
                             ┌─────────────────┐
                             │ PROFIT SPLIT    │
-                            │ 30% Forecaster  │
-                            │ 50% Delegators  │
+                            │ 50% Forecaster  │
+                            │ 30% Delegators  │
                             │ 20% Platform    │
                             └─────────────────┘
 ```
@@ -68,7 +68,7 @@ Prediction markets offer a unique mechanism for aggregating information and fore
 2. **Qualified forecasters** can create staking pools based on their Brier score
 3. **Delegators** stake SOL or USDC to pools, receiving shares proportional to their deposit
 4. **Forecasters** use pool capital to make predictions on supported markets
-5. **Profits** are distributed automatically: 30% forecaster, 50% delegators, 20% platform
+5. **Profits** are distributed automatically (50/30/20): 50% forecaster, 20% delegators (stays in pool), 20% platform
 
 ---
 
@@ -188,17 +188,24 @@ Pool TVL: 50 SOL
 
 ## Revenue Distribution
 
-### Profit Split (On Winning Predictions)
+### Profit Split (On Winning Predictions) - 50/30/20 Model
 
 ```
 Prediction Profit: 10 SOL
          │
-         ├──▶ 30% Forecaster:  3 SOL (direct payout)
+         ├──▶ 50% Forecaster:  5 SOL (direct payout)
          │
-         ├──▶ 50% Delegators:  5 SOL (increases share price)
+         ├──▶ 30% Delegators:  3 SOL (increases share price)
          │
          └──▶ 20% Platform:    2 SOL (treasury)
 ```
+
+**Why this split?**
+- **Forecaster (50%)**: Strong incentive to perform
+- **Delegators (30%)**: Meaningful return worth the capital risk
+- **Platform (20%)**: Sustainable development funding
+
+This is based on battle-tested DeFi primitives (Jito, Marinade) and provides perfect incentive alignment.
 
 ### How Delegators Earn
 
@@ -303,34 +310,6 @@ POST /api/v2/forecast-pools/create       # Create pool tx
 POST /api/v2/forecast-pools/{id}/stake   # Stake tx
 POST /api/v2/forecast-pools/{id}/unstake # Unstake tx
 ```
-
----
-
-## Roadmap
-
-### Phase 1: Foundation (Complete)
-- [x] On-chain calibration program
-- [x] Brier score tracking
-- [x] Forecaster staking pools
-- [x] Devnet deployment
-
-### Phase 2: Launch (Q2 2025)
-- [ ] Mainnet deployment
-- [ ] Web app public beta
-- [ ] Polymarket & Kalshi integration
-- [ ] Leaderboard & discovery
-
-### Phase 3: Scale (Q3 2025)
-- [ ] Mobile app
-- [ ] Additional market integrations
-- [ ] Institutional tier pools
-- [ ] Governance token
-
-### Phase 4: Ecosystem (Q4 2025)
-- [ ] Third-party forecaster tools
-- [ ] API for external integrations
-- [ ] Cross-chain expansion
-- [ ] DAO governance
 
 ---
 

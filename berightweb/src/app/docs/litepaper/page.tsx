@@ -18,10 +18,9 @@ const TOC_SECTIONS = [
   { id: 'competitive', number: 6, label: 'Competitive Landscape' },
   { id: 'product', number: 7, label: 'BeRight Product' },
   { id: 'reputation', number: 8, label: 'Reputation System' },
-  { id: 'staking-pools', number: 9, label: 'Staking Pools' },
+  { id: 'staking-pools', number: 9, label: 'Conviction Pools' },
   { id: 'business-model', number: 10, label: 'Business Model' },
-  { id: 'roadmap', number: 11, label: 'Roadmap' },
-  { id: 'conclusion', number: 12, label: 'Conclusion' },
+  { id: 'conclusion', number: 11, label: 'Conclusion' },
 ];
 
 // ===========================================================================
@@ -106,7 +105,7 @@ const SOLUTIONS = [
   {
     iconKey: 'crossPlatform',
     title: 'Cross-Platform Aggregation',
-    description: 'One interface for Polymarket, Kalshi, Jupiter, DFlow, Manifold, and more. Best price, arbitrage alerts, unified portfolio.',
+    description: 'One interface for major prediction markets including Polymarket, Kalshi, Jupiter, and more. Best price, arbitrage alerts, unified portfolio.',
   },
   {
     iconKey: 'reputation',
@@ -128,12 +127,12 @@ const PRODUCT_FEATURES = [
   {
     iconKey: 'swipe',
     title: 'Swipe Interface (Consumer)',
-    description: 'Mobile-first prediction cards with aggregated markets from 6+ platforms. Real-time pricing, volume, time remaining. AI edge detection on every card.',
+    description: 'Mobile-first prediction cards with aggregated markets from multiple platforms. Real-time pricing, volume, time remaining. AI edge detection on every card.',
   },
   {
     iconKey: 'agents',
     title: 'AI Agent Fleet (Intelligence)',
-    description: 'Multi-agent system with 25+ tools. Orchestrator routes to Scout (<2s), Analyst (5-15s), Trader (2-3s), and xDegen (2-5s) based on intent.',
+    description: 'Multi-agent system with extensive tool integration. Intelligent orchestrator routes queries to specialized agents (Scout, Analyst, Trader, xDegen) based on complexity and intent.',
   },
   {
     iconKey: 'reputation',
@@ -143,12 +142,12 @@ const PRODUCT_FEATURES = [
   {
     iconKey: 'pools',
     title: 'Conviction Pools (Capital Delegation)',
-    description: 'Elite forecasters create pools with custom fee structures. Capitalists delegate USDC, receive LP tokens. 80/20 profit split. Idle capital earns 6.4% APY via Sanctum INF.',
+    description: 'Elite forecasters create pools with custom fee structures. Capitalists delegate USDC, receive pool shares. 50/30/20 profit split (forecaster/delegators/platform). Idle capital earns 6.4% APY via Sanctum INF.',
   },
   {
     iconKey: 'dataFabric',
     title: 'Data Fabric (Aggregation)',
-    description: 'Unified market data with 30-second cache from Polymarket, Kalshi, Jupiter, DFlow, Manifold, Limitless, and Metaculus. Real-time arbitrage detection.',
+    description: 'Unified market data with optimized caching from major prediction market platforms including Polymarket, Kalshi, Jupiter, and others. Real-time arbitrage detection.',
   },
 ];
 
@@ -191,7 +190,7 @@ const REVENUE_STREAMS = [
   {
     title: 'Performance Fee',
     value: '20%',
-    description: 'Platform share from Staking Pools profits',
+    description: 'Platform share from Conviction Pools profits (60/20/20 split)',
   },
   {
     title: 'Execution Fee',
@@ -211,10 +210,10 @@ const DECAY_FORMULA = {
 };
 
 const DECAY_PRESETS = [
-  { name: 'Slow', lambda: '0.01', halfLife: '69 days', lookback: '2 years', useCase: 'Long-term reputation' },
-  { name: 'Moderate', lambda: '0.02', halfLife: '35 days', lookback: '1 year', useCase: 'Default (balanced)' },
-  { name: 'Fast', lambda: '0.05', halfLife: '14 days', lookback: '180 days', useCase: 'Recent focus' },
-  { name: 'Slashing', lambda: '0.10', halfLife: '7 days', lookback: '90 days', useCase: 'Accountability' },
+  { name: 'Conservative', halfLife: '60+ days', lookback: '2 years', useCase: 'Long-term reputation' },
+  { name: 'Balanced', halfLife: '30-40 days', lookback: '1 year', useCase: 'Default mode' },
+  { name: 'Aggressive', halfLife: '10-20 days', lookback: '180 days', useCase: 'Recent focus' },
+  { name: 'Strict', halfLife: '<10 days', lookback: '90 days', useCase: 'High accountability' },
 ];
 
 const TIER_REQUIREMENTS = [
@@ -240,7 +239,7 @@ const POOL_TIERS = [
 ];
 
 const POOL_CONSTANTS = {
-  revenueSplit: { forecaster: 20, delegator: 60, platform: 20 },
+  revenueSplit: { forecaster: 50, delegator: 30, platform: 20 },
   lockupPeriod: '7 days',
   withdrawalFee: '0.5%',
   earlyExitFee: '2%',
@@ -255,34 +254,34 @@ const POOL_CONSTANTS = {
 
 const ML_ALGORITHMS = [
   {
-    name: 'SBERT (all-MiniLM-L6-v2)',
+    name: 'Semantic Embedding Model',
     type: 'Embeddings',
-    description: '384-dimensional semantic embeddings for market text matching. ~5ms inference, runs locally via ONNX.',
+    description: 'High-dimensional semantic embeddings for market text matching with sub-second inference times.',
   },
   {
-    name: 'XGBoost Fusion Classifier',
+    name: 'Ensemble Classifier',
     type: 'Classification',
-    description: 'Combines 8 features (embedding similarity, cross-encoder, entity overlap, date proximity) for market matching.',
+    description: 'Combines multiple signals including semantic similarity, entity overlap, and temporal proximity for accurate market matching.',
   },
   {
-    name: 'GPT-4o-mini',
-    type: 'LLM Classification',
-    description: 'Fallback classifier for edge cases. Rate-limited with caching to minimize costs.',
+    name: 'LLM Fallback',
+    type: 'Classification',
+    description: 'Advanced language model for edge cases requiring deeper reasoning.',
   },
   {
-    name: 'Cosine Similarity',
-    type: 'Similarity',
-    description: 'Measures semantic similarity between normalized embedding vectors.',
+    name: 'Similarity Scoring',
+    type: 'Ranking',
+    description: 'Measures semantic similarity between normalized vector representations.',
   },
   {
-    name: 'Jaccard Coefficient',
-    type: 'Entity Matching',
-    description: 'Calculates overlap between extracted entities (names, dates, amounts) from market questions.',
+    name: 'Entity Matching',
+    type: 'Extraction',
+    description: 'Identifies and compares key entities (names, dates, amounts) from market questions.',
   },
   {
-    name: 'Cross-Encoder Reranking',
-    type: 'Verification',
-    description: 'Secondary verification layer for high-confidence matches using bi-encoder architecture.',
+    name: 'Verification Layer',
+    type: 'Validation',
+    description: 'Secondary verification for high-confidence match validation.',
   },
 ];
 
@@ -771,7 +770,7 @@ export default function LitepaperPage() {
                     <h3 className={styles.solutionTitle}>Research Fragmentation</h3>
                   </div>
                   <p className={styles.solutionDesc}>
-                    Users manually research across 6+ platforms, burning 30+ minutes per trade. Open tabs for Polymarket, Kalshi, Manifold, Jupiter, plus news sources.
+                    Users manually research across multiple platforms, burning 30+ minutes per trade. Open tabs for Polymarket, Kalshi, Manifold, Jupiter, plus news sources.
                   </p>
                 </div>
 
@@ -932,8 +931,8 @@ export default function LitepaperPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td>AI/LLM</td><td>Claude Opus 4.5 (research), Sonnet 4.5 (speed)</td></tr>
-                  <tr><td>Fact-Check</td><td>Tavily API + LLM synthesis</td></tr>
+                  <tr><td>AI/LLM</td><td>Advanced LLMs with intelligent routing</td></tr>
+                  <tr><td>Fact-Check</td><td>Real-time verification and synthesis</td></tr>
                   <tr><td>Frontend</td><td>Next.js 16, React 19, TypeScript</td></tr>
                   <tr><td>Blockchain</td><td>Solana, Anchor programs</td></tr>
                   <tr><td>Wallet</td><td>Privy (abstracted onboarding)</td></tr>
@@ -966,7 +965,7 @@ export default function LitepaperPage() {
               </table>
 
               <Callout title="Research Foundation">
-                Our matching methodology is based on arXiv:2601.01706, adapted for prediction market semantics with custom entity extraction for dates, names, and numerical thresholds.
+                Our matching methodology is built on academic research in semantic similarity, adapted and optimized for prediction market semantics with custom entity extraction for dates, names, and numerical thresholds.
               </Callout>
             </div>
           </Section>
@@ -1006,7 +1005,6 @@ export default function LitepaperPage() {
                 <thead>
                   <tr>
                     <th>Mode</th>
-                    <th>Lambda (\u03BB)</th>
                     <th>Half-Life</th>
                     <th>Lookback</th>
                     <th>Use Case</th>
@@ -1016,7 +1014,6 @@ export default function LitepaperPage() {
                   {DECAY_PRESETS.map((preset) => (
                     <tr key={preset.name}>
                       <td>{preset.name}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>{preset.lambda}</td>
                       <td>{preset.halfLife}</td>
                       <td>{preset.lookback}</td>
                       <td>{preset.useCase}</td>
@@ -1051,7 +1048,7 @@ export default function LitepaperPage() {
               </table>
 
               <Callout title="On-Chain Storage">
-                All predictions are recorded on Solana via Program <code style={{ fontSize: '11px' }}>GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ</code>. ForecasterState PDAs store cumulative Brier, calibration buckets, and streak data.
+                All predictions are recorded immutably on Solana via custom Anchor programs. ForecasterState PDAs store cumulative Brier scores, calibration buckets, and performance streaks with full transparency and verifiability.
               </Callout>
             </div>
           </Section>
@@ -1060,124 +1057,130 @@ export default function LitepaperPage() {
           <Section id="staking-pools" className={styles.contentSection}>
             <div className={styles.sectionTitle}>
               <span className={styles.sectionNumber}>9</span>
-              <h2 className={styles.sectionHeading}>Staking Pools</h2>
+              <h2 className={styles.sectionHeading}>Conviction Pools</h2>
             </div>
             <div className={styles.sectionContent}>
               <p className={styles.paragraph}>
-                <span className={styles.highlight}>Forecaster Staking Pools</span> are the core DeFi primitive enabling capital delegation to proven forecasters. Delegators deposit SOL or USDC into pools managed by elite forecasters and earn proportional returns.
+                The first <span className={styles.highlight}>skill-backed delegation primitive</span> in DeFi. Elite forecasters with proven Brier scores create pools, attract capital, and earn performance fees. Based on battle-tested models from Jito, Marinade, and Sanctum.
               </p>
 
-              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>How It Works</h3>
-              <div className={styles.flowDiagram}>
-                <div className={styles.flowStep}>
-                  <div className={styles.flowNumber}>1</div>
-                  <div className={styles.flowContent}>
-                    <strong>Forecaster Creates Pool</strong>
-                    <p>Must meet tier requirements (Brier score + prediction count)</p>
-                  </div>
+              {/* Profit Split - 50/30/20 */}
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Profit Distribution (50/30/20 Model)</h3>
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.forecaster}%</p>
+                  <p className={styles.statLabel}>Forecaster</p>
+                  <p style={{ fontSize: '11px', color: 'rgba(148, 163, 184, 0.8)', marginTop: '4px' }}>Strong incentive</p>
                 </div>
-                <div className={styles.flowArrow}>\u2193</div>
-                <div className={styles.flowStep}>
-                  <div className={styles.flowNumber}>2</div>
-                  <div className={styles.flowContent}>
-                    <strong>Delegators Stake Capital</strong>
-                    <p>Deposit SOL/USDC, receive LP shares representing pool ownership</p>
-                  </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.delegator}%</p>
+                  <p className={styles.statLabel}>Delegators</p>
+                  <p style={{ fontSize: '11px', color: 'rgba(148, 163, 184, 0.8)', marginTop: '4px' }}>Stays in pool</p>
                 </div>
-                <div className={styles.flowArrow}>\u2193</div>
-                <div className={styles.flowStep}>
-                  <div className={styles.flowNumber}>3</div>
-                  <div className={styles.flowContent}>
-                    <strong>Forecaster Trades</strong>
-                    <p>Opens positions on prediction markets (max 20% per trade)</p>
-                  </div>
-                </div>
-                <div className={styles.flowArrow}>\u2193</div>
-                <div className={styles.flowStep}>
-                  <div className={styles.flowNumber}>4</div>
-                  <div className={styles.flowContent}>
-                    <strong>Profits Distributed</strong>
-                    <p>Revenue split: 50% delegators, 30% forecaster, 20% platform</p>
-                  </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.platform}%</p>
+                  <p className={styles.statLabel}>Platform</p>
+                  <p style={{ fontSize: '11px', color: 'rgba(148, 163, 184, 0.8)', marginTop: '4px' }}>Treasury</p>
                 </div>
               </div>
 
+              {/* Exchange Rate Formula */}
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Exchange Rate Appreciation Model</h3>
+              <div className={styles.formulaBox}>
+                <code className={styles.formula}>exchange_rate = (total_capital + profits) / total_shares</code>
+                <code className={styles.formula}>shares_minted = deposit_amount / exchange_rate</code>
+                <code className={styles.formula}>amount_returned = shares_burned × exchange_rate</code>
+              </div>
+
+              {/* Reward Calculation Example */}
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Reward Calculation Example</h3>
+              <Callout title="Scenario: 10,000 USDC Pool with 20% Return">
+                <strong>Initial State:</strong><br/>
+                • 10,000 USDC deposited → 10,000 shares minted<br/>
+                • Exchange rate: 1.0<br/><br/>
+
+                <strong>After +20% profit (2,000 USDC):</strong><br/>
+                • Forecaster gets: 50% × 2,000 = <span style={{color: '#10b981'}}>1,000 USDC</span> (direct payout)<br/>
+                • Delegators get: 30% × 2,000 = <span style={{color: '#10b981'}}>600 USDC</span> (stays in pool)<br/>
+                • Platform gets: 20% × 2,000 = 400 USDC<br/><br/>
+
+                <strong>New Exchange Rate:</strong><br/>
+                • Total capital: 10,600 USDC (10,000 + 600)<br/>
+                • Total shares: 10,000 (unchanged)<br/>
+                • <span style={{color: '#10b981', fontWeight: 600}}>exchange_rate = 1.06 (+6% for delegators)</span><br/><br/>
+
+                <strong>Delegator who deposited 1,000 USDC:</strong><br/>
+                • Owns 1,000 shares<br/>
+                • Value = 1,000 × 1.06 = <span style={{color: '#10b981', fontWeight: 600}}>1,060 USDC (+6% return)</span>
+              </Callout>
+
+              {/* Pool Tiers - Simplified to 4 key tiers */}
               <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Pool Tiers</h3>
               <table className={styles.dataTable}>
                 <thead>
                   <tr>
                     <th>Tier</th>
-                    <th>Pool Name</th>
                     <th>Capacity</th>
                     <th>Max Brier</th>
                     <th>Min Predictions</th>
-                    <th>Min Deposit</th>
+                    <th>Requirements</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {POOL_TIERS.map((pool) => (
-                    <tr key={pool.tier}>
-                      <td>{pool.tier}</td>
-                      <td>{pool.name}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>{pool.capacity}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>{pool.maxBrier}</td>
-                      <td>{pool.minPredictions}+</td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>{pool.minDeposit}</td>
-                    </tr>
-                  ))}
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>Starter</td>
+                    <td style={{ fontFamily: 'var(--font-mono)' }}>5 SOL / 500 USDC</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', color: '#6b7280' }}>&lt; 0.35</td>
+                    <td>10+</td>
+                    <td style={{ fontSize: '12px' }}>Entry tier</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>Basic</td>
+                    <td style={{ fontFamily: 'var(--font-mono)' }}>10 SOL / 1,000 USDC</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', color: '#3b82f6' }}>&lt; 0.30</td>
+                    <td>25+</td>
+                    <td style={{ fontSize: '12px' }}>Consistent accuracy</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>Pro</td>
+                    <td style={{ fontFamily: 'var(--font-mono)' }}>100 SOL / 10,000 USDC</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', color: '#8b5cf6' }}>&lt; 0.25</td>
+                    <td>100+</td>
+                    <td style={{ fontSize: '12px' }}>Professional grade</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600, color: '#10b981' }}>Elite</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', color: '#10b981' }}>500 SOL / 50,000 USDC</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', color: '#10b981' }}>&lt; 0.20</td>
+                    <td style={{ color: '#10b981' }}>250+</td>
+                    <td style={{ fontSize: '12px', color: '#10b981' }}>Superforecaster</td>
+                  </tr>
                 </tbody>
               </table>
 
-              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Pool Economics</h3>
+              {/* Risk Management */}
+              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Risk Management</h3>
               <div className={styles.statsGrid}>
                 <div className={styles.statCard}>
-                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.delegator}%</p>
-                  <p className={styles.statLabel}>To Delegators</p>
+                  <p className={styles.statValue}>1-20%</p>
+                  <p className={styles.statLabel}>Position Limits</p>
                 </div>
                 <div className={styles.statCard}>
-                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.forecaster}%</p>
-                  <p className={styles.statLabel}>To Forecaster</p>
-                </div>
-                <div className={styles.statCard}>
-                  <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.platform}%</p>
-                  <p className={styles.statLabel}>To Platform</p>
-                </div>
-                <div className={styles.statCard}>
-                  <p className={styles.statValue}>{POOL_CONSTANTS.lockupPeriod}</p>
+                  <p className={styles.statValue}>7 days</p>
                   <p className={styles.statLabel}>Lockup Period</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>6.4% APY</p>
+                  <p className={styles.statLabel}>Idle Yield (Sanctum)</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>0.5%</p>
+                  <p className={styles.statLabel}>Withdrawal Fee</p>
                 </div>
               </div>
 
-              <h3 style={{ marginTop: '32px', marginBottom: '16px' }}>Fee Structure</h3>
-              <table className={styles.dataTable}>
-                <thead>
-                  <tr>
-                    <th>Fee Type</th>
-                    <th>Amount</th>
-                    <th>When Applied</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Pool Creation</td>
-                    <td>{POOL_CONSTANTS.creationFee}</td>
-                    <td>One-time on pool creation</td>
-                  </tr>
-                  <tr>
-                    <td>Standard Withdrawal</td>
-                    <td>{POOL_CONSTANTS.withdrawalFee}</td>
-                    <td>After 7-day lockup</td>
-                  </tr>
-                  <tr>
-                    <td>Early Exit</td>
-                    <td>{POOL_CONSTANTS.earlyExitFee}</td>
-                    <td>Before lockup expires</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <Callout title="On-Chain Program">
-                Staking Pools run on Solana Program <code style={{ fontSize: '11px' }}>Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM</code>. All pool state, delegations, and predictions are stored in PDAs for full transparency.
+              <Callout title="On-Chain Transparency">
+                All Conviction Pools run on audited Solana smart contracts with full transparency. Every prediction, profit distribution, and share price update is recorded immutably on-chain. The 50/30/20 profit split ensures perfect alignment between forecasters and delegators. Conditional performance fees mean forecasters only earn when they maintain their tier's quality threshold.
               </Callout>
             </div>
           </Section>
@@ -1234,61 +1237,10 @@ export default function LitepaperPage() {
             </div>
           </Section>
 
-          {/* Section 11: Roadmap */}
-          <Section id="roadmap" className={styles.contentSection}>
-            <div className={styles.sectionTitle}>
-              <span className={styles.sectionNumber}>11</span>
-              <h2 className={styles.sectionHeading}>Roadmap</h2>
-            </div>
-            <div className={styles.sectionContent}>
-              <div className={styles.solutionsList}>
-                <div className={styles.solutionItem}>
-                  <div className={styles.solutionHeader}>
-                    <div className={styles.solutionIconHighlight}>Q1</div>
-                    <h3 className={styles.solutionTitle}>Foundation (Current)</h3>
-                  </div>
-                  <p className={styles.solutionDesc}>
-                    AI agent system, 4-platform aggregation, BeRight Terminal, arbitrage detection, Privy authentication, Jupiter zero-fee trading.
-                  </p>
-                </div>
-
-                <div className={styles.solutionItem}>
-                  <div className={styles.solutionHeader}>
-                    <div className={styles.solutionIcon}>Q2</div>
-                    <h3 className={styles.solutionTitle}>Intelligence Layer</h3>
-                  </div>
-                  <p className={styles.solutionDesc}>
-                    On-chain predictions, forecaster profiles & scoring, whale tracking alerts, social signal integration, mobile app beta.
-                  </p>
-                </div>
-
-                <div className={styles.solutionItem}>
-                  <div className={styles.solutionHeader}>
-                    <div className={styles.solutionIcon}>Q3</div>
-                    <h3 className={styles.solutionTitle}>DeFi Integration</h3>
-                  </div>
-                  <p className={styles.solutionDesc}>
-                    Conviction Pools launch, forecaster staking, cross-platform liquidity, auto-execution strategies, Sanctum INF integration.
-                  </p>
-                </div>
-
-                <div className={styles.solutionItem}>
-                  <div className={styles.solutionHeader}>
-                    <div className={styles.solutionIcon}>Q4</div>
-                    <h3 className={styles.solutionTitle}>Protocol</h3>
-                  </div>
-                  <p className={styles.solutionDesc}>
-                    Mobile apps (iOS/Android), API marketplace, decentralized resolution, multi-chain expansion.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          {/* Section 12: Conclusion */}
+          {/* Section 11: Conclusion */}
           <Section id="conclusion" className={styles.contentSection}>
             <div className={styles.sectionTitle}>
-              <span className={styles.sectionNumber}>12</span>
+              <span className={styles.sectionNumber}>11</span>
               <h2 className={styles.sectionHeading}>Conclusion</h2>
             </div>
             <div className={styles.sectionContent}>

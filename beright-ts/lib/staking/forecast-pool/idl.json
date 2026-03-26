@@ -4932,8 +4932,8 @@
         "Resolve a prediction and distribute profits",
         "",
         "When prediction wins:",
-        "- 30% to forecaster",
-        "- 50% to delegators (increases share price)",
+        "- 50% to forecaster",
+        "- 30% to delegators (increases share price)",
         "- 20% to platform treasury",
         "",
         "When prediction loses:",
@@ -4982,7 +4982,7 @@
         {
           "name": "forecaster_token",
           "docs": [
-            "Forecaster's token account (receives 30% of profit)"
+            "Forecaster's token account (receives 50% of profit)"
           ],
           "writable": true
         },
@@ -5280,7 +5280,7 @@
         "Stake tokens to a forecaster pool",
         "",
         "Delegators deposit tokens and receive pool shares.",
-        "Revenue split: 30% forecaster, 50% delegators, 20% platform",
+        "Revenue split: 50% forecaster, 30% delegators, 20% platform",
         "",
         "# Arguments",
         "* `amount` - Amount of tokens to stake"
@@ -10782,14 +10782,14 @@
           {
             "name": "forecaster_bps",
             "docs": [
-              "Forecaster share (default: 3000 = 30%)"
+              "Forecaster share (default: 5000 = 50%)"
             ],
             "type": "u16"
           },
           {
             "name": "delegator_bps",
             "docs": [
-              "Delegator share (default: 5000 = 50%)"
+              "Delegator share (default: 3000 = 30%)"
             ],
             "type": "u16"
           },
