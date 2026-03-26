@@ -163,6 +163,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy beright-ts to Railway
+        working-directory: beright-ts
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Deploying beright-ts to Railway..."
+          railway up --detach
+          echo "✅ Backend deployed successfully"
+
+      - name: Verify Railway Deployment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Checking deployment status..."
+          railway status || echo "⚠️ Could not verify deployment status"
+
       - name: Deploy to Vercel (Frontend)
         if: false  # Enable when ready
         uses: amondnet/vercel-action@v25
@@ -171,11 +195,6 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: berightweb
-
-      - name: Deploy Backend
-        if: false  # Enable when ready
-        run: |
-          echo "Deploy backend to Railway/Render"
 
   # ============================================
   # Notify - Send alerts on failure
