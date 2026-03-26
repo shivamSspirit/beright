@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="berightweb/public/logo.jpg" alt="BeRight Logo" width="200" />
+  <img src="berightweb/public/beright-logo.svg" alt="BeRight Logo" width="200" />
 </p>
 
 <h1 align="center">BeRight</h1>
@@ -11,7 +11,8 @@
 
 <p align="center">
   <a href="#quick-demo">Demo</a> •
-  <a href="#features">Features</a> •
+  <a href="#-conviction-pools-the-defi-primitive">DeFi Primitive</a> •
+  <a href="#-openclaw-agentic-architecture">OpenClaw</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#documentation">Docs</a> •
   <a href="https://github.com/shivamSspirit/beright/issues">Issues</a>
@@ -28,11 +29,21 @@
 
 ## 🎯 What is BeRight?
 
-BeRight is a **multi-agent AI system** that monitors prediction markets 24/7. Instead of manually checking Polymarket, Kalshi, Manifold, Limitless, and Metaculus, BeRight does it for you—finding opportunities, tracking whale wallets, and providing research-backed forecasts.
+BeRight is a **decentralized forecaster network** powered by autonomous AI agents built on the **OpenClaw agentic architecture**. It's the first platform to introduce **Conviction Pools**—a DeFi primitive where you can delegate capital to skilled forecasters and earn yield from their prediction accuracy.
 
-**The Problem:** Prediction market traders spend hours monitoring multiple platforms, missing arbitrage opportunities, and making poorly-calibrated predictions.
+Instead of manually checking Polymarket, Kalshi, Manifold, Limitless, and Metaculus, BeRight does it for you—finding opportunities, tracking whale wallets, and providing research-backed forecasts 24/7.
 
-**The Solution:** Autonomous AI agents that aggregate data, detect opportunities, verify predictions on-chain, and improve your forecasting accuracy over time.
+**The Problem:**
+- Prediction market traders spend hours monitoring multiple platforms
+- Top forecasters can't monetize their skill at scale
+- Capital providers have no way to delegate to expert forecasters
+- No transparent, on-chain reputation system
+
+**The Solution:**
+- **Autonomous AI agents** that aggregate data, detect opportunities, and provide research-backed forecasts
+- **Conviction Pools**: Delegate capital to forecasters, earn yield from their performance
+- **On-chain verification**: Every prediction commits to Solana with Brier score tracking
+- **Decentralized network**: Built on OpenClaw architecture for composability
 
 ---
 
@@ -44,11 +55,12 @@ BeRight is a **multi-agent AI system** that monitors prediction markets 24/7. In
 | **Arbitrage detection** | ✅ Production | Real-time price monitoring |
 | **AI research agent** | ✅ Production | Claude-powered superforecaster analysis |
 | **On-chain prediction commits** | ✅ Production | Solana verification system |
+| **Conviction Pools (DeFi)** | 🟡 Beta | Forecaster staking with SOL/USDC |
 | **Web dashboard** | 🟡 Beta | UI showcase (read-only) |
 | **Trade execution** | 🔴 Development | Coming soon |
 | **Telegram bot** | ✅ Production | 50+ commands available |
 
-> **Note:** Trading execution is not yet enabled. Current version focuses on intelligence gathering and prediction tracking.
+> **Note:** Trading execution is not yet enabled. Current version focuses on intelligence gathering, prediction tracking, and forecaster staking.
 
 ---
 
@@ -116,6 +128,14 @@ Confidence: Medium (limited historical data)
 
 ## ✨ Key Features
 
+### 💎 Conviction Pools (DeFi Primitive)
+**The first skill-backed delegation primitive in DeFi.** Forecasters create staking pools in SOL or USDC. Delegators earn yield when forecasters make accurate predictions. Share price appreciates like Jito/Marinade liquid staking tokens.
+
+- **8 Pool Tiers**: Starter, Basic, Pro, Elite (SOL & USDC)
+- **50/30/20 Profit Split**: Forecaster 50%, Delegators 30%, Platform 20%
+- **On-Chain Reputation**: Brier scores tracked on Solana
+- **Conditional Performance**: Forecasters only earn when maintaining tier thresholds
+
 ### 🔄 Multi-Platform Aggregation
 Search across **Polymarket, Kalshi, Manifold, Limitless, and Metaculus** in a single query. No more tab switching.
 
@@ -168,19 +188,21 @@ Heartbeat agent scans markets every 5 minutes, never missing an opportunity.
 </td>
 <td>
 
-**Blockchain**
+**Blockchain / DeFi**
 - Solana Web3.js
 - Anchor Framework
+- Conviction Pools (smart contracts)
 - Helius RPC
-- On-chain memo program
+- On-chain prediction commits
 
 </td>
 </tr>
 <tr>
 <td>
 
-**AI/ML**
-- Anthropic Claude (Opus/Sonnet)
+**AI / Agents**
+- OpenClaw Architecture
+- Anthropic Claude (Opus/Sonnet/Haiku)
 - Multi-agent orchestration
 - Semantic search
 - Tavily API (web search)
@@ -207,6 +229,161 @@ Heartbeat agent scans markets every 5 minutes, never missing an opportunity.
 </td>
 </tr>
 </table>
+
+---
+
+## 💎 Conviction Pools: The DeFi Primitive
+
+BeRight introduces **Conviction Pools**—the first skill-backed delegation primitive in DeFi. Think Jito/Marinade liquid staking, but for forecaster expertise instead of validator uptime.
+
+### How It Works
+
+```
+Forecaster Creates Pool
+         │
+         ├─▶ Tier Selected (Starter/Basic/Pro/Elite)
+         ├─▶ Token Chosen (SOL or USDC)
+         ├─▶ Brier Score Verified On-Chain
+         │
+Delegators Deposit Capital
+         │
+         ├─▶ Receive Pool Shares (exchange rate 1.0 initially)
+         ├─▶ Capital used for predictions by forecaster
+         │
+Forecaster Makes Predictions
+         │
+         ├─▶ Winning predictions → profit
+         ├─▶ Losing predictions → loss
+         │
+Profit Distribution (50/30/20 Split)
+         │
+         ├──▶ 50% to Forecaster (direct payout)
+         ├──▶ 30% stays in pool (share price ↑)
+         └──▶ 20% to Platform (treasury)
+```
+
+### Pool Tiers & Requirements
+
+| Tier | Capacity | Token | Max Brier | Min Predictions | Min Deposit |
+|------|----------|-------|-----------|-----------------|-------------|
+| **Starter SOL** | 5 SOL | SOL | 0.35 | 10 | 0.1 SOL |
+| **Basic SOL** | 10 SOL | SOL | 0.30 | 25 | 0.1 SOL |
+| **Pro SOL** | 100 SOL | SOL | 0.25 | 100 | 1 SOL |
+| **Elite SOL** | 500 SOL | SOL | 0.20 | 250 | 5 SOL |
+| **Starter USDC** | 500 USDC | USDC | 0.35 | 10 | 5 USDC |
+| **Basic USDC** | 1,000 USDC | USDC | 0.30 | 25 | 10 USDC |
+| **Pro USDC** | 10,000 USDC | USDC | 0.25 | 100 | 100 USDC |
+| **Elite USDC** | 50,000 USDC | USDC | 0.20 | 250 | 500 USDC |
+
+**Brier Score Scale:** Lower is better. 0.25 = superforecaster level. 0.20 = world-class.
+
+### Example: Share Price Appreciation
+
+```
+Elite USDC Pool: 10,000 USDC capacity, 5 delegators
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Initial State:
+  Pool TVL: 10,000 USDC
+  Total Shares: 10,000
+  Share Price: 1.0 USDC
+
+Forecaster makes winning prediction:
+  Profit: 2,000 USDC (20% return)
+
+Profit Split:
+  50% → Forecaster: 1,000 USDC (withdrawn)
+  30% → Delegators: 600 USDC (stays in pool)
+  20% → Platform: 400 USDC (treasury)
+
+After Distribution:
+  Pool TVL: 10,600 USDC (10,000 + 600)
+  Total Shares: 10,000 (unchanged)
+  Share Price: 1.06 USDC ✅ (+6% for delegators)
+```
+
+### Key Innovations
+
+1. **Skill-Backed Yield**: First DeFi primitive where yield comes from cognitive skill, not capital efficiency
+2. **On-Chain Reputation**: Brier scores tracked on Solana, immutable and verifiable
+3. **Conditional Performance**: Forecasters only earn when maintaining tier thresholds
+4. **Exchange Rate Model**: Share price appreciation like liquid staking tokens
+5. **Risk Alignment**: 7-day lockup + performance fees align incentives
+
+### Smart Contract Architecture
+
+Built with Solana Anchor framework:
+
+- **ForecastPool**: Manages pool state, TVL, share price
+- **Delegation**: Tracks delegator shares and deposits
+- **PoolPrediction**: Records predictions and outcomes
+- **PlatformTreasury**: Collects protocol fees
+
+**Program ID:** `Fkb7q8pbMa4Wko4u1DYZMXBrXvq8ECFnSqze2TYMm4pM` (devnet)
+
+---
+
+## 🏛️ OpenClaw Agentic Architecture
+
+BeRight is built on **OpenClaw**—an open-source architecture for composable AI agents. This enables:
+
+### Plugin-Based System
+
+```typescript
+// Skills are composable plugins
+import { registry } from './lib/plugins';
+
+// Get all data sources
+const sources = registry.getDataSources();
+// → [polymarket, kalshi, manifold, limitless, metaculus]
+
+// Get tools for specific agent
+const tools = registry.getToolsForAgent('scout');
+// → [market_search, arbitrage_detection, trend_analysis]
+```
+
+### Multi-Agent Coordination
+
+```
+User Request: "Find arbitrage opportunities for Trump 2028"
+           ↓
+    Orchestrator Agent
+           ↓
+    ┌──────┴──────┐
+    ↓             ↓
+Scout Agent   Analyst Agent
+(Fast scan)   (Deep research)
+    ↓             ↓
+    └──────┬──────┘
+           ↓
+    Trader Agent
+  (Position sizing)
+```
+
+### Agent Specialization
+
+| Agent | Model | Purpose | OpenClaw Role |
+|-------|-------|---------|---------------|
+| **Scout** | Sonnet 4.5 | Fast market scanning, arbitrage detection | Data gatherer |
+| **Analyst** | Opus 4.5 | Deep research, base rates, superforecaster analysis | Reasoning specialist |
+| **Trader** | Sonnet 4.5 | Trade execution, position sizing, risk management | Executor |
+| **xDegen** | Haiku | Social content generation for X/Twitter | Content creator |
+| **Orchestrator** | Sonnet 4.5 | Multi-agent coordination, task routing | Coordinator |
+
+### Decentralized Forecaster Network
+
+BeRight creates a **permissionless network** where anyone can:
+
+1. **Become a Forecaster**: Create a Conviction Pool with verified Brier score
+2. **Contribute Data**: Add new prediction platforms via plugin system
+3. **Build Agents**: Extend with custom AI agents using OpenClaw SDK
+4. **Earn Yield**: Delegate to top forecasters, earn from their performance
+
+**Network Effects:**
+- More forecasters → better diversification for delegators
+- More platforms → better arbitrage opportunities
+- More agents → richer intelligence ecosystem
+- More capital → deeper liquidity for predictions
 
 ---
 
@@ -325,7 +502,9 @@ npx ts-node beright-ts/skills/calibration.ts
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
+
+> **Built on OpenClaw**: Composable, plugin-based agent architecture. See [OpenClaw section](#-openclaw-agentic-architecture) for details.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -341,6 +520,7 @@ npx ts-node beright-ts/skills/calibration.ts
           ┌─────────────────────────────────────┐
           │       BeRight API (port 3001)       │
           │    Multi-Agent Orchestration        │
+          │      (OpenClaw Architecture)        │
           └──────────────┬──────────────────────┘
                          │
          ┌───────────────┼───────────────┐
@@ -361,19 +541,21 @@ npx ts-node beright-ts/skills/calibration.ts
      ├───────────────────────────────────┤
      │ • Polymarket, Kalshi, Manifold    │
      │ • Limitless, Metaculus            │
-     │ • Solana (on-chain verification)  │
+     │ • Conviction Pools (Solana)       │
+     │ • On-chain predictions (Solana)   │
      │ • Supabase (user data)            │
      │ • Redis (caching)                 │
      └───────────────────────────────────┘
 ```
 
-### Multi-Agent System
+### Multi-Agent System (OpenClaw)
 
 | Agent | Model | Purpose | Speed |
 |-------|-------|---------|-------|
 | **Scout** | Sonnet 4.5 | Fast market scanning, trend detection, arbitrage | <2s |
 | **Analyst** | Opus 4.5 | Deep research, superforecaster analysis | 5-15s |
 | **Trader** | Sonnet 4.5 | Trade execution, position sizing, risk management | 2-5s |
+| **xDegen** | Haiku | Social content generation for X/Twitter | <1s |
 | **Orchestrator** | Sonnet 4.5 | Multi-agent coordination, task routing | <1s |
 
 ---
