@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, TrendingUp, Users, ExternalLink, Loader2 } from 'lucide-react';
+import { Bot, TrendingUp, Users, ExternalLink } from 'lucide-react';
+import LoadingSpinner from './LoadingSpinner';
 
 interface EmbedWidgetProps {
   marketId?: string;
@@ -77,7 +78,7 @@ export default function EmbedWidget({
   if (loading) {
     return (
       <div className={`${bgClass} ${borderClass} border rounded-xl p-4 flex items-center justify-center`}>
-        <Loader2 size={24} className="animate-spin text-blue-500" />
+        <LoadingSpinner size={24} variant="minimal" />
       </div>
     );
   }

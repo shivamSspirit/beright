@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../berightweb/public/beright-logo.svg" alt="BeRight Logo" width="120" />
+</p>
+
 # BeRight Vault
 
 Production-grade Solana vault program for the BeRight prediction market protocol.

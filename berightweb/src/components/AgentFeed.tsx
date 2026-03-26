@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { useRealtimeEvents, useAlerts } from '../hooks/useRealtimeEvents';
 import type { BerightEvent, AgentType } from '../lib/supabase';
+import LoadingSpinner from './LoadingSpinner';
 
 interface AgentFeedProps {
   maxEvents?: number;
@@ -155,7 +156,7 @@ export function AgentFeed({ maxEvents = 30, showAlerts = true, className = '' }:
       <div className="p-4 max-h-[500px] overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            <LoadingSpinner size={32} />
           </div>
         ) : activeTab === 'all' ? (
           events.length > 0 ? (

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../berightweb/public/beright-logo.svg" alt="BeRight Logo" width="120" />
+</p>
+
 # BeRight Calibration Program
 
 On-chain forecaster accuracy tracking and calibration for the BeRight prediction market platform.

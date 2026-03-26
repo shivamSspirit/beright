@@ -13,6 +13,7 @@ import { useState, useCallback } from 'react';
 import { useUser } from '@/hooks/useUnifiedUser';
 import { useConvictionEscrow } from '@/hooks/useConvictionEscrow';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
+import LoadingSpinner from './LoadingSpinner';
 
 // Format SOL balance for display
 function formatBalance(sol: number): string {
@@ -199,7 +200,7 @@ export function ConvictionStakeModal({
         {/* Wallets Loading State */}
         {isWalletsLoading && (
           <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <LoadingSpinner size={32} />
             <p className="text-gray-400">Loading wallet...</p>
           </div>
         )}
@@ -214,7 +215,7 @@ export function ConvictionStakeModal({
         {/* Loading State */}
         {isConnected && loading && (
           <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <LoadingSpinner size={32} />
             <p className="text-gray-400">Loading escrow state...</p>
           </div>
         )}
@@ -412,7 +413,7 @@ export function ConvictionStakeModal({
         {/* Signing State */}
         {step === 'signing' && (
           <div className="text-center py-8">
-            <div className="animate-spin w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <LoadingSpinner size={48} />
             <p className="text-white font-medium mb-2">Confirm in your wallet</p>
             <p className="text-gray-400 text-sm">
               Please sign the transaction in your wallet

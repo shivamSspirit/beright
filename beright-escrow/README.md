@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../berightweb/public/beright-logo.svg" alt="BeRight Logo" width="120" />
+</p>
+
 # BeRight Conviction Escrow
 
 Anchor program for conviction markets where crypto projects stake SOL on their own milestones.
