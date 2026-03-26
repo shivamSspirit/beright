@@ -177,11 +177,11 @@ const SIGNALS = [
 
 // Supported Platforms - 6+ platforms from beright-ts/lib/dataFabric/providers/
 const PLATFORMS = [
-  { name: 'Polymarket', type: 'Crypto', chain: 'Polygon', status: 'live', volume: '$33.4B (2025)' },
-  { name: 'Kalshi', type: 'Regulated', chain: 'USD', status: 'live', volume: '$22.88B (2025)' },
   { name: 'Jupiter/DFlow', type: 'Crypto', chain: 'Solana', status: 'live', volume: '$28.6M (Jan)', highlight: true },
-  { name: 'Manifold', type: 'Play Money', chain: 'Off-chain', status: 'live', volume: 'Experimentation' },
-  { name: 'Limitless', type: 'Crypto', chain: 'Base', status: 'live', volume: 'Growing' },
+  { name: 'Polymarket', type: 'Crypto', chain: 'Polygon', status: 'soon', volume: '$33.4B (2025)' },
+  { name: 'Kalshi', type: 'Regulated', chain: 'USD', status: 'soon', volume: '$22.88B (2025)' },
+  { name: 'Manifold', type: 'Play Money', chain: 'Off-chain', status: 'soon', volume: 'Experimentation' },
+  { name: 'Limitless', type: 'Crypto', chain: 'Base', status: 'soon', volume: 'Growing' },
   { name: 'Metaculus', type: 'Forecasting', chain: 'Off-chain', status: 'soon', volume: 'Long-range' },
 ];
 
