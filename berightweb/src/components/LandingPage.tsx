@@ -537,7 +537,7 @@ function IntelligenceSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────
-// SECTION 5.5: CORE FEATURES - V-RIDE Protocol
+// SECTION 5.5: CORE FEATURES - BeRight Protocol
 // ─────────────────────────────────────────────────────────────────────────────────
 
 function CoreFeaturesSection() {
@@ -601,7 +601,7 @@ function CoreFeaturesSection() {
         {/* Section Header */}
         <div className="text-center mb-12 sm:mb-20">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20 mb-4 sm:mb-6">
-            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-primary)]">V-RIDE Protocol</span>
+            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-primary)]">BeRight Protocol</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-6 text-[var(--color-text-primary)]">
             Core Features That <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]">Set Us Apart</span>
@@ -1228,7 +1228,7 @@ export default function LandingPage() {
       {/* 5. Intelligence + Network - Core Value Prop */}
       <IntelligenceSection />
 
-      {/* 5.5. Core Features - V-RIDE Protocol */}
+      {/* 5.5. Core Features - BeRight Protocol */}
       <CoreFeaturesSection />
 
       {/* 6. Product Preview - Swipe Card + AI Insight */}

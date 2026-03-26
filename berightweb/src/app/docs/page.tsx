@@ -12,6 +12,7 @@ import styles from './docs.module.css';
 
 const NAV_SECTIONS = [
   { id: 'overview', label: 'What is BeRight?' },
+  { id: 'core-features', label: 'Core Features' },
   { id: 'agents', label: 'AI Agents' },
   { id: 'signals', label: 'Intelligence Signals' },
   { id: 'platforms', label: 'Supported Platforms' },
@@ -471,6 +472,169 @@ export default function DocsPage() {
                   <path d="M4 17l6-6-6-6M12 19h8" />
                 </svg>
                 Open Terminal
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {/* Core Features Section */}
+        {activeSection === 'core-features' && (
+          <section className={styles.contentSection}>
+            <div className={styles.sectionHeader}>
+              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>Core Protocol</span>
+              <h1 className={styles.sectionTitle}>Core Features</h1>
+              <p className={styles.sectionSubtitle}>
+                What makes BeRight different from other prediction markets
+              </p>
+            </div>
+
+            <div className={`${styles.contentBlock} ${styles.highlightBox} ${styles.highlightBoxGreen}`}>
+              <span className={styles.calloutLabel}>BeRight Protocol Stack</span>
+              <p className={styles.paragraph} style={{ margin: 0 }}>
+                BeRight combines AI intelligence with a permissionless forecaster network and unique DeFi primitive.
+                Not just another prediction market—we're building the infrastructure for forecasting as an asset class.
+              </p>
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />1. AI Signal Layer & Agent Tech</h2>
+            <div className={styles.contentBlock}>
+              <h3 className={styles.h3}>AXBT-Level Intelligence</h3>
+              <p className={styles.paragraph}>
+                Multi-agent system powered by OpenClaw AI. Scout agents scan markets in &lt;2s, Analyst agents
+                deliver deep research in 5-15s, and Trader agents handle risk checks instantly.
+              </p>
+
+              <div className={styles.grid3}>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>⚡ Response Time</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    &lt;2s scan<br/>5-15s analysis
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>📊 Data Sources</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    4+ platforms<br/>aggregated
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>🤖 AI Models</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Claude Sonnet 4.5<br/>Claude Opus 4.5
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />2. Forecaster Network Protocol</h2>
+            <div className={styles.contentBlock}>
+              <h3 className={styles.h3}>Permissionless Skill Graph</h3>
+              <p className={styles.paragraph}>
+                On-chain reputation system tracking Brier scores across all predictions. Elite forecasters earn
+                verified status and attract capital to their conviction pools. Your track record is immutable and portable.
+              </p>
+
+              <div className={styles.grid3}>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>🎯 Calibration</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Brier score &lt; 0.15<br/>= ELITE tier
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>🔗 Track Record</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Immutable<br/>Verifiable on-chain
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>📈 Network Effect</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Better forecasters<br/>→ more capital
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />3. DeFi Primitive: Forecaster Pools</h2>
+            <div className={styles.contentBlock}>
+              <h3 className={styles.h3}>Conviction-Backed Staking</h3>
+              <p className={styles.paragraph}>
+                Capital follows skill. Stake in forecaster pools managed by top performers. Pool operators earn 20%
+                of profits while LPs gain exposure to alpha without trading themselves. It's like a prediction market
+                hedge fund, but permissionless.
+              </p>
+
+              <div className={styles.grid3}>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>💰 Operator Fee</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    20% performance<br/>fee split
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>✅ Min. Calibration</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Brier &lt; 0.20<br/>to create pool
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>📊 LP Benefits</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Passive alpha<br/>+ verifiable returns
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />4. Calibration Program</h2>
+            <div className={styles.contentBlock}>
+              <h3 className={styles.h3}>Proof of Skill</h3>
+              <p className={styles.paragraph}>
+                Continuous Brier score tracking across all markets. Lower scores unlock higher tiers, larger pool
+                sizes, and premium features. Your edge is quantified and rewarded. Think of it as a credit score,
+                but for forecasting accuracy.
+              </p>
+
+              <div className={styles.platformTable}>
+                <div className={styles.tableHeader}>
+                  <div>Tier</div>
+                  <div>Brier Score</div>
+                  <div>Max Pool Size</div>
+                  <div>Status</div>
+                </div>
+                <div className={styles.tableRow}>
+                  <div className={styles.platformName}>ELITE</div>
+                  <div className={styles.platformType}>&lt; 0.15</div>
+                  <div className={styles.platformChain}>$500K</div>
+                  <div className={styles.statusLive}>LIVE</div>
+                </div>
+                <div className={styles.tableRow}>
+                  <div className={styles.platformName}>VERIFIED</div>
+                  <div className={styles.platformType}>&lt; 0.20</div>
+                  <div className={styles.platformChain}>$100K</div>
+                  <div className={styles.statusLive}>LIVE</div>
+                </div>
+                <div className={styles.tableRow}>
+                  <div className={styles.platformName}>ROOKIE</div>
+                  <div className={styles.platformType}>&lt; 0.30</div>
+                  <div className={styles.platformChain}>$25K</div>
+                  <div className={styles.statusLive}>LIVE</div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.tryCta}>
+              <p className={styles.paragraph}>
+                <strong>Want the technical deep dive?</strong><br/>
+                Read our litepaper for full protocol specification and architecture details.
+              </p>
+              <Link href="/docs/litepaper" className={styles.tryBtn}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                </svg>
+                Read Litepaper
               </Link>
             </div>
           </section>
