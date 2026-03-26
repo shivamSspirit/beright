@@ -701,7 +701,7 @@
   margin: 0;
 }
 
-/* Mobile */
+/* Mobile Responsive - Tablet & Below */
 @media (max-width: 1024px) {
   .sidebar {
     position: fixed;
@@ -710,15 +710,22 @@
     bottom: 0;
     z-index: 95;
     transition: left 0.3s ease;
+    width: 280px;
   }
 
   .sidebarOpen {
     left: 0;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
   }
 
   .main {
     margin-left: 0;
-    padding: 88px 24px 32px;
+    padding: 88px 32px 48px;
+    max-width: 100%;
+  }
+
+  .sectionTitle {
+    font-size: 36px;
   }
 
   .pageNav {
@@ -729,39 +736,305 @@
   .pageNavPrev,
   .pageNavNext {
     align-items: flex-start;
+    width: 100%;
+  }
+
+  /* Better touch targets on tablet */
+  .navItem {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  .mobileMenuBtn {
+    /* Ensure touch target is large enough */
+    min-width: 56px;
+    min-height: 56px;
   }
 }
 
+/* Mobile Responsive - Phone & Below */
 @media (max-width: 768px) {
+  .main {
+    padding: 80px 20px 40px;
+  }
+
+  /* Typography scaling for mobile */
+  .sectionTitle {
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  .sectionSubtitle {
+    font-size: 16px;
+  }
+
+  .h2 {
+    font-size: 24px;
+    margin: 32px 0 16px;
+  }
+
+  .h3 {
+    font-size: 16px;
+  }
+
+  .paragraph {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Grids stack on mobile */
   .grid2,
   .grid3,
   .grid4 {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .sectionTitle {
-    font-size: 32px;
+  /* Cards have better spacing */
+  .card {
+    padding: 16px;
   }
 
-  .footer {
-    flex-direction: column;
-    text-align: center;
+  .cardLarge {
+    padding: 20px;
+  }
+
+  /* Agent cards more compact */
+  .agentCard {
+    padding: 20px;
+  }
+
+  .agentName {
+    font-size: 16px;
+  }
+
+  .agentDesc {
+    font-size: 13px;
+  }
+
+  /* Signal cards more compact */
+  .signalCard {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .signalEmoji {
+    font-size: 20px;
+  }
+
+  .signalContent h4 {
+    font-size: 13px;
+  }
+
+  .signalContent p {
+    font-size: 12px;
+  }
+
+  /* Platform table responsive - horizontal scroll */
+  .platformTable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .tableHeader,
   .tableRow {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    grid-template-columns: minmax(140px, 2fr) minmax(80px, 1fr) minmax(80px, 1fr) minmax(80px, 1fr);
+    gap: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
   }
 
+  .tableHeader {
+    font-size: 10px;
+  }
+
+  /* Commands list responsive */
   .commandRow {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 10px;
+    padding: 14px 16px;
   }
 
   .commandCode {
     min-width: auto;
+    width: 100%;
+    font-size: 13px;
+  }
+
+  .commandDesc {
+    font-size: 13px;
+  }
+
+  /* API Table responsive - horizontal scroll */
+  .apiTable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 13px;
+  }
+
+  .apiTable th,
+  .apiTable td {
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+
+  .apiTable th {
+    font-size: 11px;
+  }
+
+  /* Footer stacks on mobile */
+  .footer {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .footerLinks {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Content blocks more compact */
+  .contentBlock {
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .highlightBox {
+    border-left-width: 2px;
+  }
+
+  /* CTAs full width on mobile */
+  .tryCta {
+    padding: 24px;
+  }
+
+  .tryBtn {
+    padding: 14px 28px;
+    font-size: 15px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Roadmap more compact */
+  .roadmapPhase {
+    gap: 16px;
+  }
+
+  .phaseContent {
+    padding-bottom: 24px;
+  }
+
+  .phaseTitle {
+    font-size: 18px;
+  }
+
+  .phaseItem {
+    font-size: 14px;
+    padding: 8px 0;
+  }
+
+  /* Search input larger on mobile */
+  .searchInput {
+    padding: 14px 16px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Sidebar improvements for mobile */
+  .sidebar {
+    width: 85%;
+    max-width: 320px;
+    padding: 20px;
+  }
+
+  .navItem {
+    font-size: 15px;
+    min-height: 44px;
+  }
+
+  .sidebarCta {
+    padding-top: 20px;
+  }
+
+  .ctaBtn {
+    min-height: 44px;
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
+/* Extra small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  .main {
+    padding: 76px 16px 32px;
+  }
+
+  .sectionTitle {
+    font-size: 24px;
+  }
+
+  .h2 {
+    font-size: 20px;
+    margin: 24px 0 12px;
+  }
+
+  .paragraph {
+    font-size: 14px;
+  }
+
+  /* Even more compact grids */
+  .grid2,
+  .grid3,
+  .grid4 {
+    gap: 10px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .agentCard {
+    padding: 16px;
+  }
+
+  .signalCard {
+    padding: 12px;
+  }
+
+  /* Roadmap indicators smaller */
+  .phaseIndicator {
+    width: 20px;
+  }
+
+  .phaseDot {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  /* Content blocks more compact */
+  .contentBlock {
+    padding: 16px;
+  }
+
+  /* Stats grid single column */
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Mobile menu button */
+  .mobileMenuBtn {
+    width: 52px;
+    height: 52px;
+    bottom: 20px;
+    right: 20px;
+  }
+
+  /* Sidebar narrower on very small screens */
+  .sidebar {
+    width: 90%;
   }
 }
 
