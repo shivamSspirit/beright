@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useMemo } from 'react';
-import { useStagger, Header } from '@/components/ui';
+import { useStagger } from '@/components/ui';
 import BrandLogo from '@/components/BrandLogo';
 import styles from './docs.module.css';
 
@@ -303,9 +303,7 @@ export default function DocsPage() {
   }, [searchQuery]);
 
   return (
-    <>
-      <Header />
-      <div className={styles.docsPage}>
+    <div className={styles.docsPage}>
         {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
@@ -808,7 +806,6 @@ export default function DocsPage() {
           <p className={styles.footerCopyright}>© 2026 BeRight Protocol</p>
         </footer>
       </main>
-      </div>
-    </>
+    </div>
   );
 }

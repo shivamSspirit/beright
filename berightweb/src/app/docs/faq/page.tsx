@@ -197,44 +197,8 @@ export default function FAQPage() {
   };
 
   return (
-    <PageWrapper showHeader={true} showFooter={false}>
+    <PageWrapper showHeader={false} showFooter={false}>
       <FAQStructuredData />
-
-      {/* Hero */}
-      <Section variant="gradient" size="lg" className={styles.hero}>
-        <h1 className={styles.heroTitle}>Frequently Asked Questions</h1>
-        <p className={styles.heroSubtitle}>Quick answers on markets, scoring, the terminal, API, and more</p>
-
-        {/* Search */}
-        <div className={styles.searchWrapper}>
-          <svg
-            className={styles.searchIcon}
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search questions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
-            <button className={styles.searchClear} onClick={() => setSearchQuery('')}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </Section>
 
       {/* Category Filter */}
       <Section size="sm">
@@ -307,40 +271,6 @@ export default function FAQPage() {
             })
           )}
         </div>
-      </Section>
-
-      {/* CTA */}
-      <Section variant="gradient" className={styles.cta}>
-        <h2 className={styles.ctaTitle}>Still have questions?</h2>
-        <p className={styles.ctaSubtitle}>Try the terminal or join our community</p>
-        <div className={styles.ctaButtons}>
-          <Link
-            href="/beright-terminal"
-            className={`${styles.ctaBtn} ${styles.ctaBtnPrimary}`}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 17l6-6-6-6M12 19h8" />
-            </svg>
-            Open Terminal
-          </Link>
-          <a
-            href="https://x.com/AgentBEright"
-            className={`${styles.ctaBtn} ${styles.ctaBtnSecondary}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-            Follow @AgentBEright
-          </a>
-          <Link href="/docs" className={`${styles.ctaBtn} ${styles.ctaBtnTertiary}`}>
-            Back to Docs
-          </Link>
-        </div>
-        <p className={styles.supportEmail}>
-          For support inquiries: <a href="mailto:support@beright.io">support@beright.io</a>
-        </p>
       </Section>
     </PageWrapper>
   );
