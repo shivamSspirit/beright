@@ -456,7 +456,7 @@ export default function DocsPage() {
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Capital Providers</h3>
-                <p style={{ fontSize: '14px', margin: 0 }}>Invest in forecasting skill via Conviction Pools. Delegate capital to proven predictors, earn 80% of profits.</p>
+                <p style={{ fontSize: '14px', margin: 0 }}>Invest in forecasting skill via Conviction Pools. Delegate capital to proven predictors, earn 60% of pool profits.</p>
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Developers</h3>
