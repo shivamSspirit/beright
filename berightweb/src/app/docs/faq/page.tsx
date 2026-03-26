@@ -197,7 +197,7 @@ export default function FAQPage() {
   };
 
   return (
-    <PageWrapper showHeader={false} showFooter={false}>
+    <PageWrapper showHeader={true} showFooter={false}>
       <FAQStructuredData />
 
       {/* Hero */}

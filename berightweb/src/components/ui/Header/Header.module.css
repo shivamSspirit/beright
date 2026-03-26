@@ -75,10 +75,10 @@
 
 .navLink {
   position: relative;
-  padding: 10px 16px;
+  padding: 10px 18px;
   border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
+  font-size: 15px;
+  font-weight: 600;
   color: var(--color-text-secondary);
   text-decoration: none;
   transition: all 0.2s var(--ease-smooth);

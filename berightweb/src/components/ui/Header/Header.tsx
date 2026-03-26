@@ -43,6 +43,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/beright-terminal', label: 'Terminal' },
   { href: '/docs', label: 'Docs' },
+  { href: '/docs/faq', label: 'FAQ' },
 ];
 
 export function Header({
