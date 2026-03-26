@@ -190,7 +190,7 @@ const REVENUE_STREAMS = [
   {
     title: 'Performance Fee',
     value: '20%',
-    description: 'Platform share from Conviction Pools profits (60/20/20 split)',
+    description: 'Platform share from Conviction Pools profits (50/30/20 split)',
   },
   {
     title: 'Execution Fee',

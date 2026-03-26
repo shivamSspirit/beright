@@ -1085,7 +1085,7 @@ function UserPathsSection() {
     {
       title: 'Capitalist',
       desc: 'Invest in proven forecasters. Delegate capital to top performers.',
-      perks: ['60% of pool profits', 'Access elite forecasters', 'Exit anytime'],
+      perks: ['30% of pool profits', 'Access elite forecasters', 'Exit anytime'],
       color: 'var(--color-gold)',
       icon: (
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">

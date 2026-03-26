@@ -457,7 +457,7 @@ export default function DocsPage() {
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Capital Providers</h3>
-                <p style={{ fontSize: '14px', margin: 0 }}>Invest in forecasting skill via Conviction Pools. Delegate capital to proven predictors, earn 60% of pool profits.</p>
+                <p style={{ fontSize: '14px', margin: 0 }}>Invest in forecasting skill via Conviction Pools. Delegate capital to proven predictors, earn 30% of pool profits.</p>
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Developers</h3>
@@ -561,7 +561,7 @@ export default function DocsPage() {
               <p className={styles.paragraph}>
                 Forecaster Pools are permissionless prediction market hedge funds. Capital providers (LPs) stake in pools
                 managed by elite forecasters. Pool operators deploy capital across markets based on their conviction.
-                Profits are split: 50% to delegators, 30% to forecasters, and 20% to platform. It's like an index fund
+                Profits are split: 50% to forecasters, 30% to delegators, and 20% to platform. It's like an index fund
                 for alpha, but the "fund manager" has a verifiable, on-chain track record.
               </p>
 
@@ -570,7 +570,7 @@ export default function DocsPage() {
                 <div className={`${styles.card} ${styles.solutionCard}`}>
                   <h3 className={styles.h3}>For Forecasters (Pool Operators)</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Earn 30% of pool profits<br/>
+                    • Earn 50% of pool profits<br/>
                     • Manage up to $500K (ELITE tier)<br/>
                     • Must maintain Brier &lt; 0.20<br/>
                     • Build reputation and earn recurring revenue
@@ -579,7 +579,7 @@ export default function DocsPage() {
                 <div className={`${styles.card} ${styles.solutionCard}`}>
                   <h3 className={styles.h3}>For Delegators (Capital Providers)</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Earn 50% of pool profits<br/>
+                    • Earn 30% of pool profits<br/>
                     • Passive alpha exposure (no trading)<br/>
                     • Verifiable operator track record<br/>
                     • Withdraw anytime (no lock-up)
@@ -591,7 +591,7 @@ export default function DocsPage() {
                 <div className={styles.card}>
                   <h3 className={styles.h3}>Fee Structure</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    50/30/20 split<br/>Delegators/Forecasters/Platform
+                    50/30/20 split<br/>Forecasters/Delegators/Platform
                   </p>
                 </div>
                 <div className={styles.card}>
