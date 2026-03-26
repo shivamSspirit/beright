@@ -673,12 +673,22 @@ export default function BeRightTerminal() {
     });
   }, [isDemo, authenticated, ready]);
 
+  // Get tour steps safely
+  const tourSteps = useMemo(() => {
+    try {
+      return getTourSteps('terminal');
+    } catch (error) {
+      console.error('[BeRightTerminal] Error loading tour steps:', error);
+      return [];
+    }
+  }, []);
+
   return (
     <div className={styles.terminalPage}>
       {/* Onboarding Tour - Only in demo mode */}
-      {isDemo && authenticated && (
+      {isDemo && authenticated && tourSteps.length > 0 && (
         <OnboardingTour
-          steps={getTourSteps('terminal')}
+          steps={tourSteps}
           storageKey="beright-terminal-tour-completed"
           onComplete={() => addAgentLog('SYSTEM', 'Welcome aboard! Start exploring.', 'success')}
           forceShow={false} // Set to true to always show tour for testing
