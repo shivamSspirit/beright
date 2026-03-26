@@ -107,6 +107,27 @@ export default function BeRightTerminal() {
   // Get user's Solana wallet pubkey (from unified hook)
   const solanaWallet = walletAddress;
 
+  // Get tour steps safely (must be at top level before any returns)
+  const tourSteps = useMemo(() => {
+    try {
+      return getTourSteps('terminal');
+    } catch (error) {
+      console.error('[BeRightTerminal] Error loading tour steps:', error);
+      return [];
+    }
+  }, []);
+
+  // Debug logging for tour conditions (must be at top level before any returns)
+  useEffect(() => {
+    console.log('[BeRightTerminal] Tour conditions:', {
+      isDemo,
+      authenticated,
+      ready,
+      willShowTour: isDemo && authenticated,
+      tourStepsLoaded: tourSteps.length,
+    });
+  }, [isDemo, authenticated, ready, tourSteps.length]);
+
   // Add chat message
   const addChatMessage = useCallback((
     role: 'user' | 'agent',
@@ -662,26 +683,6 @@ export default function BeRightTerminal() {
       </main>
     );
   };
-
-  // Debug logging for tour conditions
-  useEffect(() => {
-    console.log('[BeRightTerminal] Tour conditions:', {
-      isDemo,
-      authenticated,
-      ready,
-      willShowTour: isDemo && authenticated,
-    });
-  }, [isDemo, authenticated, ready]);
-
-  // Get tour steps safely
-  const tourSteps = useMemo(() => {
-    try {
-      return getTourSteps('terminal');
-    } catch (error) {
-      console.error('[BeRightTerminal] Error loading tour steps:', error);
-      return [];
-    }
-  }, []);
 
   return (
     <div className={styles.terminalPage}>
