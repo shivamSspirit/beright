@@ -508,46 +508,46 @@ export default function DocsPage() {
               <h3 className={styles.h3} style={{ marginTop: '24px' }}>How It Works</h3>
               <div className={styles.grid2}>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>1️⃣ Make Predictions</h3>
+                  <h3 className={styles.h3}>1. Make Predictions</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
                     Predict outcomes across any supported market. Every prediction is recorded on Solana with timestamp, probability, and metadata.
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>2️⃣ Build Track Record</h3>
+                  <h3 className={styles.h3}>2. Build Track Record</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
                     As markets resolve, your Brier score updates automatically. Lower scores = better calibration = higher tier.
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>3️⃣ Unlock Tiers</h3>
+                  <h3 className={styles.h3}>3. Unlock Tiers</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
                     ELITE (&lt;0.15), VERIFIED (&lt;0.20), or ROOKIE (&lt;0.30). Higher tiers unlock larger pool sizes and premium features.
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>4️⃣ Launch Pool</h3>
+                  <h3 className={styles.h3}>4. Launch Pool</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    Create a Conviction Pool, attract LPs, and earn 20% performance fees on all pool profits.
+                    Create a Conviction Pool, attract LPs, and earn 30% performance fees on all pool profits.
                   </p>
                 </div>
               </div>
 
               <div className={styles.grid3} style={{ marginTop: '24px' }}>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>🎯 Calibration Metric</h3>
+                  <h3 className={styles.h3}>Calibration Metric</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
                     Brier score<br/>Lower is better
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>🔗 On-Chain Record</h3>
+                  <h3 className={styles.h3}>On-Chain Record</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
                     Immutable<br/>Portable & verifiable
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>📈 Network Effect</h3>
+                  <h3 className={styles.h3}>Network Effect</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
                     Better calibration<br/>→ more capital
                   </p>
@@ -560,26 +560,26 @@ export default function DocsPage() {
               <h3 className={styles.h3}>Conviction-Backed Staking</h3>
               <p className={styles.paragraph}>
                 Forecaster Pools are permissionless prediction market hedge funds. Capital providers (LPs) stake in pools
-                managed by elite forecasters. Pool operators deploy capital across markets based on their conviction,
-                earn 20% of profits, and LPs earn 80%. It's like an index fund for alpha, but the "fund manager" has
-                a verifiable, on-chain track record.
+                managed by elite forecasters. Pool operators deploy capital across markets based on their conviction.
+                Profits are split: 50% to delegators, 30% to forecasters, and 20% to platform. It's like an index fund
+                for alpha, but the "fund manager" has a verifiable, on-chain track record.
               </p>
 
               <h3 className={styles.h3} style={{ marginTop: '24px' }}>Pool Economics</h3>
               <div className={styles.grid2}>
                 <div className={`${styles.card} ${styles.solutionCard}`}>
-                  <h3 className={styles.h3}>For Pool Operators</h3>
+                  <h3 className={styles.h3}>For Forecasters (Pool Operators)</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Earn 20% performance fees on profits<br/>
+                    • Earn 30% of pool profits<br/>
                     • Manage up to $500K (ELITE tier)<br/>
                     • Must maintain Brier &lt; 0.20<br/>
                     • Build reputation and earn recurring revenue
                   </p>
                 </div>
                 <div className={`${styles.card} ${styles.solutionCard}`}>
-                  <h3 className={styles.h3}>For LPs (Capital Providers)</h3>
+                  <h3 className={styles.h3}>For Delegators (Capital Providers)</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Earn 80% of pool profits<br/>
+                    • Earn 50% of pool profits<br/>
                     • Passive alpha exposure (no trading)<br/>
                     • Verifiable operator track record<br/>
                     • Withdraw anytime (no lock-up)
@@ -589,19 +589,19 @@ export default function DocsPage() {
 
               <div className={styles.grid3} style={{ marginTop: '24px' }}>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>💰 Fee Structure</h3>
+                  <h3 className={styles.h3}>Fee Structure</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    20% performance fee<br/>80/20 split
+                    50/30/20 split<br/>Delegators/Forecasters/Platform
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>✅ Pool Creation</h3>
+                  <h3 className={styles.h3}>Pool Creation</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
                     Min Brier &lt; 0.20<br/>VERIFIED tier+
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>🔒 Security</h3>
+                  <h3 className={styles.h3}>Security</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
                     No lock-up<br/>Withdraw anytime
                   </p>
@@ -625,19 +625,19 @@ export default function DocsPage() {
                   <div>Min Predictions</div>
                 </div>
                 <div className={styles.tableRow}>
-                  <div className={styles.platformName}>ELITE 🏆</div>
+                  <div className={styles.platformName}>ELITE</div>
                   <div className={styles.platformType}>&lt; 0.15</div>
                   <div className={styles.platformChain}>$500K</div>
                   <div className={styles.statusLive}>100+</div>
                 </div>
                 <div className={styles.tableRow}>
-                  <div className={styles.platformName}>VERIFIED ✓</div>
+                  <div className={styles.platformName}>VERIFIED</div>
                   <div className={styles.platformType}>&lt; 0.20</div>
                   <div className={styles.platformChain}>$100K</div>
                   <div className={styles.statusLive}>50+</div>
                 </div>
                 <div className={styles.tableRow}>
-                  <div className={styles.platformName}>ROOKIE 🌱</div>
+                  <div className={styles.platformName}>ROOKIE</div>
                   <div className={styles.platformType}>&lt; 0.30</div>
                   <div className={styles.platformChain}>$25K</div>
                   <div className={styles.statusLive}>10+</div>
@@ -657,28 +657,28 @@ export default function DocsPage() {
             <h2 className={styles.h2}><span className={styles.h2Accent} />Why This Matters</h2>
             <div className={styles.grid2}>
               <div className={styles.card}>
-                <h3 className={styles.h3}>🧠 For Forecasters</h3>
+                <h3 className={styles.h3}>For Forecasters</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
                   Your edge becomes an income stream. Build a track record, launch a pool, earn performance fees.
                   No VC needed, no permission required.
                 </p>
               </div>
               <div className={styles.card}>
-                <h3 className={styles.h3}>💸 For Capital Providers</h3>
+                <h3 className={styles.h3}>For Capital Providers</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
                   Access alpha without trading yourself. Stake with elite forecasters, earn passive returns,
                   track performance on-chain.
                 </p>
               </div>
               <div className={styles.card}>
-                <h3 className={styles.h3}>🌐 For the Ecosystem</h3>
+                <h3 className={styles.h3}>For the Ecosystem</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
                   More capital → more liquidity → tighter spreads → better markets.
                   Forecaster pools create a flywheel effect.
                 </p>
               </div>
               <div className={styles.card}>
-                <h3 className={styles.h3}>🔮 For Prediction Markets</h3>
+                <h3 className={styles.h3}>For Prediction Markets</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
                   Finally, a way to monetize forecasting skill beyond pure trading.
                   Opens prediction markets to a new class of participants.
