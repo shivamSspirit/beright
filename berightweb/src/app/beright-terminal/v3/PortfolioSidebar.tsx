@@ -111,7 +111,7 @@ export default function PortfolioSidebar({
       </div>
 
       {/* Signal Feed */}
-      <div className={styles.signalFeed}>
+      <div className={styles.signalFeed} data-tour="signals-feed">
         {displaySignals.length > 0 ? (
           displaySignals.map((signal, index) => (
             <div

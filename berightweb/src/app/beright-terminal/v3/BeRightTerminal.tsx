@@ -39,6 +39,8 @@ import {
 import { AgentLog, generateId } from '../components/types';
 import styles from '../beright.module.css';
 import BrandLogo from '@/components/BrandLogo';
+import OnboardingTour, { useRestartTour } from '@/components/OnboardingTour';
+import { getTourSteps } from '@/config/tour-steps';
 
 // Solana devnet RPC and Memo Program
 const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
@@ -57,6 +59,9 @@ export default function BeRightTerminal() {
   // Use wallet adapter directly for demo mode signing
   const wallet = useWallet();
   const { signTransaction: walletSignTransaction } = wallet;
+
+  // Tour restart functionality
+  const restartTour = useRestartTour('beright-terminal-tour-completed');
 
   // Derived state for compatibility
   const ready = !userLoading && !modeLoading;
@@ -630,9 +635,9 @@ export default function BeRightTerminal() {
 
     // Main BERIGHT view - three column layout
     return (
-      <main className={styles.mainGrid}>
+      <main className={styles.mainGrid} data-tour="terminal-main">
         {/* Left Panel - Agent Fleet */}
-        <aside className={styles.panel}>
+        <aside className={styles.panel} data-tour="agent-fleet">
           <AgentFleet
             onlineAgents={onlineAgents}
             marketExposure={portfolioData?.marketExposure}
@@ -646,7 +651,7 @@ export default function BeRightTerminal() {
         </section>
 
         {/* Right Panel - Portfolio */}
-        <aside className={styles.panelLast}>
+        <aside className={styles.panelLast} data-tour="portfolio-sidebar">
           <PortfolioSidebar
             signals={signals}
             portfolioValue={portfolioData?.portfolioValue}
@@ -660,17 +665,37 @@ export default function BeRightTerminal() {
 
   return (
     <div className={styles.terminalPage}>
+      {/* Onboarding Tour - Only in demo mode */}
+      {isDemo && authenticated && (
+        <OnboardingTour
+          steps={getTourSteps('terminal')}
+          storageKey="beright-terminal-tour-completed"
+          onComplete={() => addAgentLog('SYSTEM', 'Welcome aboard! Start exploring.', 'success')}
+        />
+      )}
+
       {/* Top Bar */}
       <header className={styles.topBar}>
         <div className={styles.topBarLeft}>
           <NavPill activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
         <div className={styles.topBarRight}>
+          {isDemo && (
+            <button
+              onClick={restartTour}
+              className={styles.refreshBtn}
+              title="Restart onboarding tour"
+              style={{ marginRight: '12px' }}
+            >
+              ?
+            </button>
+          )}
           <button
             onClick={() => fetchData()}
             disabled={isLoading}
             className={styles.refreshBtn}
             title="Refresh data"
+            data-tour="markets-tab"
           >
             {isLoading ? '⟳' : '↻'}
           </button>
@@ -686,7 +711,9 @@ export default function BeRightTerminal() {
 
       {/* CLI Input - Only show on BERIGHT (chat) tab */}
       {activeTab === 'BERIGHT' && (
-        <CLIInput onCommand={processCommand} isProcessing={isProcessing} />
+        <div data-tour="cli-input">
+          <CLIInput onCommand={processCommand} isProcessing={isProcessing} />
+        </div>
       )}
     </div>
   );
