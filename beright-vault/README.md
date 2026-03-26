@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../berightweb/public/beright-logo.svg" alt="BeRight Logo" width="120" />
+  <img src="../beright-logo.svg" alt="BeRight Logo" width="120" />
 </p>
 
 # BeRight Vault
