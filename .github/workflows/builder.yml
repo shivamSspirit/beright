@@ -158,6 +158,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: berightai
 
     steps:
       - name: Checkout
@@ -175,17 +176,22 @@ jobs:
         working-directory: beright-ts
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE_ID }}
         run: |
           echo "Deploying beright-ts to Railway..."
-          railway up --detach
+          echo "Using environment: berightai"
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
+          railway up --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach
           echo "✅ Backend deployed successfully"
 
       - name: Verify Railway Deployment
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_APP_URL: ${{ secrets.RAILWAY_APP_URL }}
         run: |
           echo "Checking deployment status..."
-          railway status || echo "⚠️ Could not verify deployment status"
+          sleep 10
+          curl -f $RAILWAY_APP_URL/api/health || echo "⚠️ Health check failed, deployment may still be starting"
 
       - name: Deploy to Vercel (Frontend)
         if: false  # Enable when ready

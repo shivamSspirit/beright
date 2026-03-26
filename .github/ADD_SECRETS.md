@@ -1,23 +1,39 @@
 # Adding GitHub Secrets - Step by Step
 
-## Step 1: Go to Repository Settings
+## Step 1: Go to Environment Settings
 
 1. Open your repository: https://github.com/shivamSspirit/beright
 2. Click **"Settings"** tab (top right)
-3. In the left sidebar, click **"Secrets and variables"** → **"Actions"**
+3. In the left sidebar, click **"Environments"**
+4. Click on **"berightai"** environment (or create it if it doesn't exist)
 
 ## Step 2: Add RAILWAY_TOKEN
 
-1. Click **"New repository secret"**
-2. Name: `RAILWAY_TOKEN`
-3. Value: `094009c0-10f4-4a52-833d-1497f39f7431`
+1. Scroll down to **"Environment secrets"**
+2. Click **"Add secret"**
+3. Name: `RAILWAY_TOKEN`
+4. Value: `094009c0-10f4-4a52-833d-1497f39f7431`
+5. Click **"Add secret"**
+
+## Step 3: Add RAILWAY_PROJECT_ID
+
+1. Click **"Add secret"** again
+2. Name: `RAILWAY_PROJECT_ID`
+3. Value: `5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4`
 4. Click **"Add secret"**
 
-## Step 3: Add RAILWAY_APP_URL
+## Step 4: Add RAILWAY_SERVICE_ID
 
-1. Click **"New repository secret"** again
+1. Click **"Add secret"** again
+2. Name: `RAILWAY_SERVICE_ID`
+3. Value: `b3c25a10-9c9b-44e3-bdc3-badad053302d`
+4. Click **"Add secret"**
+
+## Step 5: Add RAILWAY_APP_URL
+
+1. Click **"Add secret"** again
 2. Name: `RAILWAY_APP_URL`
-3. Value: Your Railway app URL (e.g., `https://beright-production.up.railway.app`)
+3. Value: `https://beright-api-production.up.railway.app`
 4. Click **"Add secret"**
 
 ## Step 4: IMPORTANT - Regenerate Railway Token
