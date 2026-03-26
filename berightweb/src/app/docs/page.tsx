@@ -12,9 +12,9 @@ import styles from './docs.module.css';
 
 const NAV_SECTIONS = [
   { id: 'overview', label: 'What is BeRight?' },
-  { id: 'core-features', label: 'Core Features' },
   { id: 'agents', label: 'AI Agents' },
   { id: 'signals', label: 'Intelligence Signals' },
+  { id: 'forecaster-network', label: 'Forecaster Network' },
   { id: 'platforms', label: 'Supported Platforms' },
   { id: 'commands', label: 'Commands' },
   { id: 'api', label: 'API Reference' },
@@ -477,123 +477,144 @@ export default function DocsPage() {
           </section>
         )}
 
-        {/* Core Features Section */}
-        {activeSection === 'core-features' && (
+        {/* Forecaster Network Section */}
+        {activeSection === 'forecaster-network' && (
           <section className={styles.contentSection}>
             <div className={styles.sectionHeader}>
-              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>Core Protocol</span>
-              <h1 className={styles.sectionTitle}>Core Features</h1>
+              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>DeFi Primitive</span>
+              <h1 className={styles.sectionTitle}>Forecaster Network</h1>
               <p className={styles.sectionSubtitle}>
-                What makes BeRight different from other prediction markets
+                On-chain reputation, conviction pools, and the calibration economy
               </p>
             </div>
 
             <div className={`${styles.contentBlock} ${styles.highlightBox} ${styles.highlightBoxGreen}`}>
-              <span className={styles.calloutLabel}>BeRight Protocol Stack</span>
+              <span className={styles.calloutLabel}>Forecasting as an Asset Class</span>
               <p className={styles.paragraph} style={{ margin: 0 }}>
-                BeRight combines AI intelligence with a permissionless forecaster network and unique DeFi primitive.
-                Not just another prediction market—we're building the infrastructure for forecasting as an asset class.
+                BeRight transforms forecasting skill into a permissionless financial primitive. Build verifiable track records,
+                attract capital to your conviction pools, and earn performance fees. Your Brier score is your credit rating.
               </p>
             </div>
 
-            <h2 className={styles.h2}><span className={styles.h2Accent} />1. AI Signal Layer & Agent Tech</h2>
-            <div className={styles.contentBlock}>
-              <h3 className={styles.h3}>AXBT-Level Intelligence</h3>
-              <p className={styles.paragraph}>
-                Multi-agent system powered by OpenClaw AI. Scout agents scan markets in &lt;2s, Analyst agents
-                deliver deep research in 5-15s, and Trader agents handle risk checks instantly.
-              </p>
-
-              <div className={styles.grid3}>
-                <div className={styles.card}>
-                  <h3 className={styles.h3}>⚡ Response Time</h3>
-                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    &lt;2s scan<br/>5-15s analysis
-                  </p>
-                </div>
-                <div className={styles.card}>
-                  <h3 className={styles.h3}>📊 Data Sources</h3>
-                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    4+ platforms<br/>aggregated
-                  </p>
-                </div>
-                <div className={styles.card}>
-                  <h3 className={styles.h3}>🤖 AI Models</h3>
-                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Claude Sonnet 4.5<br/>Claude Opus 4.5
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <h2 className={styles.h2}><span className={styles.h2Accent} />2. Forecaster Network Protocol</h2>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Forecaster Network Protocol</h2>
             <div className={styles.contentBlock}>
               <h3 className={styles.h3}>Permissionless Skill Graph</h3>
               <p className={styles.paragraph}>
-                On-chain reputation system tracking Brier scores across all predictions. Elite forecasters earn
-                verified status and attract capital to their conviction pools. Your track record is immutable and portable.
+                Every prediction you make is recorded on-chain with its corresponding outcome and Brier score. Your track record
+                is immutable, portable, and verifiable by anyone. Elite forecasters earn verified status and attract capital
+                to their conviction pools. The better your calibration, the more capital you can manage.
               </p>
 
-              <div className={styles.grid3}>
+              <h3 className={styles.h3} style={{ marginTop: '24px' }}>How It Works</h3>
+              <div className={styles.grid2}>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>🎯 Calibration</h3>
-                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Brier score &lt; 0.15<br/>= ELITE tier
+                  <h3 className={styles.h3}>1️⃣ Make Predictions</h3>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    Predict outcomes across any supported market. Every prediction is recorded on Solana with timestamp, probability, and metadata.
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>🔗 Track Record</h3>
+                  <h3 className={styles.h3}>2️⃣ Build Track Record</h3>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    As markets resolve, your Brier score updates automatically. Lower scores = better calibration = higher tier.
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>3️⃣ Unlock Tiers</h3>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    ELITE (&lt;0.15), VERIFIED (&lt;0.20), or ROOKIE (&lt;0.30). Higher tiers unlock larger pool sizes and premium features.
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>4️⃣ Launch Pool</h3>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    Create a Conviction Pool, attract LPs, and earn 20% performance fees on all pool profits.
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.grid3} style={{ marginTop: '24px' }}>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>🎯 Calibration Metric</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Immutable<br/>Verifiable on-chain
+                    Brier score<br/>Lower is better
+                  </p>
+                </div>
+                <div className={styles.card}>
+                  <h3 className={styles.h3}>🔗 On-Chain Record</h3>
+                  <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
+                    Immutable<br/>Portable & verifiable
                   </p>
                 </div>
                 <div className={styles.card}>
                   <h3 className={styles.h3}>📈 Network Effect</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Better forecasters<br/>→ more capital
+                    Better calibration<br/>→ more capital
                   </p>
                 </div>
               </div>
             </div>
 
-            <h2 className={styles.h2}><span className={styles.h2Accent} />3. DeFi Primitive: Forecaster Pools</h2>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />DeFi Primitive: Forecaster Pools</h2>
             <div className={styles.contentBlock}>
               <h3 className={styles.h3}>Conviction-Backed Staking</h3>
               <p className={styles.paragraph}>
-                Capital follows skill. Stake in forecaster pools managed by top performers. Pool operators earn 20%
-                of profits while LPs gain exposure to alpha without trading themselves. It's like a prediction market
-                hedge fund, but permissionless.
+                Forecaster Pools are permissionless prediction market hedge funds. Capital providers (LPs) stake in pools
+                managed by elite forecasters. Pool operators deploy capital across markets based on their conviction,
+                earn 20% of profits, and LPs earn 80%. It's like an index fund for alpha, but the "fund manager" has
+                a verifiable, on-chain track record.
               </p>
 
-              <div className={styles.grid3}>
+              <h3 className={styles.h3} style={{ marginTop: '24px' }}>Pool Economics</h3>
+              <div className={styles.grid2}>
+                <div className={`${styles.card} ${styles.solutionCard}`}>
+                  <h3 className={styles.h3}>For Pool Operators</h3>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    • Earn 20% performance fees on profits<br/>
+                    • Manage up to $500K (ELITE tier)<br/>
+                    • Must maintain Brier &lt; 0.20<br/>
+                    • Build reputation and earn recurring revenue
+                  </p>
+                </div>
+                <div className={`${styles.card} ${styles.solutionCard}`}>
+                  <h3 className={styles.h3}>For LPs (Capital Providers)</h3>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    • Earn 80% of pool profits<br/>
+                    • Passive alpha exposure (no trading)<br/>
+                    • Verifiable operator track record<br/>
+                    • Withdraw anytime (no lock-up)
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.grid3} style={{ marginTop: '24px' }}>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>💰 Operator Fee</h3>
+                  <h3 className={styles.h3}>💰 Fee Structure</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    20% performance<br/>fee split
+                    20% performance fee<br/>80/20 split
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>✅ Min. Calibration</h3>
+                  <h3 className={styles.h3}>✅ Pool Creation</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Brier &lt; 0.20<br/>to create pool
+                    Min Brier &lt; 0.20<br/>VERIFIED tier+
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>📊 LP Benefits</h3>
+                  <h3 className={styles.h3}>🔒 Security</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Passive alpha<br/>+ verifiable returns
+                    No lock-up<br/>Withdraw anytime
                   </p>
                 </div>
               </div>
             </div>
 
-            <h2 className={styles.h2}><span className={styles.h2Accent} />4. Calibration Program</h2>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Calibration Tiers</h2>
             <div className={styles.contentBlock}>
-              <h3 className={styles.h3}>Proof of Skill</h3>
+              <h3 className={styles.h3}>Proof of Skill Economy</h3>
               <p className={styles.paragraph}>
-                Continuous Brier score tracking across all markets. Lower scores unlock higher tiers, larger pool
-                sizes, and premium features. Your edge is quantified and rewarded. Think of it as a credit score,
-                but for forecasting accuracy.
+                Your Brier score determines your tier. Lower scores unlock higher pool sizes, premium features, and
+                more capital inflow. Think of it as a credit score for forecasting—except it's earned, not bought.
               </p>
 
               <div className={styles.platformTable}>
@@ -601,40 +622,80 @@ export default function DocsPage() {
                   <div>Tier</div>
                   <div>Brier Score</div>
                   <div>Max Pool Size</div>
-                  <div>Status</div>
+                  <div>Min Predictions</div>
                 </div>
                 <div className={styles.tableRow}>
-                  <div className={styles.platformName}>ELITE</div>
+                  <div className={styles.platformName}>ELITE 🏆</div>
                   <div className={styles.platformType}>&lt; 0.15</div>
                   <div className={styles.platformChain}>$500K</div>
-                  <div className={styles.statusLive}>LIVE</div>
+                  <div className={styles.statusLive}>100+</div>
                 </div>
                 <div className={styles.tableRow}>
-                  <div className={styles.platformName}>VERIFIED</div>
+                  <div className={styles.platformName}>VERIFIED ✓</div>
                   <div className={styles.platformType}>&lt; 0.20</div>
                   <div className={styles.platformChain}>$100K</div>
-                  <div className={styles.statusLive}>LIVE</div>
+                  <div className={styles.statusLive}>50+</div>
                 </div>
                 <div className={styles.tableRow}>
-                  <div className={styles.platformName}>ROOKIE</div>
+                  <div className={styles.platformName}>ROOKIE 🌱</div>
                   <div className={styles.platformType}>&lt; 0.30</div>
                   <div className={styles.platformChain}>$25K</div>
-                  <div className={styles.statusLive}>LIVE</div>
+                  <div className={styles.statusLive}>10+</div>
                 </div>
+              </div>
+
+              <div className={`${styles.contentBlock} ${styles.highlightBox}`} style={{ marginTop: '24px' }}>
+                <span className={styles.calloutLabel}>Brier Score Explained</span>
+                <p className={styles.paragraph} style={{ margin: 0 }}>
+                  Brier score measures the accuracy of probabilistic predictions. Score = (predicted_probability - actual_outcome)².
+                  A perfect prediction (70% on a YES that resolved YES) scores 0.09. A terrible prediction (70% on a NO that resolved YES) scores 0.49.
+                  <strong> Lower is always better.</strong> BeRight tracks your cumulative Brier score across all predictions.
+                </p>
+              </div>
+            </div>
+
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Why This Matters</h2>
+            <div className={styles.grid2}>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>🧠 For Forecasters</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  Your edge becomes an income stream. Build a track record, launch a pool, earn performance fees.
+                  No VC needed, no permission required.
+                </p>
+              </div>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>💸 For Capital Providers</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  Access alpha without trading yourself. Stake with elite forecasters, earn passive returns,
+                  track performance on-chain.
+                </p>
+              </div>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>🌐 For the Ecosystem</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  More capital → more liquidity → tighter spreads → better markets.
+                  Forecaster pools create a flywheel effect.
+                </p>
+              </div>
+              <div className={styles.card}>
+                <h3 className={styles.h3}>🔮 For Prediction Markets</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  Finally, a way to monetize forecasting skill beyond pure trading.
+                  Opens prediction markets to a new class of participants.
+                </p>
               </div>
             </div>
 
             <div className={styles.tryCta}>
               <p className={styles.paragraph}>
-                <strong>Want the technical deep dive?</strong><br/>
-                Read our litepaper for full protocol specification and architecture details.
+                <strong>Ready to build your forecaster reputation?</strong><br/>
+                Start making predictions and see your Brier score improve over time.
               </p>
-              <Link href="/docs/litepaper" className={styles.tryBtn}>
+              <Link href="/beright-terminal" className={styles.tryBtn}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                  <path d="M4 17l6-6-6-6M12 19h8" />
                 </svg>
-                Read Litepaper
+                Start Forecasting
               </Link>
             </div>
           </section>
