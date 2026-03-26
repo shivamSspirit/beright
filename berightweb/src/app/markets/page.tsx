@@ -4,8 +4,13 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useBackendStatus } from '@/hooks/useMarkets';
+import { useMode } from '@/context/ModeContext';
+import { useUser } from '@/hooks/useUnifiedUser';
 import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData, getJupiterHotEvents, searchJupiterEvents, JupiterEvent } from '@/lib/api';
 import TradingModal from '@/components/TradingModal';
+import OnboardingTour from '@/components/OnboardingTour';
+import RestartTourButton from '@/components/RestartTourButton';
+import { getTourSteps } from '@/config/tour-steps';
 import { PageWrapper } from '@/components/ui';
 import styles from './markets.module.css';
 
@@ -502,7 +507,7 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
         </div>
 
         {/* Stats Row */}
-        <div className={styles.statsRow}>
+        <div className={styles.statsRow} data-tour="market-stats">
           <div className={styles.stat}>
             <span className={styles.statValue}>{formatVolume(market.volume)}</span>
             <span className={styles.statLabel}>vol</span>
@@ -532,6 +537,7 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
               e.stopPropagation();
               onTrade?.(market);
             }}
+            data-tour="trade-button"
           >
             Trade
           </button>
@@ -635,6 +641,29 @@ function jupiterToApiMarket(event: JupiterEvent): MarketWithDFlow | null {
 
 export default function MarketsPage() {
   const { isConnected } = useBackendStatus();
+  const { isDemo } = useMode();
+  const { isAuthenticated } = useUser();
+
+  // Tour setup - MUST be at top level before any returns
+  const tourSteps = useMemo(() => {
+    try {
+      return getTourSteps('markets-page');
+    } catch (error) {
+      console.error('[MarketsPage] Error loading tour steps:', error);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && isDemo && tourSteps.length > 0) {
+      console.log('[MarketsPage] Tour conditions:', {
+        isAuthenticated,
+        isDemo,
+        tourStepsCount: tourSteps.length,
+        willShowTour: true,
+      });
+    }
+  }, [isAuthenticated, isDemo, tourSteps.length]);
 
   const [markets, setMarkets] = useState<MarketWithDFlow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -779,10 +808,29 @@ export default function MarketsPage() {
 
   return (
     <PageWrapper showHeader={false} showFooter={false}>
-      <div className={styles.marketsPage}>
+      {/* Onboarding Tour - only in demo mode */}
+      {isAuthenticated && isDemo && tourSteps.length > 0 && (
+        <OnboardingTour
+          steps={tourSteps}
+          storageKey="beright-markets-page-tour-completed"
+          onComplete={() => console.log('[MarketsPage] Tour completed!')}
+          forceShow={false}
+          debug={true}
+        />
+      )}
+
+      {/* Restart tour button - only in demo mode */}
+      {isAuthenticated && isDemo && (
+        <RestartTourButton
+          storageKey="beright-markets-page-tour-completed"
+          ariaLabel="Restart markets page tour"
+        />
+      )}
+
+      <div className={styles.marketsPage} data-tour="markets-page">
         {/* Compact Search & Filters Header */}
         <header className={styles.marketsHeader}>
-          <div className={styles.headerRow}>
+          <div className={styles.headerRow} data-tour="search-filters">
             {/* Search - compact on desktop */}
             <div className={styles.searchContainer}>
               <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -856,12 +904,13 @@ export default function MarketsPage() {
             <>
               <div className={styles.marketsGrid}>
                 {filteredMarkets.map((market, index) => (
-                  <MarketCard
-                    key={market.id}
-                    market={market}
-                    onTrade={setTradingMarket}
-                    index={index}
-                  />
+                  <div key={market.id} data-tour={index === 0 ? 'market-card' : undefined}>
+                    <MarketCard
+                      market={market}
+                      onTrade={setTradingMarket}
+                      index={index}
+                    />
+                  </div>
                 ))}
               </div>
 

@@ -12,6 +12,9 @@ import {
   Info, Star, Wallet, ArrowUp, LogOut, BookOpen, Crown, CreditCard
 } from 'lucide-react';
 import { PageWrapper } from '@/components/ui';
+import OnboardingTour from '@/components/OnboardingTour';
+import RestartTourButton from '@/components/RestartTourButton';
+import { getTourSteps } from '@/config/tour-steps';
 import styles from './profile.module.css';
 import { getLeagueInfo, getLevelProgress } from '@/lib/leagues';
 import { formatNumber, formatAddress, formatCompactNumber } from '@/lib/format';
@@ -196,7 +199,7 @@ const StatsPanel = ({
   <>
     {/* Wallet Balance */}
     <Plate>
-      <Inset>
+      <Inset data-tour="wallet-balance">
         <h2 className={styles.sectionTitle}>Wallet Balance</h2>
         <div className={styles.balanceValue}>
           <span className={styles.balanceAmount}>
@@ -243,7 +246,7 @@ const StatsPanel = ({
     </Plate>
 
     {/* Recent Activity */}
-    <div className={styles.activitySection}>
+    <div className={styles.activitySection} data-tour="activity-feed">
       <h2 className={styles.sectionTitle}>
         Recent Activity
         <span style={{ fontSize: '10px', marginLeft: '6px', color: '#818CF8', fontWeight: 400 }}>
@@ -609,6 +612,27 @@ export default function ProfilePage() {
   const { resetOnboarding } = useOnboarding();
   const { isDemo, network } = useMode();
 
+  // Tour setup - MUST be at top level before any returns
+  const tourSteps = useMemo(() => {
+    try {
+      return getTourSteps('profile');
+    } catch (error) {
+      console.error('[ProfilePage] Error loading tour steps:', error);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && isDemo && tourSteps.length > 0) {
+      console.log('[ProfilePage] Tour conditions:', {
+        isAuthenticated,
+        isDemo,
+        tourStepsCount: tourSteps.length,
+        willShowTour: true,
+      });
+    }
+  }, [isAuthenticated, isDemo, tourSteps.length]);
+
   // Local predictions from usePredictions hook (localStorage in demo mode)
   const {
     predictions: localPredictions,
@@ -842,6 +866,25 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper showHeader={false} showFooter={false}>
+      {/* Onboarding Tour - only in demo mode */}
+      {isAuthenticated && isDemo && tourSteps.length > 0 && (
+        <OnboardingTour
+          steps={tourSteps}
+          storageKey="beright-profile-tour-completed"
+          onComplete={() => console.log('[ProfilePage] Tour completed!')}
+          forceShow={false}
+          debug={true}
+        />
+      )}
+
+      {/* Restart tour button - only in demo mode */}
+      {isAuthenticated && isDemo && (
+        <RestartTourButton
+          storageKey="beright-profile-tour-completed"
+          ariaLabel="Restart profile page tour"
+        />
+      )}
+
       <div className={styles.page}>
         <div className={styles.ambientLight} />
 
@@ -889,7 +932,7 @@ export default function ProfilePage() {
           {/* Hero Card */}
           <div className={styles.fullWidth}>
             <Plate>
-              <Inset className={styles.heroCard}>
+              <Inset className={styles.heroCard} data-tour="profile-hero">
                 <div className={styles.avatarOuter}>
                   <div className={styles.avatarInner}>
                     {user?.avatar || user?.avatarUrl ? (
@@ -944,7 +987,7 @@ export default function ProfilePage() {
 
           {/* Stat Cards */}
           <Plate>
-            <Inset className={styles.statCard}>
+            <Inset className={styles.statCard} data-tour="accuracy-card">
               <div className={styles.statCardHeader}>
                 Accuracy
                 <Info size={16} />
@@ -994,7 +1037,7 @@ export default function ProfilePage() {
           {/* League Progression */}
           <div className={styles.fullWidth}>
             <Plate>
-              <Inset className={styles.leagueCard}>
+              <Inset className={styles.leagueCard} data-tour="league-progression">
                 <div className={styles.leagueHeader}>
                   <h2 className={styles.leagueTitle}>League Progression</h2>
                   <div className={styles.leagueBadgeLarge}>{league.name} Tier</div>
@@ -1016,7 +1059,7 @@ export default function ProfilePage() {
           {/* Achievements */}
           <div className={styles.fullWidth}>
             <Plate>
-              <Inset className={styles.achievementsCard}>
+              <Inset className={styles.achievementsCard} data-tour="achievements">
                 <h2 className={styles.achievementsTitle}>Achievements</h2>
                 <div className={styles.achievementsGrid}>
                   {achievements.map((achievement) => (

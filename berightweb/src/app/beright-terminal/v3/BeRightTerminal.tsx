@@ -39,7 +39,8 @@ import {
 import { AgentLog, generateId } from '../components/types';
 import styles from '../beright.module.css';
 import BrandLogo from '@/components/BrandLogo';
-import OnboardingTour, { useRestartTour } from '@/components/OnboardingTour';
+import OnboardingTour from '@/components/OnboardingTour';
+import RestartTourButton from '@/components/RestartTourButton';
 import { getTourSteps } from '@/config/tour-steps';
 
 // Solana devnet RPC and Memo Program
@@ -59,9 +60,6 @@ export default function BeRightTerminal() {
   // Use wallet adapter directly for demo mode signing
   const wallet = useWallet();
   const { signTransaction: walletSignTransaction } = wallet;
-
-  // Tour restart functionality
-  const restartTour = useRestartTour('beright-terminal-tour-completed');
 
   // Derived state for compatibility
   const ready = !userLoading && !modeLoading;
@@ -697,22 +695,20 @@ export default function BeRightTerminal() {
         />
       )}
 
+      {/* Restart Tour Button - Only in demo mode */}
+      {isDemo && authenticated && (
+        <RestartTourButton
+          storageKey="beright-terminal-tour-completed"
+          ariaLabel="Restart terminal tour"
+        />
+      )}
+
       {/* Top Bar */}
       <header className={styles.topBar}>
         <div className={styles.topBarLeft}>
           <NavPill activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
         <div className={styles.topBarRight}>
-          {isDemo && (
-            <button
-              onClick={restartTour}
-              className={styles.refreshBtn}
-              title="Restart onboarding tour"
-              style={{ marginRight: '12px' }}
-            >
-              ?
-            </button>
-          )}
           <button
             onClick={() => fetchData()}
             disabled={isLoading}

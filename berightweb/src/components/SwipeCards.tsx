@@ -673,7 +673,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
     const currentAnalysis = topCard ? analysisCache[topCard.id] : null;
 
     return (
-        <div className="bier-root">
+        <div className="bier-root" data-tour="swipe-container">
             <main className="deck-container">
                 {/* Bottom Card (preview) */}
                 {bottomCard && (
@@ -701,7 +701,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
                 {/* Top Card (interactive) */}
                 {topCard && bierData && (
-                    <div className={`bier-card ${swipeClass || ''}`} data-index="0">
+                    <div className={`bier-card ${swipeClass || ''}`} data-index="0" data-tour="top-card">
                         {/* ZONE 1: THE HOOK (top 30%) */}
                         <div className="zone-hook" style={{
                             backgroundImage: `url(${topCard.dflow?.imageUrl || getCategoryFallbackImage(topCard.category)})`,
@@ -833,7 +833,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
             </div>
 
             {/* Controls */}
-            <div className="controls">
+            <div className="controls" data-tour="vote-buttons">
                 <button className="control-btn btn-no" onClick={() => initiateVote('NO')}>
                     <svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
@@ -855,7 +855,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
             {/* AI Analysis Modal */}
             {showAnalysisModal && topCard && (
                 <div className="analysis-modal-backdrop" onClick={cancelVote}>
-                    <div className="analysis-modal" onClick={e => e.stopPropagation()}>
+                    <div className="analysis-modal" data-tour="analysis-modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <span className="modal-badge">AI FACT CHECK</span>
                             <button className="modal-close" onClick={cancelVote}>×</button>
@@ -1019,6 +1019,7 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
                             <button
                                 className={`action-btn confirm-btn ${pendingChoice === 'YES' ? 'yes' : 'no'}`}
                                 onClick={confirmVote}
+                                data-tour="confirm-button"
                             >
                                 Confirm {pendingChoice}
                             </button>

@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '@/hooks/useUnifiedUser';
 import { useMarkets } from '@/hooks/useMarkets';
 import { usePredictions } from '@/hooks/usePredictions';
+import { useMode } from '@/context/ModeContext';
 import { PageWrapper } from '@/components/ui';
 import SwipeCards from '@/components/SwipeCards';
 import LandingPage from '@/components/LandingPage';
+import OnboardingTour from '@/components/OnboardingTour';
+import RestartTourButton from '@/components/RestartTourButton';
+import { getTourSteps } from '@/config/tour-steps';
 import { Prediction } from '@/lib/types';
 import styles from './page.module.css';
 
@@ -19,6 +23,28 @@ export default function Home() {
     limit: 20
   });
   const { savePrediction, isDemo } = usePredictions(walletAddress);
+  const { isDemo: isDemoMode } = useMode();
+
+  // Tour setup - MUST be at top level before any returns
+  const tourSteps = useMemo(() => {
+    try {
+      return getTourSteps('home');
+    } catch (error) {
+      console.error('[Home] Error loading tour steps:', error);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && isDemoMode && tourSteps.length > 0) {
+      console.log('[Home] Tour conditions:', {
+        isAuthenticated,
+        isDemoMode,
+        tourStepsCount: tourSteps.length,
+        willShowTour: true,
+      });
+    }
+  }, [isAuthenticated, isDemoMode, tourSteps.length]);
 
   // Handle vote - save prediction to storage with optional on-chain tx signature
   const handleVote = useCallback(async (
@@ -108,6 +134,25 @@ export default function Home() {
 
   return (
     <PageWrapper showHeader={false} showFooter={false}>
+      {/* Onboarding Tour - only in demo mode */}
+      {isAuthenticated && isDemoMode && tourSteps.length > 0 && (
+        <OnboardingTour
+          steps={tourSteps}
+          storageKey="beright-home-tour-completed"
+          onComplete={() => console.log('[Home] Tour completed!')}
+          forceShow={false}
+          debug={true}
+        />
+      )}
+
+      {/* Restart tour button - only in demo mode */}
+      {isAuthenticated && isDemoMode && (
+        <RestartTourButton
+          storageKey="beright-home-tour-completed"
+          ariaLabel="Restart home page tour"
+        />
+      )}
+
       <SwipeCards
         predictions={predictions}
         onVote={handleVote}
