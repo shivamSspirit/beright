@@ -663,6 +663,16 @@ export default function BeRightTerminal() {
     );
   };
 
+  // Debug logging for tour conditions
+  useEffect(() => {
+    console.log('[BeRightTerminal] Tour conditions:', {
+      isDemo,
+      authenticated,
+      ready,
+      willShowTour: isDemo && authenticated,
+    });
+  }, [isDemo, authenticated, ready]);
+
   return (
     <div className={styles.terminalPage}>
       {/* Onboarding Tour - Only in demo mode */}
@@ -671,6 +681,8 @@ export default function BeRightTerminal() {
           steps={getTourSteps('terminal')}
           storageKey="beright-terminal-tour-completed"
           onComplete={() => addAgentLog('SYSTEM', 'Welcome aboard! Start exploring.', 'success')}
+          forceShow={false} // Set to true to always show tour for testing
+          debug={true}
         />
       )}
 

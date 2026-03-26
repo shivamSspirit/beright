@@ -18,6 +18,8 @@ interface OnboardingTourProps {
   onComplete?: () => void;
   onSkip?: () => void;
   storageKey?: string; // localStorage key to persist tour completion
+  forceShow?: boolean; // Force show tour for testing (ignores localStorage)
+  debug?: boolean; // Enable debug logging
 }
 
 export default function OnboardingTour({
@@ -25,6 +27,8 @@ export default function OnboardingTour({
   onComplete,
   onSkip,
   storageKey = 'beright-tour-completed',
+  forceShow = false,
+  debug = true, // Enable by default for now
 }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isActive, setIsActive] = useState(false);
@@ -36,12 +40,29 @@ export default function OnboardingTour({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const completed = localStorage.getItem(storageKey);
-      if (!completed) {
+
+      if (debug) {
+        console.log('[OnboardingTour] Initialization:', {
+          storageKey,
+          completed,
+          forceShow,
+          willShow: forceShow || !completed,
+          stepsCount: steps.length,
+        });
+      }
+
+      if (forceShow || !completed) {
         // Small delay before starting tour
-        setTimeout(() => setIsActive(true), 1000);
+        if (debug) console.log('[OnboardingTour] Starting tour in 1 second...');
+        setTimeout(() => {
+          if (debug) console.log('[OnboardingTour] Tour activated!');
+          setIsActive(true);
+        }, 1000);
+      } else {
+        if (debug) console.log('[OnboardingTour] Tour already completed, skipping');
       }
     }
-  }, [storageKey]);
+  }, [storageKey, forceShow, debug, steps.length]);
 
   // Update tooltip and highlight positions when step changes
   useEffect(() => {
@@ -52,7 +73,28 @@ export default function OnboardingTour({
 
     const updatePosition = () => {
       const target = document.querySelector(step.target);
-      if (!target || !tooltipRef.current) return;
+
+      if (debug) {
+        console.log('[OnboardingTour] Step', currentStep + 1, ':', {
+          stepId: step.id,
+          selector: step.target,
+          elementFound: !!target,
+          tooltipRef: !!tooltipRef.current,
+        });
+      }
+
+      if (!target) {
+        console.warn('[OnboardingTour] Target element not found:', step.target);
+        console.warn('[OnboardingTour] Available elements with data-tour:',
+          Array.from(document.querySelectorAll('[data-tour]')).map(el => el.getAttribute('data-tour'))
+        );
+        return;
+      }
+
+      if (!tooltipRef.current) {
+        console.warn('[OnboardingTour] Tooltip ref not ready');
+        return;
+      }
 
       const targetRect = target.getBoundingClientRect();
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
