@@ -154,44 +154,47 @@ jobs:
   # Deploy - On main branch only
   # ============================================
   deploy:
-    name: Deploy
+    name: Deploy to Railway
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/railwayapp/cli:latest
     needs: validate
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: berightai
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy beright-ts to Railway
+      - name: Deploy beright-ts Service
         working-directory: beright-ts
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE_ID }}
         run: |
-          echo "Deploying beright-ts to Railway..."
-          echo "Using environment: berightai"
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }} --environment production
-          railway up --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach
-          echo "✅ Backend deployed successfully"
+          echo "🚀 Deploying beright-ts to Railway..."
+          echo "Service ID: ${{ secrets.RAILWAY_SERVICE_ID }}"
+          railway up --service ${{ secrets.RAILWAY_SERVICE_ID }} --ci
+          echo "✅ Deployment initiated successfully"
 
-      - name: Verify Railway Deployment
+      - name: Wait for Deployment
+        run: sleep 30
+
+      - name: Verify Railway Health
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_APP_URL: ${{ secrets.RAILWAY_APP_URL }}
         run: |
-          echo "Checking deployment status..."
-          sleep 10
-          curl -f $RAILWAY_APP_URL/api/health || echo "⚠️ Health check failed, deployment may still be starting"
+          echo "🔍 Checking health endpoint: $RAILWAY_APP_URL/api/health"
+          for i in {1..5}; do
+            if curl -f -s "$RAILWAY_APP_URL/api/health" > /dev/null; then
+              echo "✅ Health check passed!"
+              curl -s "$RAILWAY_APP_URL/api/health" | head -20
+              exit 0
+            fi
+            echo "⏳ Attempt $i/5 failed, waiting 10s..."
+            sleep 10
+          done
+          echo "⚠️ Health check failed after 5 attempts"
+          exit 1
 
       - name: Deploy to Vercel (Frontend)
         if: false  # Enable when ready

@@ -10,14 +10,15 @@ The BeRight project uses GitHub Environments to manage deployment secrets and pr
 
 Location: `Settings → Environments → berightai`
 
-### 2. Environment Secrets (4 Required)
+### 2. Environment Secrets (3 Required)
 
 | Secret Name | Value | Where to Find |
 |------------|-------|---------------|
 | `RAILWAY_TOKEN` | `094009c0-10f4-4a52-833d-1497f39f7431` | Railway Dashboard → Account → Tokens |
-| `RAILWAY_PROJECT_ID` | `5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4` | From your Railway project URL |
 | `RAILWAY_SERVICE_ID` | `b3c25a10-9c9b-44e3-bdc3-badad053302d` | From your Railway service URL |
 | `RAILWAY_APP_URL` | `https://beright-api-production.up.railway.app` | Railway Dashboard → Deployments tab |
+
+**Note:** `RAILWAY_PROJECT_ID` is no longer required with the new Docker container approach.
 
 ## Step-by-Step Setup
 
@@ -28,7 +29,7 @@ Location: `Settings → Environments → berightai`
 3. In left sidebar, click **Environments**
 4. Click on **berightai** (or create it if missing)
 
-### Step 2: Add All 4 Secrets
+### Step 2: Add All 3 Secrets
 
 For each secret below, click **"Add secret"** in the Environment secrets section:
 
@@ -38,19 +39,13 @@ Name: RAILWAY_TOKEN
 Value: 094009c0-10f4-4a52-833d-1497f39f7431
 ```
 
-#### Secret 2: RAILWAY_PROJECT_ID
-```
-Name: RAILWAY_PROJECT_ID
-Value: 5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4
-```
-
-#### Secret 3: RAILWAY_SERVICE_ID
+#### Secret 2: RAILWAY_SERVICE_ID
 ```
 Name: RAILWAY_SERVICE_ID
 Value: b3c25a10-9c9b-44e3-bdc3-badad053302d
 ```
 
-#### Secret 4: RAILWAY_APP_URL
+#### Secret 3: RAILWAY_APP_URL
 ```
 Name: RAILWAY_APP_URL
 Value: https://beright-api-production.up.railway.app
@@ -58,10 +53,9 @@ Value: https://beright-api-production.up.railway.app
 
 ### Step 3: Verify Secrets are Added
 
-In the **berightai** environment page, you should see all 4 secrets listed:
+In the **berightai** environment page, you should see all 3 secrets listed:
 
 - ✅ RAILWAY_TOKEN
-- ✅ RAILWAY_PROJECT_ID
 - ✅ RAILWAY_SERVICE_ID
 - ✅ RAILWAY_APP_URL
 
