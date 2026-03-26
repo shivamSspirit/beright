@@ -116,21 +116,43 @@ export function usePredictions(walletAddress: string | null) {
         return;
       }
 
-      // Production: Fetch from API
-      const response = await fetch(`/api/predictions?walletAddress=${walletAddress}`, {
-        headers: {
-          'X-Mode': 'production',
-        },
-      });
+      // Production: Fetch from on-chain calibration program via API
+      const response = await fetch(`/api/v2/predictions/user?wallet=${walletAddress}&limit=100`);
 
       const data = await response.json();
 
-      if (data.success) {
-        setPredictions(data.predictions || []);
-        setOnChainStats(data.stats || null);
-        console.log('[Predictions] Loaded from API:', data.predictions?.length || 0, 'predictions');
+      if (data.success && data.predictions) {
+        // Transform on-chain predictions to match StoredPrediction format
+        const transformedPredictions: StoredPrediction[] = data.predictions.map((pred: any) => ({
+          id: pred.id,
+          marketId: pred.marketId,
+          question: pred.marketId, // Question not stored on-chain, use marketId as placeholder
+          platform: 'onchain',
+          direction: pred.direction,
+          probability: pred.probability,
+          marketOdds: pred.probability * 100,
+          walletAddress,
+          createdAt: pred.createdAt,
+          resolvedAt: pred.resolvedAt,
+          outcome: pred.outcome,
+          brierScore: pred.brierScore,
+          onChainTx: pred.onChainTx,
+          explorerUrl: pred.explorerUrl,
+        }));
+
+        setPredictions(transformedPredictions);
+        setOnChainStats(data.stats ? {
+          totalPredictions: data.stats.totalPredictions,
+          resolvedPredictions: data.stats.resolvedPredictions,
+          avgBrierScore: data.stats.avgBrierScore,
+          accuracy: data.stats.accuracy,
+          correctPredictions: data.stats.correctPredictions,
+          streak: data.stats.streak,
+          maxStreak: data.stats.maxStreak,
+        } : null);
+        console.log('[Predictions] Loaded from on-chain:', transformedPredictions.length, 'predictions');
       } else {
-        console.warn('[Predictions] Failed to load:', data.error);
+        console.warn('[Predictions] Failed to load from on-chain:', data.error);
         setPredictions([]);
       }
     } catch (err) {

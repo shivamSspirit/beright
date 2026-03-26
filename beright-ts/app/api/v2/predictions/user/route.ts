@@ -18,13 +18,14 @@ async function fetchOnChainPredictions(walletAddress?: string, limit: number = 5
       CALIBRATION_PROGRAM_ID,
     } = await import('../../../../../lib/onchain/calibration');
 
-    // Get predictions from the calibration program
-    // Note: In demo mode, predictions are recorded under the server wallet
-    // We filter by userWallet stored in memo if needed
-    const predictions = await getForecasterPredictions(undefined, limit);
+    // Convert wallet address string to PublicKey if provided
+    const forecasterPubkey = walletAddress ? new PublicKey(walletAddress) : undefined;
 
-    // Get forecaster stats
-    const stats = await getForecasterStats();
+    // Get predictions from the calibration program for the specified wallet
+    const predictions = await getForecasterPredictions(forecasterPubkey, limit);
+
+    // Get forecaster stats for the specified wallet
+    const stats = await getForecasterStats(forecasterPubkey);
 
     // Transform predictions to match frontend expectations
     const formattedPredictions = predictions.map(({ pda, record }) => ({
