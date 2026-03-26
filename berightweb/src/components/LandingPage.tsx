@@ -537,6 +537,189 @@ function IntelligenceSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────
+// SECTION 5.5: CORE FEATURES - V-RIDE Protocol
+// ─────────────────────────────────────────────────────────────────────────────────
+
+function CoreFeaturesSection() {
+  const features = [
+    {
+      icon: '🧠',
+      title: 'AI Signal Layer & Agent Tech',
+      subtitle: 'AXBT-Level Intelligence',
+      description: 'Multi-agent system powered by OpenClaw AI. Scout agents scan markets in <2s, Analyst agents deliver deep research in 5-15s, and Trader agents handle risk checks instantly.',
+      specs: [
+        { label: 'Response Time', value: '<2s scan, 5-15s analysis' },
+        { label: 'Data Sources', value: '4+ platforms aggregated' },
+        { label: 'Models', value: 'Claude Sonnet 4.5 + Opus 4.5' },
+      ],
+      color: 'var(--color-secondary)',
+    },
+    {
+      icon: '🌐',
+      title: 'Forecaster Network Protocol',
+      subtitle: 'Permissionless Skill Graph',
+      description: 'On-chain reputation system tracking Brier scores across all predictions. Elite forecasters earn verified status and attract capital to their conviction pools.',
+      specs: [
+        { label: 'Calibration', value: 'Brier score < 0.15 = ELITE' },
+        { label: 'Track Record', value: 'Immutable, verifiable on-chain' },
+        { label: 'Network Effect', value: 'Better forecasters → more capital' },
+      ],
+      color: 'var(--color-primary)',
+    },
+    {
+      icon: '💎',
+      title: 'DeFi Primitive: Forecaster Pools',
+      subtitle: 'Conviction-Backed Staking',
+      description: 'Capital follows skill. Stake in forecaster pools managed by top performers. Pool operators earn 20% of profits while LPs gain exposure to alpha without trading themselves.',
+      specs: [
+        { label: 'Operator Fee', value: '20% performance fee' },
+        { label: 'Min. Calibration', value: 'Brier < 0.20 to create pool' },
+        { label: 'LP Benefits', value: 'Passive alpha exposure + verifiable returns' },
+      ],
+      color: 'var(--color-gold)',
+    },
+    {
+      icon: '🎯',
+      title: 'Calibration Program',
+      subtitle: 'Proof of Skill',
+      description: 'Continuous Brier score tracking across all markets. Lower scores unlock higher tiers, larger pool sizes, and premium features. Your edge is quantified and rewarded.',
+      specs: [
+        { label: 'ELITE Tier', value: 'Brier < 0.15 | Max pool $500K' },
+        { label: 'VERIFIED Tier', value: 'Brier < 0.20 | Max pool $100K' },
+        { label: 'ROOKIE Tier', value: 'Brier < 0.30 | Max pool $25K' },
+      ],
+      color: 'var(--color-primary)',
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-24 px-4 sm:px-6 relative overflow-hidden bg-[var(--color-bg-surface-1)]/30">
+      {/* Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)]/5 via-transparent to-[var(--color-secondary)]/5 pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Section Header */}
+        <div className="text-center mb-12 sm:mb-20">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20 mb-4 sm:mb-6">
+            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-primary)]">V-RIDE Protocol</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-6 text-[var(--color-text-primary)]">
+            Core Features That <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]">Set Us Apart</span>
+          </h2>
+          <p className="text-[var(--color-text-secondary)] text-sm sm:text-lg max-w-3xl mx-auto px-2">
+            Not just another prediction market. BeRight combines AI intelligence with a permissionless forecaster network and unique DeFi primitive.
+          </p>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="group relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] hover:border-[var(--color-border-hover)] transition-all duration-300 overflow-hidden"
+              style={{
+                boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+              }}
+            >
+              {/* Hover Glow */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl sm:rounded-3xl"
+                style={{
+                  background: `radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${feature.color}15, transparent 40%)`
+                }}
+              />
+
+              {/* Content */}
+              <div className="relative z-10">
+                {/* Icon & Title */}
+                <div className="flex items-start gap-4 mb-4 sm:mb-6">
+                  <div
+                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl sm:text-3xl transition-transform group-hover:scale-110 duration-300"
+                    style={{
+                      backgroundColor: `${feature.color}15`,
+                      border: `1px solid ${feature.color}40`
+                    }}
+                  >
+                    {feature.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-lg sm:text-xl mb-1 text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors">
+                      {feature.title}
+                    </h3>
+                    <p
+                      className="text-xs sm:text-sm font-semibold"
+                      style={{ color: feature.color }}
+                    >
+                      {feature.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm sm:text-base text-[var(--color-text-secondary)] mb-6 leading-relaxed">
+                  {feature.description}
+                </p>
+
+                {/* Specs */}
+                <div className="space-y-3">
+                  {feature.specs.map((spec, specIndex) => (
+                    <div
+                      key={specIndex}
+                      className="flex items-start justify-between gap-3 p-3 rounded-lg bg-[var(--color-bg-surface-2)]/50 border border-[var(--color-border)]"
+                    >
+                      <span className="text-xs sm:text-sm font-medium text-[var(--color-text-muted)]">
+                        {spec.label}
+                      </span>
+                      <span
+                        className="text-xs sm:text-sm font-mono font-semibold text-right"
+                        style={{ color: feature.color }}
+                      >
+                        {spec.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Corner Accent */}
+              <div
+                className="absolute top-0 right-0 w-24 h-24 opacity-10 pointer-events-none"
+                style={{
+                  background: `radial-gradient(circle at top right, ${feature.color}, transparent 70%)`
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="mt-12 sm:mt-16 text-center">
+          <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[var(--color-primary)]/10 to-[var(--color-secondary)]/10 border border-[var(--color-primary)]/20">
+            <div className="flex-1 text-left">
+              <p className="text-sm sm:text-base font-semibold text-[var(--color-text-primary)] mb-1">
+                Want the technical deep dive?
+              </p>
+              <p className="text-xs sm:text-sm text-[var(--color-text-muted)]">
+                Read the full protocol specification in our litepaper
+              </p>
+            </div>
+            <Link
+              href="/docs/litepaper"
+              className="flex items-center gap-2 px-6 py-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-bg-base)] font-semibold rounded-xl transition-all shadow-[var(--shadow-glow-primary)] hover:shadow-[var(--shadow-glow-primary-lg)]"
+            >
+              <span className="text-sm">Read Litepaper</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────
 // SECTION 6: PRODUCT PREVIEW - Swipe Card + AI Insight Demo
 // ─────────────────────────────────────────────────────────────────────────────────
 
@@ -1044,6 +1227,9 @@ export default function LandingPage() {
 
       {/* 5. Intelligence + Network - Core Value Prop */}
       <IntelligenceSection />
+
+      {/* 5.5. Core Features - V-RIDE Protocol */}
+      <CoreFeaturesSection />
 
       {/* 6. Product Preview - Swipe Card + AI Insight */}
       <ProductPreviewSection />
