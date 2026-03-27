@@ -945,30 +945,67 @@ export default function MarketsPage() {
           )}
         </main>
 
-        {/* Trading Modal */}
-        {tradingMarket && tradingMarket.dflow && (
+        {/* Trading Modal - Supports both DFlow and Jupiter markets */}
+        {tradingMarket && (tradingMarket.dflow || tradingMarket.jupiter) && (
           <TradingModal
             isOpen={true}
             onClose={() => setTradingMarket(null)}
-            prediction={{
-              id: tradingMarket.id || tradingMarket.dflow.ticker,
-              question: tradingMarket.question || tradingMarket.title,
-              marketOdds: tradingMarket.yesPct,
-              source: 'dflow',
-              endDate: tradingMarket.endDate ?? undefined,
-              dflow: {
-                ticker: tradingMarket.dflow.ticker,
-                seriesTicker: tradingMarket.dflow.seriesTicker || '',
-                volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
-                openInterest: tradingMarket.dflow.openInterest || 0,
-                yesBid: tradingMarket.dflow.yesBid || 0,
-                yesAsk: tradingMarket.dflow.yesAsk || 0,
-                noBid: tradingMarket.dflow.noBid || 0,
-                noAsk: tradingMarket.dflow.noAsk || 0,
-                spread: tradingMarket.dflow.spread || 0,
-                tokens: tradingMarket.dflow.tokens,
-              },
-            }}
+            prediction={
+              tradingMarket.dflow
+                ? // DFlow market structure
+                  {
+                    id: tradingMarket.id || tradingMarket.dflow.ticker,
+                    question: tradingMarket.question || tradingMarket.title,
+                    marketOdds: tradingMarket.yesPct,
+                    source: 'dflow',
+                    endDate: tradingMarket.endDate ?? undefined,
+                    dflow: {
+                      ticker: tradingMarket.dflow.ticker,
+                      seriesTicker: tradingMarket.dflow.seriesTicker || '',
+                      volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
+                      openInterest: tradingMarket.dflow.openInterest || 0,
+                      yesBid: tradingMarket.dflow.yesBid || 0,
+                      yesAsk: tradingMarket.dflow.yesAsk || 0,
+                      noBid: tradingMarket.dflow.noBid || 0,
+                      noAsk: tradingMarket.dflow.noAsk || 0,
+                      spread: tradingMarket.dflow.spread || 0,
+                      tokens: tradingMarket.dflow.tokens,
+                    },
+                  }
+                : // Jupiter market structure - map to DFlow-like format
+                  {
+                    id: tradingMarket.id || tradingMarket.jupiter!.eventId,
+                    question: tradingMarket.question || tradingMarket.title,
+                    marketOdds: tradingMarket.yesPct,
+                    source: tradingMarket.jupiter?.markets?.[0]?.provider || 'jupiter',
+                    endDate: tradingMarket.jupiter?.endTime ?? undefined,
+                    dflow: {
+                      ticker: tradingMarket.jupiter!.eventId,
+                      seriesTicker: tradingMarket.jupiter!.eventId,
+                      volume24h: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.volume24h || '0'),
+                      openInterest: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.openInterest || '0'),
+                      // Convert micro USD pricing to decimal (e.g., "500000" = $0.50 = 50%)
+                      yesBid: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.sellYesPriceUsd || '0') / 1_000_000,
+                      yesAsk: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.buyYesPriceUsd || '0') / 1_000_000,
+                      noBid: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.sellNoPriceUsd || '0') / 1_000_000,
+                      noAsk: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.buyNoPriceUsd || '0') / 1_000_000,
+                      spread: Math.abs(
+                        parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.buyYesPriceUsd || '0') -
+                          parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.sellYesPriceUsd || '0')
+                      ) / 1_000_000,
+                      tokens: {
+                        yesMint: tradingMarket.jupiter?.markets?.[0]?.onChain?.yesMint || null,
+                        noMint: tradingMarket.jupiter?.markets?.[0]?.onChain?.noMint || null,
+                        marketLedger: tradingMarket.jupiter?.markets?.[0]?.onChain?.marketPubkey || null,
+                        isInitialized: !!(
+                          tradingMarket.jupiter?.markets?.[0]?.onChain?.yesMint &&
+                          tradingMarket.jupiter?.markets?.[0]?.onChain?.noMint
+                        ),
+                        redemptionStatus: 'open' as const,
+                      },
+                    },
+                  }
+            }
           />
         )}
       </div>
