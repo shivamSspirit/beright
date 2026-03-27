@@ -219,19 +219,34 @@ async function processJobInBackground(
 
 /**
  * Convert Telegram markdown to web terminal format
+ *
+ * The web terminal uses react-markdown with GitHub-flavored markdown support,
+ * so we strip Telegram-specific formatting but preserve standard markdown.
  */
 function formatResponseForWeb(text: string): string {
-  return text
-    // Convert bold *text* to plain text (or keep for markdown renderer)
-    .replace(/\*([^*]+)\*/g, '$1')
-    // Convert italic _text_ to plain text
-    .replace(/_([^_]+)_/g, '$1')
-    // Convert code `text` - keep as is for monospace
-    .replace(/`([^`]+)`/g, '`$1`')
-    // Convert links [text](url) to "text: url" for terminal
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2')
-    // Normalize line breaks
-    .replace(/\n{3,}/g, '\n\n');
+  let formatted = text;
+
+  // CRITICAL: Remove markdown code fences (```markdown or ```)
+  // Agents wrap responses in fences for Telegram, but web terminal renders markdown directly
+  formatted = formatted.replace(/^```markdown\s*/i, '').replace(/```\s*$/, '');
+  formatted = formatted.replace(/^```\s*/gm, '').replace(/```\s*$/gm, '');
+
+  // Convert Telegram bold *text* to markdown bold **text**
+  formatted = formatted.replace(/\*([^*]+)\*/g, '**$1**');
+
+  // Convert Telegram italic _text_ to markdown italic *text*
+  formatted = formatted.replace(/_([^_]+)_/g, '*$1*');
+
+  // Preserve inline code `text` as is (markdown compatible)
+  // No changes needed for `code`
+
+  // Preserve markdown links [text](url) as is (markdown compatible)
+  // No changes needed for [text](url)
+
+  // Normalize excessive line breaks
+  formatted = formatted.replace(/\n{3,}/g, '\n\n');
+
+  return formatted.trim();
 }
 
 /**
