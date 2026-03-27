@@ -302,12 +302,11 @@ if (process.argv.includes('--status')) {
 
 // Start the bot
 if (!TELEGRAM_BOT_TOKEN) {
-  console.error('TELEGRAM_BOT_TOKEN not set in .env');
-  console.log('\nTo run the Telegram bot:');
-  console.log('1. Create a bot with @BotFather on Telegram');
-  console.log('2. Add TELEGRAM_BOT_TOKEN=your_token to .env');
-  console.log('3. Run: npm run telegram');
-  process.exit(1);
+  console.log('[TelegramBot] TELEGRAM_BOT_TOKEN not configured - bot disabled');
+  console.log('[TelegramBot] To enable: Add TELEGRAM_BOT_TOKEN to Railway environment variables');
+  // Exit gracefully (code 0) to prevent PM2 restart loop
+  // This is intentional - missing token means "not enabled", not "error"
+  process.exit(0);
 }
 
 // CRITICAL: Acquire lock before starting
