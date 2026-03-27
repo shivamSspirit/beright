@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import BrandLogo from '@/components/BrandLogo';
 import styles from './ChatInterface.module.css';
 
@@ -25,6 +27,7 @@ interface ChatInterfaceProps {
  * - User commands on the right (cyan)
  * - Agent responses on the left (colored by agent type)
  * - Typing indicator when processing
+ * - Rich markdown rendering for agent responses
  */
 export default function ChatInterface({ messages, isProcessing = false }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,37 +68,88 @@ export default function ChatInterface({ messages, isProcessing = false }: ChatIn
     });
   };
 
-  // Format message content with line breaks and links
-  const formatContent = (content: string) => {
-    // Split by newlines and render each line
-    const lines = content.split('\n');
-    return lines.map((line, i) => {
-      // Check for URLs and make them clickable
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const parts = line.split(urlRegex);
+  // Clean and prepare markdown content
+  const prepareMarkdownContent = (content: string) => {
+    // Remove markdown code fences if present (```markdown or ```)
+    let cleaned = content.replace(/^```markdown\s*/i, '').replace(/```\s*$/, '');
 
-      return (
-        <span key={i}>
-          {parts.map((part, j) => {
-            if (urlRegex.test(part)) {
-              return (
-                <a
-                  key={j}
-                  href={part}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.link}
-                >
-                  {part}
-                </a>
-              );
-            }
-            return part;
-          })}
-          {i < lines.length - 1 && <br />}
-        </span>
-      );
-    });
+    // Also handle inline code fences
+    cleaned = cleaned.replace(/^```\s*/gm, '').replace(/```\s*$/gm, '');
+
+    return cleaned.trim();
+  };
+
+  // Format message content with markdown rendering for agent messages
+  const formatContent = (content: string, role: 'user' | 'agent') => {
+    // User messages: simple text rendering
+    if (role === 'user') {
+      return <div className={styles.userText}>{content}</div>;
+    }
+
+    // Agent messages: rich markdown rendering
+    const markdownContent = prepareMarkdownContent(content);
+
+    return (
+      <div className={styles.markdown}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+          // Custom table styling
+          table: ({ children }) => (
+            <div className={styles.tableWrapper}>
+              <table className={styles.markdownTable}>{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead>{children}</thead>,
+          tbody: ({ children }) => <tbody>{children}</tbody>,
+          tr: ({ children }) => <tr>{children}</tr>,
+          th: ({ children }) => <th>{children}</th>,
+          td: ({ children }) => <td>{children}</td>,
+          // Custom code block styling
+          code: ({ inline, className, children, ...props }: any) => {
+            return inline ? (
+              <code className={styles.inlineCode} {...props}>
+                {children}
+              </code>
+            ) : (
+              <pre className={styles.codeBlock}>
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
+            );
+          },
+          // Custom link styling
+          a: ({ children, href }) => (
+            <a
+              className={styles.markdownLink}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {children}
+            </a>
+          ),
+          // Custom heading styling
+          h1: ({ children }) => <h1 className={styles.h1}>{children}</h1>,
+          h2: ({ children }) => <h2 className={styles.h2}>{children}</h2>,
+          h3: ({ children }) => <h3 className={styles.h3}>{children}</h3>,
+          // Custom list styling
+          ul: ({ children }) => <ul className={styles.ul}>{children}</ul>,
+          ol: ({ children }) => <ol className={styles.ol}>{children}</ol>,
+          li: ({ children }) => <li className={styles.li}>{children}</li>,
+          // Custom blockquote styling
+          blockquote: ({ children }) => (
+            <blockquote className={styles.blockquote}>{children}</blockquote>
+          ),
+          // Custom paragraph styling
+          p: ({ children }) => <p className={styles.paragraph}>{children}</p>,
+        }}
+        >
+          {markdownContent}
+        </ReactMarkdown>
+      </div>
+    );
   };
 
   return (
@@ -181,7 +235,7 @@ export default function ChatInterface({ messages, isProcessing = false }: ChatIn
 
                   {/* Message Content */}
                   <div className={styles.messageContent}>
-                    {formatContent(msg.content)}
+                    {formatContent(msg.content, msg.role)}
                   </div>
 
                   {/* Timestamp */}

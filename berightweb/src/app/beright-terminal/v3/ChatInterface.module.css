@@ -334,6 +334,207 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   MARKDOWN STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.userText {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-accent, #00C2FF);
+}
+
+.markdown {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #ffffff;
+}
+
+/* Headings */
+.h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary, #10B981);
+  margin: 16px 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-accent, #00C2FF);
+  margin: 14px 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 194, 255, 0.2);
+}
+
+.h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 12px 0 8px 0;
+}
+
+/* Paragraphs */
+.paragraph {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.paragraph:first-child {
+  margin-top: 0;
+}
+
+.paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* Tables */
+.tableWrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.markdownTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.markdownTable thead {
+  background: rgba(16, 185, 129, 0.1);
+  border-bottom: 2px solid var(--color-primary, #10B981);
+}
+
+.markdownTable th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-primary, #10B981);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+.markdownTable td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+}
+
+.markdownTable tr:last-child td {
+  border-bottom: none;
+}
+
+.markdownTable tbody tr:hover {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Code Blocks */
+.codeBlock {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 3px solid var(--color-accent, #00C2FF);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e0e0e0;
+}
+
+.codeBlock code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  font-family: inherit;
+  color: inherit;
+}
+
+.inlineCode {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: rgba(0, 194, 255, 0.15);
+  border: 1px solid rgba(0, 194, 255, 0.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--color-accent, #00C2FF);
+}
+
+/* Lists */
+.ul, .ol {
+  margin: 10px 0;
+  padding-left: 24px;
+}
+
+.li {
+  margin: 6px 0;
+  line-height: 1.6;
+  color: #e0e0e0;
+}
+
+.li::marker {
+  color: var(--color-primary, #10B981);
+  font-weight: 600;
+}
+
+/* Links */
+.markdownLink {
+  color: var(--color-accent, #00C2FF);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 194, 255, 0.4);
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.markdownLink:hover {
+  color: var(--color-primary, #10B981);
+  border-color: var(--color-primary, #10B981);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+/* Blockquotes */
+.blockquote {
+  border-left: 4px solid var(--color-ai, #A78BFA);
+  background: rgba(167, 139, 250, 0.05);
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-style: italic;
+  color: #d0d0d0;
+}
+
+.blockquote p {
+  margin: 0;
+}
+
+/* Strong/Bold */
+.markdown strong {
+  color: var(--color-primary, #10B981);
+  font-weight: 700;
+}
+
+/* Emphasis/Italic */
+.markdown em {
+  color: var(--color-accent, #00C2FF);
+  font-style: italic;
+}
+
+/* Horizontal Rule */
+.markdown hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 16px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -350,5 +551,19 @@
     width: 28px;
     height: 28px;
     font-size: 12px;
+  }
+
+  .tableWrapper {
+    font-size: 10px;
+  }
+
+  .markdownTable th,
+  .markdownTable td {
+    padding: 6px 8px;
+  }
+
+  .codeBlock {
+    font-size: 11px;
+    padding: 10px 12px;
   }
 }
