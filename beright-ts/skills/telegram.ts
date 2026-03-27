@@ -304,10 +304,15 @@ if (process.argv.includes('--status')) {
 if (!TELEGRAM_BOT_TOKEN) {
   console.log('[TelegramBot] TELEGRAM_BOT_TOKEN not configured - bot disabled');
   console.log('[TelegramBot] To enable: Add TELEGRAM_BOT_TOKEN to Railway environment variables');
-  // Exit gracefully (code 0) to prevent PM2 restart loop
-  // This is intentional - missing token means "not enabled", not "error"
-  process.exit(0);
-}
+  console.log('[TelegramBot] Entering standby mode (no polling)...');
+  // Stay alive but do nothing - prevents PM2 restart loop
+  // Check every hour if token was added dynamically
+  setInterval(() => {
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+      console.log('[TelegramBot] Token detected - restart required to activate');
+    }
+  }, 3600000);
+} else {
 
 // CRITICAL: Acquire lock before starting
 // This prevents multiple bot instances from polling simultaneously
@@ -388,3 +393,5 @@ testConnection().then(ok => {
     process.exit(1);
   });
 });
+
+} // End of else block (token exists)
