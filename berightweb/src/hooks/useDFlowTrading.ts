@@ -141,99 +141,22 @@ export function useDFlowTrading() {
 
     try {
       // =====================================================
-      // DEMO MODE: Real devnet transaction with memo
+      // DEMO MODE: Skip DFlow trade, use calibration program instead
       // =====================================================
       if (isDemo) {
-        console.log('[Demo] Executing real devnet prediction:', params);
+        console.log('[Demo] Skipping DFlow trade - using calibration program for prediction recording');
 
-        // Step 1: Build prediction memo
-        setState(prev => ({ ...prev, step: 'getting-quote', error: null }));
-
-        const connection = new Connection(DEVNET_RPC, 'confirmed');
-        const outputMint = params.side === 'YES' ? params.yesMint : params.noMint;
-
-        // Create order info for display
-        const demoOrder: DFlowOrderResponse = {
-          inputMint: USDC_MINT_DEVNET,
-          outputMint,
-          inAmount: String(params.amount),
-          outAmount: String(params.amount * 0.98),
-          slippageBps: params.slippageBps || 200,
-          priceImpactPct: '0.5',
-          executionMode: 'demo-devnet',
-          transaction: '',
-        };
-        setState(prev => ({ ...prev, order: demoOrder }));
-
-        // Get wallet signing function
-        const walletFuncs = (window as Window & {
-          __BERIGHT_WALLET_FUNCS__?: {
-            signTransaction?: (tx: Transaction | VersionedTransaction) => Promise<Transaction | VersionedTransaction>;
-          };
-        }).__BERIGHT_WALLET_FUNCS__;
-
-        if (!walletFuncs?.signTransaction) {
-          throw new Error('Wallet not connected. Please connect your wallet first.');
-        }
-
-        // Step 2: Create and sign memo transaction
-        setState(prev => ({ ...prev, step: 'signing' }));
-
-        // Create memo with prediction details
-        const memoData = JSON.stringify({
-          type: 'beright_prediction',
-          side: params.side,
-          amount: params.amount,
-          market: outputMint.slice(0, 8),
-          timestamp: Date.now(),
-        });
-
-        const memoInstruction = new TransactionInstruction({
-          keys: [{ pubkey: new PublicKey(walletAddress), isSigner: true, isWritable: true }],
-          programId: MEMO_PROGRAM_ID,
-          data: Buffer.from(memoData),
-        });
-
-        // Build transaction
-        const transaction = new Transaction();
-        transaction.add(memoInstruction);
-        transaction.feePayer = new PublicKey(walletAddress);
-        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-        // Sign with wallet
-        const signedTx = await walletFuncs.signTransaction(transaction);
-
-        // Step 3: Submit to devnet
-        setState(prev => ({ ...prev, step: 'submitting' }));
-
-        const signature = await connection.sendRawTransaction(
-          (signedTx as Transaction).serialize(),
-          { skipPreflight: false, preflightCommitment: 'confirmed' }
-        );
-
-        const txUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
-        setState(prev => ({ ...prev, signature, txUrl }));
-
-        // Step 4: Confirm transaction
-        setState(prev => ({ ...prev, step: 'confirming' }));
-
-        await connection.confirmTransaction(signature, 'confirmed');
-
-        // Success!
-        const demoStatus: DFlowOrderStatus = {
-          status: 'closed',
-          inAmount: String(params.amount),
-          outAmount: String(params.amount * 0.98),
-        };
+        // In demo mode, the TradingModal handles prediction recording via usePredictionRecorder
+        // which sends transactions to the calibration program, not the memo program.
+        // We don't need to create any transaction here.
 
         setState(prev => ({
           ...prev,
           step: 'success',
-          status: demoStatus,
+          error: null
         }));
 
-        console.log('[Demo] Real devnet prediction recorded:', signature);
-        return signature;
+        return null; // Return null so TradingModal uses calibration signature
       }
 
       // =====================================================

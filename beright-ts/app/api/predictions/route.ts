@@ -217,6 +217,9 @@ export async function POST(request: NextRequest) {
       // Auth can come from wallet or telegram
       walletAddress,
       telegramId,
+      // Optional: On-chain transaction signature (if already recorded via calibration program)
+      onChainTx,
+      explorerUrl,
     } = body;
 
     // Validate required fields
@@ -325,28 +328,49 @@ export async function POST(request: NextRequest) {
 
       // Commit prediction on-chain with calibration tracking
       let onChainResult = null;
-      try {
-        const userPubkey = walletAddress || `telegram:${telegramId}`;
-        const chainMarketId = marketId || question.substring(0, 50);
 
-        onChainResult = await commitPredictionWithCalibration(
-          userPubkey,
-          chainMarketId,
-          probability,
-          direction as 'YES' | 'NO',
-          0 // category
-        );
+      // If on-chain transaction signature is already provided (e.g., from frontend calibration program recording),
+      // use it instead of creating a new on-chain transaction
+      if (onChainTx) {
+        console.log('[Predictions] Using provided on-chain transaction:', onChainTx);
 
-        // If successful, update prediction with tx signatures
-        if (onChainResult.success && onChainResult.memoTx) {
-          await updatePredictionOnChain(prediction.id, onChainResult.memoTx, true);
-          (prediction as any).on_chain_tx = onChainResult.memoTx;
-          (prediction as any).on_chain_confirmed = true;
-          (prediction as any).calibration_tx = onChainResult.calibrationTx;
-          (prediction as any).forecaster_pda = onChainResult.forecasterPda;
+        // Update prediction with provided tx signature
+        await updatePredictionOnChain(prediction.id, onChainTx, true);
+        (prediction as any).on_chain_tx = onChainTx;
+        (prediction as any).on_chain_confirmed = true;
+
+        // Return minimal on-chain result
+        onChainResult = {
+          success: true,
+          calibrationTx: onChainTx, // This is the calibration program transaction
+          memoTx: null, // No memo transaction
+          forecasterPda: null,
+        };
+      } else {
+        // Legacy: Create on-chain transaction via backend (uses memo + calibration)
+        try {
+          const userPubkey = walletAddress || `telegram:${telegramId}`;
+          const chainMarketId = marketId || question.substring(0, 50);
+
+          onChainResult = await commitPredictionWithCalibration(
+            userPubkey,
+            chainMarketId,
+            probability,
+            direction as 'YES' | 'NO',
+            0 // category
+          );
+
+          // If successful, update prediction with tx signatures
+          if (onChainResult.success && onChainResult.memoTx) {
+            await updatePredictionOnChain(prediction.id, onChainResult.memoTx, true);
+            (prediction as any).on_chain_tx = onChainResult.memoTx;
+            (prediction as any).on_chain_confirmed = true;
+            (prediction as any).calibration_tx = onChainResult.calibrationTx;
+            (prediction as any).forecaster_pda = onChainResult.forecasterPda;
+          }
+        } catch (onChainError) {
+          console.error('On-chain commit failed (prediction still saved):', onChainError);
         }
-      } catch (onChainError) {
-        console.error('On-chain commit failed (prediction still saved):', onChainError);
       }
 
       return NextResponse.json({
