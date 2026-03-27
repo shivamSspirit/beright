@@ -125,6 +125,10 @@ docs/solana-reference/
 # DEPLOYMENT & INFRASTRUCTURE CONFIGS (Internal)
 # =============================================================================
 beright-ts/RAILWAY.md
+DEPLOYMENT_MONITOR.md
+RAILWAY_GITHUB_INTEGRATION.md
+RAILWAY_STATUS.md
+defiprimesys.md
 
 # =============================================================================
 # AGENT MEMORY & RUNTIME DATA (Generated at runtime)
@@ -138,6 +142,7 @@ beright-ts/memory/daily/
 # =============================================================================
 COMPLETION_PLAN.md
 DEMO_TEST_PROMPT.md
+ROADMAP.md
 okok.md
 
 # =============================================================================
