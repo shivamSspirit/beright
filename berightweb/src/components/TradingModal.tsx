@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { animated, useSpring } from '@react-spring/web';
 import { DFlowData, DFlowTokens } from '@/lib/types';
 import { useDFlowTrading, TradingStep } from '@/hooks/useDFlowTrading';
-import { createPrediction, PredictionInput } from '@/lib/api';
 import { useWalletBalance, formatBalance } from '@/hooks/useWalletBalance';
 import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
 import { usePredictions } from '@/hooks/usePredictions';
@@ -27,14 +26,6 @@ interface TradingModalProps {
   onClose: (tradeCompleted?: boolean) => void;
 }
 
-interface MemoCommitState {
-  status: 'idle' | 'pending' | 'success' | 'error';
-  signature: string | null;
-  explorerUrl: string | null;
-  error: string | null;
-  retryCount: number;
-}
-
 interface FeeEstimate {
   loading: boolean;
   solFee: number | null;
@@ -47,10 +38,6 @@ type AnalyticsEvent =
   | 'trade_started'
   | 'trade_success'
   | 'trade_error'
-  | 'memo_commit_started'
-  | 'memo_commit_success'
-  | 'memo_commit_failed'
-  | 'memo_commit_retry'
   | 'prediction_recorded';
 
 // ============ CONSTANTS ============
@@ -65,8 +52,6 @@ const STEP_LABELS: Record<TradingStep, string> = {
   error: 'Trade Failed',
 };
 
-const MAX_MEMO_RETRIES = 3;
-const BASE_RETRY_DELAY_MS = 1000;
 const SOLANA_FEE_LAMPORTS = 5000; // ~0.000005 SOL per tx
 const SOL_PRICE_USD = 150; // Approximate, could be fetched dynamically
 
@@ -82,13 +67,6 @@ function trackEvent(event: AnalyticsEvent, data?: Record<string, unknown>): void
     // Example: mixpanel.track(event, data);
     // Example: window.gtag?.('event', event, data);
   }
-}
-
-/**
- * Calculate exponential backoff delay
- */
-function getRetryDelay(attempt: number): number {
-  return BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
 }
 
 /**
@@ -119,15 +97,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
   const [inputToken] = useState<'USDC' | 'SOL'>('USDC');
   const [estimatedOutput, setEstimatedOutput] = useState<number | null>(null);
 
-  // Memo commit state
-  const [memoState, setMemoState] = useState<MemoCommitState>({
-    status: 'idle',
-    signature: null,
-    explorerUrl: null,
-    error: null,
-    retryCount: 0,
-  });
-
   // Fee estimate state
   const [feeEstimate, setFeeEstimate] = useState<FeeEstimate>({
     loading: false,
@@ -138,12 +107,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
   // UI state
   const [copiedTrade, setCopiedTrade] = useState(false);
-  const [copiedMemo, setCopiedMemo] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Refs to prevent duplicate submissions
-  const memoCommitInProgress = useRef(false);
-  const lastTradeSignature = useRef<string | null>(null);
 
   const {
     step,
@@ -173,7 +137,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
   const tokens = dflow?.tokens;
   const isTokenized = tokens?.yesMint && tokens?.noMint && tokens?.isInitialized;
   const isTrading = step !== 'idle' && step !== 'success' && step !== 'error';
-  const showMemoSection = step === 'success' || memoState.status !== 'idle';
 
   // ============ ANIMATIONS ============
 
@@ -195,20 +158,10 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
   useEffect(() => {
     if (!isOpen) {
       reset();
-      setMemoState({
-        status: 'idle',
-        signature: null,
-        explorerUrl: null,
-        error: null,
-        retryCount: 0,
-      });
       setCopiedTrade(false);
-      setCopiedMemo(false);
       setCopiedAddress(false);
       setShowAddFunds(false);
       setIsSubmitting(false);
-      memoCommitInProgress.current = false;
-      lastTradeSignature.current = null;
     }
   }, [isOpen, reset]);
 
@@ -275,151 +228,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     return () => clearTimeout(timer);
   }, [amount, isConnected]);
 
-  // Auto-commit memo after successful trade
-  useEffect(() => {
-    if (
-      step === 'success' &&
-      tradeSignature &&
-      tradeSignature !== lastTradeSignature.current &&
-      memoState.status === 'idle' &&
-      !memoCommitInProgress.current
-    ) {
-      lastTradeSignature.current = tradeSignature;
-      commitPredictionToChain(tradeSignature);
-    }
-  }, [step, tradeSignature, memoState.status]);
-
   // ============ HANDLERS ============
-
-  /**
-   * Commit prediction to blockchain via /api/predictions
-   */
-  const commitPredictionToChain = useCallback(async (tradeTxSignature: string) => {
-    if (memoCommitInProgress.current) return;
-    memoCommitInProgress.current = true;
-
-    setMemoState(prev => ({
-      ...prev,
-      status: 'pending',
-      error: null,
-    }));
-
-    trackEvent('memo_commit_started', {
-      marketId: prediction.id,
-      side,
-      amount,
-      tradeTxSignature,
-    });
-
-    try {
-      const predictionInput: PredictionInput = {
-        question: prediction.question,
-        probability: prediction.marketOdds / 100,
-        direction: side,
-        walletAddress: walletAddress || undefined,
-        marketId: prediction.id,
-        marketUrl: `https://dflow.net/market/${prediction.id}`,
-        platform: 'dflow',
-        confidence: 'medium',
-        reasoning: `Trade executed: ${side} position, $${amount} USDC`,
-      };
-
-      const response = await createPrediction(predictionInput);
-
-      if (response.success && response.onChain?.signature) {
-        setMemoState({
-          status: 'success',
-          signature: response.onChain.signature,
-          explorerUrl: null, // We now generate multiple explorer links dynamically
-          error: null,
-          retryCount: 0,
-        });
-
-        trackEvent('memo_commit_success', {
-          marketId: prediction.id,
-          memoSignature: response.onChain.signature,
-        });
-
-        trackEvent('prediction_recorded', {
-          predictionId: response.prediction.id,
-          marketId: prediction.id,
-          direction: side,
-          probability: prediction.marketOdds / 100,
-        });
-      } else if (response.success) {
-        // Prediction saved but no on-chain commit (might be disabled)
-        setMemoState({
-          status: 'success',
-          signature: null,
-          explorerUrl: null,
-          error: null,
-          retryCount: 0,
-        });
-
-        trackEvent('prediction_recorded', {
-          predictionId: response.prediction.id,
-          marketId: prediction.id,
-          direction: side,
-          onChain: false,
-        });
-      } else {
-        throw new Error('Failed to record prediction');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to commit prediction';
-
-      setMemoState(prev => ({
-        ...prev,
-        status: 'error',
-        error: errorMessage,
-      }));
-
-      trackEvent('memo_commit_failed', {
-        marketId: prediction.id,
-        error: errorMessage,
-        retryCount: memoState.retryCount,
-      });
-
-      console.error('[TradingModal] Memo commit failed:', err);
-    } finally {
-      memoCommitInProgress.current = false;
-    }
-  }, [prediction, side, amount, walletAddress, memoState.retryCount]);
-
-  /**
-   * Retry memo commit with exponential backoff
-   */
-  const retryMemoCommit = useCallback(async () => {
-    if (memoState.retryCount >= MAX_MEMO_RETRIES) {
-      setMemoState(prev => ({
-        ...prev,
-        error: `Maximum retries (${MAX_MEMO_RETRIES}) exceeded. Please try again later.`,
-      }));
-      return;
-    }
-
-    const delay = getRetryDelay(memoState.retryCount);
-
-    trackEvent('memo_commit_retry', {
-      marketId: prediction.id,
-      attempt: memoState.retryCount + 1,
-      delay,
-    });
-
-    setMemoState(prev => ({
-      ...prev,
-      status: 'pending',
-      error: null,
-      retryCount: prev.retryCount + 1,
-    }));
-
-    // Wait for exponential backoff delay
-    await new Promise(resolve => setTimeout(resolve, delay));
-
-    if (tradeSignature) {
-      await commitPredictionToChain(tradeSignature);
-    }
-  }, [memoState.retryCount, tradeSignature, prediction.id, commitPredictionToChain]);
 
   /**
    * Execute trade
@@ -514,13 +323,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
       setTimeout(() => setCopiedTrade(false), 2000);
     }
   }, [tradeSignature]);
-
-  const handleCopyMemo = useCallback(async () => {
-    if (memoState.signature && await copyToClipboard(memoState.signature)) {
-      setCopiedMemo(true);
-      setTimeout(() => setCopiedMemo(false), 2000);
-    }
-  }, [memoState.signature]);
 
   /**
    * Copy wallet address to clipboard
@@ -846,106 +648,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                         </a>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Memo Transaction Section (P1 & P2) */}
-                {showMemoSection && (
-                  <div className="tm-memo-section">
-                    <div className="tm-memo-header">
-                      <span className="tm-memo-label">Prediction Record</span>
-                      {memoState.status === 'pending' && (
-                        <span className="tm-memo-status pending">
-                          <span className="tm-spinner-small" />
-                          Recording...
-                        </span>
-                      )}
-                      {memoState.status === 'success' && (
-                        <span className="tm-memo-status success">Recorded</span>
-                      )}
-                      {memoState.status === 'error' && (
-                        <span className="tm-memo-status error">Failed</span>
-                      )}
-                    </div>
-
-                    {/* Success: Show explorer links */}
-                    {memoState.status === 'success' && memoState.signature && (
-                      <div className="tm-tx-section memo">
-                        <div className="tm-tx-header">
-                          <button
-                            className={`tm-copy-btn ${copiedMemo ? 'copied' : ''}`}
-                            onClick={handleCopyMemo}
-                            title="Copy signature"
-                          >
-                            {copiedMemo ? (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M5 12l5 5L20 7" />
-                              </svg>
-                            ) : (
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                        <div className="tm-explorer-links">
-                          {getExplorerLinks(memoState.signature).map((link) => (
-                            <a
-                              key={link.name}
-                              href={link.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`tm-explorer-link ${link.icon}`}
-                              title={`View on ${link.name}`}
-                            >
-                              {link.icon === 'solscan' && (
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                                </svg>
-                              )}
-                              {link.icon === 'solana' && (
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M4.5 18.75l3.5-3.75H20c.28 0 .5.22.5.5s-.22.5-.5.5H8.5l-3.5 3.25c-.1.1-.23.15-.35.15-.13 0-.26-.05-.35-.15-.2-.2-.2-.5 0-.7zm15-13.5l-3.5 3.75H4c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h11.5l3.5-3.25c.2-.2.5-.2.7 0 .2.2.2.5 0 .7zm0 6l-3.5 3.75H4c-.28 0-.5-.22-.5-.5s.22-.5.5-.5h11.5l3.5-3.25c.2-.2.5-.2.7 0 .2.2.2.5 0 .7z"/>
-                                </svg>
-                              )}
-                              {link.icon === 'orb' && (
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                  <circle cx="12" cy="12" r="10"/>
-                                </svg>
-                              )}
-                              <span>{link.name}</span>
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Success without on-chain */}
-                    {memoState.status === 'success' && !memoState.signature && (
-                      <p className="tm-memo-info">Prediction saved to your account</p>
-                    )}
-
-                    {/* Error: Show retry button (P2) */}
-                    {memoState.status === 'error' && (
-                      <div className="tm-memo-error">
-                        <p className="tm-memo-error-text">{memoState.error}</p>
-                        <button
-                          className="tm-retry-btn"
-                          onClick={retryMemoCommit}
-                          disabled={memoState.retryCount >= MAX_MEMO_RETRIES}
-                        >
-                          {memoState.retryCount >= MAX_MEMO_RETRIES ? (
-                            'Max Retries Reached'
-                          ) : (
-                            `Retry (${memoState.retryCount}/${MAX_MEMO_RETRIES})`
-                          )}
-                        </button>
-                        <p className="tm-memo-note">
-                          Your trade was successful. This only affects the prediction record.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -1369,11 +1071,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
           border: 1px solid rgba(255,255,255,0.06);
         }
 
-        .tm-tx-section.memo {
-          background: rgba(20, 241, 149, 0.05);
-          border-color: rgba(20, 241, 149, 0.15);
-        }
-
         .tm-tx-header {
           display: flex;
           align-items: center;
@@ -1429,10 +1126,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         .tm-tx-link:hover {
           color: #10B981;
           text-decoration: underline;
-        }
-
-        .tm-tx-link.memo {
-          color: #14F195;
         }
 
         /* Explorer Links */
@@ -1505,105 +1198,6 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
         }
         .tm-explorer-link.orb svg {
           color: #3B82F6;
-        }
-
-        /* Memo Section (P1 & P2) */
-        .tm-memo-section {
-          width: 100%;
-          margin-top: 4px;
-          padding: 10px 12px;
-          background: rgba(255,255,255,0.02);
-          border-radius: 10px;
-          border: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .tm-memo-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 8px;
-        }
-
-        .tm-memo-label {
-          font-size: 11px;
-          font-weight: 500;
-          color: rgba(255,255,255,0.5);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .tm-memo-status {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          font-weight: 500;
-        }
-
-        .tm-memo-status.pending {
-          color: #FFC107;
-        }
-
-        .tm-memo-status.success {
-          color: #10B981;
-        }
-
-        .tm-memo-status.error {
-          color: #F43F5E;
-        }
-
-        .tm-memo-info {
-          font-size: 12px;
-          color: rgba(255,255,255,0.5);
-          margin: 0;
-        }
-
-        .tm-memo-error {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .tm-memo-error-text {
-          font-size: 12px;
-          color: #F43F5E;
-          margin: 0;
-        }
-
-        .tm-retry-btn {
-          width: 100%;
-          padding: 10px;
-          background: rgba(255, 71, 87, 0.1);
-          border: 1px solid rgba(255, 71, 87, 0.3);
-          border-radius: 8px;
-          color: #F43F5E;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-
-        .tm-retry-btn:hover:not(:disabled) {
-          background: rgba(255, 71, 87, 0.15);
-        }
-
-        .tm-retry-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .tm-retry-loading {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-        }
-
-        .tm-memo-note {
-          font-size: 10px;
-          color: rgba(255,255,255,0.4);
-          margin: 0;
-          text-align: center;
         }
 
         /* No Funds Screen */
