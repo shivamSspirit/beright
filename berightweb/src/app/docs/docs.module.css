@@ -17,13 +17,13 @@
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   padding: 24px;
   position: fixed;
-  top: 0;
+  top: 64px; /* Account for header height */
   left: 0;
   bottom: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  z-index: 50;
+  z-index: 40; /* Lower than header (50) */
 }
 
 .sidebarNav {
@@ -104,6 +104,7 @@
 .main {
   flex: 1;
   margin-left: 280px;
+  margin-top: 64px; /* Account for header height */
   padding: 48px 64px 48px;
   max-width: 900px;
   width: 100%;
@@ -714,7 +715,7 @@
   .sidebar {
     position: fixed;
     left: -300px;
-    top: 0;
+    top: 64px; /* Account for header on tablet/mobile */
     bottom: 0;
     z-index: 95;
     transition: left 0.3s ease;
@@ -729,6 +730,7 @@
   .main {
     margin-left: 0;
     margin-right: 0;
+    margin-top: 64px; /* Account for header on tablet */
     padding: 32px 32px 48px;
     max-width: 100%;
     width: 100%;
@@ -767,6 +769,7 @@
   .main {
     padding: 24px 20px 40px;
     margin: 0 auto;
+    margin-top: 64px; /* Account for header on mobile */
     width: 100%;
   }
 
@@ -982,6 +985,7 @@
   .main {
     padding: 20px 16px 32px;
     margin: 0 auto;
+    margin-top: 64px; /* Account for header on extra small screens */
     width: 100%;
   }
 

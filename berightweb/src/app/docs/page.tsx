@@ -187,21 +187,21 @@ const PLATFORMS = [
 
 // Commands - Available in the BeRight Terminal
 const COMMANDS = [
-  { cmd: '/hot', desc: 'Trending markets with high activity', category: 'Discovery' },
-  { cmd: '/brief', desc: 'Market brief with hot markets, signals, and news', category: 'Discovery' },
-  { cmd: '/arb', desc: 'Current arbitrage opportunities across platforms', category: 'Discovery' },
-  { cmd: '/signals', desc: 'Real-time intelligence signal feed', category: 'Discovery' },
-  { cmd: '/research <topic>', desc: 'Deep analysis using Analyst agent', category: 'Research' },
-  { cmd: '/predict <market>', desc: 'Make and record predictions', category: 'Research' },
-  { cmd: '/recommend', desc: 'AI-generated trading recommendations', category: 'Research' },
-  { cmd: '/calibration', desc: 'Check your forecasting accuracy', category: 'Research' },
-  { cmd: '/trade <market>', desc: 'Execute trades with smart routing', category: 'Trading' },
-  { cmd: '/positions', desc: 'View current holdings across platforms', category: 'Trading' },
-  { cmd: '/portfolio', desc: 'Full portfolio with P&L analysis', category: 'Trading' },
-  { cmd: '/whale', desc: 'Track smart money movements', category: 'Trading' },
-  { cmd: '/leaderboard', desc: 'Community forecaster rankings', category: 'Social' },
-  { cmd: '/follow <user>', desc: 'Follow top forecasters', category: 'Social' },
-  { cmd: '/alerts', desc: 'Set up real-time alerts', category: 'Social' },
+  { cmd: '/hot', desc: 'Trending markets with high activity', category: 'Discovery', status: 'live' },
+  { cmd: '/brief', desc: 'Market brief with hot markets, signals, and news', category: 'Discovery', status: 'live' },
+  { cmd: '/arb', desc: 'Current arbitrage opportunities across platforms', category: 'Discovery', status: 'live' },
+  { cmd: '/signals', desc: 'Real-time intelligence signal feed', category: 'Discovery', status: 'live' },
+  { cmd: '/research <topic>', desc: 'Deep analysis using Analyst agent', category: 'Research', status: 'live' },
+  { cmd: '/predict <market>', desc: 'Make and record predictions', category: 'Research', status: 'live' },
+  { cmd: '/recommend', desc: 'AI-generated trading recommendations', category: 'Research', status: 'live' },
+  { cmd: '/calibration', desc: 'Check your forecasting accuracy', category: 'Research', status: 'soon' },
+  { cmd: '/trade <market>', desc: 'Execute trades with smart routing', category: 'Trading', status: 'soon' },
+  { cmd: '/positions', desc: 'View current holdings across platforms', category: 'Trading', status: 'soon' },
+  { cmd: '/portfolio', desc: 'Full portfolio with P&L analysis', category: 'Trading', status: 'soon' },
+  { cmd: '/whale', desc: 'Track smart money movements', category: 'Trading', status: 'soon' },
+  { cmd: '/leaderboard', desc: 'Community forecaster rankings', category: 'Social', status: 'soon' },
+  { cmd: '/follow <user>', desc: 'Follow top forecasters', category: 'Social', status: 'soon' },
+  { cmd: '/alerts', desc: 'Set up real-time alerts', category: 'Social', status: 'soon' },
 ];
 
 // API Endpoints - Actual routes from beright-ts/app/api/
@@ -874,7 +874,12 @@ export default function DocsPage() {
             <div className={styles.commandsList}>
               {filteredCommands.map(cmd => (
                 <div key={cmd.cmd} className={styles.commandRow}>
-                  <code className={styles.commandCode}>{cmd.cmd}</code>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <code className={styles.commandCode}>{cmd.cmd}</code>
+                    <span className={cmd.status === 'live' ? styles.statusLive : styles.statusSoon} style={{ fontSize: '11px', fontWeight: '600' }}>
+                      {cmd.status === 'live' ? '● LIVE' : '○ Coming Soon'}
+                    </span>
+                  </div>
                   <span className={styles.commandDesc}>{cmd.desc}</span>
                 </div>
               ))}
