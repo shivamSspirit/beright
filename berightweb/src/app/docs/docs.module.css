@@ -106,12 +106,14 @@
   margin-left: 280px;
   margin-top: 64px; /* Account for header height */
   padding: 48px 64px 48px;
-  max-width: 900px;
-  width: 100%;
+  width: calc(100% - 280px);
   box-sizing: border-box;
 }
 
 .contentSection {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
   animation: fadeIn 0.3s ease;
 }
 
@@ -624,6 +626,9 @@
 .pageNav {
   display: flex;
   justify-content: space-between;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
   margin-top: 64px;
   padding-top: 32px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -670,6 +675,9 @@
 
 /* Footer */
 .footer {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
   margin-top: 48px;
   padding: 32px;
   background: rgba(255, 255, 255, 0.02);
