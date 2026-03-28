@@ -891,7 +891,7 @@ function UserPathsSection() {
     {
       title: 'Forecaster',
       desc: 'Build reputation through accurate predictions. Launch Conviction Pools.',
-      perks: ['Earn 20% of pool profits', 'Verifiable track record', 'On-chain Brier score'],
+      perks: ['Earn 50% of pool profits', 'Verifiable track record', 'On-chain Brier score'],
       color: 'var(--color-primary)',
       icon: (
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
