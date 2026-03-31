@@ -30,6 +30,7 @@
  */
 
 // Export all agents
+export { default as Forecaster, FORECASTER_CONFIG, FORECASTER_TOOLS, FORECASTER_SOUL } from './forecaster';
 export { default as Scout, SCOUT_CONFIG, SCOUT_TOOLS } from './scout';
 export { default as Analyst, ANALYST_CONFIG, ANALYST_TOOLS } from './analyst';
 export { default as Trader, TRADER_CONFIG, TRADER_TOOLS } from './trader';
@@ -37,6 +38,7 @@ export { default as Orchestrator, ORCHESTRATOR_CONFIG } from './orchestrator';
 export { default as XDegen, XDEGEN_CONFIG, XDEGEN_TOOLS } from './xdegen';
 
 // Export types
+export type { ForecasterTool } from './forecaster';
 export type { ScoutTool } from './scout';
 export type { AnalystTool } from './analyst';
 export type { TraderTool } from './trader';
@@ -51,6 +53,32 @@ export type { IntentType, AgentId, RoutingDecision } from './orchestrator';
  * Agent roles and responsibilities
  */
 export const AGENT_ROLES = {
+  forecaster: {
+    id: 'forecaster',
+    name: 'Forecaster',
+    emoji: '🔮',
+    role: 'Autonomous Superforecaster',
+    cognitive: 'Calibrated Reasoning',
+    model: 'Claude Opus',
+    temperature: 0.3,
+    responseTime: '10-30 seconds',
+    purpose: 'BE a forecaster - make predictions, track calibration, compete in the network',
+    tools: [
+      'triage_markets',
+      'make_forecast',
+      'record_forecast',
+      'update_forecast',
+      'check_my_calibration',
+      'run_postmortem',
+    ],
+    triggers: [
+      'What markets should I forecast?',
+      'Make a prediction on X',
+      'What\'s your forecast for X?',
+      'Check my calibration',
+      'Run postmortem on X',
+    ],
+  },
   scout: {
     id: 'scout',
     name: 'Scout',
@@ -182,11 +210,12 @@ export const AGENT_ROLES = {
  */
 export function getToolCounts() {
   return {
+    forecaster: 6,
     scout: 7,
     analyst: 6,
     trader: 6,
     xdegen: 6,
-    total: 25,
+    total: 31,
   };
 }
 

@@ -22,7 +22,7 @@ import { secrets } from './secrets';
 // TYPES
 // ============================================================================
 
-export type AgentType = 'orchestrator' | 'scout' | 'analyst' | 'trader' | 'xdegen' | 'decision' | 'signal' | 'synthesis';
+export type AgentType = 'orchestrator' | 'forecaster' | 'scout' | 'analyst' | 'trader' | 'xdegen' | 'decision' | 'signal' | 'synthesis';
 export type LLMProvider = 'anthropic' | 'openai' | 'xai' | 'mistral' | 'gemini' | 'groq' | 'none';
 
 export interface LLMRequest {
@@ -92,6 +92,17 @@ export const AGENT_LLM_CONFIG: Record<AgentType, {
     temperature: 0.2,
     costPerCall: 0.001,
     description: 'Intent routing - Mistral Small (PAID, fast)',
+  },
+
+  // Forecaster: Calibrated reasoning - use best model
+  forecaster: {
+    primary: 'anthropic',         // Claude Opus - best reasoning for calibrated forecasts
+    fallback: ['mistral', 'gemini'],
+    quality: 'smart',
+    maxTokens: 4096,
+    temperature: 0.3,             // Calibrated, not creative
+    costPerCall: 0.30,
+    description: 'Superforecasting - Claude Opus (PAID)',
   },
 
   // Scout: Data synthesis needs good reasoning

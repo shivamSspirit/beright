@@ -20,6 +20,55 @@ export interface AgentConfig {
 }
 
 export const AGENTS: Record<string, AgentConfig> = {
+  forecaster: {
+    id: 'forecaster',
+    name: 'Forecaster',
+    model: 'claude-opus-4-5',
+    description: 'Autonomous superforecaster - makes predictions, tracks calibration, competes in the forecaster network',
+    capabilities: [
+      'Triage markets for forecast-worthiness',
+      'Superforecaster probability estimation',
+      'Calibration tracking (Brier score)',
+      'Belief updating with new evidence',
+      'Postmortem analysis on resolved predictions',
+      'Autonomous forecast generation',
+    ],
+    systemPrompt: `You are Oracle, an autonomous superforecaster in the BeRight network.
+
+Your job is to BE a forecaster - not just analyze on request, but actively make predictions, track your calibration, and compete for trust in the decentralized forecaster network.
+
+METHODOLOGY (Good Judgment 10 Commandments):
+1. Triage - Focus where effort pays off (Goldilocks zone)
+2. Decompose - Break complex questions into parts
+3. Outside View First - Start with base rates
+4. Inside View Second - Analyze specific evidence
+5. Synthesize - Combine views into probability
+6. Update Incrementally - Small, frequent updates
+7. Seek Counterarguments - Challenge your own view
+8. Track Calibration - Your Brier score is your reputation
+9. Postmortem Misses - Learn from every wrong prediction
+10. Practice Deliberately - Forecasting is a skill
+
+OUTPUT FORMAT:
+**My Forecast: XX%** (Confidence: high/medium/low)
+Market: XX% | Edge: +/-X%
+
+Outside View: [reference class] → [base rate]%
+Inside View: [net direction] based on [key factors]
+Synthesis: [1 sentence]
+
+Decision: Record/Don't record
+
+RULES:
+- You forecast to be RIGHT, not to seem smart
+- Quantify uncertainty precisely (70% means wrong 30% of the time)
+- Your Brier score is public - no hiding from mistakes
+- Quality over quantity - 20 good forecasts beat 100 rushed ones`,
+    tools: ['triage_markets', 'make_forecast', 'record_forecast', 'update_forecast', 'check_my_calibration', 'run_postmortem'],
+    maxTokens: 4096,
+    temperature: 0.3,
+  },
+
   scout: {
     id: 'scout',
     name: 'Scout',
@@ -278,6 +327,12 @@ You have access to: devFrontend.ts, devBackend.ts, devTest.ts, buildLoop.ts skil
 
 // Command to agent mapping
 export const COMMAND_AGENT_MAP: Record<string, string> = {
+  // Forecaster commands (autonomous forecasting)
+  '/forecast': 'forecaster',
+  '/predict': 'forecaster',
+  '/triage': 'forecaster',
+  '/mycalibration': 'forecaster',
+  '/postmortem': 'forecaster',
   // Scout commands (fast scanning)
   '/arb': 'scout',
   '/scan': 'scout',
@@ -305,7 +360,7 @@ export const COMMAND_AGENT_MAP: Record<string, string> = {
 };
 
 // Spawn allowlist (matches agent/system.md)
-export const SPAWN_ALLOWLIST = ['scout', 'analyst', 'trader', 'builder', 'poster'];
+export const SPAWN_ALLOWLIST = ['forecaster', 'scout', 'analyst', 'trader', 'builder', 'poster'];
 
 // Check if agent is allowed
 export function isAgentAllowed(agentId: string): boolean {

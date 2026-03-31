@@ -397,7 +397,7 @@ export interface OrchestratorHooks {
 /**
  * Agent types for multi-agent coordination
  */
-export type AgentType = 'scout' | 'analyst' | 'trader';
+export type AgentType = 'forecaster' | 'scout' | 'analyst' | 'trader';
 
 /**
  * Agent task definition

@@ -14,6 +14,7 @@ BeRight operates as a **Multi-Agent Orchestrator** with specialized agents for d
 
 | Agent | Model | Role | Rate Limit | Auto-Execute |
 |-------|-------|------|------------|--------------|
+| **Forecaster** | claude-opus-4-5 | Autonomous superforecaster | 10/hr, 50/day | Yes |
 | **Scout** | claude-sonnet-4-5 | Fast scanning, arb detection | 100/hr, 1000/day | Yes |
 | **Analyst** | claude-opus-4-5 | Deep research, probability | 10/hr, 50/day | No |
 | **Trader** | claude-sonnet-4-5 | Trade execution, risk mgmt | 5/hr, 20/day | No |
@@ -24,6 +25,52 @@ BeRight operates as a **Multi-Agent Orchestrator** with specialized agents for d
 ---
 
 ## Agent Specifications
+
+### Forecaster Agent (Oracle)
+
+**Model:** claude-opus-4-5 | **Temperature:** 0.3 | **Max Tokens:** 4096
+
+**Role:** BE a forecaster - autonomous participant in the decentralized forecaster network
+
+**Identity:** Oracle - a superforecaster trained on Philip Tetlock's Good Judgment methodology
+
+**Capabilities:**
+- Triage markets for forecast-worthiness (Goldilocks zone)
+- Make probability estimates using Outside View + Inside View
+- Record predictions and track calibration (Brier score)
+- Update beliefs incrementally with new information
+- Run postmortems on resolved predictions
+- Compete for capital delegation based on track record
+
+**Tools:** triage_markets, make_forecast, record_forecast, update_forecast, check_my_calibration, run_postmortem
+
+**Methodology (Good Judgment 10 Commandments):**
+1. Triage - Focus where effort pays off
+2. Decompose - Break complex questions into parts
+3. Outside View First - Start with base rates
+4. Inside View Second - Analyze specific evidence
+5. Synthesize - Combine views into probability
+6. Update Incrementally - Small, frequent updates
+7. Seek Counterarguments - Challenge your own view
+8. Track Calibration - Brier score is reputation
+9. Postmortem Misses - Learn from every wrong prediction
+10. Practice Deliberately - Forecasting is a skill
+
+**Performance Targets:**
+- Brier Score: < 0.15 (elite tier)
+- Calibration: 70% predictions should be right 70% of the time
+- Max Active Forecasts: 20 (quality over quantity)
+
+**Rate Limits:**
+- 10/hour, 50/day
+- 30s cooldown between forecasts
+- Auto-executes for market scanning and belief updating
+
+**Key Difference from Analyst:**
+- Analyst: Analyzes on-demand when asked
+- Forecaster: IS a forecaster - makes predictions autonomously, tracks its own Brier score, competes in the network
+
+---
 
 ### Scout Agent
 
@@ -204,6 +251,11 @@ XDEGEN_AUTO_POST=true/false
 
 | Command | Agent | Description |
 |---------|-------|-------------|
+| `/forecast [topic]` | Forecaster | Make a superforecaster prediction |
+| `/predict [topic]` | Forecaster | Alias for /forecast |
+| `/triage` | Forecaster | Find markets worth forecasting |
+| `/mycalibration` | Forecaster | Check my Brier score and calibration |
+| `/postmortem [market]` | Forecaster | Learn from a resolved prediction |
 | `/arb` | Scout | Scan for arbitrage opportunities |
 | `/scan` | Scout | Quick market scan |
 | `/hot` | Scout | Find hot markets |
@@ -231,7 +283,7 @@ XDEGEN_AUTO_POST=true/false
 Only these agents can be spawned:
 
 ```
-scout, analyst, trader, builder, poster, xdegen
+forecaster, scout, analyst, trader, builder, poster, xdegen
 ```
 
 ---
@@ -246,6 +298,7 @@ scout, analyst, trader, builder, poster, xdegen
 - Escalation: Unresolved conflicts escalate to orchestrator
 
 **Goal Management:**
+- Forecaster: Max 20 concurrent goals (active forecasts)
 - Scout: Max 10 concurrent goals
 - Analyst: Max 3 concurrent goals
 - Trader: Max 2 concurrent goals
