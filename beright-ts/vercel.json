@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/trader",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/oracle",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

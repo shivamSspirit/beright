@@ -439,3 +439,64 @@ export async function getOracleHealth(
 // ============================================================================
 
 export { clearFeedCache, getFeedCacheStats };
+
+// ============================================================================
+// Autonomous Oracle (Discovery + Forecasting)
+// ============================================================================
+
+export {
+  discoverTrendingMarkets,
+  getMarketById,
+  isDiscoveryHealthy,
+  calculateTriageScore,
+  passesTriageCriteria,
+  TRIAGE_THRESHOLDS,
+  type TriagedMarket,
+  type DiscoveryResult,
+} from './discovery';
+
+export {
+  runOracleForecaster,
+  getOracleStats,
+  getActiveForecasts,
+  getResolvedForecasts,
+  generateForecast,
+  saveForecast,
+  type OracleForecast,
+  type OracleRunResult,
+} from './forecaster';
+
+export {
+  checkResolutions,
+  manualResolve,
+  calculateBrierScore,
+  calculateLogScore,
+  recalculateBrier,
+  type ResolutionResult,
+  type ResolutionRunResult,
+} from './resolution';
+
+/**
+ * Autonomous Oracle configuration
+ */
+export const AUTONOMOUS_ORACLE_CONFIG = {
+  // Scheduling
+  cronSchedule: '0 */6 * * *', // Every 6 hours
+  targetMarketsPerRun: 10,
+
+  // Triage defaults
+  minVolume: 10000,
+  minPrice: 0.10,
+  maxPrice: 0.90,
+  minDaysToResolve: 7,
+  maxDaysToResolve: 90,
+
+  // Performance
+  requestDelayMs: 1000,
+  timeoutMs: 60000,
+
+  // Identity
+  name: 'Oracle',
+  tier: 'verified',
+  model: 'claude-opus-4-5',
+};
