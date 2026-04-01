@@ -2,19 +2,27 @@
  * Embedding Client
  *
  * Provides text similarity using:
- *   1. Keyword-based similarity (always available, fast)
- *   2. OpenAI embeddings (optional, if OPENAI_API_KEY is set)
- *
- * For BeRight, we primarily use keyword-based similarity since we're
- * using Groq for LLM (which doesn't have embeddings API).
+ *   1. Mistral embeddings (if MISTRAL_API_KEY is set) - 1024 dimensions
+ *   2. OpenAI embeddings (if OPENAI_API_KEY is set) - 1536 dimensions
+ *   3. Keyword-based similarity (always available, fast fallback)
  */
 
 import { EmbeddingResult, EmbeddingConfig, DEFAULT_EMBEDDING_CONFIG } from './types';
 
+const MISTRAL_API_URL = 'https://api.mistral.ai/v1/embeddings';
 const OPENAI_API_URL = 'https://api.openai.com/v1/embeddings';
 
-// Track if we've already logged the missing API key warning (avoid log spam)
-let openaiKeyWarningLogged = false;
+// Track if we've already logged warnings (avoid log spam)
+let embeddingKeyWarningLogged = false;
+
+// Detect which provider is available
+type EmbeddingProvider = 'mistral' | 'openai' | 'none';
+
+function getEmbeddingProvider(): EmbeddingProvider {
+  if (process.env.MISTRAL_API_KEY) return 'mistral';
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  return 'none';
+}
 
 // =============================================================================
 // KEYWORD-BASED SIMILARITY (Always available)
@@ -70,7 +78,6 @@ export function weightedSimilarity(textA: string, textB: string): number {
 
   if (keywordsA.size === 0 || keywordsB.size === 0) return 0;
 
-  // Give more weight to longer matching words (more specific)
   let score = 0;
   let maxScore = 0;
 
@@ -95,7 +102,122 @@ export function textSimilarity(textA: string, textB: string): number {
 }
 
 // =============================================================================
-// OPENAI EMBEDDINGS (Optional)
+// MISTRAL EMBEDDINGS
+// =============================================================================
+
+interface MistralEmbeddingResponse {
+  id: string;
+  object: string;
+  data: {
+    object: string;
+    embedding: number[];
+    index: number;
+  }[];
+  model: string;
+  usage: {
+    prompt_tokens: number;
+    total_tokens: number;
+  };
+}
+
+async function generateMistralEmbedding(
+  text: string,
+  config: Partial<EmbeddingConfig> = {}
+): Promise<EmbeddingResult | null> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(MISTRAL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mistral-embed',
+        input: [text.slice(0, 8000)], // Mistral supports up to 8k tokens
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.warn('[Embeddings] Mistral API error:', error);
+      return null;
+    }
+
+    const data: MistralEmbeddingResponse = await response.json();
+
+    if (!data.data || data.data.length === 0) {
+      return null;
+    }
+
+    return {
+      embedding: data.data[0].embedding,
+      model: data.model,
+      tokensUsed: data.usage.total_tokens,
+    };
+  } catch (err) {
+    console.warn('[Embeddings] Mistral failed:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+async function generateMistralEmbeddings(
+  texts: string[],
+  config: Partial<EmbeddingConfig> = {}
+): Promise<EmbeddingResult[]> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return [];
+
+  const results: EmbeddingResult[] = [];
+  const batchSize = config.batchSize || 10;
+
+  for (let i = 0; i < texts.length; i += batchSize) {
+    const batch = texts.slice(i, i + batchSize);
+
+    try {
+      const response = await fetch(MISTRAL_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'mistral-embed',
+          input: batch.map(t => t.slice(0, 8000)),
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('[Embeddings] Mistral batch error, skipping batch');
+        continue;
+      }
+
+      const data: MistralEmbeddingResponse = await response.json();
+
+      for (const item of data.data) {
+        results.push({
+          embedding: item.embedding,
+          model: data.model,
+          tokensUsed: Math.ceil(data.usage.total_tokens / batch.length),
+        });
+      }
+    } catch (err) {
+      console.warn('[Embeddings] Mistral batch failed:', err instanceof Error ? err.message : err);
+    }
+
+    // Rate limit protection
+    if (i + batchSize < texts.length) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
+
+  return results;
+}
+
+// =============================================================================
+// OPENAI EMBEDDINGS (Fallback)
 // =============================================================================
 
 interface OpenAIEmbeddingResponse {
@@ -110,21 +232,12 @@ interface OpenAIEmbeddingResponse {
   };
 }
 
-/**
- * Generate embedding for a single text
- */
-export async function generateEmbedding(
+async function generateOpenAIEmbedding(
   text: string,
   config: Partial<EmbeddingConfig> = {}
 ): Promise<EmbeddingResult | null> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    if (!openaiKeyWarningLogged) {
-      console.warn('[Embeddings] OPENAI_API_KEY not set - using keyword-based similarity');
-      openaiKeyWarningLogged = true;
-    }
-    return null;
-  }
+  if (!apiKey) return null;
 
   const finalConfig = { ...DEFAULT_EMBEDDING_CONFIG, ...config };
 
@@ -137,13 +250,13 @@ export async function generateEmbedding(
       },
       body: JSON.stringify({
         model: finalConfig.model,
-        input: text.slice(0, finalConfig.maxTokens * 4), // Rough token estimate
+        input: text.slice(0, finalConfig.maxTokens * 4),
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.warn('[Embeddings] API error:', error);
+      console.warn('[Embeddings] OpenAI API error:', error);
       return null;
     }
 
@@ -159,31 +272,21 @@ export async function generateEmbedding(
       tokensUsed: data.usage.total_tokens,
     };
   } catch (err) {
-    console.warn('[Embeddings] Failed:', err instanceof Error ? err.message : err);
+    console.warn('[Embeddings] OpenAI failed:', err instanceof Error ? err.message : err);
     return null;
   }
 }
 
-/**
- * Generate embeddings for multiple texts (batched)
- */
-export async function generateEmbeddings(
+async function generateOpenAIEmbeddings(
   texts: string[],
   config: Partial<EmbeddingConfig> = {}
 ): Promise<EmbeddingResult[]> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    if (!openaiKeyWarningLogged) {
-      console.warn('[Embeddings] OPENAI_API_KEY not set - using keyword-based similarity');
-      openaiKeyWarningLogged = true;
-    }
-    return [];
-  }
+  if (!apiKey) return [];
 
   const finalConfig = { ...DEFAULT_EMBEDDING_CONFIG, ...config };
   const results: EmbeddingResult[] = [];
 
-  // Process in batches
   for (let i = 0; i < texts.length; i += finalConfig.batchSize) {
     const batch = texts.slice(i, i + finalConfig.batchSize);
 
@@ -201,7 +304,7 @@ export async function generateEmbeddings(
       });
 
       if (!response.ok) {
-        console.warn('[Embeddings] Batch error, skipping batch');
+        console.warn('[Embeddings] OpenAI batch error, skipping batch');
         continue;
       }
 
@@ -215,16 +318,68 @@ export async function generateEmbeddings(
         });
       }
     } catch (err) {
-      console.warn('[Embeddings] Batch failed:', err instanceof Error ? err.message : err);
+      console.warn('[Embeddings] OpenAI batch failed:', err instanceof Error ? err.message : err);
     }
 
-    // Rate limit protection
     if (i + finalConfig.batchSize < texts.length) {
       await new Promise(r => setTimeout(r, 100));
     }
   }
 
   return results;
+}
+
+// =============================================================================
+// PUBLIC API (Auto-selects provider)
+// =============================================================================
+
+/**
+ * Generate embedding for a single text
+ * Uses Mistral if available, falls back to OpenAI, then keyword-based
+ */
+export async function generateEmbedding(
+  text: string,
+  config: Partial<EmbeddingConfig> = {}
+): Promise<EmbeddingResult | null> {
+  const provider = getEmbeddingProvider();
+
+  if (provider === 'mistral') {
+    return generateMistralEmbedding(text, config);
+  }
+
+  if (provider === 'openai') {
+    return generateOpenAIEmbedding(text, config);
+  }
+
+  if (!embeddingKeyWarningLogged) {
+    console.warn('[Embeddings] No API key set (MISTRAL_API_KEY or OPENAI_API_KEY) - using keyword-based similarity');
+    embeddingKeyWarningLogged = true;
+  }
+  return null;
+}
+
+/**
+ * Generate embeddings for multiple texts (batched)
+ */
+export async function generateEmbeddings(
+  texts: string[],
+  config: Partial<EmbeddingConfig> = {}
+): Promise<EmbeddingResult[]> {
+  const provider = getEmbeddingProvider();
+
+  if (provider === 'mistral') {
+    return generateMistralEmbeddings(texts, config);
+  }
+
+  if (provider === 'openai') {
+    return generateOpenAIEmbeddings(texts, config);
+  }
+
+  if (!embeddingKeyWarningLogged) {
+    console.warn('[Embeddings] No API key set - using keyword-based similarity');
+    embeddingKeyWarningLogged = true;
+  }
+  return [];
 }
 
 /**
@@ -251,5 +406,24 @@ export function cosineSimilarity(a: number[], b: number[]): number {
  * Check if embeddings are available
  */
 export function isEmbeddingsConfigured(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+  return getEmbeddingProvider() !== 'none';
+}
+
+/**
+ * Get current embedding provider info
+ */
+export function getEmbeddingInfo(): {
+  provider: EmbeddingProvider;
+  model: string;
+  dimensions: number;
+} {
+  const provider = getEmbeddingProvider();
+
+  if (provider === 'mistral') {
+    return { provider, model: 'mistral-embed', dimensions: 1024 };
+  }
+  if (provider === 'openai') {
+    return { provider, model: 'text-embedding-3-small', dimensions: 1536 };
+  }
+  return { provider: 'none', model: 'keyword-based', dimensions: 0 };
 }

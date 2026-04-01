@@ -14,6 +14,7 @@ export { default as CLIInput } from './CLIInput';
 export { default as MarketsPage } from './MarketsPage';
 export { default as AgentsPage } from './AgentsPage';
 export { default as LogsPage } from './LogsPage';
+export { default as ConversationSidebar } from './ConversationSidebar';
 
 export type { TabName } from './NavPill';
 export type { ChatMessage } from './ChatInterface';

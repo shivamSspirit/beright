@@ -544,3 +544,168 @@ export interface PortfolioSnapshotRow {
   position_count: number;
   created_at: string;
 }
+
+// ============================================
+// CONVERSATION & MEMORY TYPES
+// ============================================
+
+export type AgentType = 'SCOUT' | 'ANALYST' | 'TRADER' | 'SYSTEM';
+export type MessageRole = 'user' | 'agent' | 'system';
+export type AgentMood = 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'CAUTIOUS';
+export type MemoryEntryType = 'fact' | 'preference' | 'decision' | 'insight' | 'strategy' | 'daily_note';
+export type AsyncJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface Conversation {
+  id: string;
+  wallet_address: string;
+  title: string | null;
+  summary: string | null;
+  agents_used: AgentType[];
+  markets_discussed: string[];
+  tags: string[];
+  bookmarked: boolean;
+  archived: boolean;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string;
+  gateway_session_id: string | null;
+}
+
+export interface ConversationMeta {
+  id: string;
+  title: string | null;
+  agents_used: AgentType[];
+  bookmarked: boolean;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string;
+  message_count?: number;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: MessageRole;
+  agent_type: AgentType | null;
+  content: string;
+  mood: AgentMood | null;
+  tool_calls: ToolCall[];
+  market_ids: string[];
+  prediction_ids: string[];
+  created_at: string;
+}
+
+export interface ToolCall {
+  name: string;
+  arguments: Record<string, unknown>;
+  result?: unknown;
+}
+
+export interface MemoryEntry {
+  id: string;
+  wallet_address: string;
+  entry_type: MemoryEntryType;
+  content: string;
+  agent_source: AgentType | null;
+  conversation_id: string | null;
+  entry_date: string | null;
+  importance: number;
+  last_accessed_at: string | null;
+  access_count: number;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export interface PredictionLink {
+  id: string;
+  conversation_id: string;
+  message_id: string | null;
+  prediction_id: string;
+  market_id: string;
+  predicted_probability: number;
+  direction: 'YES' | 'NO';
+  tx_signature: string | null;
+  on_chain_pda: string | null;
+  resolved: boolean | null;
+  resolution_tx: string | null;
+  brier_contribution: number | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface AsyncJob {
+  id: string;
+  wallet_address: string;
+  conversation_id: string | null;
+  job_type: string;
+  gateway_job_id: string | null;
+  status: AsyncJobStatus;
+  progress: number;
+  progress_message: string | null;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  expires_at: string;
+}
+
+// Insert types
+export interface NewConversation {
+  wallet_address: string;
+  title?: string;
+  gateway_session_id?: string;
+  tags?: string[];
+}
+
+export interface NewMessage {
+  conversation_id: string;
+  role: MessageRole;
+  agent_type?: AgentType;
+  content: string;
+  mood?: AgentMood;
+  tool_calls?: ToolCall[];
+  market_ids?: string[];
+  prediction_ids?: string[];
+}
+
+export interface NewMemoryEntry {
+  wallet_address: string;
+  entry_type: MemoryEntryType;
+  content: string;
+  agent_source?: AgentType;
+  conversation_id?: string;
+  entry_date?: string;
+  importance?: number;
+  expires_at?: string;
+}
+
+export interface NewAsyncJob {
+  wallet_address: string;
+  conversation_id?: string;
+  job_type: string;
+  gateway_job_id?: string;
+}
+
+// Search result types
+export interface MessageSearchResult {
+  message_id: string;
+  conversation_id: string;
+  content: string;
+  role: MessageRole;
+  agent_type: AgentType | null;
+  created_at: string;
+  similarity?: number;
+  score?: number;
+}
+
+export interface MemorySearchResult {
+  id: string;
+  content: string;
+  entry_type: MemoryEntryType;
+  agent_source: AgentType | null;
+  created_at: string;
+  similarity?: number;
+}

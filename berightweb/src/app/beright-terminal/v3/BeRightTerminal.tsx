@@ -8,6 +8,7 @@ import { useMode } from '@/context/ModeContext';
 import { getHotMarketsFeed, sendToGateway, fetchTerminalData, GatewayResponse, ApiMarket, getFeed, FeedMarket, waitForJob } from '@/lib/api';
 import { getAllExplorerUrls } from '@/lib/explorer';
 import { useSignalStream } from '@/hooks/useSignalStream';
+import { useConversationStore, useMessages, useIsProcessing } from '@/stores/conversationStore';
 
 // Portfolio data structure from API
 interface PortfolioData {
@@ -32,6 +33,7 @@ import {
   MarketsPage,
   AgentsPage,
   LogsPage,
+  ConversationSidebar,
   TabName,
   ChatMessage,
 } from './index';
@@ -86,18 +88,41 @@ export default function BeRightTerminal() {
     amount: string;
   } | null>(null);
 
-  // Terminal state
-  const [isProcessing, setIsProcessing] = useState(false);
+  // Conversation store for persistent chat state
+  const {
+    activeConversation,
+    activeConversationId,
+    gatewaySessionId,
+    setWallet,
+    loadConversations,
+    createConversation,
+    setActiveConversation,
+    addMessage,
+    addOptimisticMessage,
+    setProcessing,
+    setGatewaySessionId,
+    checkPendingJobs,
+  } = useConversationStore();
 
-  // Gateway session for context persistence
-  const [gatewaySessionId, setGatewaySessionId] = useState<string | null>(null);
+  // Get messages from store (with selector for performance)
+  const storeMessages = useMessages();
+  const { isProcessing, processingMessage } = useIsProcessing();
+
+  // Convert store messages to ChatMessage format for ChatInterface
+  const chatMessages: ChatMessage[] = useMemo(() => {
+    return storeMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role === 'user' ? 'user' : 'agent',
+      agent: msg.agent_type as ChatMessage['agent'],
+      content: msg.content,
+      timestamp: new Date(msg.created_at),
+      mood: msg.mood,
+    }));
+  }, [storeMessages]);
 
   // Agent state
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
   const [onlineAgents] = useState(['SCOUT', 'ANALYST', 'TRADER']);
-
-  // Chat messages for the conversation interface
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // Refresh interval ref
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -126,36 +151,82 @@ export default function BeRightTerminal() {
     });
   }, [isDemo, authenticated, ready, tourSteps.length]);
 
-  // Add chat message
-  const addChatMessage = useCallback((
+  // Initialize conversation store with wallet
+  useEffect(() => {
+    if (walletAddress) {
+      setWallet(walletAddress);
+      loadConversations();
+      checkPendingJobs();
+    }
+  }, [walletAddress, setWallet, loadConversations, checkPendingJobs]);
+
+  // Track last agent message ID for updates (for async progress)
+  const lastAgentMessageIdRef = useRef<string | null>(null);
+
+  // Add chat message - now uses the store
+  const addChatMessage = useCallback(async (
     role: 'user' | 'agent',
     content: string,
     agent?: ChatMessage['agent'],
     mood?: string
   ) => {
-    const id = generateId();
-    setChatMessages(prev => [...prev, {
-      id,
-      role,
-      agent,
+    // Ensure we have an active conversation
+    let convId = activeConversationId;
+    if (!convId && role === 'user') {
+      // Create a new conversation on first user message
+      try {
+        convId = await createConversation();
+      } catch (error) {
+        console.error('[Terminal] Failed to create conversation:', error);
+      }
+    }
+
+    // Add message to store
+    addMessage({
+      conversation_id: convId || '',
+      role: role === 'user' ? 'user' : 'agent',
+      agent_type: agent as any,
       content,
-      timestamp: new Date(),
-      mood,
-    }]);
+      mood: mood as any,
+    });
+
+    const id = `msg-${Date.now()}`;
+    if (role === 'agent') {
+      lastAgentMessageIdRef.current = id;
+    }
     return id;
-  }, []);
+  }, [activeConversationId, createConversation, addMessage]);
 
   // Update the last agent message (for async progress updates)
+  // This uses local state for progress since store updates would be too heavy
+  const [progressContent, setProgressContent] = useState<{ content: string; mood?: string } | null>(null);
+
   const updateLastAgentMessage = useCallback((content: string, mood?: string) => {
-    setChatMessages(prev => {
-      const lastAgentIdx = [...prev].reverse().findIndex(m => m.role === 'agent');
-      if (lastAgentIdx === -1) return prev;
-      const idx = prev.length - 1 - lastAgentIdx;
-      const updated = [...prev];
-      updated[idx] = { ...updated[idx], content, mood: mood || updated[idx].mood };
-      return updated;
-    });
+    // Update progress state - this will be merged with the last message visually
+    setProgressContent({ content, mood });
   }, []);
+
+  // Merge progress content into chat messages for display
+  const displayMessages: ChatMessage[] = useMemo(() => {
+    if (!progressContent || chatMessages.length === 0) return chatMessages;
+
+    const lastIdx = chatMessages.length - 1;
+    const lastMsg = chatMessages[lastIdx];
+    if (lastMsg.role !== 'agent') return chatMessages;
+
+    // Replace last agent message content with progress content
+    return [
+      ...chatMessages.slice(0, lastIdx),
+      { ...lastMsg, content: progressContent.content, mood: progressContent.mood || lastMsg.mood },
+    ];
+  }, [chatMessages, progressContent]);
+
+  // Clear progress when a new message is added
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      setProgressContent(null);
+    }
+  }, [chatMessages.length]);
 
   // Add agent log
   const addAgentLog = useCallback((agent: AgentLog['agent'], message: string, type: AgentLog['type'] = 'info') => {
@@ -238,10 +309,10 @@ export default function BeRightTerminal() {
 
   // Process terminal command
   const processCommand = useCallback(async (cmd: string) => {
-    setIsProcessing(true);
+    setProcessing(true, 'Processing...');
 
     // Add user message to chat
-    addChatMessage('user', cmd);
+    await addChatMessage('user', cmd);
 
     const command = cmd.toLowerCase().trim();
 
@@ -249,35 +320,48 @@ export default function BeRightTerminal() {
     if (command === '/markets') {
       setActiveTab('MARKETS');
       addChatMessage('agent', 'Switching to MARKETS view...', 'SYSTEM');
-      setIsProcessing(false);
+      setProcessing(false);
       return;
     }
 
     if (command === '/agents') {
       setActiveTab('AGENTS');
       addChatMessage('agent', 'Switching to AGENTS view...', 'SYSTEM');
-      setIsProcessing(false);
+      setProcessing(false);
       return;
     }
 
     if (command === '/logs') {
       setActiveTab('LOGS');
       addChatMessage('agent', 'Switching to LOGS view...', 'SYSTEM');
-      setIsProcessing(false);
+      setProcessing(false);
       return;
     }
 
     if (command === '/home' || command === '/beright') {
       setActiveTab('BERIGHT');
       addChatMessage('agent', 'Returning to home terminal...', 'SYSTEM');
-      setIsProcessing(false);
+      setProcessing(false);
       return;
     }
 
     if (command === '/clear') {
-      setChatMessages([]);
-      addChatMessage('agent', 'Chat cleared.', 'SYSTEM');
-      setIsProcessing(false);
+      // Clear is now a new conversation
+      useConversationStore.getState().clearActiveConversation();
+      addChatMessage('agent', 'Starting a new conversation...', 'SYSTEM');
+      setProcessing(false);
+      return;
+    }
+
+    if (command === '/new') {
+      // Start a new conversation
+      try {
+        await createConversation();
+        addChatMessage('agent', 'New conversation started.', 'SYSTEM');
+      } catch (error) {
+        addChatMessage('agent', 'Failed to create new conversation.', 'SYSTEM');
+      }
+      setProcessing(false);
       return;
     }
 
@@ -329,7 +413,7 @@ export default function BeRightTerminal() {
           addAgentLog(agent, `Job failed: ${errorMsg}`, 'error');
         }
 
-        setIsProcessing(false);
+        setProcessing(false);
         return;
       }
 
@@ -362,8 +446,8 @@ export default function BeRightTerminal() {
       addAgentLog(agent, 'Request failed', 'error');
     }
 
-    setIsProcessing(false);
-  }, [gatewaySessionId, addAgentLog, addChatMessage, updateLastAgentMessage, solanaWallet]);
+    setProcessing(false);
+  }, [gatewaySessionId, addAgentLog, addChatMessage, updateLastAgentMessage, solanaWallet, setProcessing, createConversation, setGatewaySessionId]);
 
   // Check if agent response contains a transaction that needs signing
   const checkForPendingTransaction = useCallback((data: any): boolean => {
@@ -652,9 +736,17 @@ export default function BeRightTerminal() {
       return <LogsPage logs={agentLogs} />;
     }
 
-    // Main BERIGHT view - three column layout
+    // Main BERIGHT view - four column layout with conversation history
     return (
-      <main className={styles.mainGrid} data-tour="terminal-main">
+      <main className={styles.mainGridWithHistory} data-tour="terminal-main">
+        {/* Far Left Panel - Conversation History */}
+        <aside className={styles.panelHistory}>
+          <ConversationSidebar
+            walletAddress={walletAddress}
+            onConversationSelect={(id) => setActiveConversation(id)}
+          />
+        </aside>
+
         {/* Left Panel - Agent Fleet */}
         <aside className={styles.panel} data-tour="agent-fleet">
           <AgentFleet
@@ -666,7 +758,7 @@ export default function BeRightTerminal() {
 
         {/* Center Panel - Chat Interface */}
         <section className={styles.panelChat}>
-          <ChatInterface messages={chatMessages} isProcessing={isProcessing} />
+          <ChatInterface messages={displayMessages} isProcessing={isProcessing} />
         </section>
 
         {/* Right Panel - Portfolio */}
