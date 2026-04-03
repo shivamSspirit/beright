@@ -11,6 +11,8 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
+import { useEffect, useRef } from 'react';
 
 // ============ TYPES ============
 
@@ -128,6 +130,7 @@ interface ConversationState {
   // Processing
   setProcessing: (isProcessing: boolean, message?: string | null) => void;
   setGatewaySessionId: (sessionId: string | null) => void;
+  setActiveConversationId: (id: string | null) => void;  // Sync conversation ID from server
 
   // Jobs
   addJob: (job: AsyncJob) => void;
@@ -387,6 +390,20 @@ export const useConversationStore = create<ConversationState>()(
         set({ gatewaySessionId: sessionId });
       },
 
+      // Set active conversation ID (synced from server response)
+      setActiveConversationId: (id) => {
+        if (id === get().activeConversationId) return;
+
+        set({ activeConversationId: id });
+
+        // If we have an ID, try to load the full conversation
+        if (id) {
+          get().loadConversation(id).catch((error) => {
+            console.warn('[ConversationStore] Failed to load conversation:', error);
+          });
+        }
+      },
+
       // Add async job
       addJob: (job) => {
         set((state) => ({
@@ -505,37 +522,55 @@ export const useConversationStore = create<ConversationState>()(
 /**
  * Hook to initialize conversation store with wallet
  * Call this in your main terminal component
+ *
+ * NOTE: This hook is deprecated. Use separate useEffects instead to avoid
+ * calling setState during render which causes infinite loops.
  */
 export function useInitConversations(walletAddress: string | null) {
-  const { setWallet, loadConversations, checkPendingJobs, walletAddress: storeWallet } = useConversationStore();
+  const { setWallet, loadConversations, checkPendingJobs } = useConversationStore();
+  const storeWallet = useConversationStore((state) => state.walletAddress);
+  const conversationsLoaded = useConversationStore((state) => state.conversationsLoaded);
 
-  // Update wallet when it changes
-  if (walletAddress !== storeWallet) {
-    setWallet(walletAddress);
-  }
+  // Use useEffect to avoid calling setState during render
+  useEffect(() => {
+    if (walletAddress !== storeWallet) {
+      setWallet(walletAddress);
+    }
+  }, [walletAddress, storeWallet, setWallet]);
 
-  // Load conversations on mount/wallet change
-  if (walletAddress && !useConversationStore.getState().conversationsLoaded) {
-    loadConversations();
-    checkPendingJobs();
-  }
+  useEffect(() => {
+    if (walletAddress && !conversationsLoaded) {
+      loadConversations();
+      checkPendingJobs();
+    }
+  }, [walletAddress, conversationsLoaded, loadConversations, checkPendingJobs]);
 }
+
+// Stable empty array reference to avoid creating new arrays on each render
+const EMPTY_MESSAGES: Message[] = [];
+
+// Stable selector functions defined outside hooks to prevent re-creation
+const selectMessages = (state: ConversationState) => state.activeConversation?.messages;
+const selectProcessing = (state: ConversationState) => ({
+  isProcessing: state.isProcessing,
+  processingMessage: state.processingMessage,
+});
 
 /**
  * Selector for active messages (optimized re-renders)
+ * Uses stable empty array reference when no messages
  */
 export const useMessages = () => {
-  return useConversationStore((state) => state.activeConversation?.messages ?? []);
+  const messages = useConversationStore(selectMessages);
+  return messages ?? EMPTY_MESSAGES;
 };
 
 /**
  * Selector for processing state
+ * Uses useShallow for proper object comparison to prevent unnecessary re-renders
  */
 export const useIsProcessing = () => {
-  return useConversationStore((state) => ({
-    isProcessing: state.isProcessing,
-    processingMessage: state.processingMessage,
-  }));
+  return useConversationStore(useShallow(selectProcessing));
 };
 
 /**

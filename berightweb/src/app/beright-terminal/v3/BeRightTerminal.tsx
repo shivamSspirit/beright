@@ -25,7 +25,6 @@ interface PortfolioData {
 import {
   PulseIndicator,
   NavPill,
-  AgentFleet,
   MarketTable,
   ChatInterface,
   PortfolioSidebar,
@@ -88,25 +87,40 @@ export default function BeRightTerminal() {
     amount: string;
   } | null>(null);
 
-  // Conversation store for persistent chat state
+  // Conversation store - use SELECTORS to avoid re-renders on every store change
+  // State values (reactive - will re-render when these change)
+  const activeConversation = useConversationStore((state) => state.activeConversation);
+  const activeConversationId = useConversationStore((state) => state.activeConversationId);
+  const gatewaySessionId = useConversationStore((state) => state.gatewaySessionId);
+
+  // Get messages from store (with selector for performance)
+  const storeMessages = useMessages();
+  const { isProcessing, processingMessage } = useIsProcessing();
+
+  // Store actions - get via getState() to avoid re-renders (actions are stable)
+  const storeActions = useMemo(() => ({
+    setWallet: useConversationStore.getState().setWallet,
+    loadConversations: useConversationStore.getState().loadConversations,
+    createConversation: useConversationStore.getState().createConversation,
+    setActiveConversation: useConversationStore.getState().setActiveConversation,
+    addMessage: useConversationStore.getState().addMessage,
+    addOptimisticMessage: useConversationStore.getState().addOptimisticMessage,
+    setProcessing: useConversationStore.getState().setProcessing,
+    setGatewaySessionId: useConversationStore.getState().setGatewaySessionId,
+    checkPendingJobs: useConversationStore.getState().checkPendingJobs,
+  }), []);
+
+  // Destructure for easier use
   const {
-    activeConversation,
-    activeConversationId,
-    gatewaySessionId,
     setWallet,
     loadConversations,
     createConversation,
     setActiveConversation,
     addMessage,
-    addOptimisticMessage,
     setProcessing,
     setGatewaySessionId,
     checkPendingJobs,
-  } = useConversationStore();
-
-  // Get messages from store (with selector for performance)
-  const storeMessages = useMessages();
-  const { isProcessing, processingMessage } = useIsProcessing();
+  } = storeActions;
 
   // Convert store messages to ChatMessage format for ChatInterface
   const chatMessages: ChatMessage[] = useMemo(() => {
@@ -151,14 +165,21 @@ export default function BeRightTerminal() {
     });
   }, [isDemo, authenticated, ready, tourSteps.length]);
 
-  // Initialize conversation store with wallet
+  // Initialize conversation store with wallet - split to avoid dependency loops
+  const conversationsLoaded = useConversationStore((state) => state.conversationsLoaded);
+
   useEffect(() => {
     if (walletAddress) {
       setWallet(walletAddress);
+    }
+  }, [walletAddress]); // setWallet is stable from zustand
+
+  useEffect(() => {
+    if (walletAddress && !conversationsLoaded) {
       loadConversations();
       checkPendingJobs();
     }
-  }, [walletAddress, setWallet, loadConversations, checkPendingJobs]);
+  }, [walletAddress, conversationsLoaded]); // loadConversations/checkPendingJobs are stable
 
   // Track last agent message ID for updates (for async progress)
   const lastAgentMessageIdRef = useRef<string | null>(null);
@@ -223,10 +244,10 @@ export default function BeRightTerminal() {
 
   // Clear progress when a new message is added
   useEffect(() => {
-    if (chatMessages.length > 0) {
+    if (chatMessages.length > 0 && progressContent !== null) {
       setProgressContent(null);
     }
-  }, [chatMessages.length]);
+  }, [chatMessages.length, progressContent]);
 
   // Add agent log
   const addAgentLog = useCallback((agent: AgentLog['agent'], message: string, type: AgentLog['type'] = 'info') => {
@@ -369,14 +390,22 @@ export default function BeRightTerminal() {
     addAgentLog(agent, `Processing: ${cmd.slice(0, 50)}${cmd.length > 50 ? '...' : ''}`, 'info');
 
     try {
-      // Pass wallet pubkey for trade execution
+      // Pass wallet pubkey for trade execution and persistence
       const response: GatewayResponse = await sendToGateway(cmd, {
         sessionId: gatewaySessionId || undefined,
-        userId: solanaWallet || undefined, // Pass wallet for execution context
+        userId: solanaWallet || undefined,
+        walletAddress: solanaWallet || undefined,           // Enable Supabase persistence
+        conversationId: activeConversationId || undefined,  // Continue existing conversation
       });
 
+      // Update session and conversation IDs from response
       if (response.sessionId && response.sessionId !== gatewaySessionId) {
         setGatewaySessionId(response.sessionId);
+      }
+
+      // If backend created/returned a conversation ID, sync it to our store
+      if (response.conversationId && response.conversationId !== activeConversationId) {
+        useConversationStore.getState().setActiveConversationId(response.conversationId);
       }
 
       // Handle async jobs (long-running operations)
@@ -736,23 +765,14 @@ export default function BeRightTerminal() {
       return <LogsPage logs={agentLogs} />;
     }
 
-    // Main BERIGHT view - four column layout with conversation history
+    // Main BERIGHT view - three column layout: conversations | chat | portfolio
     return (
-      <main className={styles.mainGridWithHistory} data-tour="terminal-main">
-        {/* Far Left Panel - Conversation History */}
+      <main className={styles.mainGridThreeCol} data-tour="terminal-main">
+        {/* Left Panel - Conversation History */}
         <aside className={styles.panelHistory}>
           <ConversationSidebar
             walletAddress={walletAddress}
-            onConversationSelect={(id) => setActiveConversation(id)}
-          />
-        </aside>
-
-        {/* Left Panel - Agent Fleet */}
-        <aside className={styles.panel} data-tour="agent-fleet">
-          <AgentFleet
-            onlineAgents={onlineAgents}
-            marketExposure={portfolioData?.marketExposure}
-            positionRisk={portfolioData?.positionRisk}
+            onConversationSelect={setActiveConversation}
           />
         </aside>
 

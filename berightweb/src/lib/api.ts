@@ -1009,6 +1009,11 @@ export interface GatewayResponse {
   data?: any;
   sessionId?: string;
   error?: string;
+  // Conversation persistence fields (v2.0)
+  conversationId?: string;   // Supabase conversation ID
+  userMessageId?: string;    // ID of saved user message
+  agentMessageId?: string;   // ID of saved agent message
+  agentType?: string;        // SCOUT, ANALYST, TRADER
   // Async job fields (for long-running operations)
   async?: boolean;        // True if this is an async job
   jobId?: string;         // Job ID for polling
@@ -1034,12 +1039,18 @@ export interface JobStatus {
  * - LLM reasoning layer
  * - Context and memory
  * - Skill execution
+ *
+ * v2.0: Now supports conversation persistence with Supabase
+ * - Pass walletAddress to enable persistence
+ * - Pass conversationId to continue existing conversation
  */
 export async function sendToGateway(
   message: string,
   options?: {
     userId?: string;
     sessionId?: string;
+    walletAddress?: string;     // For Supabase persistence
+    conversationId?: string;    // Continue existing conversation
   }
 ): Promise<GatewayResponse> {
   return apiFetch('/api/gateway', {
@@ -1048,6 +1059,8 @@ export async function sendToGateway(
       message,
       userId: options?.userId,
       sessionId: options?.sessionId,
+      walletAddress: options?.walletAddress,
+      conversationId: options?.conversationId,
     }),
   });
 }
@@ -1116,7 +1129,9 @@ export async function getGatewayStatus(sessionId?: string): Promise<{
   return apiFetch(`/api/gateway${params}`);
 }
 
-// ============ TAVILY API (Web Search & Research) ============
+// ============ SEARCH API (Powered by Serper.dev) ============
+// Note: Function names kept as 'tavily*' for backward compatibility
+// Backend now uses Serper.dev instead of Tavily
 
 export interface TavilySearchResult {
   title: string;
