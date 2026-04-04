@@ -11,17 +11,10 @@ import { InsideViewAnalysis, EvidenceFactor, ConfidenceLevel } from './types';
 import { UnifiedMarket } from '../dataFabric/types';
 import { llmChat } from '../llm';
 
-// Try to import Tavily (may not be available)
-let tavilySearch: any = null;
-let tavilyAvailable = false;
+// Use Serper for web search
+import { serperNewsSearch, isSerperConfigured } from '../serper';
 
-try {
-  const tavily = require('../tavily');
-  tavilySearch = tavily.tavilySearch;
-  tavilyAvailable = !!process.env.TAVILY_API_KEY;
-} catch {
-  console.log('[Evidence] Tavily not available');
-}
+const searchAvailable = isSerperConfigured();
 
 // =============================================================================
 // EVIDENCE GATHERING
@@ -34,31 +27,28 @@ async function gatherNewsEvidence(
   question: string,
   limit: number = 5
 ): Promise<EvidenceFactor[]> {
-  if (!tavilyAvailable || !tavilySearch) {
+  if (!searchAvailable) {
     return [];
   }
 
   try {
     const query = question.replace(/\?/g, '').slice(0, 100);
-    const results = await tavilySearch(query, {
-      searchDepth: 'basic',
-      maxResults: limit,
-    });
+    const response = await serperNewsSearch(query, { num: limit });
 
-    if (!results?.results?.length) return [];
+    if (!response?.results?.length) return [];
 
     const factors: EvidenceFactor[] = [];
 
-    for (const result of results.results) {
-      const sentiment = detectSentiment(result.title + ' ' + (result.content || ''));
-      const weight = getWeightFromRelevance(result.score || 0.5);
+    for (const result of response.results) {
+      const sentiment = detectSentiment(result.title + ' ' + (result.snippet || ''));
+      const weight = getWeightFromRelevance(0.7); // Serper doesn't provide relevance score
 
       factors.push({
         factor: result.title.slice(0, 100),
-        source: new URL(result.url).hostname.replace('www.', ''),
+        source: result.source || new URL(result.url).hostname.replace('www.', ''),
         weight,
         direction: sentiment,
-        confidence: result.score || 0.5,
+        confidence: 0.7,
       });
     }
 
@@ -215,7 +205,7 @@ export async function gatherEvidence(
   let newsContext = '';
   const newsFactors: EvidenceFactor[] = [];
 
-  if (includeNews && tavilyAvailable) {
+  if (includeNews && searchAvailable) {
     const news = await gatherNewsEvidence(market.question, maxNews);
     newsFactors.push(...news);
 

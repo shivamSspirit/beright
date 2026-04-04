@@ -18,17 +18,10 @@ import {
 import { getDataFabric } from '../../dataFabric';
 import { UnifiedMarket } from '../../dataFabric/types';
 
-// Check if Tavily is available
-let tavilyAvailable = false;
-let tavilySearch: any = null;
+// Use Serper for news search
+import { serperNewsSearch, isSerperConfigured } from '../../serper';
 
-try {
-  const tavily = require('../../tavily');
-  tavilySearch = tavily.tavilySearch;
-  tavilyAvailable = tavily.isTavilyConfigured?.() ?? !!process.env.TAVILY_API_KEY;
-} catch {
-  console.log('[NewsDetector] Tavily not available, using fallback');
-}
+const searchAvailable = isSerperConfigured();
 
 const MAX_SIGNALS = 10;
 const NEWS_RECENCY_HOURS = 24;
@@ -77,7 +70,7 @@ function calculateRelevance(newsText: string, marketQuestion: string): number {
  * Search for news related to a market
  */
 async function searchNewsForMarket(market: UnifiedMarket): Promise<NewsSignal | null> {
-  if (!tavilyAvailable || !tavilySearch) return null;
+  if (!searchAvailable) return null;
 
   try {
     // Extract key terms from market question
@@ -87,20 +80,16 @@ async function searchNewsForMarket(market: UnifiedMarket): Promise<NewsSignal | 
       .trim()
       .slice(0, 100);
 
-    const results = await tavilySearch(query, {
-      searchDepth: 'basic',
-      maxResults: 5,
-      includeDomains: ['reuters.com', 'apnews.com', 'bbc.com', 'nytimes.com', 'wsj.com', 'bloomberg.com'],
-    });
+    const response = await serperNewsSearch(query, { num: 5 });
 
-    if (!results?.results?.length) return null;
+    if (!response?.results?.length) return null;
 
     // Find most relevant result
     let bestResult = null;
     let bestRelevance = 0;
 
-    for (const result of results.results) {
-      const relevance = calculateRelevance(result.title + ' ' + (result.content || ''), market.question);
+    for (const result of response.results) {
+      const relevance = calculateRelevance(result.title + ' ' + (result.snippet || ''), market.question);
       if (relevance > bestRelevance && relevance > 0.2) {
         bestRelevance = relevance;
         bestResult = result;
@@ -109,21 +98,21 @@ async function searchNewsForMarket(market: UnifiedMarket): Promise<NewsSignal | 
 
     if (!bestResult || bestRelevance < 0.3) return null;
 
-    const sentiment = detectSentiment(bestResult.title + ' ' + (bestResult.content || ''));
+    const sentiment = detectSentiment(bestResult.title + ' ' + (bestResult.snippet || ''));
     const confidence = Math.min(bestRelevance * 1.5, 0.95);
 
     const primaryPlatform = market.platforms[0];
 
     const signal: NewsSignal = {
-      id: generateSignalId('NEWS_CATALYST', market.id, 'tavily'),
+      id: generateSignalId('NEWS_CATALYST', market.id, 'serper'),
       type: 'NEWS_CATALYST',
-      source: 'tavily',
+      source: 'serper',
       timestamp: new Date(),
       expiresAt: new Date(Date.now() + getSignalTTL('NEWS_CATALYST')),
       confidence,
       urgency: getUrgencyFromConfidence(confidence),
       title: `News: ${bestResult.title.slice(0, 60)}...`,
-      description: `${sentiment === 'positive' ? '📈' : sentiment === 'negative' ? '📉' : '➡️'} ${bestResult.content?.slice(0, 150) || bestResult.title}...`,
+      description: `${sentiment === 'positive' ? '📈' : sentiment === 'negative' ? '📉' : '➡️'} ${bestResult.snippet?.slice(0, 150) || bestResult.title}...`,
       emoji: getSignalEmoji('NEWS_CATALYST'),
       market: {
         id: market.id,
@@ -134,12 +123,12 @@ async function searchNewsForMarket(market: UnifiedMarket): Promise<NewsSignal | 
       },
       data: {
         headline: bestResult.title,
-        source: new URL(bestResult.url).hostname.replace('www.', ''),
+        source: bestResult.source || new URL(bestResult.url).hostname.replace('www.', ''),
         url: bestResult.url,
         sentiment,
         relevanceScore: bestRelevance,
-        publishedAt: bestResult.publishedDate ? new Date(bestResult.publishedDate) : new Date(),
-        summary: bestResult.content?.slice(0, 300),
+        publishedAt: bestResult.date ? new Date(bestResult.date) : new Date(),
+        summary: bestResult.snippet?.slice(0, 300),
       },
       suggestedAction: sentiment !== 'neutral' ? {
         direction: sentiment === 'positive' ? 'YES' : 'NO',
@@ -158,11 +147,11 @@ async function searchNewsForMarket(market: UnifiedMarket): Promise<NewsSignal | 
 export const newsDetector: SignalDetector = {
   name: 'news',
   signalTypes: ['NEWS_CATALYST'],
-  enabled: tavilyAvailable,
+  enabled: searchAvailable,
 
   async detect(): Promise<Signal[]> {
-    if (!tavilyAvailable) {
-      console.log('[NewsDetector] Tavily not configured, skipping');
+    if (!searchAvailable) {
+      console.log('[NewsDetector] Serper not configured, skipping');
       return [];
     }
 
@@ -201,7 +190,7 @@ export const newsDetector: SignalDetector = {
   },
 
   async isHealthy(): Promise<boolean> {
-    return tavilyAvailable;
+    return searchAvailable;
   },
 };
 
