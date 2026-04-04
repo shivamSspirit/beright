@@ -194,7 +194,7 @@ const MISTRAL_MODELS = {
 // Free tier: 15 RPM, 1M tokens/min, 1500 req/day
 const GEMINI_MODELS = {
   fast: 'gemini-2.0-flash',           // Latest, best performance, fast
-  smart: 'gemini-1.5-pro',            // Best quality, 2M context, complex reasoning
+  smart: 'gemini-2.0-flash',          // Using flash for stability (1.5-pro deprecated)
 };
 
 const GROQ_MODELS = {
