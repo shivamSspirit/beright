@@ -12,7 +12,7 @@
  *   const { isAuthenticated, walletAddress, login, logout } = useUser();
  */
 
-import { useContext, createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useContext, createContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useMode } from '@/context/ModeContext';
 
 // ============================================================================
@@ -104,25 +104,40 @@ export function useUser(): UnifiedUserContextType {
       }).__BERIGHT_WALLET__;
 
       if (walletState) {
-        setState({
-          isAuthenticated: walletState.connected,
-          walletAddress: walletState.publicKey,
-          isLoading: walletState.connecting,
+        // Only update if values actually changed to prevent infinite loops
+        setState(prev => {
+          if (
+            prev.isAuthenticated === walletState.connected &&
+            prev.walletAddress === walletState.publicKey &&
+            prev.isLoading === walletState.connecting
+          ) {
+            return prev; // No change, return same reference
+          }
+          return {
+            isAuthenticated: walletState.connected,
+            walletAddress: walletState.publicKey,
+            isLoading: walletState.connecting,
+          };
         });
       } else {
-        // No wallet state yet - keep loading
-        setState(prev => ({
-          ...prev,
-          isLoading: modeLoading,
-        }));
+        // No wallet state yet - only update if loading state changed
+        setState(prev => {
+          if (prev.isLoading === modeLoading) {
+            return prev; // No change
+          }
+          return {
+            ...prev,
+            isLoading: modeLoading,
+          };
+        });
       }
     };
 
     // Check immediately
     checkWalletState();
 
-    // Poll for changes (wallet state updates async)
-    const interval = setInterval(checkWalletState, 300);
+    // Poll for changes (reduced frequency to prevent excessive re-renders)
+    const interval = setInterval(checkWalletState, 500);
 
     // Also check on storage events (for cross-tab sync)
     window.addEventListener('storage', checkWalletState);
@@ -189,16 +204,16 @@ export function useUser(): UnifiedUserContextType {
     }
   }, []);
 
-  // Create mock profile from wallet address
-  const createProfile = (address: string | null): UserProfile | null => {
-    if (!address) return null;
+  // Memoize user profile to prevent creating new object on every render
+  const user = useMemo((): UserProfile | null => {
+    if (!state.isAuthenticated || !state.walletAddress) return null;
     return {
-      id: `${isDemo ? 'demo' : 'prod'}-${address}`,
-      walletAddress: address,
+      id: `${isDemo ? 'demo' : 'prod'}-${state.walletAddress}`,
+      walletAddress: state.walletAddress,
       email: null,
       phone: null,
       telegramId: null,
-      username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+      username: `${state.walletAddress.slice(0, 6)}...${state.walletAddress.slice(-4)}`,
       avatar: null,
       bio: null,
       twitterHandle: null,
@@ -212,10 +227,18 @@ export function useUser(): UnifiedUserContextType {
       rank: 0,
       joinedAt: new Date().toISOString(),
     };
-  };
+  }, [state.isAuthenticated, state.walletAddress, isDemo]);
 
-  return {
-    user: state.isAuthenticated ? createProfile(state.walletAddress) : null,
+  // Memoize referral code
+  const referralCode = useMemo(() => {
+    return state.walletAddress
+      ? `BR${state.walletAddress.slice(0, 6).toUpperCase()}`
+      : null;
+  }, [state.walletAddress]);
+
+  // Memoize return object to prevent creating new reference on every render
+  return useMemo(() => ({
+    user,
     isAuthenticated: state.isAuthenticated,
     isLoading: state.isLoading || modeLoading,
     login,
@@ -224,10 +247,8 @@ export function useUser(): UnifiedUserContextType {
     linkTelegram: async () => {},
     refreshProfile: async () => {},
     refreshUser: async () => {},
-    referralCode: state.walletAddress
-      ? `BR${state.walletAddress.slice(0, 6).toUpperCase()}`
-      : null,
-  };
+    referralCode,
+  }), [user, state.isAuthenticated, state.isLoading, modeLoading, login, logout, state.walletAddress, referralCode]);
 }
 
 // Default export for convenience

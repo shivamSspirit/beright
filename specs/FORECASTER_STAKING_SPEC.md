@@ -1,12 +1,14 @@
-# Forecaster Staking Pools Specification
+# Forecaster Conviction Pools Specification
 
 ## Overview
 
-A simplified staking system where forecasters create pools, delegators stake capital, and profits from prediction market activity are distributed according to a fixed revenue split.
+A capital delegation system where proven forecasters manage delegator capital in prediction markets. Forecasters don't stake their own funds—they provide skill and track record. Delegators provide capital and earn yield when forecasters win.
+
+**Model:** Like a hedge fund for prediction markets. Forecasters are fund managers, delegators are LPs (limited partners).
 
 **Revenue Split**:
-- **30%** → Forecaster (skill reward)
-- **50%** → Delegators (capital providers)
+- **50%** → Forecaster (skill reward)
+- **30%** → Delegators (capital providers)
 - **20%** → Platform (BeRight Protocol)
 
 ---
@@ -56,9 +58,9 @@ interface PoolConfig {
 
   // Fixed by tier
   managementFeeBps: 0;        // No management fee (profit sharing only)
-  performanceFeeBps: 3000;    // 30% to forecaster (performance fee)
+  performanceFeeBps: 5000;    // 50% to forecaster (performance fee)
   platformFeeBps: 2000;       // 20% to platform
-  delegatorShareBps: 5000;    // 50% to delegators
+  delegatorShareBps: 3000;    // 30% to delegators
 }
 ```
 
@@ -117,8 +119,8 @@ When a prediction resolves profitably:
 
 ```typescript
 function distributeProfits(profit: number) {
-  const forecasterShare = profit * 0.30;  // 30%
-  const delegatorShare = profit * 0.50;   // 50%
+  const forecasterShare = profit * 0.50;  // 50%
+  const delegatorShare = profit * 0.30;   // 30%
   const platformShare = profit * 0.20;    // 20%
 
   // Forecaster: direct transfer
@@ -175,10 +177,10 @@ delegator_apy = (delegator_profit / initial_deposit) * (365 / days_staked) * 100
 gross_return = (current_tvl + all_distributions) / initial_tvl - 1
 
 // Net delegator return (after forecaster + platform take)
-net_delegator_return = gross_return * 0.50
+net_delegator_return = gross_return * 0.30
 
 // Forecaster earnings
-forecaster_earnings = gross_return * initial_tvl * 0.30
+forecaster_earnings = gross_return * initial_tvl * 0.50
 
 // Platform revenue
 platform_revenue = gross_return * initial_tvl * 0.20
@@ -630,7 +632,7 @@ const CIRCUIT_BREAKERS = {
 | Metric | Value |
 |--------|-------|
 | Pool Tiers | 8 (4 newbie, 4 pro) |
-| Revenue Split | 30/50/20 (F/D/P) |
+| Revenue Split | 50/30/20 (F/D/P) |
 | Min Stake | 5 SOL / 500 USDC |
 | Max Pool | 500 SOL / 50,000 USDC |
 | Lockup | 7 days |

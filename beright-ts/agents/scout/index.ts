@@ -29,7 +29,7 @@ import {
 } from '../../skills/markets';
 import { arbitrage } from '../../skills/arbitrage';
 import { tavilyIntelSearch, newsSearch } from '../../skills/intel';
-import { isTavilyConfigured } from '../../lib/tavily';
+import { isTavilyConfigured } from '../../lib/serper';
 import { llmRoute } from '../../lib/llm';
 
 // ============================================================================

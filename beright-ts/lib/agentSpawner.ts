@@ -428,7 +428,7 @@ async function executeScoutTask(
   const { arbitrage } = await import('../skills/arbitrage');
   const { getHotMarkets, searchMarkets } = await import('../skills/markets');
   const { newsSearch, tavilyIntelSearch, financeIntel } = await import('../skills/intel');
-  const { isTavilyConfigured } = await import('./tavily');
+  const { isTavilyConfigured } = await import('./serper');
 
   // Use smart intent detection that handles negations
   const detection = detectIntent(task);
@@ -504,7 +504,7 @@ async function executeAnalystTask(
   const { research, deepResearch, verifyClaimSkill } = await import('../skills/research');
   const { calibration } = await import('../skills/calibration');
   const { compareOdds } = await import('../skills/markets');
-  const { isTavilyConfigured } = await import('./tavily');
+  const { isTavilyConfigured } = await import('./serper');
 
   const taskLower = task.toLowerCase();
   let response: SkillResponse;

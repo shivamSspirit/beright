@@ -50,8 +50,8 @@ pub struct StakeToPool<'info> {
 /// Stake tokens to a forecast pool
 ///
 /// Delegators deposit tokens and receive pool shares proportional
-/// to the current share price. Shares entitle delegators to 50%
-/// of pool profits.
+/// to the current share price. Shares entitle delegators to 30%
+/// of pool profits (50% goes to forecaster, 20% to platform).
 pub fn handler(ctx: Context<StakeToPool>, amount: u64) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
     let delegation = &mut ctx.accounts.delegation;

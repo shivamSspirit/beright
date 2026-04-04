@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateStartup } from '../../../lib/startup';
 import { getSubscriberCount } from '../../../lib/stream';
 import { secrets } from '../../../lib/secrets';
+import { quickSecurityCheck } from '../../../lib/security/init';
+import { getKillSwitchStatus } from '../../../lib/killSwitch';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -99,6 +101,10 @@ export async function GET(request: NextRequest) {
 
   const responseTime = Date.now() - startTime;
 
+  // Get security status
+  const securityStatus = quickSecurityCheck();
+  const killSwitches = getKillSwitchStatus();
+
   return NextResponse.json(
     {
       status: overallStatus,
@@ -110,6 +116,11 @@ export async function GET(request: NextRequest) {
       checks,
       stream: {
         subscribers: getSubscriberCount(),
+      },
+      security: {
+        initialized: securityStatus.initialized,
+        hasErrors: securityStatus.hasErrors,
+        killSwitches: killSwitches.switches,
       },
     },
     {

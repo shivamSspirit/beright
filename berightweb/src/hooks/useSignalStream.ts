@@ -8,7 +8,7 @@
  *   const { signals, connected, alertCount } = useSignalStream();
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 export type SignalAction = 'ALERT' | 'WATCH' | 'SKIP';
 
@@ -131,5 +131,12 @@ export function useSignalStream(): UseSignalStreamReturn {
 
   const lastSignal = signals.length > 0 ? signals[0] : null;
 
-  return { signals, connected, alertCount, clearAlerts, lastSignal };
+  // Memoize return object to prevent creating new reference on every render
+  return useMemo(() => ({
+    signals,
+    connected,
+    alertCount,
+    clearAlerts,
+    lastSignal,
+  }), [signals, connected, alertCount, clearAlerts, lastSignal]);
 }

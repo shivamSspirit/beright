@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { llmChat } from '../../../../lib/llm';
-import { searchWeb } from '../../../../lib/tavily';
+import { searchWeb } from '../../../../lib/serper';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;

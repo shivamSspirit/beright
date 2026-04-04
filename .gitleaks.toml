@@ -1,0 +1,169 @@
+# ==============================================================================
+# BeRight Protocol - Gitleaks Configuration
+# ==============================================================================
+# Custom rules for BeRight-specific secrets
+# Reference: https://github.com/gitleaks/gitleaks#configuration
+# ==============================================================================
+
+title = "BeRight Secret Scanning"
+
+[extend]
+# Extend the default gitleaks rules
+useDefault = true
+
+# ==============================================================================
+# ALLOWLISTS
+# ==============================================================================
+# Files and patterns that are safe to ignore
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''node_modules''',
+  '''\.lock$''',
+  '''package-lock\.json$''',
+  '''pnpm-lock\.yaml$''',
+  '''yarn\.lock$''',
+  '''\.env\.example$''',
+  '''\.secrets\.baseline$''',
+  '''\.gitleaks\.toml$''',
+  '''vendor/''',
+]
+regexTarget = "match"
+
+# ==============================================================================
+# CUSTOM RULES - BeRight Specific
+# ==============================================================================
+
+# Anthropic API Keys
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9_-]{32,}'''
+tags = ["key", "anthropic", "ai"]
+keywords = ["sk-ant"]
+
+[[rules]]
+id = "anthropic-api-key-v2"
+description = "Anthropic API Key (oat format)"
+regex = '''sk-ant-oat[0-9]{2}-[a-zA-Z0-9_-]{50,}'''
+tags = ["key", "anthropic", "ai"]
+keywords = ["sk-ant-oat"]
+
+# Solana Private Keys
+[[rules]]
+id = "solana-private-key-array"
+description = "Solana Private Key (JSON array format)"
+regex = '''\[(?:\s*\d{1,3}\s*,\s*){63}\d{1,3}\s*\]'''
+tags = ["key", "solana", "blockchain", "critical"]
+keywords = ["SOLANA_PRIVATE_KEY"]
+
+[[rules]]
+id = "solana-private-key-base58"
+description = "Solana Private Key (Base58)"
+regex = '''[1-9A-HJ-NP-Za-km-z]{87,88}'''
+tags = ["key", "solana", "blockchain", "critical"]
+entropy = 4.5
+
+# Helius API Keys
+[[rules]]
+id = "helius-api-key"
+description = "Helius API Key (UUID format)"
+regex = '''HELIUS_API_KEY\s*=\s*[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'''
+tags = ["key", "helius", "rpc"]
+keywords = ["HELIUS_API_KEY"]
+
+[[rules]]
+id = "helius-rpc-url"
+description = "Helius RPC URL with embedded key"
+regex = '''helius-rpc\.com/\?api-key=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'''
+tags = ["key", "helius", "rpc"]
+keywords = ["helius-rpc.com"]
+
+# Privy Secrets
+[[rules]]
+id = "privy-app-secret"
+description = "Privy App Secret"
+regex = '''privy_app_secret_[a-zA-Z0-9]{64,}'''
+tags = ["key", "privy", "auth"]
+keywords = ["privy_app_secret"]
+
+# Telegram Bot Token
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram Bot Token"
+regex = '''\d{8,}:[A-Za-z0-9_-]{35}'''
+tags = ["key", "telegram", "bot"]
+keywords = ["TELEGRAM_BOT_TOKEN"]
+
+# Groq API Key
+[[rules]]
+id = "groq-api-key"
+description = "Groq API Key"
+regex = '''gsk_[a-zA-Z0-9]{52}'''
+tags = ["key", "groq", "ai"]
+keywords = ["gsk_"]
+
+# Supabase Service Role Key
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase Service Role Key"
+regex = '''eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+'''
+tags = ["key", "supabase", "database"]
+keywords = ["SUPABASE_SERVICE_ROLE_KEY"]
+
+# Upstash Redis Token
+[[rules]]
+id = "upstash-redis-token"
+description = "Upstash Redis REST Token"
+regex = '''A[a-zA-Z0-9]{50,}'''
+tags = ["key", "upstash", "redis"]
+keywords = ["UPSTASH_REDIS_REST_TOKEN"]
+
+# Kalshi RSA Private Key
+[[rules]]
+id = "kalshi-rsa-key"
+description = "RSA Private Key (Kalshi)"
+regex = '''-----BEGIN RSA PRIVATE KEY-----[\s\S]*?-----END RSA PRIVATE KEY-----'''
+tags = ["key", "kalshi", "critical"]
+keywords = ["BEGIN RSA PRIVATE KEY"]
+
+# Stripe Keys
+[[rules]]
+id = "stripe-secret-key"
+description = "Stripe Secret Key"
+regex = '''sk_(?:live|test)_[a-zA-Z0-9]{24,}'''
+tags = ["key", "stripe", "payments"]
+keywords = ["sk_live", "sk_test"]
+
+[[rules]]
+id = "stripe-webhook-secret"
+description = "Stripe Webhook Secret"
+regex = '''whsec_[a-zA-Z0-9]{32,}'''
+tags = ["key", "stripe", "webhook"]
+keywords = ["whsec_"]
+
+# Jito Auth Keypair
+[[rules]]
+id = "jito-auth-keypair"
+description = "Jito Auth Keypair"
+regex = '''JITO_AUTH_KEYPAIR\s*=\s*[1-9A-HJ-NP-Za-km-z]{80,}'''
+tags = ["key", "jito", "solana"]
+keywords = ["JITO_AUTH_KEYPAIR"]
+
+# Generic High Entropy Secrets
+[[rules]]
+id = "high-entropy-secret"
+description = "High Entropy String (potential secret)"
+regex = '''(?i)(?:secret|password|token|key|api[_-]?key)\s*[=:]\s*['"]?[a-zA-Z0-9_/-]{32,}['"]?'''
+tags = ["key", "generic"]
+entropy = 4.0
+
+# ==============================================================================
+# RULE OVERRIDES
+# ==============================================================================
+# Disable noisy built-in rules if needed
+
+# [rules.generic-api-key]
+# description = "Override: Disable generic API key rule"
+# entropy = 5.0  # Increase entropy threshold to reduce false positives

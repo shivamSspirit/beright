@@ -351,9 +351,10 @@ interface AuditEntry {
   timestamp: Date;
   telegramId: string;
   username?: string;
-  action: 'command' | 'blocked' | 'rate_limited' | 'injection_attempt' | 'secret_scrubbed';
+  action: 'command' | 'blocked' | 'rate_limited' | 'injection_attempt' | 'secret_scrubbed' | 'typo_suggestion';
   command?: string;
   reason?: string;
+  suggestion?: string;
   tier: UserTier;
 }
 

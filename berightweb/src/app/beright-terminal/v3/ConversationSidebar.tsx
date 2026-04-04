@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useConversationStore, Conversation } from '@/stores/conversationStore';
+import { useState, useEffect, useMemo } from 'react';
+import { useConversationStore, Conversation, useConversationLoading } from '@/stores/conversationStore';
 import styles from '../beright.module.css';
 
 interface ConversationSidebarProps {
@@ -17,31 +17,30 @@ export default function ConversationSidebar({
   walletAddress,
   onConversationSelect,
 }: ConversationSidebarProps) {
+  // Use SELECTORS to avoid re-renders on every store change
+  const conversations = useConversationStore((state) => state.conversations);
+  const conversationsLoaded = useConversationStore((state) => state.conversationsLoaded);
+  const activeConversationId = useConversationStore((state) => state.activeConversationId);
+  const { isLoadingConversation } = useConversationLoading();
+
+  // Get stable action references via getState() - wallet init is handled by parent (BeRightTerminal)
+  const storeActions = useMemo(() => ({
+    createConversation: useConversationStore.getState().createConversation,
+    setActiveConversation: useConversationStore.getState().setActiveConversation,
+    updateConversation: useConversationStore.getState().updateConversation,
+    deleteConversation: useConversationStore.getState().deleteConversation,
+  }), []);
+
   const {
-    conversations,
-    conversationsLoaded,
-    activeConversationId,
-    loadConversations,
     createConversation,
     setActiveConversation,
     updateConversation,
     deleteConversation,
-    setWallet,
-  } = useConversationStore();
+  } = storeActions;
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-
-  // Initialize store with wallet
-  useEffect(() => {
-    if (walletAddress) {
-      setWallet(walletAddress);
-      if (!conversationsLoaded) {
-        loadConversations();
-      }
-    }
-  }, [walletAddress, setWallet, loadConversations, conversationsLoaded]);
 
   // Create new conversation
   const handleNewConversation = async () => {
@@ -152,18 +151,28 @@ export default function ConversationSidebar({
             Start chatting to create one.
           </div>
         ) : (
-          sortedConversations.map((conv) => (
+          sortedConversations.map((conv) => {
+            const isActive = conv.id === activeConversationId;
+            const isLoading = isActive && isLoadingConversation;
+
+            return (
             <div
               key={conv.id}
               className={`${styles.conversationItem} ${
-                conv.id === activeConversationId ? styles.conversationItemActive : ''
-              }`}
+                isActive ? styles.conversationItemActive : ''
+              } ${isLoading ? styles.conversationItemLoading : ''}`}
               onClick={() => handleSelect(conv.id)}
             >
               {/* Icons */}
               <div className={styles.conversationIcons}>
-                {conv.pinned && <span title="Pinned">📌</span>}
-                {conv.bookmarked && <span title="Bookmarked">⭐</span>}
+                {isLoading ? (
+                  <span className={styles.loadingDot} title="Loading...">●</span>
+                ) : (
+                  <>
+                    {conv.pinned && <span title="Pinned">📌</span>}
+                    {conv.bookmarked && <span title="Bookmarked">⭐</span>}
+                  </>
+                )}
               </div>
 
               {/* Title */}
@@ -217,7 +226,8 @@ export default function ConversationSidebar({
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

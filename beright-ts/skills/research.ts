@@ -23,8 +23,8 @@ import {
   getFactsForPrediction,
   getNewsContext,
   verifyClaim,
-  TavilySearchResponse,
-} from '../lib/tavily';
+  SerperSearchResponse as TavilySearchResponse,
+} from '../lib/serper';
 import { deepResearch as freeDeepResearch } from '../lib/webSearch';
 import { synthesizeResearch, ResearchSynthesis } from '../lib/synthesis/researchSynthesis';
 

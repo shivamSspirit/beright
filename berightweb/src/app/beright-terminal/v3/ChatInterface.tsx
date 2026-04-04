@@ -18,6 +18,8 @@ export interface ChatMessage {
 interface ChatInterfaceProps {
   messages: ChatMessage[];
   isProcessing?: boolean;
+  isLoadingConversation?: boolean;
+  loadingError?: string | null;
 }
 
 /**
@@ -29,7 +31,12 @@ interface ChatInterfaceProps {
  * - Typing indicator when processing
  * - Rich markdown rendering for agent responses
  */
-export default function ChatInterface({ messages, isProcessing = false }: ChatInterfaceProps) {
+export default function ChatInterface({
+  messages,
+  isProcessing = false,
+  isLoadingConversation = false,
+  loadingError = null,
+}: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -176,7 +183,28 @@ export default function ChatInterface({ messages, isProcessing = false }: ChatIn
 
       {/* Messages Area */}
       <div className={styles.messagesArea}>
-        {messages.length === 0 ? (
+        {/* Loading state when switching conversations */}
+        {isLoadingConversation ? (
+          <div className={styles.emptyState}>
+            <div className={styles.loadingSpinner} />
+            <div className={styles.emptyTitle}>Loading conversation...</div>
+            <div className={styles.emptyText}>
+              Fetching message history
+            </div>
+          </div>
+        ) : loadingError ? (
+          /* Error state if conversation failed to load */
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>⚠️</div>
+            <div className={styles.emptyTitle}>Failed to load conversation</div>
+            <div className={styles.emptyText}>
+              {loadingError}
+            </div>
+            <div className={styles.emptyHints}>
+              <span className={styles.hint}>Try clicking the conversation again</span>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>💬</div>
             <div className={styles.emptyTitle}>Welcome to BeRight Terminal</div>

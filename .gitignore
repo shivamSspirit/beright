@@ -161,3 +161,5 @@ beright-escrow/VIBE_CODING_PROMPT.md
 !**/public/**/*.jpeg
 !berightweb/src/**/*.png
 !berightweb/src/**/*.jpg
+.playwright-mcp/
+*.mp4

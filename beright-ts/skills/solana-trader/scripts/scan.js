@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Solana Token Opportunity Scanner
- * 
+ *
  * Standalone script that scans for trading opportunities and outputs JSON
  * Usage: node scan.js [maxResults]
  */
@@ -48,7 +48,7 @@ async function getTokenInfo(mint) {
     const data = await fetchJSON(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
     const pairs = (data.pairs || []).sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
     if (!pairs.length) return null;
-    
+
     const p = pairs[0];
     return {
       mint,
@@ -82,34 +82,34 @@ function calculateScore(info) {
   const fdv = info.fdv;
   const buys = info.transactions.buys24h;
   const sells = info.transactions.sells24h;
-  
+
   // Early stage bonus (lower FDV = more upside)
   if (fdv > 0 && fdv < 500000) score += 30;       // Micro cap
   else if (fdv < 2000000) score += 20;             // Small cap
   else if (fdv < 10000000) score += 10;            // Mid cap
-  
+
   // Momentum (rising price)
   if (pc.m5 > 0 && pc.m5 < 15) score += pc.m5 * 3;   // Steady rise
   if (pc.h1 > 0 && pc.h1 < 30) score += pc.h1 * 2;   // Hourly momentum
   if (pc.h1 > 5 && pc.m5 > 0) score += 15;           // Accelerating
-  
+
   // Volume/Liquidity ratio (high = hype)
   const volLiqRatio = vol / (liq || 1);
   if (volLiqRatio > 2) score += 20;
   if (volLiqRatio > 5) score += 15;
-  
+
   // Buy pressure
   const buyRatio = buys / (sells || 1);
   if (buyRatio > 1.3) score += 15;
   if (buyRatio > 2) score += 10;
-  
+
   // Penalties
   if (pc.m5 > 30) score -= 25;        // Already pumped
   if (pc.h1 < -15) score -= 20;       // Dumping
   if (pc.h24 < -40) score -= 20;      // Dead
   if (liq < 15000) score -= 10;       // Too thin
   if (buyRatio < 0.5) score -= 15;    // Sell pressure
-  
+
   return {
     score: Math.max(0, score),
     details: {
@@ -137,18 +137,18 @@ async function scanOpportunities() {
       topScore: 0,
     }
   };
-  
+
   const candidates = new Set();
-  
+
   // === Source 1: DexScreener Boosted ===
   try {
     const boosted = await fetchJSON('https://api.dexscreener.com/token-boosts/latest/v1');
     const solTokens = (boosted || []).filter(t => t.chainId === 'solana');
-    
+
     for (const token of solTokens.slice(0, 15)) {
       candidates.add(token.tokenAddress);
     }
-    
+
     results.sources.push({
       name: 'dexscreener-boosted',
       tokens: solTokens.length,
@@ -162,13 +162,13 @@ async function scanOpportunities() {
       error: error.message
     });
   }
-  
+
   await sleep(1500);
-  
+
   // === Source 2: GeckoTerminal Trending ===
   try {
     const trending = await fetchJSON('https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?include=base_token');
-    
+
     for (const pool of (trending.data || []).slice(0, 15)) {
       const baseTokenId = pool.relationships?.base_token?.data?.id || '';
       const tokenAddr = baseTokenId.replace('solana_', '');
@@ -176,7 +176,7 @@ async function scanOpportunities() {
         candidates.add(tokenAddr);
       }
     }
-    
+
     results.sources.push({
       name: 'geckoterminal-trending',
       pools: trending.data?.length || 0,
@@ -190,18 +190,18 @@ async function scanOpportunities() {
       error: error.message
     });
   }
-  
+
   await sleep(1500);
-  
+
   // === Source 3: GeckoTerminal New Pools ===
   try {
     const newPools = await fetchJSON('https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1&include=base_token');
-    
+
     for (const pool of (newPools.data || []).slice(0, 20)) {
       const attr = pool.attributes;
       const liq = parseFloat(attr.reserve_in_usd || 0);
       const ageHours = (Date.now() - new Date(attr.pool_created_at).getTime()) / 3600000;
-      
+
       // Only include pools with good liquidity and recent creation
       if (liq >= 10000 && ageHours < 12) {
         const baseTokenId = pool.relationships?.base_token?.data?.id || '';
@@ -211,7 +211,7 @@ async function scanOpportunities() {
         }
       }
     }
-    
+
     results.sources.push({
       name: 'geckoterminal-new',
       pools: newPools.data?.length || 0,
@@ -225,44 +225,44 @@ async function scanOpportunities() {
       error: error.message
     });
   }
-  
+
   results.summary.totalScanned = candidates.size;
-  
+
   // === Score all candidates ===
   const opportunities = [];
   let lookupCount = 0;
-  
+
   for (const mint of candidates) {
     if (lookupCount > 0 && lookupCount % 5 === 0) {
       await sleep(1000); // Rate limiting
     }
     lookupCount++;
-    
+
     const info = await getTokenInfo(mint);
     if (!info) continue;
-    
+
     // Filter minimum requirements
     if (info.liquidity < 10000) continue;
     if (info.volume24h < 5000 && info.liquidity < 50000) continue;
-    
+
     const scoring = calculateScore(info);
-    
+
     opportunities.push({
       ...info,
       score: scoring.score,
       scoreDetails: scoring.details,
     });
-    
+
     results.summary.validTokens++;
   }
-  
+
   // Sort by score and limit results
   opportunities.sort((a, b) => b.score - a.score);
   results.opportunities = opportunities.slice(0, MAX_RESULTS);
   results.summary.topScore = opportunities[0]?.score || 0;
-  
+
   results.scanDuration = Date.now() - startTime;
-  
+
   return results;
 }
 

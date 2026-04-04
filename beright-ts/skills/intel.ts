@@ -19,8 +19,8 @@ import {
   tavilyFinanceSearch,
   tavilyExtract,
   getNewsContext,
-  TavilySearchResponse,
-} from '../lib/tavily';
+  SerperSearchResponse as TavilySearchResponse,
+} from '../lib/serper';
 
 /**
  * Parse RSS feed XML (simplified parser)
@@ -589,28 +589,20 @@ async function searchMarketsForIntel(query: string): Promise<Array<{ title: stri
 export async function tavilyIntelSearch(query: string): Promise<SkillResponse> {
   if (!isTavilyConfigured()) {
     return {
-      text: '❌ Tavily intel search requires TAVILY_API_KEY.\nFalling back to RSS feeds.',
+      text: '❌ Serper intel search requires SERPER_API_KEY.\nFalling back to RSS feeds.',
       mood: 'ERROR',
     };
   }
 
   try {
-    const result = await tavilyNewsSearch(query, { maxResults: 15, days: 7 });
+    const result = await tavilyNewsSearch(query, { num: 15, tbs: 'qdr:w' });
 
     let output = `
-🔎 TAVILY INTEL: ${query.toUpperCase()}
+🔎 SERPER INTEL: ${query.toUpperCase()}
 ${'='.repeat(50)}
 Response time: ${result.responseTime}ms
 Results: ${result.results.length}
 `;
-
-    if (result.answer) {
-      output += `
-📝 AI SUMMARY
-${'─'.repeat(40)}
-${result.answer}
-`;
-    }
 
     output += `
 📰 TOP RESULTS
@@ -619,11 +611,11 @@ ${'─'.repeat(40)}
 
     for (const r of result.results.slice(0, 10)) {
       const domain = new URL(r.url).hostname.replace('www.', '').toUpperCase();
-      const date = r.publishedDate ? ` (${r.publishedDate.slice(0, 10)})` : '';
+      const dateStr = r.date ? ` (${r.date})` : '';
       const title = r.title.slice(0, 50);
-      output += `\n[${domain}]${date}\n`;
+      output += `\n[${domain}]${dateStr}\n`;
       output += `[${title}...](${r.url})\n`;
-      output += `${r.content.slice(0, 120)}...\n`;
+      output += `${r.snippet.slice(0, 120)}...\n`;
     }
 
     return {
@@ -633,7 +625,7 @@ ${'─'.repeat(40)}
     };
   } catch (error) {
     return {
-      text: `Tavily search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      text: `Serper search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       mood: 'ERROR',
     };
   }
@@ -654,7 +646,7 @@ export async function financeIntel(query: string): Promise<SkillResponse> {
   }
 
   try {
-    const result = await tavilyFinanceSearch(query, { maxResults: 15 });
+    const result = await tavilyFinanceSearch(query, { num: 15 });
 
     let output = `
 💹 FINANCE INTEL: ${query.toUpperCase()}

@@ -101,7 +101,11 @@ interface ConversationState {
   conversations: Conversation[];
   conversationsLoaded: boolean;
 
-  // Processing state
+  // Loading state for switching conversations
+  isLoadingConversation: boolean;
+  loadingError: string | null;
+
+  // Processing state (for sending messages)
   isProcessing: boolean;
   processingMessage: string | null;
 
@@ -154,6 +158,8 @@ export const useConversationStore = create<ConversationState>()(
       gatewaySessionId: null,
       conversations: [],
       conversationsLoaded: false,
+      isLoadingConversation: false,
+      loadingError: null,
       isProcessing: false,
       processingMessage: null,
       pendingJobs: [],
@@ -244,21 +250,50 @@ export const useConversationStore = create<ConversationState>()(
 
       // Load single conversation with messages
       loadConversation: async (id) => {
+        // Set loading state
+        set({
+          isLoadingConversation: true,
+          loadingError: null,
+          activeConversationId: id, // Set ID immediately for UI feedback
+        });
+
         try {
+          // API returns { conversation: Conversation, messages: Message[] }
           const response = await apiFetch<{
             success: boolean;
-            data: ConversationWithMessages;
+            data: { conversation: Conversation; messages: Message[] };
+            error?: string;
           }>(`/api/v2/conversations/${id}`);
 
           if (response.success && response.data) {
+            const { conversation, messages } = response.data;
+            // Merge into flat ConversationWithMessages structure
+            const conversationWithMessages: ConversationWithMessages = {
+              ...conversation,
+              messages: messages || [],
+            };
+
             set({
-              activeConversationId: id,
-              activeConversation: response.data,
-              gatewaySessionId: response.data.gateway_session_id || null,
+              activeConversation: conversationWithMessages,
+              gatewaySessionId: conversation.gateway_session_id || null,
+              isLoadingConversation: false,
+              loadingError: null,
+            });
+          } else {
+            // API returned an error
+            set({
+              isLoadingConversation: false,
+              loadingError: response.error || 'Failed to load conversation',
+              activeConversation: null,
             });
           }
         } catch (error) {
           console.error('[ConversationStore] Failed to load conversation:', error);
+          set({
+            isLoadingConversation: false,
+            loadingError: error instanceof Error ? error.message : 'Failed to load conversation',
+            activeConversation: null,
+          });
         }
       },
 
@@ -482,6 +517,8 @@ export const useConversationStore = create<ConversationState>()(
           activeConversationId: null,
           activeConversation: null,
           gatewaySessionId: null,
+          isLoadingConversation: false,
+          loadingError: null,
           isProcessing: false,
           processingMessage: null,
         });
@@ -495,6 +532,8 @@ export const useConversationStore = create<ConversationState>()(
           gatewaySessionId: null,
           conversations: [],
           conversationsLoaded: false,
+          isLoadingConversation: false,
+          loadingError: null,
           isProcessing: false,
           processingMessage: null,
           pendingJobs: [],
@@ -578,4 +617,16 @@ export const useIsProcessing = () => {
  */
 export const useConversationsList = () => {
   return useConversationStore((state) => state.conversations);
+};
+
+/**
+ * Selector for conversation loading state
+ */
+export const useConversationLoading = () => {
+  return useConversationStore(
+    useShallow((state) => ({
+      isLoadingConversation: state.isLoadingConversation,
+      loadingError: state.loadingError,
+    }))
+  );
 };

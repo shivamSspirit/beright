@@ -33,7 +33,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatService, ChatResponse, ChatError } from '../../../lib/chat/ChatService';
-import { createJob, updateJob } from '../../../lib/jobs/jobQueue';
+import { createJob, updateJob } from '../../../lib/redis';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Check if this is a long-running operation
     if (isLongRunningRequest(message)) {
       // Create job and return immediately
-      const job = createJob();
+      const job = await createJob({ walletAddress, conversationId });
       console.log(`[Gateway] Long-running request detected, created job: ${job.id}`);
 
       // Process in background (fire and forget)
@@ -191,13 +191,13 @@ async function processJobInBackground(
   request: GatewayRequest
 ) {
   try {
-    updateJob(jobId, { status: 'running', progress: 10, progressMessage: 'Starting analysis...' });
+    await updateJob(jobId, { status: 'running', progress: 10, progressMessage: 'Starting analysis...' });
 
     const result = await ChatService.processMessage(request);
 
     if (!result.success) {
       const error = result as ChatError;
-      updateJob(jobId, {
+      await updateJob(jobId, {
         status: 'failed',
         progress: 0,
         error: error.error,
@@ -208,7 +208,7 @@ async function processJobInBackground(
     const response = result as ChatResponse;
 
     // Mark complete
-    updateJob(jobId, {
+    await updateJob(jobId, {
       status: 'complete',
       progress: 100,
       progressMessage: 'Complete',
@@ -229,7 +229,7 @@ async function processJobInBackground(
     console.log(`[Gateway] Job ${jobId} completed successfully`);
   } catch (error) {
     console.error(`[Gateway] Job ${jobId} failed:`, error);
-    updateJob(jobId, {
+    await updateJob(jobId, {
       status: 'failed',
       progress: 0,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
 
   if (sessionId) {
-    const session = ChatService.getSessionContext(sessionId);
+    const session = await ChatService.getSessionContext(sessionId);
     return NextResponse.json({
       sessionId,
       exists: !!session,

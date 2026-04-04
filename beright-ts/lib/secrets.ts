@@ -6,6 +6,7 @@
  * - Provides clear error messages
  * - Never logs secret values
  * - Supports graceful degradation
+ * - STRICT validation in production
  *
  * PRODUCTION REQUIREMENTS:
  * - Use environment variables (Vercel, Railway, etc.)
@@ -16,6 +17,8 @@
 
 // Auto-load .env file
 import 'dotenv/config';
+
+import { isProduction, requireStrictSecrets, getEnvironment } from './config/env';
 
 export interface SecretsConfig {
   // Solana
@@ -342,6 +345,7 @@ class SecretsManager {
       helius: !!this.config.heliusApiKey,
       kalshi: !!(this.config.kalshiApiKey && this.config.kalshiApiSecret),
       supabase: !!(this.config.supabaseUrl && this.config.supabaseAnonKey),
+      supabaseServiceRole: !!this.config.supabaseServiceRoleKey,
       telegram: !!this.config.telegramBotToken,
       anthropic: !!this.config.anthropicApiKey,
       mistral: !!this.config.mistralApiKey,
@@ -352,11 +356,104 @@ class SecretsManager {
     };
   }
 
+  /**
+   * STRICT validation for production environments
+   * Throws if any required production secrets are missing
+   */
+  validateForProduction(): { valid: boolean; missing: string[] } {
+    this.ensureInitialized();
+
+    const requiredSecrets = [
+      { key: 'supabaseUrl', env: 'SUPABASE_URL' },
+      { key: 'supabaseAnonKey', env: 'SUPABASE_ANON_KEY' },
+      { key: 'supabaseServiceRoleKey', env: 'SUPABASE_SERVICE_ROLE_KEY' },
+      { key: 'anthropicApiKey', env: 'ANTHROPIC_API_KEY' },
+      { key: 'upstashRedisUrl', env: 'UPSTASH_REDIS_REST_URL' },
+      { key: 'upstashRedisToken', env: 'UPSTASH_REDIS_REST_TOKEN' },
+    ] as const;
+
+    const missing: string[] = [];
+
+    for (const { key, env } of requiredSecrets) {
+      const value = this.config[key as keyof SecretsConfig];
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        missing.push(env);
+      }
+    }
+
+    // In strict mode (production), fail fast
+    if (requireStrictSecrets() && missing.length > 0) {
+      console.error('[SECURITY] Missing required production secrets:', missing);
+      throw new Error(
+        `Production deployment blocked: Missing required secrets: ${missing.join(', ')}. ` +
+        `Set these in Railway/Vercel environment variables.`
+      );
+    }
+
+    return { valid: missing.length === 0, missing };
+  }
+
+  /**
+   * Check if all secrets are properly configured for production
+   */
+  isProductionReady(): boolean {
+    try {
+      const { valid } = this.validateForProduction();
+      return valid;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get environment info (safe to log)
+   */
+  getEnvironmentInfo(): { environment: string; isProduction: boolean; strictMode: boolean } {
+    return {
+      environment: getEnvironment(),
+      isProduction: isProduction(),
+      strictMode: requireStrictSecrets(),
+    };
+  }
+
   private ensureInitialized(): void {
     if (!this.initialized) {
       this.initialize();
     }
   }
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Mask a secret for safe logging
+ * Shows first 4 and last 4 characters only
+ */
+export function maskSecret(secret: string | undefined): string {
+  if (!secret) return '[not set]';
+  if (secret.length <= 12) return '****';
+
+  const first = secret.slice(0, 4);
+  const last = secret.slice(-4);
+  return `${first}...${last}`;
+}
+
+/**
+ * Check if a string looks like a secret (for detection)
+ */
+export function looksLikeSecret(value: string): boolean {
+  const patterns = [
+    /^sk-ant-/,           // Anthropic
+    /^sk_(?:live|test)_/, // Stripe
+    /^gsk_/,              // Groq
+    /^eyJ[a-zA-Z0-9]/,    // JWT
+    /^whsec_/,            // Webhook secret
+    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i, // UUID
+  ];
+
+  return patterns.some(p => p.test(value));
 }
 
 /**
@@ -373,8 +470,37 @@ export class SecretNotConfiguredError extends Error {
 export const secrets = SecretsManager.getInstance();
 
 // Export a function to validate all secrets at startup
-export function validateSecrets(): { valid: boolean; errors: string[]; summary: Record<string, boolean> } {
+export function validateSecrets(): {
+  valid: boolean;
+  errors: string[];
+  summary: Record<string, boolean>;
+  productionReady: boolean;
+  environment: { environment: string; isProduction: boolean; strictMode: boolean };
+} {
   const { valid, errors } = secrets.initialize();
   const summary = secrets.getConfigSummary();
-  return { valid, errors, summary };
+  const productionReady = secrets.isProductionReady();
+  const environment = secrets.getEnvironmentInfo();
+
+  // Log environment info at startup
+  console.log(`[Secrets] Environment: ${environment.environment}`);
+  console.log(`[Secrets] Strict mode: ${environment.strictMode}`);
+  console.log(`[Secrets] Production ready: ${productionReady}`);
+
+  return { valid, errors, summary, productionReady, environment };
+}
+
+/**
+ * Initialize and validate secrets for production deployment
+ * Call this at application startup - will throw in production if secrets missing
+ */
+export function initializeSecretsForProduction(): void {
+  const { valid, errors } = secrets.initialize();
+
+  if (!valid) {
+    console.error('[Secrets] Validation errors:', errors);
+  }
+
+  // This will throw in production if required secrets are missing
+  secrets.validateForProduction();
 }

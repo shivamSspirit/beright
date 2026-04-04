@@ -24,7 +24,7 @@ import {
 
 // Startup validation
 import { validateLLMConfig } from '../lib/llm';
-import { validateTavilyConfig } from '../lib/tavily';
+import { validateTavilyConfig } from '../lib/serper';
 
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;

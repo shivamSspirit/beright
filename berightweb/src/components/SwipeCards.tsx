@@ -988,6 +988,55 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Research Links - Always visible */}
+                                    <div className="research-links-section">
+                                        <span className="research-label">Research Sources</span>
+                                        <div className="research-links-row">
+                                            {topCard.url && (
+                                                <a
+                                                    href={topCard.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="research-link primary"
+                                                >
+                                                    🎯 Trade on {topCard.platform}
+                                                </a>
+                                            )}
+                                            <a
+                                                href="https://polymarket.com/markets"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="research-link"
+                                            >
+                                                Polymarket
+                                            </a>
+                                            <a
+                                                href="https://kalshi.com/markets"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="research-link"
+                                            >
+                                                Kalshi
+                                            </a>
+                                            <a
+                                                href={`https://www.google.com/search?q=${encodeURIComponent(topCard.question.slice(0, 60))}+news`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="research-link"
+                                            >
+                                                📰 News
+                                            </a>
+                                            <a
+                                                href={`https://x.com/search?q=${encodeURIComponent(topCard.question.split(' ').slice(0, 4).join(' '))}&f=live`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="research-link"
+                                            >
+                                                𝕏 Live
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="analysis-loading">
@@ -2371,6 +2420,71 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           background: rgba(0, 217, 255, 0.2);
           border-color: var(--accent);
           color: #fff;
+        }
+
+        /* Research Links Section */
+        .research-links-section {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .research-label {
+          display: block;
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: rgba(255, 255, 255, 0.5);
+          margin-bottom: 8px;
+        }
+
+        .research-links-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .research-link {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 10px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 11px;
+          font-weight: 500;
+          text-decoration: none;
+          transition: all 0.2s;
+          touch-action: manipulation;
+        }
+
+        .research-link:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          color: #fff;
+        }
+
+        .research-link:active {
+          transform: scale(0.96);
+        }
+
+        .research-link.primary {
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, rgba(0, 176, 255, 0.15) 100%);
+          border-color: rgba(0, 230, 118, 0.3);
+          color: #00E676;
+        }
+
+        .research-link.primary:hover {
+          background: linear-gradient(135deg, rgba(0, 230, 118, 0.25) 0%, rgba(0, 176, 255, 0.25) 100%);
+          border-color: rgba(0, 230, 118, 0.5);
+        }
+
+        @media (min-width: 481px) {
+          .research-link {
+            padding: 8px 12px;
+            font-size: 12px;
+          }
         }
 
         .modal-market-info {

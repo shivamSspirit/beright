@@ -1,8 +1,8 @@
 /**
  * PM2 Ecosystem Configuration for Railway
- * 
+ *
  * Optimized for Railway deployment with persistent volume at /data
- * 
+ *
  * Services:
  * - Next.js API (port 8080 - required by Railway)
  * - Telegram Bot
@@ -23,7 +23,7 @@ module.exports = {
     // ============================================
     // CORE SERVICES (Always run)
     // ============================================
-    
+
     // Main API Server (Next.js on port 8080 for Railway)
     {
       name: 'api',

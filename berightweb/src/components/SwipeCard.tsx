@@ -2195,13 +2195,22 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
               </div>
             )}
 
-            {/* Top row: LIVE dot + Category */}
+            {/* Top row: LIVE dot + Category + Info */}
             <div className="nb-hook-top">
               <div className="nb-live">
                 <span className="nb-live-dot" />
                 <span>LIVE</span>
               </div>
-              <div className="nb-category">{prediction.category.toUpperCase()}</div>
+              <div className="nb-hook-top-right">
+                <div className="nb-category">{prediction.category.toUpperCase()}</div>
+                <button
+                  className="nb-info-btn"
+                  onClick={handleToggleTooltips}
+                  aria-label="View research sources"
+                >
+                  <span>ℹ</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2389,6 +2398,46 @@ export default function SwipeCard({ prediction, onSwipe, onSkip, onConnectWallet
           justify-content: space-between;
           align-items: flex-start;
           z-index: 2;
+        }
+
+        .nb-hook-top-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .nb-info-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          touch-action: manipulation;
+        }
+
+        .nb-info-btn span {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.8);
+          font-weight: 600;
+        }
+
+        .nb-info-btn:hover {
+          background: rgba(0, 0, 0, 0.7);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .nb-info-btn:active {
+          transform: scale(0.92);
+          background: rgba(0, 217, 255, 0.2);
+          border-color: rgba(0, 217, 255, 0.5);
         }
 
         /* LIVE indicator */

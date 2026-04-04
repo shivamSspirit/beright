@@ -98,7 +98,7 @@ The Builder is an autonomous agent that builds and improves the codebase 24/7:
 
 ```
 ANALYZE → PLAN → IMPLEMENT → TEST → COMMIT → PUSH
-   ↑           
+   ↑
 
 --- BERIGHT_ARCHITECTURE.md ---
 # BeRight Protocol - Canonical Architecture Reference

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getJob, deleteJob } from '../../../../lib/jobs/jobQueue';
+import { getJob, deleteJob } from '../../../../lib/redis';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const job = getJob(id);
+  const job = await getJob(id);
 
   if (!job) {
     return NextResponse.json(
@@ -25,13 +25,14 @@ export async function GET(
   }
 
   // Return appropriate fields based on status
-  const response: any = {
+  // Note: createdAt/updatedAt are already ISO strings from Redis
+  const response: Record<string, unknown> = {
     id: job.id,
     status: job.status,
     progress: job.progress,
     progressMessage: job.progressMessage,
-    createdAt: job.createdAt.toISOString(),
-    updatedAt: job.updatedAt.toISOString(),
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
   };
 
   if (job.status === 'complete') {
@@ -50,7 +51,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deleteJob(id);
+  const deleted = await deleteJob(id);
 
   if (!deleted) {
     return NextResponse.json(

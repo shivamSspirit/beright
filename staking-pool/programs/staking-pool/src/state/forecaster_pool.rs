@@ -111,13 +111,18 @@ impl Default for ForecastPoolStatus {
 
 /// Revenue split configuration (basis points)
 /// Total must equal 10000 (100%)
+///
+/// Default split: 50% Forecaster / 30% Delegators / 20% Platform
+/// - Forecasters provide skill and manage capital
+/// - Delegators provide capital and bear risk
+/// - Platform provides infrastructure and takes a fee
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
 pub struct RevenueSplit {
-    /// Forecaster share (default: 5000 = 50%)
+    /// Forecaster share (default: 5000 = 50%) - skill reward
     pub forecaster_bps: u16,
-    /// Delegator share (default: 3000 = 30%)
+    /// Delegator share (default: 3000 = 30%) - capital provider yield
     pub delegator_bps: u16,
-    /// Platform share (default: 2000 = 20%)
+    /// Platform share (default: 2000 = 20%) - infrastructure fee
     pub platform_bps: u16,
 }
 

@@ -8,7 +8,8 @@ import { useMode } from '@/context/ModeContext';
 import { getHotMarketsFeed, sendToGateway, fetchTerminalData, GatewayResponse, ApiMarket, getFeed, FeedMarket, waitForJob } from '@/lib/api';
 import { getAllExplorerUrls } from '@/lib/explorer';
 import { useSignalStream } from '@/hooks/useSignalStream';
-import { useConversationStore, useMessages, useIsProcessing } from '@/stores/conversationStore';
+import { useConversationStore, useMessages, useIsProcessing, useConversationLoading } from '@/stores/conversationStore';
+import { useConversationRealtime, useJobPolling } from '@/hooks/useConversationRealtime';
 
 // Portfolio data structure from API
 interface PortfolioData {
@@ -96,6 +97,7 @@ export default function BeRightTerminal() {
   // Get messages from store (with selector for performance)
   const storeMessages = useMessages();
   const { isProcessing, processingMessage } = useIsProcessing();
+  const { isLoadingConversation, loadingError } = useConversationLoading();
 
   // Store actions - get via getState() to avoid re-renders (actions are stable)
   const storeActions = useMemo(() => ({
@@ -180,6 +182,17 @@ export default function BeRightTerminal() {
       checkPendingJobs();
     }
   }, [walletAddress, conversationsLoaded]); // loadConversations/checkPendingJobs are stable
+
+  // Real-time subscription for live message updates
+  // This enables multi-tab sync and instant message delivery
+  const { isSubscribed: realtimeConnected } = useConversationRealtime({
+    conversationId: activeConversationId,
+    walletAddress: walletAddress || null,
+    enabled: !!walletAddress && !!activeConversationId,
+    onNewMessage: (message) => {
+      console.log('[Terminal] Real-time message received:', message.id);
+    },
+  });
 
   // Track last agent message ID for updates (for async progress)
   const lastAgentMessageIdRef = useRef<string | null>(null);
@@ -778,7 +791,12 @@ export default function BeRightTerminal() {
 
         {/* Center Panel - Chat Interface */}
         <section className={styles.panelChat}>
-          <ChatInterface messages={displayMessages} isProcessing={isProcessing} />
+          <ChatInterface
+            messages={displayMessages}
+            isProcessing={isProcessing}
+            isLoadingConversation={isLoadingConversation}
+            loadingError={loadingError}
+          />
         </section>
 
         {/* Right Panel - Portfolio */}

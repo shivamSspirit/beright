@@ -100,49 +100,28 @@ function detectAgentType(message: string): AgentType {
 }
 
 // ============================================
-// SESSION MANAGEMENT
+// SESSION MANAGEMENT (Redis-backed)
 // ============================================
 
-interface SessionContext {
-  lastMessages: Array<{ role: 'user' | 'agent'; text: string; timestamp: number }>;
-  conversationId?: string;
-  walletAddress?: string;
+import { SessionService, SessionContext } from '../redis/sessionService';
+import { MemoryService } from '../memory';
+
+// Re-export SessionContext for backward compatibility
+export type { SessionContext };
+
+/**
+ * Get or create a session (now uses Redis)
+ */
+async function getOrCreateSession(sessionId: string): Promise<SessionContext> {
+  return SessionService.getOrCreate(sessionId);
 }
 
-const sessionCache = new Map<string, SessionContext>();
-const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
-
-function getOrCreateSession(sessionId: string): SessionContext {
-  const existing = sessionCache.get(sessionId);
-  if (existing) return existing;
-
-  const newSession: SessionContext = {
-    lastMessages: [],
-  };
-  sessionCache.set(sessionId, newSession);
-  return newSession;
+/**
+ * Add message to session history (now uses Redis)
+ */
+async function addToSessionHistory(sessionId: string, role: 'user' | 'agent', text: string): Promise<void> {
+  await SessionService.addMessage(sessionId, role, text);
 }
-
-function addToSessionHistory(sessionId: string, role: 'user' | 'agent', text: string) {
-  const session = getOrCreateSession(sessionId);
-  session.lastMessages.push({ role, text, timestamp: Date.now() });
-
-  // Keep only last 20 messages for context
-  if (session.lastMessages.length > 20) {
-    session.lastMessages = session.lastMessages.slice(-20);
-  }
-}
-
-// Cleanup old sessions periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, session] of sessionCache) {
-    const lastMessage = session.lastMessages[session.lastMessages.length - 1];
-    if (!lastMessage || now - lastMessage.timestamp > SESSION_TTL) {
-      sessionCache.delete(id);
-    }
-  }
-}, 5 * 60 * 1000);
 
 // ============================================
 // MAIN SERVICE
@@ -188,7 +167,7 @@ export class ChatService {
           }
         } else {
           // No conversation ID, check if we have one in session
-          const session = getOrCreateSession(sessionId);
+          const session = await getOrCreateSession(sessionId);
           if (session.conversationId) {
             const existing = await conversations.getById(session.conversationId);
             if (existing) {
@@ -201,7 +180,7 @@ export class ChatService {
                 gateway_session_id: sessionId,
               });
               conversationId = conversation.id;
-              session.conversationId = conversationId;
+              await SessionService.linkConversation(sessionId, conversationId);
             }
           } else {
             // Create new conversation
@@ -210,14 +189,13 @@ export class ChatService {
               gateway_session_id: sessionId,
             });
             conversationId = conversation.id;
-            session.conversationId = conversationId;
+            await SessionService.linkConversation(sessionId, conversationId);
           }
         }
 
-        // Link session to wallet
-        const session = getOrCreateSession(sessionId);
-        session.walletAddress = walletAddress;
-        session.conversationId = conversationId;
+        // Link session to wallet and conversation
+        await SessionService.linkWallet(sessionId, walletAddress);
+        await SessionService.linkConversation(sessionId, conversationId);
       } else {
         // No wallet - use session-only mode (no DB persistence)
         // This maintains backward compatibility for anonymous users
@@ -257,7 +235,7 @@ export class ChatService {
       }
 
       // Add to session history
-      addToSessionHistory(sessionId, 'user', message);
+      await addToSessionHistory(sessionId, 'user', message);
 
       // Step 3: Process through agent handler
       const pseudoMessage: TelegramMessage = {
@@ -304,9 +282,24 @@ export class ChatService {
       }
 
       // Add to session history
-      addToSessionHistory(sessionId, 'agent', response.text);
+      await addToSessionHistory(sessionId, 'agent', response.text);
 
-      // Step 5: Format and return response
+      // Step 5: Extract memories from both messages (fire and forget)
+      if (walletAddress) {
+        // Process user message for memories
+        MemoryService.processMessage(walletAddress, message, 'user', {
+          conversationId,
+          agentType,
+        }).catch((err) => console.error('[ChatService] Memory extraction failed (user):', err));
+
+        // Process agent response for memories
+        MemoryService.processMessage(walletAddress, response.text, 'agent', {
+          conversationId,
+          agentType,
+        }).catch((err) => console.error('[ChatService] Memory extraction failed (agent):', err));
+      }
+
+      // Step 6: Format and return response
       const formattedText = formatResponseForWeb(response.text);
 
       return {
@@ -353,16 +346,15 @@ export class ChatService {
   /**
    * Get session context for debugging
    */
-  static getSessionContext(sessionId: string): SessionContext | undefined {
-    return sessionCache.get(sessionId);
+  static async getSessionContext(sessionId: string): Promise<SessionContext | null> {
+    return SessionService.get(sessionId);
   }
 
   /**
    * Link a session to a conversation
    */
-  static linkSessionToConversation(sessionId: string, conversationId: string) {
-    const session = getOrCreateSession(sessionId);
-    session.conversationId = conversationId;
+  static async linkSessionToConversation(sessionId: string, conversationId: string): Promise<void> {
+    await SessionService.linkConversation(sessionId, conversationId);
   }
 }
 
