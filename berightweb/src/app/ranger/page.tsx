@@ -1,473 +1,328 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import {
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  Brain,
-  RefreshCw,
-  ArrowRight,
-  Activity,
-  Zap,
-  Shield,
-  PieChart,
-  Percent,
-  Target,
-  Layers,
-  Play,
-  Pause,
-  Info,
-  ExternalLink,
-} from 'lucide-react';
-import Link from 'next/link';
-import Header from '@/components/Header';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// =============================================================================
-// TYPES (matching /api/ranger response)
-// =============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
 
-interface ProtocolRate {
+interface VaultState {
+  status: 'starting' | 'running' | 'stopped' | 'error';
+  executionMode: 'LIVE' | 'PAPER' | 'DRY_RUN';
+  cycleCount: number;
+  lastCycleTime: number | null;
+  uptime: number;
+  startedAt: number;
+}
+
+interface RateInfo {
+  protocol?: string;
+  apy: string;
+  raw: number;
+}
+
+interface LendingRate {
   protocol: string;
-  asset: string;
-  supplyApy: number;
-  tvl: number;
-  utilization: number;
-  source: string;
+  apy: string;
+  tvl: string;
+  utilizationRate: string | null;
+}
+
+interface Signals {
+  timestamp: number;
+  collectionDurationMs: number;
+  rates: {
+    bestLending: RateInfo;
+    bestFunding: RateInfo;
+    rwa: RateInfo;
+    portfolio: RateInfo;
+  };
+  lending: LendingRate[];
+  funding: {
+    solPerp: { rate: string; apy: string; direction: string } | null;
+    btcPerp: { rate: string; apy: string } | null;
+    consecutiveNegative: number;
+  };
+  rwa: {
+    apy: string;
+    tvl: string;
+    isActive: boolean;
+  };
+  vault: {
+    nav: string;
+    drawdown: string;
+    positions: number;
+  };
+  riskFlags: {
+    driftHealthCritical: boolean;
+    driftHealthWarning: boolean;
+    drawdownTriggered: boolean;
+    fundingKillSwitch: boolean;
+  };
+  driftHealth: {
+    healthFactor: string;
+    marginUtilization: string;
+  } | null;
+}
+
+interface AIDecision {
+  cycleNumber: number;
+  timestamp: number;
+  reasoning: string;
+  toolCalls: Array<{
+    name: string;
+    args: Record<string, unknown>;
+    result: string;
+  }>;
+  status: 'pending' | 'executed' | 'skipped' | 'error';
+  error?: string;
+}
+
+interface Alert {
+  type: 'info' | 'warning' | 'error';
+  message: string;
   timestamp: number;
 }
 
-interface Prediction {
-  protocol: string;
-  currentRate: number;
-  predictedRate: number;
-  confidence: number;
-  direction: 'up' | 'down' | 'stable';
+interface DashboardData {
+  vault: VaultState;
+  signals: Signals | null;
+  decisions: AIDecision[];
+  alerts: Alert[];
 }
 
-interface Allocation {
-  protocol: string;
-  currentWeight: number;
-  targetWeight: number;
-  expectedReturn: number;
-  riskScore: number;
-  action: 'deposit' | 'withdraw' | 'hold';
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+
+const API_BASE = process.env.NEXT_PUBLIC_RANGER_API_URL || 'http://localhost:3002';
+const REFRESH_INTERVAL = 5000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatUptime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
 }
 
-interface StrategyStats {
-  portfolioApy: number;
-  portfolioRisk: number;
-  sharpeRatio: number;
-  alpha: number;
-  meetsTarget: boolean;
-  targetApy: number;
-  totalValueLocked: number;
-  lastUpdate: string;
+function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
-interface APIResponse {
-  success: boolean;
-  data: {
-    rates: ProtocolRate[];
-    predictions: Prediction[];
-    allocations: Allocation[];
-    stats: StrategyStats;
-  };
-}
-
-// =============================================================================
-// API FETCH FUNCTION
-// =============================================================================
-
-async function fetchRangerData(): Promise<APIResponse | null> {
-  try {
-    const response = await fetch('/api/ranger');
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Failed to fetch ranger data:', error);
-    return null;
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'running': return '#00ff00';
+    case 'starting': return '#ffff00';
+    case 'stopped': return '#666';
+    case 'error': return '#ff0055';
+    default: return '#666';
   }
 }
 
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-const PROTOCOL_COLORS: Record<string, { bg: string; text: string; border: string; gradient: string }> = {
-  Drift: {
-    bg: 'bg-blue-500/15',
-    text: 'text-blue-400',
-    border: 'border-blue-500/30',
-    gradient: 'from-blue-500/20 to-blue-500/5',
-  },
-  Kamino: {
-    bg: 'bg-emerald-500/15',
-    text: 'text-emerald-400',
-    border: 'border-emerald-500/30',
-    gradient: 'from-emerald-500/20 to-emerald-500/5',
-  },
-  Marginfi: {
-    bg: 'bg-purple-500/15',
-    text: 'text-purple-400',
-    border: 'border-purple-500/30',
-    gradient: 'from-purple-500/20 to-purple-500/5',
-  },
-};
-
-function formatTVL(value: number): string {
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-  return `$${value.toFixed(0)}`;
+function getModeColor(mode: string): string {
+  switch (mode) {
+    case 'LIVE': return '#ff0055';
+    case 'PAPER': return '#00fff7';
+    case 'DRY_RUN': return '#666';
+    default: return '#666';
+  }
 }
 
-// =============================================================================
-// STAT CARD COMPONENT
-// =============================================================================
+function getAlertColor(type: string): string {
+  switch (type) {
+    case 'info': return '#00fff7';
+    case 'warning': return '#ffaa00';
+    case 'error': return '#ff0055';
+    default: return '#666';
+  }
+}
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  subValue,
-  iconColor,
-  valueColor,
-  delay = 0,
-}: {
-  icon: React.ElementType;
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className="status-badge"
+      style={{
+        color: getStatusColor(status),
+        borderColor: getStatusColor(status),
+      }}
+    >
+      <span className="status-dot" style={{ background: getStatusColor(status) }} />
+      {status.toUpperCase()}
+    </span>
+  );
+}
+
+function ModeBadge({ mode }: { mode: string }) {
+  return (
+    <span
+      className="mode-badge"
+      style={{
+        color: getModeColor(mode),
+        borderColor: getModeColor(mode),
+      }}
+    >
+      {mode}
+    </span>
+  );
+}
+
+function RiskFlag({ label, active }: { label: string; active: boolean }) {
+  return (
+    <div className={`risk-flag ${active ? 'active' : ''}`}>
+      <span className="rf-icon">{active ? '!' : '/'}</span>
+      <span className="rf-label">{label}</span>
+    </div>
+  );
+}
+
+function RateCard({ label, value, subtext, highlight }: {
   label: string;
-  value: string | number;
-  subValue?: string;
-  iconColor: string;
-  valueColor?: string;
-  delay?: number;
+  value: string;
+  subtext?: string;
+  highlight?: boolean;
 }) {
   return (
+    <div className={`rate-card ${highlight ? 'highlight' : ''}`}>
+      <div className="rc-label">{label}</div>
+      <div className="rc-value">{value}</div>
+      {subtext && <div className="rc-sub">{subtext}</div>}
+    </div>
+  );
+}
+
+function DecisionCard({ decision }: { decision: AIDecision }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const statusIcon = {
+    executed: '/',
+    skipped: '-',
+    error: '!',
+    pending: '...',
+  }[decision.status];
+
+  const statusColor = {
+    executed: '#00ff00',
+    skipped: '#666',
+    error: '#ff0055',
+    pending: '#ffff00',
+  }[decision.status];
+
+  return (
     <motion.div
-      className="relative overflow-hidden rounded-xl border border-slate-800/50 bg-gradient-to-br from-slate-900/90 to-slate-900/50 p-4 sm:p-5 backdrop-blur-sm"
-      initial={{ opacity: 0, y: 20 }}
+      className="decision-card"
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
     >
-      <div className={`absolute -top-12 -right-12 w-24 h-24 ${iconColor.replace('text-', 'bg-')}/10 rounded-full blur-2xl`} />
-      <div className="relative">
-        <div className={`inline-flex p-2 rounded-lg ${iconColor.replace('text-', 'bg-')}/10 mb-3`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
-        </div>
-        <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${valueColor || 'text-slate-100'}`}>
-          {value}
-        </div>
-        <div className="text-xs sm:text-sm text-slate-500 mt-1">{label}</div>
-        {subValue && (
-          <div className="text-xs text-slate-600 mt-1">{subValue}</div>
+      <div className="dc-header" onClick={() => setExpanded(!expanded)}>
+        <div className="dc-status" style={{ color: statusColor }}>[{statusIcon}]</div>
+        <div className="dc-cycle">Cycle #{decision.cycleNumber}</div>
+        <div className="dc-time">{formatTime(decision.timestamp)}</div>
+        <div className="dc-expand">{expanded ? 'v' : '>'}</div>
+      </div>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            className="dc-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+          >
+            <div className="dc-reasoning">{decision.reasoning}</div>
+
+            {decision.toolCalls.length > 0 && (
+              <div className="dc-tools">
+                <div className="dc-tools-label">Tool Calls:</div>
+                {decision.toolCalls.map((tc, i) => (
+                  <div key={i} className="dc-tool">
+                    <code className="dc-tool-name">{tc.name}</code>
+                    <div className="dc-tool-result">{tc.result}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {decision.error && (
+              <div className="dc-error">{decision.error}</div>
+            )}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-// =============================================================================
-// PROTOCOL RATE CARD
-// =============================================================================
-
-function ProtocolRateCard({
-  rate,
-  prediction,
-  index,
-}: {
-  rate: ProtocolRate;
-  prediction?: Prediction;
-  index: number;
-}) {
-  const colors = PROTOCOL_COLORS[rate.protocol] || PROTOCOL_COLORS.Marginfi;
-  const direction = prediction?.direction || 'stable';
-  const TrendIcon = direction === 'up' ? TrendingUp : direction === 'down' ? TrendingDown : Activity;
-
+function AlertItem({ alert }: { alert: Alert }) {
   return (
-    <motion.div
-      className={`relative overflow-hidden rounded-xl border ${colors.border} bg-gradient-to-br ${colors.gradient} p-4 sm:p-5 backdrop-blur-sm`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.3 }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg ${colors.bg} flex items-center justify-center`}>
-            <span className={`text-lg font-bold ${colors.text}`}>{rate.protocol[0]}</span>
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-100">{rate.protocol}</h3>
-            <p className="text-xs text-slate-500">{rate.asset} Lending</p>
-          </div>
-        </div>
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${colors.bg}`}>
-          <TrendIcon className={`w-3.5 h-3.5 ${colors.text}`} />
-          <span className={`text-xs font-medium ${colors.text}`}>
-            {rate.source}
-          </span>
-        </div>
-      </div>
-
-      {/* APY Display */}
-      <div className="mb-4">
-        <div className="text-3xl font-bold text-slate-100 tabular-nums">
-          {rate.supplyApy.toFixed(2)}%
-        </div>
-        <div className="text-sm text-slate-500">Current APY</div>
-      </div>
-
-      {/* Prediction */}
-      {prediction && (
-        <div className={`p-3 rounded-lg ${colors.bg} border ${colors.border}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className={`w-4 h-4 ${colors.text}`} />
-              <span className="text-xs font-medium text-slate-400">4h Prediction</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-sm font-semibold ${colors.text}`}>
-                {prediction.predictedRate.toFixed(2)}%
-              </span>
-              <span className={`text-xs px-1.5 py-0.5 rounded ${
-                prediction.direction === 'up' ? 'bg-emerald-500/20 text-emerald-400' :
-                prediction.direction === 'down' ? 'bg-red-500/20 text-red-400' :
-                'bg-slate-500/20 text-slate-400'
-              }`}>
-                {prediction.direction === 'up' ? '↑' : prediction.direction === 'down' ? '↓' : '→'}
-              </span>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${colors.text.replace('text-', 'bg-')} rounded-full`}
-                style={{ width: `${prediction.confidence * 100}%` }}
-              />
-            </div>
-            <span className="text-xs text-slate-500">{(prediction.confidence * 100).toFixed(0)}%</span>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Row */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <div className="text-xs text-slate-500">TVL</div>
-          <div className="text-sm font-medium text-slate-300">{formatTVL(rate.tvl)}</div>
-        </div>
-        <div>
-          <div className="text-xs text-slate-500">Utilization</div>
-          <div className="text-sm font-medium text-slate-300">{(rate.utilization * 100).toFixed(0)}%</div>
-        </div>
-      </div>
-    </motion.div>
+    <div className="alert-item" style={{ borderLeftColor: getAlertColor(alert.type) }}>
+      <span className="ai-type" style={{ color: getAlertColor(alert.type) }}>
+        [{alert.type.toUpperCase()}]
+      </span>
+      <span className="ai-message">{alert.message}</span>
+      <span className="ai-time">{formatTime(alert.timestamp)}</span>
+    </div>
   );
 }
 
-// =============================================================================
-// ALLOCATION VISUALIZATION
-// =============================================================================
-
-function AllocationChart({ allocations }: { allocations: Allocation[] }) {
-  const total = allocations.reduce((sum, a) => sum + a.targetWeight, 0);
-
+function LendingTable({ rates }: { rates: LendingRate[] }) {
   return (
-    <motion.div
-      className="relative overflow-hidden rounded-xl border border-slate-800/50 bg-gradient-to-br from-slate-900/90 to-slate-900/50 p-5 sm:p-6 backdrop-blur-sm"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-500/10">
-            <PieChart className="w-5 h-5 text-amber-400" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-100">Target Allocation</h3>
-            <p className="text-xs text-slate-500">Optimized by Sharpe ratio</p>
-          </div>
+    <div className="lending-table">
+      <div className="lt-header">
+        <span>Protocol</span>
+        <span>APY</span>
+        <span>TVL</span>
+        <span>Util</span>
+      </div>
+      {rates.map((rate, i) => (
+        <div key={i} className="lt-row">
+          <span className="lt-protocol">{rate.protocol}</span>
+          <span className="lt-apy">{rate.apy}</span>
+          <span className="lt-tvl">{rate.tvl}</span>
+          <span className="lt-util">{rate.utilizationRate || '-'}</span>
         </div>
-      </div>
-
-      {/* Pie Chart Visualization */}
-      <div className="flex items-center gap-6 mb-6">
-        {/* Simple bar representation */}
-        <div className="flex-1 h-8 rounded-full overflow-hidden flex">
-          {allocations.map((alloc, i) => {
-            const colors = PROTOCOL_COLORS[alloc.protocol] || PROTOCOL_COLORS.Marginfi;
-            return (
-              <motion.div
-                key={alloc.protocol}
-                className={`h-full ${colors.text.replace('text-', 'bg-')}`}
-                initial={{ width: 0 }}
-                animate={{ width: `${(alloc.targetWeight / total) * 100}%` }}
-                transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="space-y-3">
-        {allocations.map((alloc, index) => {
-          const colors = PROTOCOL_COLORS[alloc.protocol] || PROTOCOL_COLORS.Marginfi;
-          const diff = alloc.targetWeight - alloc.currentWeight;
-
-          return (
-            <motion.div
-              key={alloc.protocol}
-              className="flex items-center justify-between p-3 rounded-lg bg-slate-800/30"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${colors.text.replace('text-', 'bg-')}`} />
-                <span className="font-medium text-slate-200">{alloc.protocol}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-slate-100">
-                    {(alloc.targetWeight * 100).toFixed(1)}%
-                  </div>
-                  <div className={`text-xs ${diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-red-400' : 'text-slate-500'}`}>
-                    {diff > 0 ? '+' : ''}{(diff * 100).toFixed(1)}%
-                  </div>
-                </div>
-                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                  alloc.action === 'deposit' ? 'bg-emerald-500/15 text-emerald-400' :
-                  alloc.action === 'withdraw' ? 'bg-red-500/15 text-red-400' :
-                  'bg-slate-500/15 text-slate-400'
-                }`}>
-                  {alloc.action}
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.div>
+      ))}
+    </div>
   );
 }
 
-// =============================================================================
-// STRATEGY EXPLAINER - SIMPLIFIED
-// =============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 
-function StrategyExplainer() {
-  return (
-    <motion.div
-      className="relative overflow-hidden rounded-xl border border-slate-800/50 bg-gradient-to-br from-slate-900/90 to-slate-900/50 p-5 sm:p-6 backdrop-blur-sm"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="p-2 rounded-lg bg-cyan-500/10">
-          <Info className="w-5 h-5 text-cyan-400" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-slate-100">How It Works</h3>
-          <p className="text-xs text-slate-500">Simple 3-step process</p>
-        </div>
-      </div>
-
-      {/* Visual Flow */}
-      <div className="flex items-center justify-between gap-2 mb-5">
-        {/* Step 1 */}
-        <div className="flex-1 text-center">
-          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-2">
-            <BarChart3 className="w-5 h-5 text-blue-400" />
-          </div>
-          <div className="text-xs font-medium text-slate-200">Fetch Rates</div>
-        </div>
-        <ArrowRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
-        {/* Step 2 */}
-        <div className="flex-1 text-center">
-          <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-2">
-            <Brain className="w-5 h-5 text-purple-400" />
-          </div>
-          <div className="text-xs font-medium text-slate-200">Predict APY</div>
-        </div>
-        <ArrowRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
-        {/* Step 3 */}
-        <div className="flex-1 text-center">
-          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
-            <Zap className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div className="text-xs font-medium text-slate-200">Optimize</div>
-        </div>
-      </div>
-
-      {/* Simple Explanation */}
-      <div className="space-y-3 text-sm text-slate-400">
-        <div className="flex items-start gap-2">
-          <span className="text-emerald-400 font-bold">1.</span>
-          <span>Get real-time rates from Drift, Kamino, Marginfi</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <span className="text-purple-400 font-bold">2.</span>
-          <span>Predict which protocol will have higher rates soon</span>
-        </div>
-        <div className="flex items-start gap-2">
-          <span className="text-cyan-400 font-bold">3.</span>
-          <span>Put more money where rates are going up</span>
-        </div>
-      </div>
-
-      {/* Result */}
-      <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20">
-        <div className="flex items-center gap-2">
-          <Target className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm font-medium text-emerald-400">Target: 10%+ APY</span>
-          <span className="text-xs text-slate-500 ml-auto">USDC Lending Only</span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// =============================================================================
-// MAIN PAGE COMPONENT
-// =============================================================================
-
-export default function RangerPage() {
-  const [rates, setRates] = useState<ProtocolRate[]>([]);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [stats, setStats] = useState<StrategyStats | null>(null);
+export default function RangerDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLive, setIsLive] = useState(true); // Start live by default
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
-      // Fetch from real API
-      const response = await fetchRangerData();
-
-      if (response && response.success) {
-        setRates(response.data.rates);
-        setPredictions(response.data.predictions);
-        setAllocations(response.data.allocations);
-        setStats(response.data.stats);
-      } else {
-        setError('Failed to fetch data');
-      }
+      const res = await fetch(`${API_BASE}/api/dashboard`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      setData(json);
+      setError(null);
+      setLastRefresh(Date.now());
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Network error');
+      setError('Unable to connect to Ranger API');
     } finally {
       setLoading(false);
     }
@@ -475,195 +330,675 @@ export default function RangerPage() {
 
   useEffect(() => {
     fetchData();
-
-    // Auto-refresh if live mode is enabled
-    let interval: NodeJS.Timeout;
-    if (isLive) {
-      interval = setInterval(fetchData, 30000); // Every 30 seconds
-    }
+    const interval = setInterval(fetchData, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchData, isLive]);
+  }, [fetchData]);
 
   return (
-    <div className="min-h-screen bg-[#020617] pb-24 pt-20">
-      <Header />
-
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Hero Section */}
-        <motion.div
-          className="text-center mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 mb-4 sm:mb-6">
-            <Layers className="w-4 h-4 text-orange-400" />
-            <span className="text-sm font-medium text-orange-400">Ranger Build-A-Bear Hackathon</span>
+    <div className="ranger-page">
+      <header className="ranger-header">
+        <div className="header-inner">
+          <div className="header-title-row">
+            <h1 className="header-title">RANGER VAULT</h1>
+            {data && (
+              <>
+                <StatusBadge status={data.vault.status} />
+                <ModeBadge mode={data.vault.executionMode} />
+              </>
+            )}
           </div>
-
-          {/* Title */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-100 mb-3 sm:mb-4 tracking-tight">
-            Alpha Yield Optimizer
-          </h1>
-
-          {/* Description */}
-          <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Prediction-enhanced USDC yield strategy powered by BeRight's forecasting engine.
-            Dynamically allocates across Drift, Kamino, and Marginfi based on rate predictions.
+          <p className="header-sub">
+            AI-Managed DeFi Strategy - Real-time Dashboard
           </p>
-
-          {/* Live Toggle */}
-          <div className="flex items-center justify-center gap-4 mt-6">
-            <button
-              onClick={() => setIsLive(!isLive)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all cursor-pointer ${
-                isLive
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-300'
-              }`}
-            >
-              {isLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              <span className="text-sm font-medium">{isLive ? 'Live' : 'Paused'}</span>
-              {isLive && (
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-              )}
-            </button>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-slate-800/50 border border-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Error Message */}
-        {error && (
-          <motion.div
-            className="mb-6 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <p className="text-red-400 text-sm">{error}. Retrying...</p>
-          </motion.div>
-        )}
-
-        {/* Stats Grid */}
-        {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <StatCard
-              icon={Percent}
-              label="Portfolio APY"
-              value={`${stats.portfolioApy.toFixed(2)}%`}
-              subValue={stats.meetsTarget ? '10%+ target met' : 'Below 10% target'}
-              iconColor={stats.meetsTarget ? 'text-emerald-400' : 'text-amber-400'}
-              valueColor={stats.meetsTarget ? 'text-emerald-400' : 'text-amber-400'}
-              delay={0.1}
-            />
-            <StatCard
-              icon={Target}
-              label="Sharpe Ratio"
-              value={stats.sharpeRatio.toFixed(2)}
-              subValue="Risk-adjusted"
-              iconColor="text-purple-400"
-              delay={0.15}
-            />
-            <StatCard
-              icon={TrendingUp}
-              label="Alpha vs Benchmark"
-              value={`${stats.alpha >= 0 ? '+' : ''}${stats.alpha.toFixed(2)}%`}
-              subValue="vs equal-weight"
-              iconColor="text-cyan-400"
-              valueColor="text-cyan-400"
-              delay={0.2}
-            />
-            <StatCard
-              icon={Shield}
-              label="Risk Score"
-              value={`${stats.portfolioRisk.toFixed(1)}/10`}
-              subValue="Lower is safer"
-              iconColor="text-amber-400"
-              delay={0.25}
-            />
-          </div>
-        )}
-
-        {/* Protocol Rates */}
-        <motion.div
-          className="mb-6 sm:mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-slate-400" />
-            <h2 className="text-lg font-semibold text-slate-100">Live Protocol Rates</h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {rates.map((rate, index) => (
-              <ProtocolRateCard
-                key={rate.protocol}
-                rate={rate}
-                prediction={predictions.find((p) => p.protocol === rate.protocol)}
-                index={index}
-              />
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Two Column Layout */}
-        <div className="grid gap-6 lg:grid-cols-2 mb-6 sm:mb-8">
-          {/* Allocation Chart */}
-          <AllocationChart allocations={allocations} />
-
-          {/* Strategy Explainer */}
-          <StrategyExplainer />
         </div>
+      </header>
 
-        {/* CTA Section */}
-        <motion.div
-          className="text-center rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/90 to-slate-900/50 p-6 sm:p-10 backdrop-blur-sm"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <div className="inline-flex p-3 rounded-xl bg-orange-500/10 mb-4">
-            <Zap className="w-8 h-8 text-orange-400" />
+      <main className="ranger-main">
+        {loading ? (
+          <div className="loading-state">
+            <div className="loading-spinner" />
+            <span>Connecting to Ranger...</span>
           </div>
-
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-100 mb-3">
-            Built for Ranger Hackathon
-          </h2>
-          <p className="text-sm sm:text-base text-slate-400 max-w-lg mx-auto mb-6">
-            This strategy combines BeRight's prediction engine with Ranger's vault infrastructure
-            to create an intelligent yield optimizer that adapts to market conditions.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="https://github.com/anthropics/beright-ranger"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-medium hover:bg-slate-700 transition-colors cursor-pointer"
-            >
-              View Source
-              <ExternalLink className="w-4 h-4" />
-            </a>
-            <Link
-              href="/oracle"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              See Oracle Forecasts
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+        ) : error ? (
+          <div className="error-state">
+            <div className="error-icon">!</div>
+            <h3>{error}</h3>
+            <p>Make sure the Ranger bot is running:</p>
+            <code>cd beright-ranger && npm run start</code>
+            <p className="retry-hint">Retrying every 5 seconds...</p>
           </div>
-        </motion.div>
-      </div>
+        ) : data ? (
+          <>
+            {/* Vault Status Section */}
+            <section className="section vault-status">
+              <h2 className="section-title">Vault Status</h2>
+              <div className="stats-grid">
+                <div className="stat-box">
+                  <div className="sb-label">Uptime</div>
+                  <div className="sb-value">{formatUptime(data.vault.uptime)}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="sb-label">Cycles</div>
+                  <div className="sb-value">{data.vault.cycleCount}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="sb-label">Last Cycle</div>
+                  <div className="sb-value">
+                    {data.vault.lastCycleTime
+                      ? formatTime(data.vault.lastCycleTime)
+                      : '-'}
+                  </div>
+                </div>
+                <div className="stat-box">
+                  <div className="sb-label">Last Refresh</div>
+                  <div className="sb-value">{formatTime(lastRefresh)}</div>
+                </div>
+              </div>
+            </section>
+
+            {/* Market Signals Section */}
+            {data.signals && (
+              <section className="section signals">
+                <h2 className="section-title">Market Signals</h2>
+
+                {/* APY Rates */}
+                <div className="rates-grid">
+                  <RateCard
+                    label="Best Lending"
+                    value={data.signals.rates.bestLending.apy}
+                    subtext={data.signals.rates.bestLending.protocol}
+                    highlight
+                  />
+                  <RateCard
+                    label="Funding Rate"
+                    value={data.signals.rates.bestFunding.apy}
+                    subtext={data.signals.funding.solPerp?.direction}
+                  />
+                  <RateCard
+                    label="RWA (OnRe)"
+                    value={data.signals.rates.rwa.apy}
+                    subtext={data.signals.rwa.isActive ? 'Active' : 'Inactive'}
+                  />
+                  <RateCard
+                    label="Portfolio"
+                    value={data.signals.rates.portfolio.apy}
+                  />
+                </div>
+
+                {/* Lending Protocols */}
+                <div className="subsection">
+                  <h3 className="subsection-title">Lending Protocols</h3>
+                  <LendingTable rates={data.signals.lending} />
+                </div>
+
+                {/* Vault Health */}
+                <div className="subsection">
+                  <h3 className="subsection-title">Vault Health</h3>
+                  <div className="vault-health-grid">
+                    <div className="vh-item">
+                      <span className="vh-label">NAV</span>
+                      <span className="vh-value">{data.signals.vault.nav}</span>
+                    </div>
+                    <div className="vh-item">
+                      <span className="vh-label">Drawdown</span>
+                      <span className="vh-value">{data.signals.vault.drawdown}</span>
+                    </div>
+                    <div className="vh-item">
+                      <span className="vh-label">Positions</span>
+                      <span className="vh-value">{data.signals.vault.positions}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Risk Flags */}
+                <div className="subsection">
+                  <h3 className="subsection-title">Risk Flags</h3>
+                  <div className="risk-flags-grid">
+                    <RiskFlag label="Drift HF Critical" active={data.signals.riskFlags.driftHealthCritical} />
+                    <RiskFlag label="Drift HF Warning" active={data.signals.riskFlags.driftHealthWarning} />
+                    <RiskFlag label="Drawdown Trigger" active={data.signals.riskFlags.drawdownTriggered} />
+                    <RiskFlag label="Funding Kill" active={data.signals.riskFlags.fundingKillSwitch} />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* AI Decisions Section */}
+            <section className="section decisions">
+              <h2 className="section-title">AI Decisions</h2>
+              <div className="decisions-list">
+                {data.decisions.length === 0 ? (
+                  <div className="no-decisions">No decisions yet</div>
+                ) : (
+                  data.decisions.map((d, i) => (
+                    <DecisionCard key={i} decision={d} />
+                  ))
+                )}
+              </div>
+            </section>
+
+            {/* Alerts Section */}
+            <section className="section alerts">
+              <h2 className="section-title">System Alerts</h2>
+              <div className="alerts-list">
+                {data.alerts.length === 0 ? (
+                  <div className="no-alerts">No alerts</div>
+                ) : (
+                  data.alerts.map((a, i) => (
+                    <AlertItem key={i} alert={a} />
+                  ))
+                )}
+              </div>
+            </section>
+          </>
+        ) : null}
+      </main>
+
+      <style jsx>{`
+        .ranger-page {
+          min-height: 100dvh;
+          background: #0a0a0f;
+          color: #e0e0e0;
+          font-family: 'Share Tech Mono', 'Fira Code', monospace;
+          padding-bottom: calc(70px + env(safe-area-inset-bottom));
+        }
+
+        .ranger-header {
+          background: linear-gradient(180deg, #0d0d14 0%, #0a0a0f 100%);
+          border-bottom: 1px solid #1a1a2e;
+          padding: 24px 16px;
+        }
+
+        .header-inner {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .header-title-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+        }
+
+        .header-title {
+          font-family: 'Orbitron', sans-serif;
+          font-size: 24px;
+          font-weight: 900;
+          color: #00fff7;
+          text-shadow: 0 0 20px #00fff730;
+          margin: 0;
+          letter-spacing: 3px;
+        }
+
+        .header-sub {
+          font-size: 13px;
+          color: #666;
+          margin: 0;
+        }
+
+        .status-badge, .mode-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 10px;
+          padding: 4px 10px;
+          border: 1px solid;
+          border-radius: 4px;
+          letter-spacing: 1px;
+        }
+
+        .status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        .ranger-main {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px 16px;
+        }
+
+        .loading-state, .error-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 80px 20px;
+          text-align: center;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 2px solid #1a1a2e;
+          border-top-color: #00fff7;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .error-state {
+          color: #ff0055;
+        }
+
+        .error-icon {
+          font-size: 48px;
+          width: 80px;
+          height: 80px;
+          border: 2px solid #ff0055;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+
+        .error-state h3 {
+          margin: 0 0 8px;
+          color: #e0e0e0;
+        }
+
+        .error-state p {
+          margin: 8px 0;
+          color: #666;
+          font-size: 13px;
+        }
+
+        .error-state code {
+          background: #12121a;
+          border: 1px solid #1a1a2e;
+          padding: 8px 16px;
+          border-radius: 4px;
+          font-size: 12px;
+          color: #00fff7;
+        }
+
+        .retry-hint {
+          color: #444 !important;
+          font-size: 11px !important;
+        }
+
+        .section {
+          background: #0d0d14;
+          border: 1px solid #1a1a2e;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 16px;
+        }
+
+        .section-title {
+          font-family: 'Orbitron', sans-serif;
+          font-size: 12px;
+          color: #00fff7;
+          margin: 0 0 16px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .subsection {
+          margin-top: 20px;
+          padding-top: 16px;
+          border-top: 1px solid #1a1a2e;
+        }
+
+        .subsection-title {
+          font-size: 11px;
+          color: #666;
+          margin: 0 0 12px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 12px;
+        }
+
+        .stat-box {
+          background: #12121a;
+          border: 1px solid #1a1a2e;
+          border-radius: 6px;
+          padding: 12px;
+          text-align: center;
+        }
+
+        .sb-label {
+          font-size: 10px;
+          color: #555;
+          margin-bottom: 4px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .sb-value {
+          font-size: 16px;
+          color: #00fff7;
+          font-weight: bold;
+        }
+
+        .rates-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 12px;
+        }
+
+        .rate-card {
+          background: #12121a;
+          border: 1px solid #1a1a2e;
+          border-radius: 6px;
+          padding: 16px;
+          text-align: center;
+        }
+
+        .rate-card.highlight {
+          border-color: #00fff720;
+          background: rgba(0, 255, 247, 0.03);
+        }
+
+        .rc-label {
+          font-size: 10px;
+          color: #555;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .rc-value {
+          font-size: 20px;
+          color: #00ff00;
+          font-weight: bold;
+        }
+
+        .rc-sub {
+          font-size: 10px;
+          color: #666;
+          margin-top: 4px;
+        }
+
+        .lending-table {
+          font-size: 12px;
+        }
+
+        .lt-header, .lt-row {
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1fr;
+          gap: 8px;
+          padding: 8px 0;
+        }
+
+        .lt-header {
+          color: #555;
+          border-bottom: 1px solid #1a1a2e;
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .lt-row {
+          border-bottom: 1px solid #1a1a2e10;
+        }
+
+        .lt-protocol {
+          color: #e0e0e0;
+        }
+
+        .lt-apy {
+          color: #00ff00;
+        }
+
+        .lt-tvl, .lt-util {
+          color: #666;
+        }
+
+        .vault-health-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+
+        .vh-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 12px;
+          background: #12121a;
+          border: 1px solid #1a1a2e;
+          border-radius: 4px;
+        }
+
+        .vh-label {
+          color: #555;
+          font-size: 11px;
+        }
+
+        .vh-value {
+          color: #00fff7;
+          font-size: 12px;
+          font-weight: bold;
+        }
+
+        .risk-flags-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 8px;
+        }
+
+        .risk-flag {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: #12121a;
+          border: 1px solid #1a1a2e;
+          border-radius: 4px;
+          font-size: 11px;
+        }
+
+        .risk-flag.active {
+          border-color: #ff005540;
+          background: rgba(255, 0, 85, 0.05);
+        }
+
+        .rf-icon {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          background: #1a1a2e;
+          color: #00ff00;
+        }
+
+        .risk-flag.active .rf-icon {
+          background: #ff0055;
+          color: #fff;
+        }
+
+        .rf-label {
+          color: #888;
+        }
+
+        .risk-flag.active .rf-label {
+          color: #ff0055;
+        }
+
+        .decisions-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .decision-card {
+          background: #12121a;
+          border: 1px solid #1a1a2e;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        .dc-header {
+          display: grid;
+          grid-template-columns: 32px 1fr auto auto;
+          gap: 12px;
+          padding: 12px;
+          cursor: pointer;
+          align-items: center;
+        }
+
+        .dc-header:hover {
+          background: #1a1a2e20;
+        }
+
+        .dc-status {
+          font-family: monospace;
+          font-size: 14px;
+        }
+
+        .dc-cycle {
+          font-size: 12px;
+          color: #e0e0e0;
+        }
+
+        .dc-time {
+          font-size: 11px;
+          color: #555;
+        }
+
+        .dc-expand {
+          color: #555;
+          font-size: 10px;
+        }
+
+        .dc-body {
+          padding: 0 12px 12px;
+          overflow: hidden;
+        }
+
+        .dc-reasoning {
+          font-size: 12px;
+          color: #888;
+          line-height: 1.5;
+          padding: 8px;
+          background: #0a0a0f;
+          border-radius: 4px;
+          margin-bottom: 8px;
+        }
+
+        .dc-tools {
+          margin-top: 8px;
+        }
+
+        .dc-tools-label {
+          font-size: 10px;
+          color: #555;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .dc-tool {
+          padding: 8px;
+          background: #0a0a0f;
+          border: 1px solid #1a1a2e;
+          border-radius: 4px;
+          margin-bottom: 4px;
+        }
+
+        .dc-tool-name {
+          font-size: 11px;
+          color: #00fff7;
+        }
+
+        .dc-tool-result {
+          font-size: 11px;
+          color: #666;
+          margin-top: 4px;
+        }
+
+        .dc-error {
+          padding: 8px;
+          background: rgba(255, 0, 85, 0.1);
+          border: 1px solid #ff005530;
+          border-radius: 4px;
+          font-size: 11px;
+          color: #ff0055;
+        }
+
+        .no-decisions, .no-alerts {
+          text-align: center;
+          padding: 24px;
+          color: #444;
+          font-size: 12px;
+        }
+
+        .alerts-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          max-height: 300px;
+          overflow-y: auto;
+        }
+
+        .alert-item {
+          display: grid;
+          grid-template-columns: 80px 1fr auto;
+          gap: 8px;
+          padding: 8px 12px;
+          background: #12121a;
+          border-left: 2px solid;
+          border-radius: 0 4px 4px 0;
+          font-size: 11px;
+        }
+
+        .ai-type {
+          font-size: 9px;
+          letter-spacing: 1px;
+        }
+
+        .ai-message {
+          color: #888;
+        }
+
+        .ai-time {
+          color: #444;
+        }
+
+        @media (max-width: 640px) {
+          .rates-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .vault-health-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .risk-flags-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .alert-item {
+            grid-template-columns: 1fr auto;
+          }
+
+          .ai-type {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }

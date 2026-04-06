@@ -15,21 +15,21 @@ import { useEffect, useState } from 'react';
 // ─────────────────────────────────────────────────────────────────────────────────
 
 const TICKER_ITEMS = [
-  { type: 'win', user: '@oracle_mind', amount: '+$4,200', market: 'Fed Cuts' },
-  { type: 'arb', spread: '7.2%', market: 'ETH $5K', platforms: 'Poly→Kalshi' },
-  { type: 'price', market: 'BTC $150K', price: '34c' },
-  { type: 'win', user: '@quant_alpha', amount: '+$2,800', market: 'SOL ETF' },
-  { type: 'resolved', market: 'Trump 2024', result: 'YES' },
-  { type: 'new', market: 'AGI before 2027?', volume: '$2.1M' },
+  { type: 'win', user: '@tomaszk', amount: '+$4,200', market: 'Fed Cuts' },
+  { type: 'arb', spread: '5.3%', market: 'ETH $5K', platforms: 'Poly→Kalshi' },
+  { type: 'price', market: 'BTC $120K', price: '42c' },
+  { type: 'win', user: '@forecaster_jim', amount: '+$2,800', market: 'SOL ETF' },
+  { type: 'resolved', market: 'Q1 Rate Hold', result: 'YES' },
+  { type: 'new', market: 'AGI before 2028?', volume: '$2.1M' },
 ];
 
 // Network visualization data
 const NETWORK_NODES = [
-  { id: 'oracle', label: '@oracle_mind', brier: 0.124, tier: 'ELITE', x: 50, y: 25, size: 44 },
-  { id: 'quant', label: '@quant_alpha', brier: 0.156, tier: 'ELITE', x: 78, y: 45, size: 38 },
-  { id: 'sage', label: '@market_sage', brier: 0.182, tier: 'VERIFIED', x: 22, y: 50, size: 32 },
-  { id: 'data', label: '@data_mind', brier: 0.195, tier: 'VERIFIED', x: 65, y: 72, size: 28 },
-  { id: 'edge', label: '@edge_hunter', brier: 0.218, tier: 'ROOKIE', x: 38, y: 78, size: 24 },
+  { id: 'oracle', label: '@tomaszk', brier: 0.124, tier: 'ELITE', x: 50, y: 25, size: 44 },
+  { id: 'quant', label: '@forecaster_jim', brier: 0.156, tier: 'ELITE', x: 78, y: 45, size: 38 },
+  { id: 'sage', label: '@prediction_pav', brier: 0.182, tier: 'VERIFIED', x: 22, y: 50, size: 32 },
+  { id: 'data', label: '@crypto_nina', brier: 0.195, tier: 'VERIFIED', x: 65, y: 72, size: 28 },
+  { id: 'edge', label: '@betwise_sam', brier: 0.218, tier: 'ROOKIE', x: 38, y: 78, size: 24 },
   { id: 'pool1', label: 'SOL Pool', isPool: true, x: 88, y: 22, size: 48, tvl: '$125K' },
   { id: 'pool2', label: 'Macro Pool', isPool: true, x: 12, y: 30, size: 40, tvl: '$82K' },
 ];
@@ -168,40 +168,40 @@ function HeroSection() {
 
       <div className="max-w-5xl mx-auto text-center relative z-10">
         {/* Status Badge */}
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20 mb-6 sm:mb-8">
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20 mb-6 sm:mb-8 animate-[scaleIn_0.5s_ease-out]">
           <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
           <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-primary)]">Live on Solana Devnet</span>
         </div>
 
         {/* Headline */}
         <h1 className="text-[2.75rem] sm:text-6xl md:text-8xl lg:text-9xl font-black leading-[0.9] tracking-tight mb-6 sm:mb-8">
-          <span className="text-[var(--color-text-primary)]">Be Right.</span>
+          <span className="text-[var(--color-text-primary)] inline-block animate-[fadeInUp_0.6s_ease-out]">Be Right</span>
           <br />
-          <span className="bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-gold)] to-[var(--color-primary)] bg-clip-text text-transparent">
-            Get Paid.
+          <span className="inline-block animate-[fadeInUp_0.6s_ease-out_0.15s_both] bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-gold)] to-[var(--color-primary)] bg-clip-text text-transparent bg-[length:200%_auto] hover:animate-[shimmer_2s_linear_infinite]">
+            Get Paid
           </span>
         </h1>
 
-        <p className="text-base sm:text-lg md:text-xl text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2">
-          AI-powered prediction markets. On-chain reputation.
-          <span className="text-[var(--color-text-primary)] font-medium"> Turn your forecasting skill into income.</span>
+        <p className="text-base sm:text-lg md:text-xl text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2 animate-[fadeInUp_0.6s_ease-out_0.2s_both]">
+          Make a prediction. Get AI-grade research in 3 seconds. Win.
+          <span className="text-[var(--color-text-primary)] font-medium"> Earn a cut of the pool.</span>
         </p>
 
         {/* Value Props Row */}
-        <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8 sm:mb-12 px-2">
-          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-bg-surface-1)] border border-[var(--color-border)]">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8 sm:mb-12 px-2 stagger-children">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-surface-2)] transition-all duration-200 cursor-default">
             <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span className="text-xs sm:text-sm text-[var(--color-text-secondary)]">3s AI research</span>
+            <span className="text-xs sm:text-sm text-[var(--color-text-secondary)]">Scout + Analyst + Trader agents</span>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-bg-surface-1)] border border-[var(--color-border)]">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-surface-2)] transition-all duration-200 cursor-default">
             <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--color-warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            <span className="text-xs sm:text-sm text-[var(--color-text-secondary)]">7%+ arb</span>
+            <span className="text-xs sm:text-sm text-[var(--color-text-secondary)]">Arb vs Polymarket, Kalshi & Manifold</span>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-bg-surface-1)] border border-[var(--color-border)]">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-surface-2)] transition-all duration-200 cursor-default">
             <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--color-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
@@ -212,7 +212,7 @@ function HeroSection() {
         {/* CTA */}
         <button
           onClick={login}
-          className="inline-flex items-center gap-2 sm:gap-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all font-bold text-base sm:text-lg text-[var(--color-bg-base)] cursor-pointer shadow-[var(--shadow-glow-primary-lg)] hover:shadow-[0_0_60px_var(--color-primary-glow)]"
+          className="rich-button inline-flex items-center gap-2 sm:gap-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-[var(--color-bg-base)] cursor-pointer animate-[fadeInUp_0.6s_ease-out_0.3s_both] hover:animate-none"
         >
           <span>Start Predicting</span>
           <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -221,7 +221,7 @@ function HeroSection() {
         </button>
 
         <p className="mt-4 text-[10px] sm:text-xs text-[var(--color-text-ghost)] font-mono">
-          No KYC • Non-custodial • You control your funds
+          No KYC • Your keys, your funds • Live on Solana Devnet
         </p>
       </div>
     </section>
@@ -234,7 +234,7 @@ function HeroSection() {
 
 function MarketStatsBar() {
   return (
-    <section className="border-y border-[var(--color-border)] bg-[var(--color-bg-surface-1)]/30">
+    <section className="border-y border-[var(--color-border)] bg-[var(--color-bg-surface-1)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center md:justify-between items-center gap-3 sm:gap-6 md:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 col-span-2 sm:col-span-1 justify-center sm:justify-start">
@@ -244,25 +244,20 @@ function MarketStatsBar() {
           <div className="h-4 w-px bg-[var(--color-border)] hidden md:block" />
           <div className="font-mono text-xs sm:text-sm text-center sm:text-left">
             <span className="text-[var(--color-text-primary)] font-bold">$63.5B</span>
-            <span className="text-[var(--color-text-ghost)] ml-1 hidden sm:inline">2025 Vol</span>
-          </div>
-          <div className="h-4 w-px bg-[var(--color-border)] hidden md:block" />
-          <div className="font-mono text-xs sm:text-sm text-center sm:text-left">
-            <span className="text-[var(--color-primary)] font-bold">4x</span>
-            <span className="text-[var(--color-text-ghost)] ml-1 hidden sm:inline">YoY</span>
+            <span className="text-[var(--color-text-ghost)] ml-1 hidden sm:inline">Prediction market vol (2025)</span>
           </div>
           <div className="h-4 w-px bg-[var(--color-border)] hidden md:block" />
           <div className="font-mono text-xs sm:text-sm text-center sm:text-left">
             <span className="text-[var(--color-text-primary)]">6+</span>
-            <span className="text-[var(--color-text-ghost)] ml-1">Platforms</span>
+            <span className="text-[var(--color-text-ghost)] ml-1">Platforms aggregated</span>
           </div>
           <div className="h-4 w-px bg-[var(--color-border)] hidden md:block" />
-          <div className="font-mono text-xs sm:text-sm text-[var(--color-primary)] flex items-center gap-1.5 sm:gap-2 justify-center sm:justify-start col-span-2 sm:col-span-1">
+          <div className="font-mono text-xs sm:text-sm text-[var(--color-secondary)] flex items-center gap-1.5 sm:gap-2 justify-center sm:justify-start col-span-2 sm:col-span-1">
             <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="hidden sm:inline">On-chain Verified</span>
-            <span className="sm:hidden">Verified</span>
+            <span className="hidden sm:inline">Deployed on Devnet</span>
+            <span className="sm:hidden">Devnet</span>
           </div>
         </div>
       </div>
@@ -315,22 +310,22 @@ function IntelligenceSection() {
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
         <div className="text-center mb-10 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-secondary-dim)] border border-[var(--color-secondary)]/20 mb-4 sm:mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-secondary-dim)] border border-[var(--color-secondary)]/20 mb-4 sm:mb-6">
             <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-[var(--color-secondary)] animate-pulse" />
-            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-secondary)]">Multi-Agent Intelligence</span>
+            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-secondary)]">3 Claude Agents</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 text-[var(--color-text-primary)]">
-            Your Edge. <span className="text-[var(--color-secondary)]">Automated.</span>
+            Research in 3 seconds. <span className="text-[var(--color-secondary)]">Edge in every trade.</span>
           </h2>
           <p className="text-[var(--color-text-secondary)] text-sm sm:text-lg max-w-2xl mx-auto px-2">
-            Three specialized AI agents work together. 30 minutes of research in 3 seconds.
+            Scout finds opportunities. Analyst estimates probabilities. Trader executes.
           </p>
         </div>
 
         {/* Two Column Layout */}
         <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 items-stretch">
           {/* Left: AI Agents */}
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-3 sm:space-y-4 stagger-children">
             {agents.map((agent, index) => (
               <div
                 key={agent.name}
@@ -391,8 +386,8 @@ function IntelligenceSection() {
 
             {/* Powered By */}
             <div className="flex items-center justify-center gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-[var(--color-border)]">
-              <span className="text-[10px] sm:text-xs font-mono text-[var(--color-text-ghost)]">Powered by</span>
-              <span className="text-xs sm:text-sm font-semibold text-[var(--color-text-secondary)]">OpenClaw AI</span>
+              <span className="text-[10px] sm:text-xs font-mono text-[var(--color-text-ghost)]">Built with</span>
+              <span className="text-xs sm:text-sm font-semibold text-[var(--color-text-secondary)]">Claude Opus + Sonnet</span>
             </div>
           </div>
 
@@ -525,7 +520,7 @@ function IntelligenceSection() {
             </div>
 
             {/* Live Badge */}
-            <div className="absolute top-4 right-4 flex items-center gap-2 px-2.5 py-1 rounded-md bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20">
+            <div className="absolute top-4 right-4 flex items-center gap-2 px-2.5 py-1 rounded-md bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20 animate-[float_4s_ease-in-out_infinite]">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] animate-pulse" />
               <span className="text-[10px] font-mono text-[var(--color-primary)]">LIVE</span>
             </div>
@@ -602,13 +597,13 @@ function ProductPreviewSection() {
         <div className="text-center mb-8 sm:mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-primary-dim)] border border-[var(--color-primary)]/20 mb-4 sm:mb-6">
             <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
-            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-primary)]">Experience the Edge</span>
+            <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider text-[var(--color-primary)]">How it feels</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 text-[var(--color-text-primary)]">
-            Swipe. <span className="text-[var(--color-primary)]">See the Edge.</span> Decide.
+            Every market. <span className="text-[var(--color-primary)]">AI-priced.</span> Yours to call.
           </h2>
           <p className="text-[var(--color-text-secondary)] text-sm sm:text-lg max-w-2xl mx-auto px-2">
-            Every market card shows AI analysis instantly. See what others miss.
+            See the delta between market price and AI estimate. Then decide.
           </p>
         </div>
 
@@ -637,7 +632,7 @@ function ProductPreviewSection() {
             <div className="absolute inset-0 bg-[var(--color-primary)]/20 blur-[60px] sm:blur-[80px] rounded-full scale-75" />
 
             {/* Mock Swipe Card */}
-            <div className="relative w-full sm:w-[340px] md:w-[380px] bg-[rgba(18,22,36,0.85)] backdrop-blur-xl rounded-[24px] sm:rounded-[32px] border border-[var(--color-border)] shadow-2xl overflow-hidden">
+            <div className="relative w-full sm:w-[340px] md:w-[380px] bg-[rgba(18,22,36,0.85)] backdrop-blur-xl rounded-[24px] sm:rounded-[32px] border border-[var(--color-border)] shadow-2xl overflow-hidden gradient-border animate-[scaleIn_0.6s_ease-out]">
               {/* Decorative glows */}
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-[var(--color-primary)] rounded-full blur-[40px] opacity-30" />
               <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-[var(--color-secondary)] rounded-full blur-[50px] opacity-20" />
@@ -657,7 +652,7 @@ function ProductPreviewSection() {
 
                 {/* Question */}
                 <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-[var(--color-text-primary)] leading-tight mb-4 sm:mb-6">
-                  Will Bitcoin reach $150K before July 2025?
+                  Will ETH break $5K before January 2027?
                 </h3>
 
                 {/* Mini Chart */}
@@ -709,7 +704,7 @@ function ProductPreviewSection() {
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 6v6l4 2" />
                     </svg>
-                    <span>Ends 4mo</span>
+                    <span>Ends ~9mo</span>
                   </div>
                 </div>
               </div>
@@ -755,8 +750,8 @@ function ProductPreviewSection() {
                 <div className="flex items-start gap-1.5 sm:gap-2 p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20">
                   <span className="text-[var(--color-primary)] mt-0.5 text-sm">→</span>
                   <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
-                    <span className="font-semibold text-[var(--color-text-primary)]">Underpriced YES.</span>{' '}
-                    ETF inflows + halving cycle suggest higher probability.
+                    <span className="font-semibold text-[var(--color-text-primary)]">+8% edge on YES.</span>{' '}
+                    Based on: ETF net inflows $220M/week (7d avg), options skew favoring upside.
                   </p>
                 </div>
               </div>
@@ -808,7 +803,7 @@ function HowItWorksSection() {
     {
       num: '01',
       title: 'Connect',
-      desc: 'Sign in with email or Solana wallet. Non-custodial.',
+      desc: 'Sign in with your Solana wallet or email. No KYC. Setup takes under 30 seconds.',
       icon: (
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18-3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6m18 0V4.5A2.25 2.25 0 0018.75 2.25H5.25A2.25 2.25 0 003 4.5V6" />
@@ -819,7 +814,7 @@ function HowItWorksSection() {
     {
       num: '02',
       title: 'Predict',
-      desc: 'See AI edge on every market. Swipe to predict.',
+      desc: 'Every market shows AI-estimated probability vs. current price. Swipe YES or NO based on the edge.',
       icon: (
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
@@ -830,7 +825,7 @@ function HowItWorksSection() {
     {
       num: '03',
       title: 'Earn',
-      desc: 'Build your Brier score. Attract capital. Monetize skill.',
+      desc: 'Right calls build your Brier score. High scores let you launch Conviction Pools and take 50% of profits.',
       icon: (
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
@@ -841,7 +836,7 @@ function HowItWorksSection() {
   ];
 
   return (
-    <section className="py-16 sm:py-24 px-4 sm:px-6 bg-[var(--color-bg-surface-1)]/30">
+    <section className="py-16 sm:py-24 px-4 sm:px-6 bg-[var(--color-bg-surface-1)]">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 text-[var(--color-text-primary)]">
@@ -850,11 +845,11 @@ function HowItWorksSection() {
           <p className="text-sm sm:text-base text-[var(--color-text-secondary)]">Three steps to the edge</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 stagger-children">
           {steps.map((step, i) => (
             <div
               key={step.num}
-              className="relative group rounded-xl sm:rounded-2xl bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] p-6 sm:p-8 text-center hover:border-[var(--color-border-hover)] transition-all cursor-pointer"
+              className="relative group rounded-xl sm:rounded-2xl bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] p-6 sm:p-8 text-center hover:border-[var(--color-border-hover)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
             >
               {/* Step Number */}
               <div
@@ -900,9 +895,9 @@ function UserPathsSection() {
       ),
     },
     {
-      title: 'Capitalist',
-      desc: 'Invest in proven forecasters. Delegate capital to top performers.',
-      perks: ['30% of pool profits', 'Access elite forecasters', 'Exit anytime'],
+      title: 'Backer',
+      desc: 'Invest in top forecasters. Delegate capital to performers with track records.',
+      perks: ['30% of pool profits', 'Browse forecaster leaderboards', 'Exit anytime'],
       color: 'var(--color-gold)',
       icon: (
         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -930,14 +925,14 @@ function UserPathsSection() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 text-[var(--color-text-primary)]">
             Choose Your Path
           </h2>
-          <p className="text-sm sm:text-base text-[var(--color-text-secondary)]">Everyone profits differently</p>
+          <p className="text-sm sm:text-base text-[var(--color-text-secondary)]">Pick your role. Change it anytime.</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 stagger-children">
           {paths.map((path) => (
             <div
               key={path.title}
-              className="group relative rounded-xl sm:rounded-2xl bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] p-5 sm:p-8 hover:border-[var(--color-border-hover)] transition-all cursor-pointer overflow-hidden"
+              className="group relative rounded-xl sm:rounded-2xl bg-[var(--color-bg-surface-1)] border border-[var(--color-border)] p-5 sm:p-8 hover:border-[var(--color-border-hover)] hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
             >
               {/* Glow */}
               <div
@@ -994,24 +989,27 @@ function FinalCTASection() {
         </h2>
 
         <p className="text-base sm:text-lg text-[var(--color-text-secondary)] mb-8 sm:mb-10 max-w-xl mx-auto px-2">
-          Join the network of forecasters building verifiable track records and earning from their skill.
+          The best forecasters aren&apos;t on Twitter. They&apos;re on-chain, with receipts.
         </p>
 
         <button
           onClick={login}
-          className="inline-flex items-center gap-2 sm:gap-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-6 sm:px-10 py-3.5 sm:py-5 rounded-full transition-all font-bold text-base sm:text-lg text-[var(--color-bg-base)] cursor-pointer shadow-[var(--shadow-glow-primary-lg)]"
+          className="rich-button inline-flex items-center gap-2 sm:gap-3 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-6 sm:px-10 py-3.5 sm:py-5 rounded-xl font-bold text-base sm:text-lg text-[var(--color-bg-base)] cursor-pointer"
         >
           <span>Start Predicting</span>
-          <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <svg className="w-4 sm:w-5 h-4 sm:h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </button>
 
         <p className="mt-4 sm:mt-6 text-[10px] sm:text-xs text-[var(--color-text-ghost)] font-mono">
-          No KYC required • Non-custodial • You control your funds
+          No KYC • Your keys, your funds • Live on Solana Devnet
         </p>
 
-        <div className="mt-10 sm:mt-16 flex items-center justify-center gap-2 sm:gap-3 opacity-50">
+        {/* Accent line separator */}
+        <div className="accent-line w-32 mx-auto mt-10 sm:mt-16 mb-4" />
+
+        <div className="flex items-center justify-center gap-2 sm:gap-3 opacity-60">
           <span className="text-[10px] sm:text-xs font-mono text-[var(--color-text-ghost)]">POWERED BY</span>
           <span className="font-bold text-sm sm:text-base text-[var(--color-text-secondary)]">SOLANA</span>
         </div>

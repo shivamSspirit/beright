@@ -10,17 +10,17 @@
      COLORS - Updated Brand Palette
      ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* Primary Accent - Teal Green (main brand color) */
-  --color-primary: #00FFB2;
-  --color-primary-dim: rgba(0, 255, 178, 0.15);
-  --color-primary-glow: rgba(0, 255, 178, 0.4);
-  --color-primary-hover: #00E6A0;
-  --color-primary-bright: #33FFC4;
+  /* Primary Accent - Electric Lime (de-slopped from AI mint green) */
+  --color-primary: #e8ff47;
+  --color-primary-dim: rgba(232, 255, 71, 0.15);
+  --color-primary-glow: rgba(232, 255, 71, 0.25);
+  --color-primary-hover: #d4eb3d;
+  --color-primary-bright: #f0ff70;
 
-  /* Secondary Accent - Purple (AI, special features) */
-  --color-secondary: #7B61FF;
-  --color-secondary-dim: rgba(123, 97, 255, 0.15);
-  --color-secondary-glow: rgba(123, 97, 255, 0.4);
+  /* Secondary Accent - Royal Blue (de-slopped from purple-violet) */
+  --color-secondary: #5b7bff;
+  --color-secondary-dim: rgba(91, 123, 255, 0.15);
+  --color-secondary-glow: rgba(91, 123, 255, 0.25);
 
   /* Warning/Streak - Orange (fire, streaks, warnings) */
   --color-warning: #FF6B35;
@@ -32,30 +32,30 @@
   --color-error-dim: rgba(255, 71, 87, 0.15);
   --color-error-glow: rgba(255, 71, 87, 0.4);
 
-  /* Binary States (Yes/No) */
-  --color-yes: #00FFB2;
-  --color-yes-dim: rgba(0, 255, 178, 0.15);
-  --color-yes-glow: rgba(0, 255, 178, 0.4);
-  --color-no: #FF4757;
-  --color-no-dim: rgba(255, 71, 87, 0.15);
-  --color-no-glow: rgba(255, 71, 87, 0.4);
+  /* Binary States (Yes/No) - Softer, less neon */
+  --color-yes: #34d399;
+  --color-yes-dim: rgba(52, 211, 153, 0.15);
+  --color-yes-glow: rgba(52, 211, 153, 0.25);
+  --color-no: #f87171;
+  --color-no-dim: rgba(248, 113, 113, 0.15);
+  --color-no-glow: rgba(248, 113, 113, 0.25);
 
-  /* Backgrounds - Dark Scale */
-  --color-bg-base: #0A0A0F;
-  --color-bg-void: #0A0A0F;
-  --color-bg-surface-1: #111118;
-  --color-bg-surface-2: #1A1A24;
-  --color-bg-surface-3: #242432;
-  --color-bg-elevated: #2A2A3A;
-  --color-bg-deep: #111118;
-  --color-bg-surface: #1A1A24;
+  /* Backgrounds - Warm Dark Scale (de-slopped from cold void blacks) */
+  --color-bg-base: #0d0d0b;
+  --color-bg-void: #0d0d0b;
+  --color-bg-surface-1: #131310;
+  --color-bg-surface-2: #1a1a16;
+  --color-bg-surface-3: #242420;
+  --color-bg-elevated: #2a2a26;
+  --color-bg-deep: #131310;
+  --color-bg-surface: #1a1a16;
 
-  /* Text Hierarchy - WCAG AA compliant (4.5:1 minimum) */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A1A5B8;    /* 5.8:1 contrast ratio */
-  --color-text-muted: #9CA3AF;        /* 5.5:1 contrast (was #5A5E78 = 3.1:1) */
-  --color-text-ghost: #6B7280;        /* 4.5:1 contrast (was #3D4058 = 2.1:1) */
-  --color-text-inverse: #0A0A0F;
+  /* Text Hierarchy - Warm whites (de-slopped from pure white) */
+  --color-text-primary: #f5f4ef;
+  --color-text-secondary: #a8a79e;    /* Warm gray */
+  --color-text-muted: #8a8880;        /* Warm muted */
+  --color-text-ghost: #5a5854;        /* Warm ghost */
+  --color-text-inverse: #0d0d0b;
 
   /* Borders */
   --color-border: rgba(255, 255, 255, 0.08);
@@ -68,14 +68,14 @@
   --color-glass-border: rgba(255, 255, 255, 0.08);
   --color-overlay: rgba(10, 10, 15, 0.8);
 
-  /* Accent Colors */
-  --color-accent: #00FFB2;
-  --color-accent-dim: rgba(0, 255, 178, 0.15);
-  --color-accent-glow: rgba(0, 255, 178, 0.4);
+  /* Accent Colors - Updated to match primary */
+  --color-accent: #e8ff47;
+  --color-accent-dim: rgba(232, 255, 71, 0.15);
+  --color-accent-glow: none;
 
-  --color-ai: #7B61FF;
-  --color-ai-dim: rgba(123, 97, 255, 0.15);
-  --color-ai-glow: rgba(123, 97, 255, 0.4);
+  --color-ai: #5b7bff;
+  --color-ai-dim: rgba(91, 123, 255, 0.15);
+  --color-ai-glow: none;
 
   --color-fire: #FF6B35;
   --color-fire-dim: rgba(255, 107, 53, 0.15);
@@ -100,9 +100,9 @@
      TYPOGRAPHY
      ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* Font Families */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  /* Font Families - DM Sans (de-slopped from Inter) */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'DM Mono', 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
   /* Font Sizes */
   --text-4xs: 8px;
@@ -200,17 +200,17 @@
   --shadow-card: none;
   --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-  /* Glow effects */
-  --shadow-glow-primary: 0 0 20px rgba(0, 255, 178, 0.3);
-  --shadow-glow-primary-lg: 0 0 40px rgba(0, 255, 178, 0.4);
-  --shadow-glow-secondary: 0 0 20px rgba(123, 97, 255, 0.3);
-  --shadow-glow-warning: 0 0 20px rgba(255, 107, 53, 0.3);
-  --shadow-glow-error: 0 0 20px rgba(255, 71, 87, 0.3);
-  --shadow-glow-green: 0 0 20px rgba(0, 255, 178, 0.3);
-  --shadow-glow-cyan: 0 0 20px rgba(0, 255, 178, 0.3);
-  --shadow-glow-purple: 0 0 20px rgba(123, 97, 255, 0.3);
-  --shadow-glow-gold: 0 0 20px rgba(255, 215, 0, 0.3);
-  --shadow-glow-red: 0 0 20px rgba(255, 71, 87, 0.3);
+  /* Glow effects - REMOVED (de-slopped: glows are AI visual filler) */
+  --shadow-glow-primary: none;
+  --shadow-glow-primary-lg: none;
+  --shadow-glow-secondary: none;
+  --shadow-glow-warning: none;
+  --shadow-glow-error: none;
+  --shadow-glow-green: none;
+  --shadow-glow-cyan: none;
+  --shadow-glow-purple: none;
+  --shadow-glow-gold: none;
+  --shadow-glow-red: none;
 
   /* ═══════════════════════════════════════════════════════════════════════════
      TRANSITIONS & ANIMATION
