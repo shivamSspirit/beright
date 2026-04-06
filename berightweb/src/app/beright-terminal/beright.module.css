@@ -914,15 +914,29 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVE - Comprehensive Mobile-First Breakpoints
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Large Desktop (1400px+) - Default styles above */
+
+/* Desktop (1200px - 1399px) */
+@media (max-width: 1399px) {
+  .mainGrid {
+    grid-template-columns: 260px 1fr 300px;
+  }
+}
 
 @media (max-width: 1200px) {
   .mainGrid {
     grid-template-columns: 240px 1fr 280px;
   }
+
+  .topBar {
+    padding: 14px 20px;
+  }
 }
 
+/* Tablet Landscape (1024px - 1199px) */
 @media (max-width: 1024px) {
   .mainGrid {
     grid-template-columns: 1fr;
@@ -936,34 +950,673 @@
   .panel:nth-child(2) {
     border-right: none;
   }
-}
 
-@media (max-width: 768px) {
   .topBar {
     padding: 12px 16px;
-    flex-wrap: wrap;
-    gap: 12px;
+  }
+
+  .navItem {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .fullPageView {
+    padding: 24px;
+  }
+
+  .agentCard {
+    padding: 16px 20px;
+  }
+
+  .mlFeedCard {
+    padding: 16px;
+  }
+
+  .mlFeedStats {
+    gap: 16px;
+  }
+}
+
+/* Tablet Portrait (768px - 1023px) */
+@media (max-width: 768px) {
+  .terminalPage {
+    height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .topBar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .topBarLeft {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .topBarLeft::-webkit-scrollbar {
+    display: none;
   }
 
   .topBarRight {
     display: none;
   }
 
+  .navPill {
+    flex-shrink: 0;
+  }
+
   .navItem {
     padding: 6px 12px;
-    font-size: 12px;
+    font-size: 11px;
+    white-space: nowrap;
   }
 
   .cliWrapper {
-    padding: 12px 16px;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .cliPrompt {
+    font-size: 12px;
+  }
+
+  .cliInput {
+    font-size: 14px;
   }
 
   .fullPageView {
     padding: 16px;
   }
 
+  .fullPageHeader {
+    font-size: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .feedTabs {
+    margin-left: 0;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .feedTab {
+    padding: 6px 12px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .feedMeta {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+    text-align: center;
+  }
+
   .pnlValue {
-    font-size: 32px;
+    font-size: 28px;
+  }
+
+  .pnlBlock {
+    padding: 14px;
+    margin-bottom: 20px;
+  }
+
+  .agentCard {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .agentCardLeft {
+    width: 100%;
+  }
+
+  .agentCardRight {
+    width: 100%;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .mlFeedContainer {
+    padding: 14px;
+    gap: 12px;
+    max-height: calc(100vh - 160px);
+  }
+
+  .mlFeedCard {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .mlFeedHeader {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mlFeedQuestion .questionText {
+    font-size: 13px;
+  }
+
+  .arbBadgeInline {
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+
+  .mlFeedStats {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+  }
+
+  .mlFeedStat {
+    min-width: calc(50% - 6px);
+  }
+
+  .mlFeedProb {
+    font-size: 18px;
+  }
+
+  .mlFeedVol,
+  .mlFeedConf {
+    font-size: 14px;
+  }
+
+  .mlFeedPlatforms {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .mlFeedActions {
+    gap: 10px;
+  }
+
+  .mlFeedBtnYes,
+  .mlFeedBtnNo {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .mlFeedBtnSide {
+    font-size: 11px;
+  }
+
+  .mlFeedBtnPrice {
+    font-size: 13px;
+  }
+
+  .mlFeedBtnView {
+    width: 36px;
+    padding: 8px;
+  }
+
+  .logsList {
+    padding: 12px;
+  }
+
+  .logRow {
+    padding: 10px 12px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .logTime {
+    min-width: 70px;
+    font-size: 10px;
+  }
+
+  .logLevel {
+    min-width: 80px;
+    font-size: 11px;
+  }
+
+  .logMessage {
+    width: 100%;
+    font-size: 12px;
+  }
+
+  .loadingScreen,
+  .connectScreen {
+    height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .connectLogoText {
+    font-size: 24px;
+  }
+
+  .connectText {
+    font-size: 13px;
+    padding: 0 20px;
+  }
+
+  .connectButton {
+    padding: 12px 28px;
+    font-size: 13px;
+  }
+
+  .signalItem,
+  .signalItemFirst {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  .signalTime {
+    font-size: 9px;
+  }
+
+  .signalType {
+    font-size: 9px;
+  }
+
+  .signalMessage {
+    font-size: 10px;
+  }
+}
+
+/* Mobile Large (640px - 767px) */
+@media (max-width: 640px) {
+  .terminalPage {
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .topBar {
+    padding: 8px 10px;
+  }
+
+  .navPill {
+    padding: 3px;
+    border-radius: 8px;
+  }
+
+  .navItem {
+    padding: 5px 10px;
+    font-size: 10px;
+    border-radius: 6px;
+  }
+
+  .navItemActive {
+    box-shadow: 0 0 10px rgba(0, 255, 178, 0.3);
+  }
+
+  .cliWrapper {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .cliPrompt {
+    font-size: 11px;
+  }
+
+  .cliInput {
+    font-size: 13px;
+  }
+
+  .fullPageView {
+    padding: 12px;
+  }
+
+  .fullPageHeader {
+    font-size: 9px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+
+  .pnlValue {
+    font-size: 24px;
+  }
+
+  .pnlBlock {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .pnlLabel {
+    font-size: 9px;
+  }
+
+  .pnlChange {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  .pnlPercent {
+    font-size: 11px;
+  }
+
+  .mlFeedContainer {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .mlFeedCard {
+    padding: 12px;
+  }
+
+  .mlFeedQuestion .questionText {
+    font-size: 12px;
+  }
+
+  .mlFeedStats {
+    gap: 10px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .mlFeedProb {
+    font-size: 16px;
+  }
+
+  .mlFeedVol,
+  .mlFeedConf {
+    font-size: 13px;
+  }
+
+  .mlFeedActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mlFeedBtnYes,
+  .mlFeedBtnNo {
+    padding: 12px 16px;
+    justify-content: center;
+  }
+
+  .mlFeedBtnView {
+    display: none;
+  }
+
+  .agentCard {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .agentCircle {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .agentCardInfo h3 {
+    font-size: 14px;
+  }
+
+  .agentCardInfo span {
+    font-size: 11px;
+  }
+
+  .loadingScreen,
+  .connectScreen {
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .loadingText {
+    font-size: 20px;
+  }
+
+  .loadingSubtext {
+    font-size: 11px;
+  }
+
+  .connectLogoText {
+    font-size: 20px;
+  }
+
+  .connectText {
+    font-size: 12px;
+  }
+
+  .connectButton {
+    padding: 11px 24px;
+    font-size: 12px;
+  }
+
+  .loadingLogo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .panelHeader {
+    font-size: 12px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+
+  .panelLabel {
+    font-size: 10px;
+  }
+}
+
+/* Mobile Small (< 480px) */
+@media (max-width: 480px) {
+  .terminalPage {
+    height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .topBar {
+    padding: 6px 8px;
+  }
+
+  .navPill {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .navItem {
+    padding: 4px 8px;
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+
+  .navItemActive {
+    box-shadow: 0 0 8px rgba(0, 255, 178, 0.25);
+  }
+
+  .cliWrapper {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .cliPrompt {
+    font-size: 10px;
+  }
+
+  .cliInput {
+    font-size: 12px;
+  }
+
+  .fullPageView {
+    padding: 10px;
+  }
+
+  .fullPageHeader {
+    font-size: 8px;
+    gap: 6px;
+  }
+
+  .pnlValue {
+    font-size: 22px;
+  }
+
+  .pnlBlock {
+    padding: 10px;
+    margin-bottom: 14px;
+    border-radius: 10px;
+  }
+
+  .mlFeedContainer {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .mlFeedCard {
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .mlFeedQuestion .questionText {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .arbBadgeInline {
+    font-size: 9px;
+    padding: 4px 8px;
+  }
+
+  .mlFeedStats {
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+
+  .mlFeedStatLabel {
+    font-size: 9px;
+  }
+
+  .mlFeedProb {
+    font-size: 15px;
+  }
+
+  .mlFeedVol,
+  .mlFeedConf {
+    font-size: 12px;
+  }
+
+  .platformBadge {
+    font-size: 9px;
+    padding: 3px 8px;
+  }
+
+  .mlFeedBtnYes,
+  .mlFeedBtnNo {
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+
+  .mlFeedBtnSide {
+    font-size: 10px;
+  }
+
+  .mlFeedBtnPrice {
+    font-size: 12px;
+  }
+
+  .agentCard {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+  }
+
+  .agentCircle {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+    margin-right: 10px;
+  }
+
+  .agentCardInfo h3 {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .agentCardInfo span {
+    font-size: 10px;
+  }
+
+  .logRow {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .logTime {
+    min-width: 60px;
+    font-size: 9px;
+  }
+
+  .logLevel {
+    min-width: 60px;
+    font-size: 10px;
+  }
+
+  .logMessage {
+    font-size: 11px;
+  }
+
+  .loadingScreen,
+  .connectScreen {
+    height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
+    padding: 16px;
+  }
+
+  .loadingText {
+    font-size: 18px;
+  }
+
+  .loadingSubtext {
+    font-size: 10px;
+  }
+
+  .loadingLogo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .connectLogo {
+    gap: 10px;
+  }
+
+  .connectLogoText {
+    font-size: 18px;
+  }
+
+  .connectText {
+    font-size: 11px;
+    padding: 0 12px;
+  }
+
+  .connectButton {
+    padding: 10px 20px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  .signalFeed {
+    gap: 4px;
+    padding: 6px 0;
+  }
+
+  .signalItem,
+  .signalItemFirst {
+    padding: 6px 8px;
+  }
+
+  .signalTime {
+    font-size: 8px;
+    margin-right: 6px;
+  }
+
+  .signalType {
+    font-size: 8px;
+    margin-right: 4px;
+  }
+
+  .signalMessage {
+    font-size: 9px;
   }
 }
 
@@ -1603,11 +2256,112 @@
 
 @media (max-width: 1024px) {
   .mainGridThreeCol {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 200px 1fr;
   }
 
   .mainGridThreeCol .panelLast {
     display: none;
+  }
+}
+
+/* Hide conversation sidebar at narrower widths OR short heights (landscape tablets) */
+@media (max-width: 900px) {
+  .mainGridThreeCol {
+    grid-template-columns: 1fr;
+  }
+
+  .mainGridThreeCol .panelHistory {
+    display: none;
+  }
+}
+
+/* Landscape mode with short height - keep sidebar, compact chrome */
+@media (max-height: 600px) and (min-width: 600px) {
+  .mainGridThreeCol {
+    grid-template-columns: 180px 1fr;
+  }
+
+  .mainGridThreeCol .panelLast {
+    display: none;
+  }
+
+  .topBar {
+    padding: 8px 12px;
+  }
+
+  .navItem {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .cliWrapper {
+    padding: 10px 14px;
+  }
+
+  .panelHistory {
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .conversationHeader {
+    padding: 12px 10px;
+  }
+
+  .conversationItem {
+    padding: 10px 8px;
+  }
+}
+
+/* Very short screens - compact everything, narrower sidebar */
+@media (max-height: 500px) {
+  .terminalPage {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .mainGridThreeCol {
+    grid-template-columns: 160px 1fr;
+  }
+
+  .topBar {
+    padding: 6px 10px;
+  }
+
+  .navPill {
+    padding: 2px;
+  }
+
+  .navItem {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+
+  .cliWrapper {
+    padding: 8px 12px;
+  }
+
+  .cliInput {
+    font-size: 13px;
+  }
+
+  .conversationHeader {
+    padding: 10px 8px;
+  }
+
+  .conversationHeaderTitle {
+    font-size: 9px;
+  }
+
+  .conversationItem {
+    padding: 8px 6px;
+    margin-bottom: 4px;
+  }
+
+  .conversationTitle {
+    font-size: 11px;
+  }
+
+  .conversationMeta {
+    font-size: 9px;
   }
 }
 

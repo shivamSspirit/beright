@@ -552,12 +552,60 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVE - Comprehensive Mobile Breakpoints
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
+/* Tablet (768px - 1023px) */
+@media (max-width: 1023px) {
+  .messagesArea {
+    padding: 14px;
+    gap: 10px;
+  }
+
   .messageRow {
-    max-width: 95%;
+    max-width: 90%;
+  }
+
+  .messageBubble {
+    padding: 10px 14px;
+  }
+
+  .h1 {
+    font-size: 16px;
+  }
+
+  .h2 {
+    font-size: 14px;
+  }
+
+  .h3 {
+    font-size: 13px;
+  }
+}
+
+/* Landscape mode / short height screens (e.g. 920x544) */
+/* When height is limited, keep full desktop styling for readability */
+@media (max-height: 600px) and (min-width: 600px) {
+  .chatHeader {
+    padding: 8px 14px;
+  }
+
+  .chatTitle {
+    font-size: 9px;
+  }
+
+  .chatStatus {
+    font-size: 9px;
+  }
+
+  .messagesArea {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .messageRow {
+    max-width: 80%;
+    gap: 8px;
   }
 
   .messageBubble {
@@ -570,17 +618,646 @@
     font-size: 12px;
   }
 
-  .tableWrapper {
-    font-size: 10px;
+  .agentHeader {
+    font-size: 9px;
+    margin-bottom: 4px;
   }
 
-  .markdownTable th,
-  .markdownTable td {
-    padding: 6px 8px;
+  .messageContent {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .userText {
+    font-size: 12px;
+  }
+
+  .markdown {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .timestamp {
+    font-size: 8px;
+    margin-top: 4px;
+  }
+
+  .emptyState {
+    padding: 20px 16px;
+  }
+
+  .emptyIcon {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+
+  .emptyTitle {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+
+  .emptyText {
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  .hint {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+
+  .h1 {
+    font-size: 15px;
+    margin: 10px 0 8px 0;
+  }
+
+  .h2 {
+    font-size: 13px;
+    margin: 8px 0 6px 0;
+  }
+
+  .h3 {
+    font-size: 12px;
+    margin: 6px 0 4px 0;
   }
 
   .codeBlock {
     font-size: 11px;
-    padding: 10px 12px;
+    padding: 8px 10px;
+  }
+
+  .typingBubble {
+    padding: 8px 12px;
+  }
+
+  .typingDot {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+/* Very short screens - extra compact */
+@media (max-height: 500px) {
+  .chatHeader {
+    padding: 6px 12px;
+  }
+
+  .messagesArea {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .messageRow {
+    max-width: 85%;
+    gap: 6px;
+  }
+
+  .messageBubble {
+    padding: 6px 10px;
+  }
+
+  .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .messageContent {
+    font-size: 11px;
+  }
+
+  .emptyState {
+    padding: 16px 12px;
+  }
+
+  .emptyIcon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .emptyTitle {
+    font-size: 13px;
+  }
+
+  .emptyText {
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+}
+
+/* Tablet Portrait - Single Column (768px and below) */
+/* When layout becomes single-column, chat has full width - keep readable sizes */
+@media (max-width: 768px) {
+  .chatHeader {
+    padding: 12px 16px;
+  }
+
+  .chatTitle {
+    font-size: 10px;
+  }
+
+  .chatStatus {
+    font-size: 10px;
+  }
+
+  .messagesArea {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .messageRow {
+    max-width: 88%;
+    gap: 10px;
+  }
+
+  .messageBubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+
+  .bubbleAgent {
+    border-radius: 4px 12px 12px 4px;
+  }
+
+  .bubbleUser {
+    border-radius: 12px 4px 4px 12px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .agentHeader {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .messageContent {
+    font-size: 13px;
+  }
+
+  .userText {
+    font-size: 13px;
+  }
+
+  .markdown {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .timestamp {
+    font-size: 9px;
+    margin-top: 6px;
+  }
+
+  .tableWrapper {
+    font-size: 11px;
+    margin: 12px 0;
+  }
+
+  .markdownTable th,
+  .markdownTable td {
+    padding: 8px 10px;
+  }
+
+  .markdownTable th {
+    font-size: 10px;
+  }
+
+  .codeBlock {
+    font-size: 12px;
+    padding: 12px 14px;
+    margin: 12px 0;
+  }
+
+  .inlineCode {
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  .ul, .ol {
+    padding-left: 22px;
+    margin: 10px 0;
+  }
+
+  .li {
+    margin: 6px 0;
+    font-size: 13px;
+  }
+
+  .blockquote {
+    padding: 12px 16px;
+    margin: 12px 0;
+  }
+
+  .h1 {
+    font-size: 16px;
+    margin: 16px 0 12px 0;
+  }
+
+  .h2 {
+    font-size: 14px;
+    margin: 14px 0 10px 0;
+  }
+
+  .h3 {
+    font-size: 13px;
+    margin: 12px 0 8px 0;
+  }
+
+  .emptyState {
+    padding: 40px 20px;
+  }
+
+  .emptyIcon {
+    font-size: 44px;
+    margin-bottom: 14px;
+  }
+
+  .emptyTitle {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .emptyText {
+    font-size: 13px;
+    margin-bottom: 24px;
+    max-width: 320px;
+  }
+
+  .emptyHints {
+    gap: 8px;
+  }
+
+  .hint {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .typingBubble {
+    padding: 12px 16px;
+    gap: 4px;
+  }
+
+  .typingDot {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+/* Mobile Large (640px - 767px) */
+@media (max-width: 640px) {
+  .chatHeader {
+    padding: 8px 12px;
+  }
+
+  .chatTitle {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+
+  .chatStatus {
+    font-size: 8px;
+  }
+
+  .onlineDot {
+    width: 5px;
+    height: 5px;
+    margin-right: 3px;
+  }
+
+  .messagesArea {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .messageRow {
+    max-width: 95%;
+    gap: 6px;
+  }
+
+  .messageBubble {
+    padding: 7px 10px;
+    min-width: 60px;
+  }
+
+  .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+    border-width: 1.5px;
+  }
+
+  .agentHeader {
+    font-size: 8px;
+    margin-bottom: 4px;
+  }
+
+  .mood {
+    font-size: 8px;
+    margin-left: 4px;
+  }
+
+  .messageContent {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .userText {
+    font-size: 11px;
+  }
+
+  .markdown {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .timestamp {
+    font-size: 7px;
+    margin-top: 4px;
+  }
+
+  .markdownTable {
+    font-size: 9px;
+  }
+
+  .markdownTable th,
+  .markdownTable td {
+    padding: 5px 6px;
+  }
+
+  .markdownTable th {
+    font-size: 8px;
+  }
+
+  .codeBlock {
+    font-size: 10px;
+    padding: 8px 10px;
+    border-left-width: 2px;
+  }
+
+  .inlineCode {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .ul, .ol {
+    padding-left: 18px;
+  }
+
+  .li {
+    margin: 4px 0;
+    font-size: 11px;
+  }
+
+  .h1 {
+    font-size: 14px;
+    margin: 12px 0 8px 0;
+    padding-bottom: 6px;
+  }
+
+  .h2 {
+    font-size: 12px;
+    margin: 10px 0 6px 0;
+    padding-bottom: 4px;
+  }
+
+  .h3 {
+    font-size: 11px;
+    margin: 8px 0 5px 0;
+  }
+
+  .blockquote {
+    padding: 8px 12px;
+    border-left-width: 3px;
+  }
+
+  .emptyState {
+    padding: 24px 14px;
+  }
+
+  .emptyIcon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+
+  .emptyTitle {
+    font-size: 13px;
+  }
+
+  .emptyText {
+    font-size: 11px;
+    margin-bottom: 16px;
+    max-width: 260px;
+  }
+
+  .hint {
+    font-size: 9px;
+    padding: 4px 8px;
+  }
+
+  .typingBubble {
+    padding: 8px 12px;
+  }
+
+  .typingDot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .loadingSpinner {
+    width: 32px;
+    height: 32px;
+    border-width: 2px;
+    margin-bottom: 12px;
+  }
+}
+
+/* Mobile Small (< 480px) */
+@media (max-width: 480px) {
+  .chatHeader {
+    padding: 6px 10px;
+  }
+
+  .chatTitle {
+    font-size: 7px;
+  }
+
+  .chatStatus {
+    font-size: 7px;
+  }
+
+  .messagesArea {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .messageRow {
+    max-width: 98%;
+    gap: 5px;
+  }
+
+  .messageBubble {
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+
+  .bubbleAgent {
+    border-radius: 3px 8px 8px 3px;
+    border-left-width: 2px;
+  }
+
+  .bubbleUser {
+    border-radius: 8px 3px 3px 8px;
+  }
+
+  .avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+
+  .agentHeader {
+    font-size: 7px;
+    letter-spacing: 0.03em;
+  }
+
+  .mood {
+    font-size: 7px;
+  }
+
+  .messageContent {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .userText {
+    font-size: 10px;
+  }
+
+  .markdown {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .timestamp {
+    font-size: 6px;
+    margin-top: 3px;
+  }
+
+  .tableWrapper {
+    margin: 8px 0;
+    border-radius: 6px;
+  }
+
+  .markdownTable {
+    font-size: 8px;
+  }
+
+  .markdownTable th,
+  .markdownTable td {
+    padding: 4px 5px;
+  }
+
+  .markdownTable th {
+    font-size: 7px;
+  }
+
+  .codeBlock {
+    font-size: 9px;
+    padding: 6px 8px;
+    margin: 8px 0;
+    border-radius: 4px;
+  }
+
+  .inlineCode {
+    font-size: 9px;
+    padding: 0 3px;
+    border-radius: 3px;
+  }
+
+  .ul, .ol {
+    padding-left: 16px;
+    margin: 6px 0;
+  }
+
+  .li {
+    margin: 3px 0;
+    font-size: 10px;
+  }
+
+  .h1 {
+    font-size: 13px;
+    margin: 10px 0 6px 0;
+    padding-bottom: 5px;
+    border-bottom-width: 1px;
+  }
+
+  .h2 {
+    font-size: 11px;
+    margin: 8px 0 5px 0;
+    padding-bottom: 3px;
+  }
+
+  .h3 {
+    font-size: 10px;
+    margin: 6px 0 4px 0;
+  }
+
+  .paragraph {
+    margin: 6px 0;
+  }
+
+  .blockquote {
+    padding: 6px 10px;
+    margin: 8px 0;
+    border-left-width: 2px;
+    font-size: 10px;
+  }
+
+  .emptyState {
+    padding: 20px 12px;
+  }
+
+  .emptyIcon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .emptyTitle {
+    font-size: 12px;
+  }
+
+  .emptyText {
+    font-size: 10px;
+    margin-bottom: 14px;
+    max-width: 240px;
+  }
+
+  .emptyHints {
+    gap: 5px;
+  }
+
+  .hint {
+    font-size: 8px;
+    padding: 3px 6px;
+  }
+
+  .typingBubble {
+    padding: 6px 10px;
+    border-radius: 3px 8px 8px 3px;
+    border-left-width: 2px;
+  }
+
+  .typingDot {
+    width: 3px;
+    height: 3px;
+  }
+
+  .loadingSpinner {
+    width: 28px;
+    height: 28px;
   }
 }
