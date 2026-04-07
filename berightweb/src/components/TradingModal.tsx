@@ -108,6 +108,9 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
   // UI state
   const [copiedTrade, setCopiedTrade] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [calibrationStep, setCalibrationStep] = useState<'idle' | 'recording' | 'success' | 'error'>('idle');
+  const [calibrationError, setCalibrationError] = useState<string | null>(null);
+  const [calibrationSignature, setCalibrationSignature] = useState<string | null>(null);
 
   const {
     step,
@@ -162,6 +165,9 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
       setCopiedAddress(false);
       setShowAddFunds(false);
       setIsSubmitting(false);
+      setCalibrationStep('idle');
+      setCalibrationError(null);
+      setCalibrationSignature(null);
     }
   }, [isOpen, reset]);
 
@@ -241,6 +247,9 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     if (isNaN(numAmount) || numAmount <= 0) return;
 
     setIsSubmitting(true);
+    setCalibrationStep('recording');
+    setCalibrationError(null);
+    setCalibrationSignature(null);
 
     const isYes = side === 'YES';
     const probability = isYes
@@ -255,64 +264,56 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     });
 
     try {
-      // First, record prediction to on-chain calibration program
+      // Record prediction to on-chain calibration program
+      console.log('[TradingModal] Recording prediction to calibration program...');
       const calibrationSig = await recordPrediction({
         marketId: prediction.id,
         direction: isYes ? 'yes' : 'no',
         probability,
       });
 
-      // Try DFlow trade (may not work on devnet)
-      let dflowSig: string | null = null;
-      try {
-        dflowSig = await executeTrade({
-          side,
-          amount: numAmount,
-          inputToken,
-          yesMint: tokens.yesMint,
-          noMint: tokens.noMint,
-          slippageBps: 100,
-        });
-      } catch (dflowErr) {
-        console.log('[TradingModal] DFlow trade failed (expected on devnet):', dflowErr);
-      }
-
-      // Use calibration signature (or DFlow if available)
-      const signature = dflowSig || calibrationSig;
-
-      if (signature) {
-        trackEvent('trade_success', {
-          marketId: prediction.id,
-          side,
-          amount: numAmount,
-          signature,
-        });
-
-        // Save prediction to localStorage/API for profile display
-        const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
-        await savePrediction(
-          {
-            id: prediction.id,
-            question: prediction.question,
-            marketOdds: prediction.marketOdds,
-            platform: prediction.source,
-          },
-          side,
-          signature,
-          explorerUrl
-        );
-      } else {
+      if (!calibrationSig) {
         throw new Error('Failed to record prediction on-chain');
       }
+
+      console.log('[TradingModal] Calibration recorded:', calibrationSig);
+      setCalibrationSignature(calibrationSig);
+      setCalibrationStep('success');
+
+      trackEvent('trade_success', {
+        marketId: prediction.id,
+        side,
+        amount: numAmount,
+        signature: calibrationSig,
+      });
+
+      // Save prediction to localStorage/API for profile display
+      const explorerUrl = `https://explorer.solana.com/tx/${calibrationSig}?cluster=devnet`;
+      await savePrediction(
+        {
+          id: prediction.id,
+          question: prediction.question,
+          marketOdds: prediction.marketOdds,
+          platform: prediction.source,
+        },
+        side,
+        calibrationSig,
+        explorerUrl
+      );
+
     } catch (err) {
+      console.error('[TradingModal] Trade error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setCalibrationStep('error');
+      setCalibrationError(errorMessage);
       trackEvent('trade_error', {
         marketId: prediction.id,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [isTokenized, tokens, amount, side, inputToken, executeTrade, prediction.id, prediction.question, prediction.source, prediction.marketOdds, dflow, recordPrediction, savePrediction, isSubmitting]);
+  }, [isTokenized, tokens, amount, side, inputToken, prediction.id, prediction.question, prediction.source, prediction.marketOdds, dflow, recordPrediction, savePrediction, isSubmitting]);
 
   /**
    * Copy transaction signature to clipboard
@@ -475,7 +476,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                   {balanceLoading ? 'Checking...' : 'Refresh Balance'}
                 </button>
               </div>
-            ) : step === 'idle' ? (
+            ) : calibrationStep === 'idle' ? (
               <>
                 {/* Question - truncated */}
                 <p className="tm-question">{prediction.question}</p>
@@ -579,14 +580,14 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 </button>
               </>
             ) : (
-              /* Progress State */
+              /* Progress State - Calibration */
               <div className="tm-progress">
-                <div className={`tm-status-icon ${step}`}>
-                  {step === 'success' ? (
+                <div className={`tm-status-icon ${calibrationStep}`}>
+                  {calibrationStep === 'success' ? (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                       <path d="M5 12l5 5L20 7" />
                     </svg>
-                  ) : step === 'error' ? (
+                  ) : calibrationStep === 'error' ? (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                       <path d="M18 6L6 18M6 6l12 12" />
                     </svg>
@@ -594,17 +595,26 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                     <div className="tm-spinner" />
                   )}
                 </div>
-                <span className="tm-status-text">{STEP_LABELS[step]}</span>
-                {error && <span className="tm-error">{error}</span>}
+                <span className="tm-status-text">
+                  {calibrationStep === 'recording' && 'Recording prediction...'}
+                  {calibrationStep === 'success' && 'Prediction Recorded!'}
+                  {calibrationStep === 'error' && 'Recording Failed'}
+                </span>
+                {calibrationError && <span className="tm-error">{calibrationError}</span>}
 
-                {/* Trade Transaction Links */}
-                {tradeSignature && (
+                {/* Transaction Links */}
+                {calibrationSignature && (
                   <div className="tm-tx-section">
                     <div className="tm-tx-header">
-                      <span className="tm-tx-label">Trade Transaction</span>
+                      <span className="tm-tx-label">Transaction</span>
                       <button
                         className={`tm-copy-btn ${copiedTrade ? 'copied' : ''}`}
-                        onClick={handleCopyTrade}
+                        onClick={async () => {
+                          if (calibrationSignature && await navigator.clipboard.writeText(calibrationSignature)) {
+                            setCopiedTrade(true);
+                            setTimeout(() => setCopiedTrade(false), 2000);
+                          }
+                        }}
                         title="Copy signature"
                       >
                         {copiedTrade ? (
@@ -620,7 +630,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                       </button>
                     </div>
                     <div className="tm-explorer-links">
-                      {getExplorerLinks(tradeSignature).map((link) => (
+                      {getExplorerLinks(calibrationSignature).map((link) => (
                         <a
                           key={link.name}
                           href={link.url}
@@ -651,9 +661,9 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                   </div>
                 )}
 
-                {(step === 'success' || step === 'error') && (
-                  <button className="tm-action done" onClick={step === 'success' ? handleTradeComplete : handleClose}>
-                    {step === 'success' ? 'Done' : 'Close'}
+                {(calibrationStep === 'success' || calibrationStep === 'error') && (
+                  <button className="tm-action done" onClick={calibrationStep === 'success' ? handleTradeComplete : handleClose}>
+                    {calibrationStep === 'success' ? 'Done' : 'Close'}
                   </button>
                 )}
               </div>

@@ -12,7 +12,8 @@ import calibrationIdl from '@/lib/calibration-idl.json';
  * Program ID: GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ (devnet)
  */
 
-const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+// Always use devnet for calibration - program is deployed on devnet
+const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
 const PROGRAM_ID = new PublicKey(calibrationIdl.address);
 
 /**
@@ -325,11 +326,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      // Check if forecaster is initialized
+      const program = getReadOnlyProgram();
+      let forecasterAccount;
+      try {
+        forecasterAccount = await (program.account as any).forecasterState.fetchNullable(
+          forecasterStatePda
+        );
+      } catch {
+        forecasterAccount = null;
+      }
+
+      const needsInit = !forecasterAccount;
+
       // Hash market ID
       const marketIdHash = hashMarketId(marketId);
 
-      // Use current timestamp as seed
-      const timestampSeed = new BN(Date.now());
+      // Use current timestamp (seconds) as seed
+      const timestampSeed = new BN(Math.floor(Date.now() / 1000));
 
       // Derive prediction PDA
       const [predictionPda] = derivePredictionPda(
@@ -338,64 +352,64 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         timestampSeed
       );
 
-      // Build record prediction transaction
+      // Build transaction with blockhash
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-
-      // Discriminator for record_prediction: [6, 250, 152, ...]
-      // From IDL: [6, 250, 152, 217, 79, 239, 152, 217]
-      const discriminator = Buffer.from([6, 250, 152, 217, 79, 239, 152, 217]);
-
-      // Encode arguments
-      // market_id: [u8; 32]
-      // timestamp_seed: i64
-      // predicted_probability: f32
-      // direction: enum (1 byte: 0 = yes, 1 = no)
-      // memo_tx_signature: [u8; 64] (can be zeros for now)
-      // category: u8
-
-      const argsBuffer = Buffer.alloc(32 + 8 + 4 + 1 + 64 + 1);
-      let offset = 0;
-
-      // market_id [32 bytes]
-      marketIdHash.copy(argsBuffer, offset);
-      offset += 32;
-
-      // timestamp_seed i64 (little-endian)
-      argsBuffer.writeBigInt64LE(BigInt(timestampSeed.toString()), offset);
-      offset += 8;
-
-      // predicted_probability f32 (little-endian)
-      argsBuffer.writeFloatLE(predictedProbability, offset);
-      offset += 4;
-
-      // direction enum (0 = yes, 1 = no)
-      argsBuffer.writeUInt8(direction.toLowerCase() === 'yes' ? 0 : 1, offset);
-      offset += 1;
-
-      // memo_tx_signature [64 bytes] - zeros for now
-      offset += 64;
-
-      // category u8
-      argsBuffer.writeUInt8(category || 0, offset);
-
-      const instructionData = Buffer.concat([discriminator, argsBuffer]);
 
       const transaction = new Transaction();
       transaction.recentBlockhash = blockhash;
       transaction.lastValidBlockHeight = lastValidBlockHeight;
       transaction.feePayer = authorityPubkey;
 
-      const keys = [
-        { pubkey: authorityPubkey, isSigner: true, isWritable: true },
-        { pubkey: forecasterStatePda, isSigner: false, isWritable: true },
-        { pubkey: predictionPda, isSigner: false, isWritable: true },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      ];
+      // If forecaster not initialized, add init instruction FIRST
+      if (needsInit) {
+        const initDiscriminator = Buffer.from([16, 22, 244, 53, 163, 61, 216, 211]);
+        transaction.add({
+          programId: PROGRAM_ID,
+          keys: [
+            { pubkey: authorityPubkey, isSigner: true, isWritable: true },
+            { pubkey: forecasterStatePda, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          ],
+          data: initDiscriminator,
+        });
+      }
 
+      // Build record prediction instruction
+      const recordDiscriminator = Buffer.from([6, 250, 152, 187, 248, 58, 42, 136]);
+
+      // Encode arguments: market_id[32] + timestamp_seed[8] + probability[8] + direction[1] + memo[64] + category[1]
+      const argsBuffer = Buffer.alloc(32 + 8 + 8 + 1 + 64 + 1);
+      let offset = 0;
+
+      marketIdHash.copy(argsBuffer, offset);
+      offset += 32;
+
+      argsBuffer.writeBigInt64LE(BigInt(timestampSeed.toString()), offset);
+      offset += 8;
+
+      argsBuffer.writeDoubleLE(predictedProbability, offset);
+      offset += 8;
+
+      argsBuffer.writeUInt8(direction.toLowerCase() === 'yes' ? 0 : 1, offset);
+      offset += 1;
+
+      // memo_tx_signature [64 bytes] - zeros
+      offset += 64;
+
+      argsBuffer.writeUInt8(category || 0, offset);
+
+      const recordInstructionData = Buffer.concat([recordDiscriminator, argsBuffer]);
+
+      // Add record instruction
       transaction.add({
         programId: PROGRAM_ID,
-        keys,
-        data: instructionData,
+        keys: [
+          { pubkey: authorityPubkey, isSigner: true, isWritable: true },
+          { pubkey: forecasterStatePda, isSigner: false, isWritable: true },
+          { pubkey: predictionPda, isSigner: false, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        data: recordInstructionData,
       });
 
       const serialized = transaction.serialize({
@@ -410,6 +424,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           forecasterPda: forecasterStatePda.toBase58(),
           predictionPda: predictionPda.toBase58(),
           timestampSeed: timestampSeed.toString(),
+          includesInit: needsInit, // Let frontend know if init was included
         },
       });
     }
