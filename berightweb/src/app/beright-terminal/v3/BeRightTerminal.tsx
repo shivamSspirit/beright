@@ -203,7 +203,7 @@ export default function BeRightTerminal() {
     content: string,
     agent?: ChatMessage['agent'],
     mood?: string
-  ) => {
+  ): Promise<string | null> => {
     // Ensure we have an active conversation
     let convId = activeConversationId;
     if (!convId && role === 'user') {
@@ -212,12 +212,22 @@ export default function BeRightTerminal() {
         convId = await createConversation();
       } catch (error) {
         console.error('[Terminal] Failed to create conversation:', error);
+        // Show error to user instead of silently failing
+        const errorMsg = error instanceof Error ? error.message : 'Failed to create conversation';
+        console.error('[Terminal] Unable to add message - conversation creation failed:', errorMsg);
+        return null; // Return null to indicate failure
       }
+    }
+
+    // Only add message if we have a valid conversation
+    if (!convId) {
+      console.error('[Terminal] Cannot add message - no active conversation');
+      return null;
     }
 
     // Add message to store
     addMessage({
-      conversation_id: convId || '',
+      conversation_id: convId,
       role: role === 'user' ? 'user' : 'agent',
       agent_type: agent as any,
       content,
@@ -345,8 +355,24 @@ export default function BeRightTerminal() {
   const processCommand = useCallback(async (cmd: string) => {
     setProcessing(true, 'Processing...');
 
+    // Ensure wallet is synced to store before processing
+    // This fixes a race condition where wallet might not be set yet
+    if (walletAddress) {
+      const storeWallet = useConversationStore.getState().walletAddress;
+      if (storeWallet !== walletAddress) {
+        setWallet(walletAddress);
+      }
+    }
+
     // Add user message to chat
-    await addChatMessage('user', cmd);
+    const msgId = await addChatMessage('user', cmd);
+
+    // If message failed to add (e.g., wallet not connected), show error
+    if (!msgId) {
+      addAgentLog('SYSTEM', 'Failed to send message - please ensure wallet is connected', 'error');
+      setProcessing(false);
+      return;
+    }
 
     const command = cmd.toLowerCase().trim();
 
@@ -489,7 +515,7 @@ export default function BeRightTerminal() {
     }
 
     setProcessing(false);
-  }, [gatewaySessionId, addAgentLog, addChatMessage, updateLastAgentMessage, solanaWallet, setProcessing, createConversation, setGatewaySessionId]);
+  }, [gatewaySessionId, addAgentLog, addChatMessage, updateLastAgentMessage, solanaWallet, setProcessing, createConversation, setGatewaySessionId, walletAddress, setWallet, activeConversationId]);
 
   // Check if agent response contains a transaction that needs signing
   const checkForPendingTransaction = useCallback((data: any): boolean => {
