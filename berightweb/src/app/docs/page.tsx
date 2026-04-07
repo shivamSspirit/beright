@@ -227,7 +227,7 @@ const ROADMAP = [
     items: [
       { label: 'AI Agent System (4 agents)', done: true },
       { label: '12 Intelligence Signals', done: true },
-      { label: '6-Platform Aggregation', done: true },
+      { label: 'Multiplatform Execution', done: true },
       { label: 'Arbitrage Detection', done: true },
       { label: 'Web Swipe Interface', done: true },
       { label: 'BeRight Terminal', done: true },
@@ -255,7 +255,6 @@ const ROADMAP = [
     items: [
       { label: 'Conviction Pools Launch', done: false },
       { label: 'Forecaster Staking', done: false },
-      { label: 'Sanctum INF Yield (6.4% APY)', done: false },
       { label: 'Cross-Platform Liquidity', done: false },
       { label: 'Auto-Execution Strategies', done: false },
     ],
@@ -367,7 +366,7 @@ export default function DocsPage() {
 
           <div className={styles.navSection}>
             <span className={styles.navLabel}>Future</span>
-            {NAV_SECTIONS.slice(6, 7).map(section => (
+            {NAV_SECTIONS.slice(6, 8).map(section => (
               <button
                 key={section.id}
                 className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ''}`}
@@ -423,9 +422,9 @@ export default function DocsPage() {
             <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
               <span className={styles.calloutLabel}>Stop Guessing. Start Proving.</span>
               <p className={styles.paragraph} style={{ margin: 0, fontSize: '17px' }}>
-                <strong>BeRight</strong> is the AI-powered intelligence and reputation layer for prediction markets.
-                We aggregate data from 6+ platforms, provide AI edge detection on every market, and build
-                verifiable on-chain forecaster track records. Forecasting skill is an asset class.
+                <strong>BeRight</strong> is the AI-powered intelligence and reputation layer for prediction markets—aggregating
+                data from 6+ platforms, providing AI edge detection on every market, and building verifiable on-chain
+                forecaster track records. BeRight is introducing forecasting skill as an asset class.
               </p>
             </div>
 
@@ -923,7 +922,7 @@ export default function DocsPage() {
 
             <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
               <span className={styles.calloutLabel}>Base URL</span>
-              <code style={{ color: '#00FFB2', fontSize: '16px' }}>https://api.beright.fun/api/v2</code>
+              <code style={{ color: '#00FFB2', fontSize: '16px' }}>https://beright-api-production-fddc.up.railway.app/api/v2</code>
             </div>
 
             <h2 className={styles.h2}><span className={styles.h2Accent} />Endpoints</h2>
@@ -1003,18 +1002,32 @@ export default function DocsPage() {
         {/* Page Navigation */}
         <nav className={styles.pageNav}>
           {prevSection ? (
-            <button className={`${styles.pageNavBtn} ${styles.pageNavPrev}`} onClick={() => handleNavClick(prevSection.id)}>
-              <span className={styles.navDirection}>← Previous</span>
-              <span className={styles.navPageTitle}>{prevSection.label}</span>
-            </button>
+            prevSection.isLink && prevSection.href ? (
+              <Link href={prevSection.href} className={`${styles.pageNavBtn} ${styles.pageNavPrev}`}>
+                <span className={styles.navDirection}>← Previous</span>
+                <span className={styles.navPageTitle}>{prevSection.label}</span>
+              </Link>
+            ) : (
+              <button className={`${styles.pageNavBtn} ${styles.pageNavPrev}`} onClick={() => handleNavClick(prevSection.id)}>
+                <span className={styles.navDirection}>← Previous</span>
+                <span className={styles.navPageTitle}>{prevSection.label}</span>
+              </button>
+            )
           ) : (
             <div />
           )}
           {nextSection ? (
-            <button className={`${styles.pageNavBtn} ${styles.pageNavNext}`} onClick={() => handleNavClick(nextSection.id)}>
-              <span className={styles.navDirection}>Next →</span>
-              <span className={styles.navPageTitle}>{nextSection.label}</span>
-            </button>
+            nextSection.isLink && nextSection.href ? (
+              <Link href={nextSection.href} className={`${styles.pageNavBtn} ${styles.pageNavNext}`}>
+                <span className={styles.navDirection}>Next →</span>
+                <span className={styles.navPageTitle}>{nextSection.label}</span>
+              </Link>
+            ) : (
+              <button className={`${styles.pageNavBtn} ${styles.pageNavNext}`} onClick={() => handleNavClick(nextSection.id)}>
+                <span className={styles.navDirection}>Next →</span>
+                <span className={styles.navPageTitle}>{nextSection.label}</span>
+              </button>
+            )
           ) : (
             <Link href="/docs/faq" className={`${styles.pageNavBtn} ${styles.pageNavNext}`}>
               <span className={styles.navDirection}>Next →</span>
