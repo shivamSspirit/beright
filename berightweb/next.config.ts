@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 // API URL: Use environment variable in production, localhost in development
+// Production: https://api.beright.fun (Railway) | Local: http://localhost:3001
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const nextConfig: NextConfig = {
