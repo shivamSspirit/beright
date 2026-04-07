@@ -206,7 +206,11 @@ export const useConversationStore = create<ConversationState>()(
       // Create new conversation
       createConversation: async (initialMessage) => {
         const { walletAddress, gatewaySessionId } = get();
-        if (!walletAddress) throw new Error('Wallet not connected');
+        if (!walletAddress) {
+          console.error('[ConversationStore] createConversation failed: wallet not connected');
+          throw new Error('Wallet not connected');
+        }
+        console.log('[ConversationStore] Creating new conversation for wallet:', walletAddress.slice(0, 8) + '...');
 
         const response = await apiFetch<{
           success: boolean;
@@ -224,10 +228,12 @@ export const useConversationStore = create<ConversationState>()(
         });
 
         if (!response.success) {
+          console.error('[ConversationStore] API returned failure for conversation creation');
           throw new Error('Failed to create conversation');
         }
 
         const conversation = response.data;
+        console.log('[ConversationStore] Conversation created successfully:', conversation.id);
 
         // Add to conversations list
         set((state) => ({
@@ -245,6 +251,7 @@ export const useConversationStore = create<ConversationState>()(
           },
         }));
 
+        console.log('[ConversationStore] Active conversation set:', conversation.id);
         return conversation.id;
       },
 
@@ -359,7 +366,19 @@ export const useConversationStore = create<ConversationState>()(
         };
 
         set((state) => {
-          if (!state.activeConversation) return state;
+          if (!state.activeConversation) {
+            console.warn('[ConversationStore] addMessage called but no activeConversation - message will not be added:', {
+              messageRole: message.role,
+              contentPreview: message.content.slice(0, 50),
+            });
+            return state;
+          }
+
+          console.log('[ConversationStore] Adding message to conversation:', {
+            conversationId: state.activeConversation.id,
+            messageId: id,
+            role: message.role,
+          });
 
           return {
             activeConversation: {
