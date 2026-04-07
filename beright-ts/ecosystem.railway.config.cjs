@@ -1,14 +1,11 @@
 /**
  * PM2 Ecosystem Configuration for Railway
  *
- * Optimized for Railway deployment with persistent volume at /data
+ * MEMORY-OPTIMIZED: Only runs essential API service
+ * Total memory: ~400MB (fits in Railway starter plan)
  *
- * Services:
- * - Next.js API (port 8080 - required by Railway)
- * - Telegram Bot
- * - Heartbeat Agent (30-min cognitive loop)
- * - Scanner (optional - market opportunity detection)
- * - AutoPredict (optional - continuous forecasting)
+ * To enable additional services, upgrade Railway plan or
+ * uncomment the services below.
  */
 
 const path = require('path');
@@ -21,10 +18,8 @@ const MEMORY_DIR = process.env.BERIGHT_MEMORY_DIR || '/data/memory';
 module.exports = {
   apps: [
     // ============================================
-    // CORE SERVICES (Always run)
+    // CORE API (Always run - required for web)
     // ============================================
-
-    // Main API Server (Next.js on port 8080 for Railway)
     {
       name: 'api',
       script: 'npm',
@@ -38,132 +33,64 @@ module.exports = {
       exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_memory_restart: '512M',
+      max_memory_restart: '400M',
       error_file: path.join(LOGS_DIR, 'api-error.log'),
       out_file: path.join(LOGS_DIR, 'api-out.log'),
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      // API is critical - restart fast
       restart_delay: 1000,
       max_restarts: 20,
     },
 
-    // Telegram Bot (long-running)
-    {
-      name: 'telegram',
-      script: 'npx',
-      args: 'ts-node --transpile-only skills/telegram.ts',
-      cwd: '/app',
-      env: {
-        NODE_ENV: 'production',
-        TS_NODE_TRANSPILE_ONLY: 'true',
-        MEMORY_DIR: MEMORY_DIR,
-      },
-      instances: 1,
-      exec_mode: 'fork',
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '256M',
-      error_file: path.join(LOGS_DIR, 'telegram-error.log'),
-      out_file: path.join(LOGS_DIR, 'telegram-out.log'),
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      restart_delay: 5000,
-      max_restarts: 10,
-    },
-
-    // Heartbeat Agent (cognitive loop every 30 min)
-    {
-      name: 'heartbeat',
-      script: 'npx',
-      args: 'ts-node --transpile-only skills/heartbeat.ts loop 1800',
-      cwd: '/app',
-      env: {
-        NODE_ENV: 'production',
-        TS_NODE_TRANSPILE_ONLY: 'true',
-        MEMORY_DIR: MEMORY_DIR,
-      },
-      instances: 1,
-      exec_mode: 'fork',
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '256M',
-      error_file: path.join(LOGS_DIR, 'heartbeat-error.log'),
-      out_file: path.join(LOGS_DIR, 'heartbeat-out.log'),
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      restart_delay: 10000,
-      max_restarts: 5,
-    },
-
     // ============================================
-    // OPTIONAL SERVICES (Enable as needed)
+    // OPTIONAL: Telegram Bot
+    // Uncomment if you have enough memory (adds ~200MB)
     // ============================================
-
-    // Autonomous Scanner (market opportunity detection)
-    // Uncomment to enable
     // {
-    //   name: 'scanner',
+    //   name: 'telegram',
     //   script: 'npx',
-    //   args: 'ts-node --transpile-only services/autonomousScanner.ts daemon',
+    //   args: 'ts-node --transpile-only skills/telegram.ts',
     //   cwd: '/app',
     //   env: {
     //     NODE_ENV: 'production',
     //     TS_NODE_TRANSPILE_ONLY: 'true',
+    //     MEMORY_DIR: MEMORY_DIR,
     //   },
     //   instances: 1,
     //   exec_mode: 'fork',
     //   autorestart: true,
     //   watch: false,
-    //   max_memory_restart: '256M',
-    //   error_file: path.join(LOGS_DIR, 'scanner-error.log'),
-    //   out_file: path.join(LOGS_DIR, 'scanner-out.log'),
+    //   max_memory_restart: '200M',
+    //   error_file: path.join(LOGS_DIR, 'telegram-error.log'),
+    //   out_file: path.join(LOGS_DIR, 'telegram-out.log'),
     //   log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    //   restart_delay: 30000,
-    //   max_restarts: 5,
+    //   restart_delay: 5000,
+    //   max_restarts: 10,
     // },
 
-    // AutoPredict Engine (continuous forecasting)
-    // Uncomment to enable
+    // ============================================
+    // OPTIONAL: Heartbeat Agent
+    // Uncomment if you have enough memory (adds ~200MB)
+    // ============================================
     // {
-    //   name: 'autopredict',
+    //   name: 'heartbeat',
     //   script: 'npx',
-    //   args: 'ts-node --transpile-only services/autoPredictionEngine.ts start',
+    //   args: 'ts-node --transpile-only skills/heartbeat.ts loop 1800',
     //   cwd: '/app',
     //   env: {
     //     NODE_ENV: 'production',
     //     TS_NODE_TRANSPILE_ONLY: 'true',
+    //     MEMORY_DIR: MEMORY_DIR,
     //   },
     //   instances: 1,
     //   exec_mode: 'fork',
     //   autorestart: true,
     //   watch: false,
-    //   max_memory_restart: '256M',
-    //   error_file: path.join(LOGS_DIR, 'autopredict-error.log'),
-    //   out_file: path.join(LOGS_DIR, 'autopredict-out.log'),
-    //   log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    //   restart_delay: 60000,
-    //   max_restarts: 3,
-    // },
-
-    // Autonomous Trader
-    // Uncomment to enable (requires SOLANA_PRIVATE_KEY)
-    // {
-    //   name: 'trader',
-    //   script: 'npx',
-    //   args: 'ts-node --transpile-only services/autonomousTrader.ts',
-    //   cwd: '/app',
-    //   env: {
-    //     NODE_ENV: 'production',
-    //     TS_NODE_TRANSPILE_ONLY: 'true',
-    //   },
-    //   instances: 1,
-    //   exec_mode: 'fork',
-    //   autorestart: true,
-    //   watch: false,
-    //   max_memory_restart: '384M',
-    //   error_file: path.join(LOGS_DIR, 'trader-error.log'),
-    //   out_file: path.join(LOGS_DIR, 'trader-out.log'),
+    //   max_memory_restart: '200M',
+    //   error_file: path.join(LOGS_DIR, 'heartbeat-error.log'),
+    //   out_file: path.join(LOGS_DIR, 'heartbeat-out.log'),
     //   log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     //   restart_delay: 10000,
-    //   max_restarts: 10,
+    //   max_restarts: 5,
     // },
   ],
 };
