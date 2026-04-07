@@ -100,7 +100,7 @@ const SOLUTIONS = [
   {
     iconKey: 'swipe',
     title: 'Swipe-to-Predict Interface',
-    description: 'Mobile-first UX that no competitor has. Swipe right for YES, left for NO. Validated via search: zero competitors have this.',
+    description: 'Mobile-first UX with AI fact-checking built in. Swipe right for YES, left for NO. Every card shows real-time AI edge detection.',
   },
   {
     iconKey: 'crossPlatform',
@@ -142,7 +142,7 @@ const PRODUCT_FEATURES = [
   {
     iconKey: 'pools',
     title: 'Conviction Pools (Capital Delegation)',
-    description: 'Elite forecasters create pools with custom fee structures. Capitalists delegate USDC, receive pool shares. 50/30/20 profit split (forecaster/delegators/platform). Idle capital earns 6.4% APY via Sanctum INF.',
+    description: 'Elite forecasters create pools with custom fee structures. Capitalists delegate USDC, receive pool shares. 50/30/20 profit split (forecaster/delegators/platform).',
   },
   {
     iconKey: 'dataFabric',
@@ -183,19 +183,14 @@ const REVENUE_STREAMS = [
     description: 'On every prediction trade through BeRight',
   },
   {
-    title: 'Subscriptions',
-    value: '$9.99-$49.99/mo',
-    description: 'Pro/Whale tiers with unlimited AI insights',
-  },
-  {
     title: 'Performance Fee',
     value: '20%',
     description: 'Platform share from Conviction Pools profits (50/30/20 split)',
   },
   {
-    title: 'Execution Fee',
-    value: '1%',
-    description: 'Jupiter referral integration',
+    title: 'Subscriptions',
+    value: '$19-$49/mo',
+    description: 'Pro/Alpha tiers with AI insights and features',
   },
 ];
 
@@ -937,7 +932,6 @@ export default function LitepaperPage() {
                   <tr><td>Blockchain</td><td>Solana, Anchor programs</td></tr>
                   <tr><td>Wallet</td><td>Privy (abstracted onboarding)</td></tr>
                   <tr><td>DEX</td><td>Jupiter (execution), Meteora (liquidity)</td></tr>
-                  <tr><td>Yield</td><td>Sanctum INF (idle capital)</td></tr>
                 </tbody>
               </table>
 
@@ -1039,7 +1033,7 @@ export default function LitepaperPage() {
                   {TIER_REQUIREMENTS.map((tier) => (
                     <tr key={tier.tier}>
                       <td style={{ color: tier.color, fontWeight: 600 }}>{tier.tier}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>\u2264 {tier.maxBrier}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>{tier.maxBrier}</td>
                       <td>{tier.minPredictions}+</td>
                       <td>{tier.minEffective}+</td>
                     </tr>
@@ -1070,17 +1064,14 @@ export default function LitepaperPage() {
                 <div className={styles.statCard}>
                   <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.forecaster}%</p>
                   <p className={styles.statLabel}>Forecaster</p>
-                  <p style={{ fontSize: '11px', color: 'rgba(148, 163, 184, 0.8)', marginTop: '4px' }}>Strong incentive</p>
                 </div>
                 <div className={styles.statCard}>
                   <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.delegator}%</p>
                   <p className={styles.statLabel}>Delegators</p>
-                  <p style={{ fontSize: '11px', color: 'rgba(148, 163, 184, 0.8)', marginTop: '4px' }}>Stays in pool</p>
                 </div>
                 <div className={styles.statCard}>
                   <p className={styles.statValue}>{POOL_CONSTANTS.revenueSplit.platform}%</p>
                   <p className={styles.statLabel}>Platform</p>
-                  <p style={{ fontSize: '11px', color: 'rgba(148, 163, 184, 0.8)', marginTop: '4px' }}>Treasury</p>
                 </div>
               </div>
 
@@ -1101,17 +1092,13 @@ export default function LitepaperPage() {
 
                 <strong>After +20% profit (2,000 USDC):</strong><br/>
                 • Forecaster gets: 50% × 2,000 = <span style={{color: '#10b981'}}>1,000 USDC</span> (direct payout)<br/>
-                • Delegators get: 30% × 2,000 = <span style={{color: '#10b981'}}>600 USDC</span> (stays in pool)<br/>
+                • Delegators get: 30% × 2,000 = <span style={{color: '#10b981'}}>600 USDC</span> (stays in pool for claim)<br/>
                 • Platform gets: 20% × 2,000 = 400 USDC<br/><br/>
 
                 <strong>New Exchange Rate:</strong><br/>
                 • Total capital: 10,600 USDC (10,000 + 600)<br/>
                 • Total shares: 10,000 (unchanged)<br/>
-                • <span style={{color: '#10b981', fontWeight: 600}}>exchange_rate = 1.06 (+6% for delegators)</span><br/><br/>
-
-                <strong>Delegator who deposited 1,000 USDC:</strong><br/>
-                • Owns 1,000 shares<br/>
-                • Value = 1,000 × 1.06 = <span style={{color: '#10b981', fontWeight: 600}}>1,060 USDC (+6% return)</span>
+                • <span style={{color: '#10b981', fontWeight: 600}}>exchange_rate = 1.06 (+6% for delegators)</span>
               </Callout>
 
               {/* Pool Tiers - Simplified to 4 key tiers */}
@@ -1170,10 +1157,6 @@ export default function LitepaperPage() {
                   <p className={styles.statLabel}>Lockup Period</p>
                 </div>
                 <div className={styles.statCard}>
-                  <p className={styles.statValue}>6.4% APY</p>
-                  <p className={styles.statLabel}>Idle Yield (Sanctum)</p>
-                </div>
-                <div className={styles.statCard}>
                   <p className={styles.statValue}>0.5%</p>
                   <p className={styles.statLabel}>Withdrawal Fee</p>
                 </div>
@@ -1215,22 +1198,17 @@ export default function LitepaperPage() {
                   <tr>
                     <td>Free</td>
                     <td>$0</td>
-                    <td>10 AI insights/day, basic portfolio</td>
+                    <td>Profile aggregation, 3 AI edge insights per market, 5 Terminal queries/day, unlimited manual trade execution</td>
                   </tr>
                   <tr>
                     <td>Pro</td>
-                    <td>$9.99/mo</td>
-                    <td>Unlimited insights, real-time alerts, arbitrage</td>
+                    <td>$19/mo</td>
+                    <td>10-20 arbitrage alerts, 50 Terminal queries/day, portfolio tracking, 20 AI fact-checks, unlimited trading</td>
                   </tr>
                   <tr>
-                    <td>Whale</td>
-                    <td>$49.99/mo</td>
-                    <td>API access, whale tracking, custom alerts</td>
-                  </tr>
-                  <tr>
-                    <td>Enterprise</td>
-                    <td>Custom</td>
-                    <td>Dedicated feeds, white-label, institutional</td>
+                    <td>Alpha</td>
+                    <td>$49/mo</td>
+                    <td>All AI agents, deep research, 100 Terminal queries/day, AI alerts, 30+ arbitrage detection, 50+ AI fact-checks, invest in Conviction Pools</td>
                   </tr>
                 </tbody>
               </table>
