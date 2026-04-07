@@ -128,7 +128,7 @@ function FeedbackButtons({ questionId }: { questionId: string }) {
 // ===========================================================================
 
 export default function FAQPage() {
-  const [openItems, setOpenItems] = useState<Set<string>>(new Set(['what-is-beright', 'scoring']));
+  const [openItems, setOpenItems] = useState<Set<string>>(new Set(['what-is-beright']));
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const faqListRef = useStagger<HTMLDivElement>({ stagger: 0.05 });
@@ -200,8 +200,8 @@ export default function FAQPage() {
     <PageWrapper showHeader={false} showFooter={false}>
       <FAQStructuredData />
 
-      {/* Category Filter */}
       <Section size="sm">
+        {/* Category Filter */}
         <div className={styles.categoryFilter}>
           <button
             className={`${styles.catBtn} ${activeCategory === 'all' ? styles.catBtnActive : ''}`}
@@ -219,10 +219,8 @@ export default function FAQPage() {
             </button>
           ))}
         </div>
-      </Section>
 
-      {/* FAQ List */}
-      <Section>
+        {/* FAQ List */}
         <div ref={faqListRef} className={styles.faqList}>
           {filteredItems.length === 0 ? (
             <div className={styles.noResults}>

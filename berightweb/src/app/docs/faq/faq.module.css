@@ -94,7 +94,7 @@
   scrollbar-width: none;
   justify-content: flex-start;
   max-width: 900px;
-  margin: 0 auto 40px;
+  margin: 0 auto 16px;
 }
 
 .categoryFilter::-webkit-scrollbar {

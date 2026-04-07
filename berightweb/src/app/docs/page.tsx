@@ -922,7 +922,7 @@ export default function DocsPage() {
 
             <div className={`${styles.contentBlock} ${styles.highlightBox}`}>
               <span className={styles.calloutLabel}>Base URL</span>
-              <code style={{ color: '#00FFB2', fontSize: '16px' }}>https://beright-api-production-fddc.up.railway.app/api/v2</code>
+              <code style={{ color: '#00FFB2', fontSize: '16px' }}>https://api.beright.fun/api/v2</code>
             </div>
 
             <h2 className={styles.h2}><span className={styles.h2Accent} />Endpoints</h2>

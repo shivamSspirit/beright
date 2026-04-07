@@ -989,54 +989,6 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
                                         </div>
                                     )}
 
-                                    {/* Research Links - Always visible */}
-                                    <div className="research-links-section">
-                                        <span className="research-label">Research Sources</span>
-                                        <div className="research-links-row">
-                                            {topCard.url && (
-                                                <a
-                                                    href={topCard.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="research-link primary"
-                                                >
-                                                    🎯 Trade on {topCard.platform}
-                                                </a>
-                                            )}
-                                            <a
-                                                href="https://polymarket.com/markets"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="research-link"
-                                            >
-                                                Polymarket
-                                            </a>
-                                            <a
-                                                href="https://kalshi.com/markets"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="research-link"
-                                            >
-                                                Kalshi
-                                            </a>
-                                            <a
-                                                href={`https://www.google.com/search?q=${encodeURIComponent(topCard.question.slice(0, 60))}+news`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="research-link"
-                                            >
-                                                📰 News
-                                            </a>
-                                            <a
-                                                href={`https://x.com/search?q=${encodeURIComponent(topCard.question.split(' ').slice(0, 4).join(' '))}&f=live`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="research-link"
-                                            >
-                                                𝕏 Live
-                                            </a>
-                                        </div>
-                                    </div>
                                 </div>
                             ) : (
                                 <div className="analysis-loading">
