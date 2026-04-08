@@ -8,6 +8,11 @@ const nextConfig = {
   // Disable source maps in production to reduce memory usage during build
   productionBrowserSourceMaps: false,
 
+  // Limit build workers to reduce memory usage (default uses all CPUs)
+  experimental: {
+    cpus: 2,
+  },
+
   // External packages for server components (moved from experimental in Next.js 16)
   serverExternalPackages: ['@solana/web3.js'],
 
