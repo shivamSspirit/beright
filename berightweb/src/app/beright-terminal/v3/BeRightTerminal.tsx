@@ -183,6 +183,15 @@ export default function BeRightTerminal() {
     }
   }, [walletAddress, conversationsLoaded]); // loadConversations/checkPendingJobs are stable
 
+  // Auto-load persisted active conversation on mount
+  // This fixes the issue where activeConversationId is in localStorage but activeConversation is null
+  useEffect(() => {
+    if (walletAddress && activeConversationId && !activeConversation && !isLoadingConversation) {
+      console.log('[Terminal] Auto-loading persisted conversation:', activeConversationId);
+      useConversationStore.getState().loadConversation(activeConversationId);
+    }
+  }, [walletAddress, activeConversationId, activeConversation, isLoadingConversation]);
+
   // Real-time subscription for live message updates
   // This enables multi-tab sync and instant message delivery
   const { isSubscribed: realtimeConnected } = useConversationRealtime({
@@ -204,23 +213,30 @@ export default function BeRightTerminal() {
     agent?: ChatMessage['agent'],
     mood?: string
   ): Promise<string | null> => {
-    // Ensure we have an active conversation
-    let convId = activeConversationId;
-    if (!convId && role === 'user') {
-      // Create a new conversation on first user message
+    // Get current state to check activeConversation (not just ID)
+    const currentState = useConversationStore.getState();
+    const hasActiveConversation = currentState.activeConversation !== null;
+
+    // For user messages: if no active conversation object loaded, create a new one
+    if (role === 'user' && !hasActiveConversation) {
       try {
-        convId = await createConversation();
+        // Pass the initial message to createConversation - it will add the message to state
+        const convId = await createConversation(content);
+        console.log('[Terminal] Created conversation with initial message:', convId);
+        // Message is already added by createConversation, just return success
+        const id = `msg-${Date.now()}`;
+        return id;
       } catch (error) {
         console.error('[Terminal] Failed to create conversation:', error);
-        // Show error to user instead of silently failing
         const errorMsg = error instanceof Error ? error.message : 'Failed to create conversation';
         console.error('[Terminal] Unable to add message - conversation creation failed:', errorMsg);
-        return null; // Return null to indicate failure
+        return null;
       }
     }
 
-    // Only add message if we have a valid conversation
-    if (!convId) {
+    // For agent messages or when conversation exists: add message to store
+    const convId = currentState.activeConversationId;
+    if (!convId || !hasActiveConversation) {
       console.error('[Terminal] Cannot add message - no active conversation');
       return null;
     }
@@ -239,7 +255,7 @@ export default function BeRightTerminal() {
       lastAgentMessageIdRef.current = id;
     }
     return id;
-  }, [activeConversationId, createConversation, addMessage]);
+  }, [createConversation, addMessage]);
 
   // Update the last agent message (for async progress updates)
   // This uses local state for progress since store updates would be too heavy
