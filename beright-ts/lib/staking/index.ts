@@ -22,7 +22,9 @@ export const STAKING_POOL_CONFIG = {
   },
 };
 
+// Use namespace exports to avoid conflicting names between dlmm and drift
+// Both modules export DEFAULT_MAX_POSITIONS and PRICE_SCALE with different values
 export * from "./meteora-cpi";
-export * from "./dlmm";
-export * from "./drift";
+export * as dlmm from "./dlmm";
+export * as drift from "./drift";
 export * from "./forecast-pool";
