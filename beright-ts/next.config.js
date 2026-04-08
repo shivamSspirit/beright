@@ -5,21 +5,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Skip ESLint during build (run separately in CI)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
   // Disable source maps in production to reduce memory usage during build
   productionBrowserSourceMaps: false,
 
   // External packages for server components (moved from experimental in Next.js 16)
   serverExternalPackages: ['@solana/web3.js'],
-
-  // Turbopack config with root set for monorepo
-  turbopack: {
-    root: require('path').resolve(__dirname, '..'),
-  },
 
   // Configure webpack for Node.js modules used in skills
   webpack: (config, { isServer }) => {
