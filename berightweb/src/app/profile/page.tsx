@@ -811,7 +811,7 @@ export default function ProfilePage() {
   const activities: ActivityItem[] = useMemo(() => {
     // Prefer on-chain history when available
     if (onChainPredictions && onChainPredictions.length > 0) {
-      return onChainPredictions.slice(0, 10).map((p) => {
+      const items = onChainPredictions.slice(0, 25).map((p) => {
         const committedAtMs = (p.committedAt ?? 0) * 1000;
         const timeAgo = committedAtMs ? getTimeAgo(new Date(committedAtMs)) : '--';
 
@@ -819,8 +819,12 @@ export default function ProfilePage() {
           ? `Market ${p.marketIdHex.slice(0, 8)}...`
           : 'Market';
 
-        // Try to enrich the label from locally saved predictions (if present)
+        // Try to enrich the label AND attach a real transaction signature from locally saved predictions.
+        // If we cannot find a tx signature (devnet explorer history), we omit this activity item.
         let highlight = marketLabel;
+        let txSignature: string | undefined;
+        let explorerUrl: string | undefined;
+
         if (localPredictions && typeof p.marketIdHex === 'string') {
           const localMatch = localPredictions.find((lp) => {
             const marketBytes = new TextEncoder().encode(lp.marketId || '');
@@ -829,25 +833,31 @@ export default function ProfilePage() {
             const hex = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
             return hex === p.marketIdHex;
           });
+
           if (localMatch?.question) {
             highlight = localMatch.question.length > 40 ? `${localMatch.question.slice(0, 40)}...` : localMatch.question;
           }
+
+          if (localMatch?.onChainTx) {
+            txSignature = localMatch.onChainTx;
+            explorerUrl = localMatch.explorerUrl || `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`;
+          }
+        }
+
+        if (!txSignature) {
+          return null;
         }
 
         const direction = p.direction === 'yes' ? 'YES' : 'NO';
-        const explorerUrl = p.predictionPda
-          ? `https://explorer.solana.com/address/${p.predictionPda}?cluster=devnet`
-          : undefined;
-
         return {
           text: `Predicted ${direction} on`,
           highlight,
           time: timeAgo,
           type: direction === 'YES' ? 'amber' : 'indigo',
-          onChainTx: undefined,
+          onChainTx: txSignature,
           explorerUrl,
           predictionData: {
-            id: p.predictionPda || '',
+            id: txSignature,
             marketId: typeof p.marketIdHex === 'string' ? p.marketIdHex : '',
             probability: typeof p.predictedProbability === 'number' ? p.predictedProbability : 0,
             direction,
@@ -855,10 +865,12 @@ export default function ProfilePage() {
             resolvedAt: p.resolvedAt ? new Date(p.resolvedAt * 1000).toISOString() : undefined,
             outcome: p.outcome ?? undefined,
             brierScore: p.brierScore ?? undefined,
-            onChainTx: undefined,
+            onChainTx: txSignature,
           },
         } as ActivityItem;
       });
+
+      return items.filter(Boolean).slice(0, 10) as ActivityItem[];
     }
 
     // Fallback: local predictions with tx (demo / older flows)
