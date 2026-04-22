@@ -27,7 +27,7 @@ export const CALIBRATION_PROGRAM_ID = new PublicKey(
 );
 
 /** PDA seeds */
-export const FORECASTER_SEED = Buffer.from('forecaster');
+export const FORECASTER_SEED = Buffer.from('forecaster_v2');
 export const PREDICTION_SEED = Buffer.from('prediction');
 
 // Instruction discriminators (from IDL)

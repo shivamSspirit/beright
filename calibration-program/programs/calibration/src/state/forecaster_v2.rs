@@ -11,7 +11,7 @@ use anchor_lang::prelude::*;
 ///
 /// **BACKWARD COMPATIBILITY**: All V1 fields preserved in exact same order
 ///
-/// PDA: [b"forecaster", forecaster_pubkey]
+/// PDA: [b"forecaster_v2", forecaster_pubkey]
 #[account]
 pub struct ForecasterState {
     // ========================================================================

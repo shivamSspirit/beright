@@ -203,26 +203,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Build a single transaction that can initialize + record in one signature.
         // This matches the frontend expectation and eliminates the "NOT_INITIALIZED" UX.
         let includesInit = false;
-        let includesMigrate = false;
-
-        // If the forecaster exists but is still a legacy (V1) sized account, the V2 program will
-        // fail to deserialize it for `record_prediction`. We auto-migrate (realloc) in the same tx.
-        const FORECASTER_V2_ACCOUNT_LEN_BYTES = 559;
-        const autoMigrate = body.autoMigrate !== false;
-
-        // We fetch accountInfo when we need to decide init/migrate.
-        // (skipInitCheck can be used by power-users, but we still migrate by default to avoid breakage)
         let forecasterAccountInfo: Awaited<ReturnType<typeof connection.getAccountInfo>> | null = null;
-        if (!body.skipInitCheck || autoMigrate) {
-          forecasterAccountInfo = await connection.getAccountInfo(forecasterPda, { commitment: 'confirmed' });
-        }
-
         if (!body.skipInitCheck) {
+          forecasterAccountInfo = await connection.getAccountInfo(forecasterPda, { commitment: 'confirmed' });
           includesInit = !forecasterAccountInfo;
-        }
-
-        if (autoMigrate && forecasterAccountInfo && forecasterAccountInfo.data.length < FORECASTER_V2_ACCOUNT_LEN_BYTES) {
-          includesMigrate = true;
         }
 
         const marketIdHash = Buffer.alloc(32);
@@ -248,20 +232,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             data: initDiscriminator,
           });
           instructions.push(initInstruction);
-        } else if (includesMigrate) {
-          // Build migrate_forecaster_to_v2 instruction
-          // Discriminator = sha256("global:migrate_forecaster_to_v2")[..8]
-          const migrateDiscriminator = Buffer.from([33, 239, 213, 106, 59, 15, 48, 85]);
-          const migrateInstruction = new TransactionInstruction({
-            programId: CALIBRATION_PROGRAM_ID,
-            keys: [
-              { pubkey: authority, isSigner: true, isWritable: true },
-              { pubkey: forecasterPda, isSigner: false, isWritable: true },
-              { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-            ],
-            data: migrateDiscriminator,
-          });
-          instructions.push(migrateInstruction);
         }
 
         // Build record prediction instruction
@@ -305,7 +275,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             predictionBump: predBump,
             timestampSeed: timestampSeed.toString(),
             includesInit,
-            includesMigrate,
             forecasterAccountBytes: forecasterAccountInfo?.data.length ?? null,
             blockhash,
             lastValidBlockHeight,

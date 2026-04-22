@@ -14,7 +14,7 @@ pub struct InitializeForecaster<'info> {
         init,
         payer = authority,
         space = ForecasterState::LEN,
-        seeds = [b"forecaster", authority.key().as_ref()],
+        seeds = [b"forecaster_v2", authority.key().as_ref()],
         bump
     )]
     pub forecaster_state: Account<'info, ForecasterState>,

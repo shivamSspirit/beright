@@ -21,7 +21,7 @@ export function deriveForecasterPda(
   programId: PublicKey = CALIBRATION_PROGRAM_ID
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('forecaster'), forecasterPubkey.toBuffer()],
+    [Buffer.from('forecaster_v2'), forecasterPubkey.toBuffer()],
     programId
   );
 }

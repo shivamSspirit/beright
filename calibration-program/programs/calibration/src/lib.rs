@@ -19,34 +19,13 @@ pub mod calibration {
 
     /// Initialize a forecaster's calibration tracking state
     ///
-    /// Creates a PDA at [b"forecaster", authority.key()]
+    /// Creates a PDA at [b"forecaster_v2", authority.key()]
     /// to store aggregated calibration statistics.
     ///
     /// # Arguments
     /// * `ctx` - InitializeForecaster accounts context
     pub fn initialize_forecaster(ctx: Context<InitializeForecaster>) -> Result<()> {
         instructions::initialize_forecaster::handler(ctx)
-    }
-
-    /// Migrate an existing V1 forecaster account to V2 schema
-    ///
-    /// **CRITICAL**: This reallocates the account from 230 bytes to 589 bytes.
-    /// All V1 data is preserved. V2 fields are initialized to safe defaults.
-    ///
-    /// **Requirements**:
-    /// - Account must be version 1 (will fail if already V2)
-    /// - Authority must sign (only forecaster can migrate their own account)
-    /// - Payer must have ~0.0015 SOL for rent difference
-    ///
-    /// **After migration**:
-    /// - version field updated to 2
-    /// - V2 scores initialized to 0/None
-    /// - Off-chain service should recalculate from historical cross-platform data
-    ///
-    /// # Arguments
-    /// * `ctx` - MigrateForecasterToV2 accounts context
-    pub fn migrate_forecaster_to_v2(ctx: Context<MigrateForecasterToV2>) -> Result<()> {
-        instructions::migrate_forecaster_to_v2::handler(ctx)
     }
 
     /// Record a new prediction

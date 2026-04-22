@@ -21,7 +21,7 @@ const PROGRAM_ID = new PublicKey(calibrationIdl.address);
  */
 function deriveForecasterPda(forecasterPubkey: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('forecaster'), forecasterPubkey.toBuffer()],
+    [Buffer.from('forecaster_v2'), forecasterPubkey.toBuffer()],
     PROGRAM_ID
   );
 }

@@ -13,7 +13,7 @@ pub struct ResolvePrediction<'info> {
     /// Forecaster state account (PDA)
     #[account(
         mut,
-        seeds = [b"forecaster", authority.key().as_ref()],
+        seeds = [b"forecaster_v2", authority.key().as_ref()],
         bump = forecaster_state.bump,
         constraint = forecaster_state.authority == authority.key() @ CalibrationError::Unauthorized
     )]

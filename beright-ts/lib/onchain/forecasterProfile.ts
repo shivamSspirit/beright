@@ -24,7 +24,7 @@ import BN from 'bn.js';
 // =============================================================================
 
 export const PROGRAM_ID = new PublicKey('GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ');
-export const FORECASTER_SEED = 'forecaster';
+export const FORECASTER_SEED = 'forecaster_v2';
 export const FORECASTER_PROFILE_SIZE = 168; // bytes
 
 // Tier enum values for on-chain storage
