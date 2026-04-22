@@ -22,6 +22,8 @@ import ReferralCard from '@/components/ReferralCard';
 import ShareButton from '@/components/ShareButton';
 import { useOnboarding } from '@/components/Onboarding';
 import { useMode } from '@/context/ModeContext';
+import BrandLogo from '@/components/BrandLogo';
+import terminalStyles from '../beright-terminal/beright.module.css';
 
 // ═══════════════════════════════════════════════════════════════
 // PROFILE PAGE - Industrial Metallic Design
@@ -842,23 +844,17 @@ export default function ProfilePage() {
   if (!isAuthenticated) {
     return (
       <PageWrapper showHeader={false} showFooter={false}>
-        <div className={styles.page}>
-          <div className={styles.ambientLight} />
-          <div className={styles.layoutGrid}>
-            <div className={styles.fullWidth}>
-              <Plate>
-                <Inset className={styles.connectState}>
-                  <h2 className={styles.connectTitle}>Connect Your Wallet</h2>
-                  <p className={styles.connectDesc}>
-                    Connect your wallet to view your profile, stats, and achievements.
-                  </p>
-                  <button className={styles.connectBtn} onClick={login}>
-                    Connect Wallet
-                  </button>
-                </Inset>
-              </Plate>
-            </div>
+        <div className={terminalStyles.connectScreen}>
+          <div className={terminalStyles.connectLogo}>
+            <BrandLogo size={48} />
+            <span className={terminalStyles.connectLogoText}>beright AI</span>
           </div>
+          <div className={terminalStyles.connectText}>
+            Connect your wallet to view your profile, stats, and achievements.
+          </div>
+          <button className={terminalStyles.connectButton} onClick={login}>
+            Connect Wallet
+          </button>
         </div>
       </PageWrapper>
     );
