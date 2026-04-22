@@ -14,9 +14,11 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .terminalPage {
-  /* Height calculation: 100dvh - BottomNav height (80px) - safe area */
-  height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
-  max-height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
+  /* BottomNav is fixed; reserve space so the last row (CLI input) never sits under it */
+  height: 100dvh;
+  max-height: 100dvh;
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  box-sizing: border-box;
   background: var(--terminal-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
@@ -608,8 +610,7 @@
 
 @media (max-width: 1023px) {
   .cliWrapper {
-    /* BottomNav is fixed; reserve space so the CLI input never sits under it */
-    padding: 14px 16px calc(14px + var(--bottom-nav-height) + var(--safe-area-bottom));
+    padding: 14px 16px;
   }
 }
 
@@ -866,7 +867,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
+  height: 100dvh;
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  box-sizing: border-box;
   background: var(--terminal-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
