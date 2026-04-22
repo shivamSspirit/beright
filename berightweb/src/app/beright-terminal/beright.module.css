@@ -608,7 +608,8 @@
 
 @media (max-width: 1023px) {
   .cliWrapper {
-    padding: 14px 16px;
+    /* BottomNav is fixed; reserve space so the CLI input never sits under it */
+    padding: 14px 16px calc(14px + var(--bottom-nav-height) + var(--safe-area-bottom));
   }
 }
 
