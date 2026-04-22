@@ -896,21 +896,19 @@
 
 .connectButton {
   padding: 14px 32px;
-  background: linear-gradient(135deg, var(--terminal-cta) 0%, var(--terminal-primary) 100%);
+  background: var(--color-primary);
   border: none;
-  border-radius: 8px;
-  color: #fff;
+  border-radius: 12px;
+  color: #000;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   cursor: pointer;
-  font-family: var(--terminal-font-ui);
-  transition: all 0.2s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  font-family: var(--font-sans);
+  transition: opacity 0.2s;
 }
 
 .connectButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  opacity: 0.9;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
