@@ -7,12 +7,24 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { conversations } from '@/lib/supabase/conversations';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
+  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Supabase not configured',
+        requiredEnv: ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await context.params;
 
@@ -39,6 +51,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Supabase not configured',
+        requiredEnv: ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await context.params;
     const body = await request.json();
@@ -76,6 +99,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Supabase not configured',
+        requiredEnv: ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await context.params;
 

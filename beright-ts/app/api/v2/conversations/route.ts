@@ -7,8 +7,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { conversations, messages } from '@/lib/supabase/conversations';
 import type { NewConversation, NewMessage } from '@/lib/supabase/types';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 export async function GET(request: NextRequest) {
+  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Supabase not configured',
+        requiredEnv: ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get('wallet');
@@ -59,6 +71,17 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Supabase not configured',
+        requiredEnv: ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { wallet_address, title, gateway_session_id, tags, initial_message } = body;

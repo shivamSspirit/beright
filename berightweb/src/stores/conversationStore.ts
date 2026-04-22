@@ -196,10 +196,22 @@ export const useConversationStore = create<ConversationState>()(
             set({
               conversations: response.data,
               conversationsLoaded: true,
+              loadingError: null,
+            });
+          } else {
+            set({
+              conversations: [],
+              conversationsLoaded: true,
+              loadingError: (response as any).error || 'Failed to fetch conversations',
             });
           }
         } catch (error) {
           console.error('[ConversationStore] Failed to load conversations:', error);
+          set({
+            conversations: [],
+            conversationsLoaded: true,
+            loadingError: error instanceof Error ? error.message : 'Failed to fetch conversations',
+          });
         }
       },
 
