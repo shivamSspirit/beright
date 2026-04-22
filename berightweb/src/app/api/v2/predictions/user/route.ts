@@ -48,15 +48,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .slice(0, limit)
       .map((pred: any) => ({
         id: pred.pda,
-        marketId: pred.marketId,
-        direction: pred.direction,
+        marketId: pred.marketIdText ?? pred.marketId,
+        direction: (pred.direction === 'yes' || pred.direction === 'no')
+          ? (pred.direction === 'yes' ? 'YES' : 'NO')
+          : (pred.direction as 'YES' | 'NO'),
         probability: pred.predictedProbability,
-        createdAt: pred.committedAt,
-        resolvedAt: pred.resolvedAt,
+        createdAt: typeof pred.committedAt === 'number'
+          ? new Date(pred.committedAt * 1000).toISOString()
+          : pred.committedAt,
+        resolvedAt: typeof pred.resolvedAt === 'number'
+          ? new Date(pred.resolvedAt * 1000).toISOString()
+          : pred.resolvedAt,
         outcome: pred.outcome,
         brierScore: pred.brierScore,
-        onChainTx: pred.pda, // Use PDA as reference
-        explorerUrl: `https://solscan.io/account/${pred.pda}?cluster=devnet`,
+        onChainTx: pred.txSignature || null,
+        explorerUrl: pred.explorerUrl || (pred.txSignature ? `https://explorer.solana.com/tx/${pred.txSignature}?cluster=devnet` : null),
       }));
 
     // Transform stats

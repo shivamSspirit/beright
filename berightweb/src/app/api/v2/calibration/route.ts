@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { BN, Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
 import calibrationIdl from '@/lib/calibration-idl.json';
+import bs58 from 'bs58';
 
 /**
  * Calibration Program API
@@ -15,6 +16,8 @@ import calibrationIdl from '@/lib/calibration-idl.json';
 // Always use devnet for calibration - program is deployed on devnet
 const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
 const PROGRAM_ID = new PublicKey(calibrationIdl.address);
+
+export const dynamic = 'force-dynamic';
 
 /**
  * Derive forecaster state PDA
@@ -58,6 +61,19 @@ function hashMarketId(marketId: string): Buffer {
   return hash;
 }
 
+function decodeMemoTxSignature(memoTxSignature: number[] | Uint8Array | Buffer | null | undefined): string | null {
+  if (!memoTxSignature) return null;
+  const buf = Buffer.from(memoTxSignature as any);
+  if (buf.length !== 64) return null;
+  // Treat an all-zero signature as "not present"
+  let allZero = true;
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] !== 0) { allZero = false; break; }
+  }
+  if (allZero) return null;
+  return bs58.encode(buf);
+}
+
 /**
  * Get read-only Anchor program instance
  */
@@ -87,6 +103,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const wallet = searchParams.get('wallet');
+    const limitParam = searchParams.get('limit');
+    const limit = Math.max(1, Math.min(50, Number.parseInt(limitParam || '50', 10) || 50));
 
     if (!wallet) {
       return NextResponse.json(
@@ -120,13 +138,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!forecasterAccount) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          isInitialized: false,
-          forecasterPda: forecasterStatePda.toBase58(),
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            isInitialized: false,
+            forecasterPda: forecasterStatePda.toBase58(),
+            totalPredictions: 0,
+            predictions: [],
+          },
         },
-      });
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     // Fetch predictions for this forecaster
@@ -144,26 +167,36 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       predictions = accounts.map(({ publicKey, account }: { publicKey: PublicKey; account: any }) => {
         const marketIdBytes = Buffer.from(account.marketId as number[]);
         const marketIdStr = marketIdBytes.toString('utf-8').replace(/\0+$/, '');
+        const committedAtSec = (account.committedAt as BN).toNumber();
+        const resolvedAtSec = account.resolvedAt ? (account.resolvedAt as BN).toNumber() : null;
+
+        const txSignature = decodeMemoTxSignature(account.memoTxSignature as number[]);
 
         return {
           pda: publicKey.toBase58(),
           forecaster: (account.forecaster as PublicKey).toBase58(),
           marketId: marketIdStr,
+          marketIdText: marketIdStr,
+          marketIdHex: marketIdBytes.toString('hex'),
           predictedProbability: account.predictedProbability as number,
-          direction: (account.direction as any).yes ? 'YES' : 'NO',
-          committedAt: new Date((account.committedAt as BN).toNumber() * 1000).toISOString(),
-          resolvedAt: account.resolvedAt
-            ? new Date((account.resolvedAt as BN).toNumber() * 1000).toISOString()
-            : null,
+          direction: (account.direction as any).yes ? 'yes' : 'no',
+          directionLabel: (account.direction as any).yes ? 'YES' : 'NO',
+          committedAt: committedAtSec,
+          committedAtISO: new Date(committedAtSec * 1000).toISOString(),
+          resolvedAt: resolvedAtSec,
+          resolvedAtISO: resolvedAtSec ? new Date(resolvedAtSec * 1000).toISOString() : null,
           outcome: (account.outcome as boolean | null) ?? null,
           brierScore: (account.brierScore as number | null) ?? null,
           category: account.category as number,
+          version: account.version as number,
+          txSignature,
+          explorerUrl: txSignature ? `https://explorer.solana.com/tx/${txSignature}?cluster=devnet` : null,
         };
       });
 
       // Sort by committedAt descending
       predictions.sort((a, b) =>
-        new Date(b.committedAt).getTime() - new Date(a.committedAt).getTime()
+        (b.committedAt as number) - (a.committedAt as number)
       );
     } catch (err) {
       console.error('[Calibration API] Error fetching predictions:', err);
@@ -184,6 +217,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         isInitialized: true,
         forecasterPda: forecasterStatePda.toBase58(),
         authority: (forecasterAccount.authority as PublicKey).toBase58(),
+        totalPredictions: forecasterAccount.totalPredictions as number,
         stats: {
           totalPredictions: forecasterAccount.totalPredictions as number,
           resolvedPredictions: forecasterAccount.resolvedPredictions as number,
@@ -215,9 +249,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               : null,
         },
         version: forecasterAccount.version as number,
-        predictions: predictions.slice(0, 50), // Return latest 50 predictions
+        predictions: predictions.slice(0, limit),
       },
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[Calibration API] GET error:', error);
     return NextResponse.json(
