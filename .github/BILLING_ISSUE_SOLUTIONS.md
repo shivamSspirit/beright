@@ -96,7 +96,7 @@ This will open a browser window for authentication.
 cd /Users/shivamsoni/Desktop/beright/beright-ts
 
 # Deploy to Railway
-railway up --service b3c25a10-9c9b-44e3-bdc3-badad053302d
+railway up --service <YOUR_RAILWAY_SERVICE_ID>
 
 # Or use the service name
 railway up
@@ -118,7 +118,7 @@ railway status
 railway logs
 
 # Test health endpoint
-curl https://beright-api-production.up.railway.app/api/health
+curl $RAILWAY_APP_URL/api/health
 ```
 
 ---
@@ -129,7 +129,7 @@ Railway has built-in GitHub integration that doesn't use GitHub Actions minutes:
 
 ### Step 1: Connect Repository to Railway
 
-1. Go to: [Railway Dashboard](https://railway.com/project/5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4)
+1. Go to: [Railway Dashboard](https://railway.com/project/135d365f-e8bf-469c-a022-9a3a944c38ea)
 2. Click on your **beright-api** service
 3. Go to **"Settings"** tab
 4. Scroll to **"Service Source"**
@@ -188,7 +188,7 @@ Use **Railway CLI** to deploy right now:
 ```bash
 cd /Users/shivamsoni/Desktop/beright/beright-ts
 railway login
-railway up --service b3c25a10-9c9b-44e3-bdc3-badad053302d
+railway up --service <YOUR_RAILWAY_SERVICE_ID>
 ```
 
 ### Long Term (Best Solution)
@@ -225,7 +225,7 @@ echo "🚀 Deploying beright-ts to Railway..."
 cd /Users/shivamsoni/Desktop/beright/beright-ts
 
 # Deploy to Railway
-railway up --service b3c25a10-9c9b-44e3-bdc3-badad053302d
+railway up --service <YOUR_RAILWAY_SERVICE_ID>
 
 echo "✅ Deployment complete!"
 echo "🔍 Checking health..."
@@ -234,7 +234,7 @@ echo "🔍 Checking health..."
 sleep 30
 
 # Test health endpoint
-curl https://beright-api-production.up.railway.app/api/health
+curl $RAILWAY_APP_URL/api/health
 
 echo ""
 echo "✅ Deployment verified!"
@@ -272,7 +272,7 @@ cd /Users/shivamsoni/Desktop/beright/beright-ts
 
 ```bash
 # Link to your project
-railway link 5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4
+railway link 135d365f-e8bf-469c-a022-9a3a944c38ea
 
 # Or let Railway detect it
 railway link
@@ -282,7 +282,7 @@ railway link
 
 ```bash
 # Deploy to your service
-railway up --service b3c25a10-9c9b-44e3-bdc3-badad053302d
+railway up --service <YOUR_RAILWAY_SERVICE_ID>
 
 # Or if already linked
 railway up
@@ -298,7 +298,7 @@ railway status
 railway logs -f
 
 # Test API
-curl https://beright-api-production.up.railway.app/api/health
+curl $RAILWAY_APP_URL/api/health
 ```
 
 ---

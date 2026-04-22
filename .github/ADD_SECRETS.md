@@ -12,28 +12,28 @@
 1. Scroll down to **"Environment secrets"**
 2. Click **"Add secret"**
 3. Name: `RAILWAY_TOKEN`
-4. Value: `094009c0-10f4-4a52-833d-1497f39f7431`
+4. Value: `<YOUR_RAILWAY_TOKEN>`
 5. Click **"Add secret"**
 
 ## Step 3: Add RAILWAY_PROJECT_ID
 
 1. Click **"Add secret"** again
 2. Name: `RAILWAY_PROJECT_ID`
-3. Value: `5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4`
+3. Value: `135d365f-e8bf-469c-a022-9a3a944c38ea`
 4. Click **"Add secret"**
 
 ## Step 4: Add RAILWAY_SERVICE_ID
 
 1. Click **"Add secret"** again
 2. Name: `RAILWAY_SERVICE_ID`
-3. Value: `b3c25a10-9c9b-44e3-bdc3-badad053302d`
+3. Value: `<YOUR_RAILWAY_SERVICE_ID>`
 4. Click **"Add secret"**
 
 ## Step 5: Add RAILWAY_APP_URL
 
 1. Click **"Add secret"** again
 2. Name: `RAILWAY_APP_URL`
-3. Value: `https://beright-api-production.up.railway.app`
+3. Value: `https://<your-app>.up.railway.app`
 4. Click **"Add secret"**
 
 ## Step 4: IMPORTANT - Regenerate Railway Token

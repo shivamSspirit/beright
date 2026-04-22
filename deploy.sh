@@ -8,6 +8,10 @@ echo "🚀 BeRight Railway Deployment"
 echo "================================"
 echo ""
 
+RAILWAY_PROJECT_ID="135d365f-e8bf-469c-a022-9a3a944c38ea"
+RAILWAY_SERVICE_ID="${RAILWAY_SERVICE_ID:-}"
+RAILWAY_APP_URL="${RAILWAY_APP_URL:-}"
+
 # Check if Railway CLI is installed
 if ! command -v railway &> /dev/null; then
     echo "❌ Railway CLI not found"
@@ -29,6 +33,18 @@ else
 fi
 echo ""
 
+# Ensure required config is present
+if [ -z "$RAILWAY_SERVICE_ID" ]; then
+    echo "❌ Missing Railway config: RAILWAY_SERVICE_ID"
+    echo ""
+    echo "Set it to your Railway service UUID, e.g.:"
+    echo "  export RAILWAY_SERVICE_ID=\"<your-service-id>\""
+    echo ""
+    echo "Optional (for health check output):"
+    echo "  export RAILWAY_APP_URL=\"https://<your-app>.up.railway.app\""
+    exit 1
+fi
+
 # Navigate to beright-ts
 echo "📁 Navigating to beright-ts..."
 cd "$(dirname "$0")/beright-ts"
@@ -37,16 +53,21 @@ echo ""
 
 # Show current Railway project info
 echo "📊 Railway Project Info:"
-echo "   Service ID: b3c25a10-9c9b-44e3-bdc3-badad053302d"
-echo "   App URL: https://beright-api-production.up.railway.app"
+echo "   Project ID: $RAILWAY_PROJECT_ID"
+echo "   Service ID: $RAILWAY_SERVICE_ID"
+if [ -n "$RAILWAY_APP_URL" ]; then
+    echo "   App URL: $RAILWAY_APP_URL"
+else
+    echo "   App URL: (not set)"
+fi
 echo ""
 
 # Deploy to Railway
 echo "🚀 Deploying to Railway..."
-echo "   Using service: b3c25a10-9c9b-44e3-bdc3-badad053302d"
+echo "   Using service: $RAILWAY_SERVICE_ID"
 echo ""
 
-railway up --service b3c25a10-9c9b-44e3-bdc3-badad053302d
+railway up --service "$RAILWAY_SERVICE_ID"
 
 echo ""
 echo "✅ Deployment initiated!"
@@ -59,39 +80,47 @@ sleep 30
 # Check health endpoint
 echo ""
 echo "🔍 Verifying deployment health..."
-echo "   Testing: https://beright-api-production.up.railway.app/api/health"
+if [ -n "$RAILWAY_APP_URL" ]; then
+    echo "   Testing: $RAILWAY_APP_URL/api/health"
+else
+    echo "   Skipping health check (RAILWAY_APP_URL not set)"
+fi
 echo ""
 
-if curl -f -s https://beright-api-production.up.railway.app/api/health > /dev/null 2>&1; then
+if [ -n "$RAILWAY_APP_URL" ] && curl -f -s "$RAILWAY_APP_URL/api/health" > /dev/null 2>&1; then
     echo "✅ Health check PASSED!"
     echo ""
     echo "📊 Health Status:"
-    curl -s https://beright-api-production.up.railway.app/api/health | jq '.' 2>/dev/null || curl -s https://beright-api-production.up.railway.app/api/health
+    curl -s "$RAILWAY_APP_URL/api/health" | jq '.' 2>/dev/null || curl -s "$RAILWAY_APP_URL/api/health"
     echo ""
     echo ""
     echo "🎉 Deployment SUCCESSFUL!"
     echo ""
     echo "📱 Your app is live at:"
-    echo "   https://beright-api-production.up.railway.app"
+    if [ -n "$RAILWAY_APP_URL" ]; then
+        echo "   $RAILWAY_APP_URL"
+    else
+        echo "   (set RAILWAY_APP_URL to print the live URL)"
+    fi
     echo ""
     echo "🔗 View logs:"
-    echo "   railway logs --service b3c25a10-9c9b-44e3-bdc3-badad053302d"
+    echo "   railway logs --service $RAILWAY_SERVICE_ID"
     echo ""
     echo "🎯 Railway Dashboard:"
-    echo "   https://railway.com/project/5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4"
+    echo "   https://railway.com/project/$RAILWAY_PROJECT_ID"
     echo ""
 else
-    echo "⚠️ Health check failed"
-    echo "   This is normal - deployment may still be in progress"
+    echo "⚠️ Health check failed (or skipped)"
+    echo "   Deployment may still be in progress"
     echo ""
     echo "🔍 Check deployment status:"
     echo "   railway status"
     echo ""
     echo "📋 View logs:"
-    echo "   railway logs --service b3c25a10-9c9b-44e3-bdc3-badad053302d"
+    echo "   railway logs --service $RAILWAY_SERVICE_ID"
     echo ""
     echo "🎯 Railway Dashboard:"
-    echo "   https://railway.com/project/5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4"
+    echo "   https://railway.com/project/$RAILWAY_PROJECT_ID"
     echo ""
 fi
 

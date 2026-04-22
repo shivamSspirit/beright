@@ -6,7 +6,7 @@ buildCommand = "export NODE_OPTIONS='--max-old-space-size=3072' && npm install &
 NODE_OPTIONS = "--max-old-space-size=3072"
 
 [deploy]
-startCommand = "npx pm2-runtime start ecosystem.railway.config.cjs"
+startCommand = "npx pm2-runtime start beright-ts/ecosystem.railway.config.cjs"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

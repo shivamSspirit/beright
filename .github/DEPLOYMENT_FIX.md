@@ -139,9 +139,9 @@ deploy:
 
 | Secret Name | Value | Purpose |
 |------------|-------|---------|
-| `RAILWAY_TOKEN` | `094009c0-10f4-4a52-833d-1497f39f7431` | Authentication token |
-| `RAILWAY_SERVICE_ID` | `b3c25a10-9c9b-44e3-bdc3-badad053302d` | Target service |
-| `RAILWAY_APP_URL` | `https://beright-api-production.up.railway.app` | Health check endpoint |
+| `RAILWAY_TOKEN` | `<YOUR_RAILWAY_TOKEN>` | Authentication token |
+| `RAILWAY_SERVICE_ID` | `<YOUR_RAILWAY_SERVICE_ID>` | Target service |
+| `RAILWAY_APP_URL` | `https://<your-app>.up.railway.app` | Health check endpoint |
 
 **Note:** `RAILWAY_PROJECT_ID` is no longer needed with this approach.
 
@@ -170,7 +170,7 @@ Watch: [GitHub Actions](https://github.com/shivamSspirit/beright/actions)
 Expected output:
 ```
 🚀 Deploying beright-ts to Railway...
-Service ID: b3c25a10-9c9b-44e3-bdc3-badad053302d
+Service ID: <YOUR_RAILWAY_SERVICE_ID>
 ✅ Deployment initiated successfully
 🔍 Checking health endpoint...
 ✅ Health check passed!
@@ -179,7 +179,7 @@ Service ID: b3c25a10-9c9b-44e3-bdc3-badad053302d
 ### Step 4: Verify Live Deployment
 
 ```bash
-curl https://beright-api-production.up.railway.app/api/health
+curl $RAILWAY_APP_URL/api/health
 ```
 
 Expected: HTTP 200 with JSON response
@@ -188,7 +188,7 @@ Expected: HTTP 200 with JSON response
 
 ### Token Regeneration Required
 
-⚠️ **CRITICAL**: The token `094009c0-10f4-4a52-833d-1497f39f7431` was exposed in chat.
+⚠️ **CRITICAL**: A Railway token was exposed in chat. Revoke it immediately.
 
 **After successful deployment:**
 

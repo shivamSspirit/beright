@@ -14,9 +14,9 @@ Location: `Settings → Environments → berightai`
 
 | Secret Name | Value | Where to Find |
 |------------|-------|---------------|
-| `RAILWAY_TOKEN` | `094009c0-10f4-4a52-833d-1497f39f7431` | Railway Dashboard → Account → Tokens |
-| `RAILWAY_SERVICE_ID` | `b3c25a10-9c9b-44e3-bdc3-badad053302d` | From your Railway service URL |
-| `RAILWAY_APP_URL` | `https://beright-api-production.up.railway.app` | Railway Dashboard → Deployments tab |
+| `RAILWAY_TOKEN` | `<YOUR_RAILWAY_TOKEN>` | Railway Dashboard → Account → Tokens |
+| `RAILWAY_SERVICE_ID` | `<YOUR_RAILWAY_SERVICE_ID>` | From your Railway service URL |
+| `RAILWAY_APP_URL` | `https://<your-app>.up.railway.app` | Railway Dashboard → Deployments tab |
 
 **Note:** `RAILWAY_PROJECT_ID` is no longer required with the new Docker container approach.
 
@@ -36,19 +36,19 @@ For each secret below, click **"Add secret"** in the Environment secrets section
 #### Secret 1: RAILWAY_TOKEN
 ```
 Name: RAILWAY_TOKEN
-Value: 094009c0-10f4-4a52-833d-1497f39f7431
+Value: <YOUR_RAILWAY_TOKEN>
 ```
 
 #### Secret 2: RAILWAY_SERVICE_ID
 ```
 Name: RAILWAY_SERVICE_ID
-Value: b3c25a10-9c9b-44e3-bdc3-badad053302d
+Value: <YOUR_RAILWAY_SERVICE_ID>
 ```
 
 #### Secret 3: RAILWAY_APP_URL
 ```
 Name: RAILWAY_APP_URL
-Value: https://beright-api-production.up.railway.app
+Value: https://<your-app>.up.railway.app
 ```
 
 ### Step 3: Verify Secrets are Added
@@ -83,9 +83,9 @@ When you push to `main`:
 
 1. **Validate Job** - TypeScript checks, lint, build
 2. **Deploy Job** - Uses `berightai` environment
-   - Links to Railway project: `5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4`
-   - Deploys to service: `b3c25a10-9c9b-44e3-bdc3-badad053302d`
-   - Verifies health at: `https://beright-api-production.up.railway.app`
+   - Links to Railway project: `135d365f-e8bf-469c-a022-9a3a944c38ea`
+   - Deploys to service: `<YOUR_RAILWAY_SERVICE_ID>`
+   - Verifies health at: `https://<your-app>.up.railway.app`
 
 ## Testing the Setup
 
@@ -110,7 +110,7 @@ You should see:
 ### 3. Verify Deployment
 
 ```bash
-curl https://beright-api-production.up.railway.app/api/health
+curl $RAILWAY_APP_URL/api/health
 ```
 
 Expected response:
@@ -190,7 +190,7 @@ To configure:
 Since the token was exposed in chat:
 
 1. Go to: [Railway Tokens](https://railway.app/account/tokens)
-2. Find token: `094009c0-10f4-4a52-833d-1497f39f7431`
+2. Find your token in Railway dashboard
 3. Click **"Revoke"** or **"Delete"**
 4. Click **"Create New Token"**
 5. Copy the new token
@@ -228,6 +228,6 @@ After adding all secrets:
 ---
 
 **Environment:** berightai
-**Railway Project:** 5acb9f49-1ae2-4ccb-94c6-8ce62f472cc4
-**Railway Service:** b3c25a10-9c9b-44e3-bdc3-badad053302d
-**App URL:** https://beright-api-production.up.railway.app
+**Railway Project:** 135d365f-e8bf-469c-a022-9a3a944c38ea
+**Railway Service:** <YOUR_RAILWAY_SERVICE_ID>
+**App URL:** https://<your-app>.up.railway.app

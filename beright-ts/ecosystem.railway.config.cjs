@@ -8,12 +8,32 @@
  * uncomment the services below.
  */
 
+const fs = require('fs');
 const path = require('path');
 
-// Use Railway volume for persistent storage
-const DATA_DIR = process.env.BERIGHT_STATE_DIR || '/data/state';
-const LOGS_DIR = process.env.BERIGHT_LOGS_DIR || '/data/logs';
-const MEMORY_DIR = process.env.BERIGHT_MEMORY_DIR || '/data/memory';
+function ensureDir(dirPath) {
+  try {
+    fs.mkdirSync(dirPath, { recursive: true });
+    return dirPath;
+  } catch {
+    return null;
+  }
+}
+
+// Prefer Railway volume if mounted; fall back to /tmp so PM2 can always write logs.
+const FALLBACK_BASE = '/tmp/beright';
+const DATA_DIR =
+  ensureDir(process.env.BERIGHT_STATE_DIR || '/data/state')
+  || ensureDir(path.join(FALLBACK_BASE, 'state'))
+  || '/tmp';
+const LOGS_DIR =
+  ensureDir(process.env.BERIGHT_LOGS_DIR || '/data/logs')
+  || ensureDir(path.join(FALLBACK_BASE, 'logs'))
+  || '/tmp';
+const MEMORY_DIR =
+  ensureDir(process.env.BERIGHT_MEMORY_DIR || '/data/memory')
+  || ensureDir(path.join(FALLBACK_BASE, 'memory'))
+  || '/tmp';
 
 module.exports = {
   apps: [
@@ -24,7 +44,7 @@ module.exports = {
       name: 'api',
       script: 'npm',
       args: 'start',
-      cwd: '/app',
+      cwd: '/app/beright-ts',
       env: {
         NODE_ENV: 'production',
         PORT: process.env.PORT || 8080,
