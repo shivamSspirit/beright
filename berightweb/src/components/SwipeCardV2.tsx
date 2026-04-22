@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { animated, useSpring, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import { Prediction } from '@/lib/types';
-import { getDFlowCandlesticks, DFlowCandleData } from '@/lib/api';
+// Chart data is generated locally - no external API needed
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SWIPE CARD V2 - Variant Design System
@@ -56,75 +56,40 @@ function getTimeRemaining(dateStr: string): string {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function DualLineChart({
-  ticker,
   yesPrice,
   noPrice,
   seed
 }: {
-  ticker?: string;
   yesPrice: number;
   noPrice: number;
   seed: number;
 }) {
-  const [candles, setCandles] = useState<DFlowCandleData[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Fetch real candlestick data if available
-  useEffect(() => {
-    if (!ticker) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const result = await getDFlowCandlesticks(ticker, '1h');
-        if (result.success && result.candles?.length > 0) {
-          setCandles(result.candles);
-        }
-      } catch (err) {
-        console.error('Chart data fetch failed:', err);
-      }
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [ticker]);
-
-  // Generate chart data (real or simulated)
+  // Generate chart data locally
   const { yesPoints, noPoints, yesArea, noArea } = useMemo(() => {
     const dataPoints = 24;
     const width = 100;
     const height = 80;
     const padding = 4;
 
-    let yesData: number[] = [];
-    let noData: number[] = [];
+    const yesData: number[] = [];
+    const noData: number[] = [];
 
-    if (candles.length > 0) {
-      // Use real data
-      const step = Math.max(1, Math.floor(candles.length / dataPoints));
-      for (let i = 0; i < dataPoints && i * step < candles.length; i++) {
-        const candle = candles[i * step];
-        yesData.push(candle.close * 100);
-        noData.push((1 - candle.close) * 100);
-      }
-    } else {
-      // Generate simulated data based on current prices
-      let yVal = yesPrice - 10 + (seed % 5);
-      let nVal = noPrice - 10 + ((seed * 7) % 5);
+    // Generate simulated data based on current prices
+    let yVal = yesPrice - 10 + (seed % 5);
+    let nVal = noPrice - 10 + ((seed * 7) % 5);
 
-      for (let i = 0; i < dataPoints; i++) {
-        const h = (seed + i * 13) % 100;
-        yVal += ((h % 20) - 9) / 2;
-        nVal += (((h * 3) % 20) - 9) / 2;
-        yVal = Math.max(5, Math.min(95, yVal));
-        nVal = Math.max(5, Math.min(95, nVal));
-        yesData.push(yVal);
-        noData.push(nVal);
-      }
-      // End at current prices
-      yesData[dataPoints - 1] = yesPrice;
-      noData[dataPoints - 1] = noPrice;
+    for (let i = 0; i < dataPoints; i++) {
+      const h = (seed + i * 13) % 100;
+      yVal += ((h % 20) - 9) / 2;
+      nVal += (((h * 3) % 20) - 9) / 2;
+      yVal = Math.max(5, Math.min(95, yVal));
+      nVal = Math.max(5, Math.min(95, nVal));
+      yesData.push(yVal);
+      noData.push(nVal);
     }
+    // End at current prices
+    yesData[dataPoints - 1] = yesPrice;
+    noData[dataPoints - 1] = noPrice;
 
     // Normalize to chart dimensions
     const allValues = [...yesData, ...noData];
@@ -151,7 +116,7 @@ function DualLineChart({
       yesArea: yesAreaPath,
       noArea: noAreaPath,
     };
-  }, [candles, yesPrice, noPrice, seed]);
+  }, [yesPrice, noPrice, seed]);
 
   const lastYesPoint = yesPoints.split(' ').pop()?.split(',');
   const lastNoPoint = noPoints.split(' ').pop()?.split(',');
@@ -375,7 +340,6 @@ export default function SwipeCardV2({
 
       {/* Dual Line Chart */}
       <DualLineChart
-        ticker={prediction.dflow?.ticker}
         yesPrice={yesPrice}
         noPrice={noPrice}
         seed={seed}

@@ -6,7 +6,7 @@ import { animated, useSpring, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import { Prediction } from '@/lib/types';
 import { useUser } from '@/hooks/useUnifiedUser';
-import { getDFlowCandlesticks, DFlowCandleData } from '@/lib/api';
+// Chart data is generated locally - no external API needed
 import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
 import { usePredictions } from '@/hooks/usePredictions';
 import { useMode } from '@/context/ModeContext';
@@ -155,55 +155,22 @@ function MiniLineChart({ isYes, seed, price }: { isYes: boolean; seed: number; p
 }
 
 // ============================================
-// TRADING CHART - Kalshi-style with real data
+// TRADING CHART - Kalshi-style with generated data
 // ============================================
 
 type TimeRange = '1D' | '1W' | '1M' | 'ALL';
 
 function TradingChart({
-  ticker,
   currentPrice,
   seed
 }: {
-  ticker?: string;
   currentPrice: number;
   seed: number;
 }) {
   const [timeRange, setTimeRange] = useState<TimeRange>('1W');
-  const [candles, setCandles] = useState<DFlowCandleData[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  // Fetch real candlestick data
-  useEffect(() => {
-    if (!ticker) return;
-
-    const fetchCandles = async () => {
-      setLoading(true);
-      try {
-        const resolution = timeRange === '1D' ? '1h' : timeRange === '1W' ? '1h' : '1d';
-        const result = await getDFlowCandlesticks(ticker, resolution);
-        if (result.success && result.candles?.length > 0) {
-          setCandles(result.candles);
-        }
-      } catch (err) {
-        console.error('Failed to fetch candles:', err);
-      }
-      setLoading(false);
-    };
-
-    fetchCandles();
-  }, [ticker, timeRange]);
-
-  // Generate mock data if no real data available
+  // Generate chart data locally
   const chartData = useMemo(() => {
-    if (candles.length > 0) {
-      return candles.map(c => ({
-        time: c.time,
-        price: c.close * 100, // Convert to cents/percentage
-      }));
-    }
-
-    // Fallback: generate realistic mock data
     const points = timeRange === '1D' ? 24 : timeRange === '1W' ? 7 * 4 : timeRange === '1M' ? 30 : 90;
     const data = [];
     let price = currentPrice * 100;
@@ -220,7 +187,7 @@ function TradingChart({
     }
     data[data.length - 1].price = currentPrice * 100;
     return data;
-  }, [candles, currentPrice, seed, timeRange]);
+  }, [currentPrice, seed, timeRange]);
 
   // Calculate chart dimensions
   const prices = chartData.map(d => d.price);
@@ -291,10 +258,7 @@ function TradingChart({
 
         {/* Chart SVG */}
         <div className="tc-chart-container">
-          {loading ? (
-            <div className="tc-loading">Loading...</div>
-          ) : (
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="tc-svg">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="tc-svg">
               {/* Grid lines */}
               <line x1="0" y1="25" x2="100" y2="25" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
               <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
@@ -332,7 +296,6 @@ function TradingChart({
                 fill={isUp ? '#00F593' : '#FF4757'}
               />
             </svg>
-          )}
 
           {/* Current Price Label */}
           <div
@@ -1063,7 +1026,6 @@ function MarketDetailDrawer({
 
         {/* Price Chart - Kalshi-style TradingChart */}
         <TradingChart
-          ticker={prediction.dflow?.ticker}
           currentPrice={yesPrice}
           seed={mock.seed}
         />

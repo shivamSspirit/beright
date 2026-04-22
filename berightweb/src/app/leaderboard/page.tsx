@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useLeaderboard, useOnChainLeaderboard, useBackendStatus } from '@/hooks/useMarkets';
+import { useRealLeaderboard } from '@/hooks/useRealLeaderboard';
 import { useUser } from '@/hooks/useUnifiedUser';
 import { Layers, Shield } from 'lucide-react';
 import { PageWrapper } from '@/components/ui';
@@ -110,6 +111,7 @@ export default function LeaderboardPage() {
   const { user, walletAddress, referralCode } = useUser();
   const { data } = useLeaderboard({ limit: 50 });
   const { forecasters: onChainForecasters, network, loading: onChainLoading } = useOnChainLeaderboard();
+  const { data: realLeaderboard, loading: realLoading } = useRealLeaderboard();
 
   // Mobile state
   const [activeTab, setActiveTab] = useState<MetricTab>('ALPHA');
@@ -119,9 +121,29 @@ export default function LeaderboardPage() {
   const [activeMetric, setActiveMetric] = useState<DesktopMetric>('Profit');
   const [activeTime, setActiveTime] = useState<DesktopTime>('This Month');
 
-  // Merge on-chain data with API data, prioritizing on-chain verified forecasters
+  // Merge real leaderboard, on-chain data, and API data
   const leaderboardData: LeaderboardEntry[] = useMemo(() => {
-    // First, map on-chain forecasters (these are verified on-chain)
+    // Priority 1: Real leaderboard from Metaculus & Polymarket (with V2 scores)
+    const realEntries: LeaderboardEntry[] = realLeaderboard.map((entry, index) => ({
+      rank: entry.rank,
+      username: entry.username,
+      walletAddress: entry.walletAddress,
+      avatar: demoAvatars[index % demoAvatars.length],
+      profit: entry.profit,
+      accuracy: entry.accuracy,
+      streak: entry.streak,
+      trend: 'neutral' as const,
+      change: null,
+      league: entry.tier,
+      predictions: entry.predictions,
+      // V2 scoring fields
+      isOnChainVerified: entry.isOnChainVerified,
+      brierScore: entry.brierScore,
+      tier: entry.tier,
+      grade: entry.grade,
+    }));
+
+    // Priority 2: On-chain forecasters (these are verified on-chain)
     const onChainEntries: LeaderboardEntry[] = onChainForecasters.map((forecaster, index) => ({
       rank: forecaster.rank || index + 1,
       username: forecaster.displayName || formatAddress(forecaster.walletAddress),
@@ -167,20 +189,28 @@ export default function LeaderboardPage() {
       };
     });
 
-    // If we have on-chain data, prioritize it; otherwise use API data
-    if (onChainEntries.length > 0) {
-      // Filter out API entries that are already in on-chain
-      const uniqueApiEntries = apiEntries.filter(api =>
-        !onChainForecasters.some(f => f.walletAddress?.toLowerCase() === api.walletAddress?.toLowerCase())
-      );
+    // Merge all sources with priority: Real > On-chain > API
+    // Filter out duplicates (prefer real leaderboard entries)
+    const realWallets = new Set(realEntries.map(e => e.walletAddress?.toLowerCase()).filter(Boolean));
+    const realUsernames = new Set(realEntries.map(e => e.username?.toLowerCase()).filter(Boolean));
 
-      // Combine and re-rank
-      const combined = [...onChainEntries, ...uniqueApiEntries];
-      return combined.map((entry, index) => ({ ...entry, rank: index + 1 }));
-    }
+    const uniqueOnChainEntries = onChainEntries.filter(e =>
+      !realWallets.has(e.walletAddress?.toLowerCase() || '') &&
+      !realUsernames.has(e.username?.toLowerCase() || '')
+    );
 
-    return apiEntries;
-  }, [data?.leaderboard, onChainForecasters]);
+    const uniqueApiEntries = apiEntries.filter(e =>
+      !realWallets.has(e.walletAddress?.toLowerCase() || '') &&
+      !realUsernames.has(e.username?.toLowerCase() || '') &&
+      !onChainForecasters.some(f => f.walletAddress?.toLowerCase() === e.walletAddress?.toLowerCase())
+    );
+
+    // Combine all sources
+    const combined = [...realEntries, ...uniqueOnChainEntries, ...uniqueApiEntries];
+
+    // Re-rank
+    return combined.map((entry, index) => ({ ...entry, rank: index + 1 }));
+  }, [data?.leaderboard, onChainForecasters, realLeaderboard]);
 
   // User stats (using shared league utilities) - no fake defaults
   const userRank = user?.rank || data?.userRank || 0;

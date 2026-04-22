@@ -18,8 +18,8 @@ import styles from './page.module.css';
 
 export default function Home() {
   const { isAuthenticated, isLoading: authLoading, walletAddress } = useUser();
-  const { predictions, loading: marketsLoading, dataSources } = useMarkets({
-    mode: 'aggregated',  // Combine DFlow + Jupiter markets
+  const { predictions, loading: marketsLoading } = useMarkets({
+    mode: 'hot',  // Jupiter markets only (Solana-native)
     limit: 20
   });
   const { savePrediction, isDemo } = usePredictions(walletAddress);
@@ -64,23 +64,12 @@ export default function Home() {
     }
   }, [savePrediction, isDemo]);
 
-  // Log data sources for debugging
+  // Log markets count for debugging
   useEffect(() => {
-    if (dataSources) {
-      console.log('[Markets] Sources:', dataSources);
-      // Log errors prominently
-      if (!dataSources.dflow.success) {
-        console.warn('[Markets] DFlow FAILED:', dataSources.dflow.error || 'Unknown error');
-      }
-      if (!dataSources.jupiter.success) {
-        console.warn('[Markets] Jupiter FAILED:', dataSources.jupiter.error || 'Unknown error');
-      }
-      // Summary
-      const dflowStatus = dataSources.dflow.success ? `✓ ${dataSources.dflow.count}` : '✗ FAILED';
-      const jupiterStatus = dataSources.jupiter.success ? `✓ ${dataSources.jupiter.count}` : '✗ FAILED';
-      console.log(`[Markets] Summary: DFlow(${dflowStatus}), Jupiter(${jupiterStatus})`);
+    if (predictions.length > 0) {
+      console.log(`[Markets] Jupiter: ${predictions.length} markets loaded`);
     }
-  }, [dataSources]);
+  }, [predictions.length]);
 
   // Emergency timeout - never show loading for more than 3 seconds
   const [forceShow, setForceShow] = useState(false);

@@ -15,8 +15,8 @@ import {
   getEvent,
   searchEvents,
   getHotEvents,
-  JupiterEventsParams,
 } from '../../../../../lib/jupiter/prediction';
+import type { JupiterEventsParams } from '../../../../../lib/jupiter/types';
 import { isDemoRequest } from '../../../../../lib/mode';
 import { getDemoMarketsWithJitter, searchDemoMarkets } from '../../../../../lib/demo/mockMarkets';
 

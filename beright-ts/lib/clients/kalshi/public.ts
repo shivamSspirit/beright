@@ -184,10 +184,26 @@ export class KalshiPublicClient {
    * Get orderbook for a market
    */
   async getOrderbook(ticker: string, depth: number = 10): Promise<KalshiOrderbook> {
-    const result = await this.request<{ orderbook: KalshiOrderbook }>(`/markets/${ticker}/orderbook`, {
-      depth,
-    });
-    return result.orderbook;
+    // API returns orderbook_fp with yes_dollars/no_dollars arrays
+    const result = await this.request<{
+      orderbook_fp: {
+        yes_dollars: Array<[number, number]>; // [price, count]
+        no_dollars: Array<[number, number]>;
+      };
+    }>(`/markets/${ticker}/orderbook`, { depth });
+
+    // Transform to our format
+    return {
+      ticker,
+      yes: (result.orderbook_fp?.yes_dollars || []).map(([price, count]) => ({
+        price,
+        count,
+      })),
+      no: (result.orderbook_fp?.no_dollars || []).map(([price, count]) => ({
+        price,
+        count,
+      })),
+    };
   }
 
   // ============================================================================
@@ -198,8 +214,8 @@ export class KalshiPublicClient {
    * Get exchange status
    */
   async getExchangeStatus(): Promise<KalshiExchangeStatus> {
-    const result = await this.request<{ exchange_status: KalshiExchangeStatus }>('/exchange/status');
-    return result.exchange_status;
+    // API returns flat object, not nested under exchange_status
+    return this.request<KalshiExchangeStatus>('/exchange/status');
   }
 
   /**

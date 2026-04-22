@@ -2101,6 +2101,69 @@ function formatVolumeForJupiter(volume: number): string {
   return `$${Math.round(volume)}`;
 }
 
+// ===== KALSHI PUBLIC API (No Auth Required) =====
+
+/**
+ * Kalshi Public Market (from /api/kalshi/public)
+ */
+export interface KalshiPublicMarket {
+  ticker: string;
+  eventTicker: string;
+  seriesTicker: string;
+  title: string;
+  subtitle?: string;
+  status: string;
+  yesPrice: number;
+  noPrice: number;
+  yesPct: number;
+  noPct: number;
+  yesBid: number;
+  yesAsk: number;
+  noBid: number;
+  noAsk: number;
+  spread: number;
+  volume: number;
+  volume24h: number;
+  openInterest: number;
+  endDate: string | null;
+  createdAt: string | null;
+  category: string;
+  url: string;
+}
+
+/**
+ * Get hot Kalshi markets sorted by volume (no auth required)
+ */
+export async function getKalshiHotMarkets(limit = 20): Promise<{
+  success: boolean;
+  count: number;
+  markets: KalshiPublicMarket[];
+}> {
+  return apiFetch(`/api/kalshi/public?action=hot&limit=${limit}`);
+}
+
+/**
+ * Search Kalshi markets (no auth required)
+ */
+export async function searchKalshiMarkets(query: string, limit = 20): Promise<{
+  success: boolean;
+  query: string;
+  count: number;
+  markets: KalshiPublicMarket[];
+}> {
+  return apiFetch(`/api/kalshi/public?action=search&q=${encodeURIComponent(query)}&limit=${limit}`);
+}
+
+/**
+ * Get single Kalshi market by ticker (no auth required)
+ */
+export async function getKalshiPublicMarket(ticker: string): Promise<{
+  success: boolean;
+  market: KalshiPublicMarket | null;
+}> {
+  return apiFetch(`/api/kalshi/public?action=market&ticker=${encodeURIComponent(ticker)}`);
+}
+
 // ===== Aggregated Market Data =====
 
 /**

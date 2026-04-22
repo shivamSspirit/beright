@@ -5,20 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUnifiedUser';
 import {
-  DFlowEvent,
-  getDFlowEventByTicker,
-  getDFlowCandlesticks,
-  DFlowCandleData,
-  getDFlowHotMarkets,
+  JupiterEvent,
+  getJupiterEvent,
+  getJupiterHotEvents,
 } from '@/lib/api';
 import TradingModal from '@/components/TradingModal';
-import { DFlowData } from '@/lib/types';
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TYPES
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-type TimeRange = '6H' | '1D' | '1W' | '1M' | 'ALL';
+import type { DFlowData } from '@/lib/types';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // HELPERS
@@ -64,25 +56,38 @@ function categorizeMarket(title: string): string {
   return 'Markets';
 }
 
-function transformToTradingPrediction(event: DFlowEvent) {
+function transformToTradingPrediction(event: JupiterEvent) {
+  const market = event.markets?.[0];
+  const pricing = market?.pricing;
+
+  // Parse pricing (micro USD to decimal)
+  const yesPriceUsd = pricing?.buyYesPriceUsd ? parseFloat(pricing.buyYesPriceUsd) / 1_000_000 : 0.5;
+  const noPriceUsd = pricing?.buyNoPriceUsd ? parseFloat(pricing.buyNoPriceUsd) / 1_000_000 : 0.5;
+  const yesPct = Math.round(yesPriceUsd * 100);
+
   return {
-    id: event.ticker,
-    question: event.title,
-    marketOdds: event.yesPct,
-    source: 'dflow',
-    endDate: event.strikeDate ? new Date(event.strikeDate * 1000).toISOString() : undefined,
+    id: event.eventId,
+    question: event.title || market?.title || '',
+    marketOdds: yesPct,
+    source: market?.provider || 'jupiter',
+    endDate: event.endTime || market?.closeTime || undefined,
     dflow: {
-      ticker: event.ticker,
-      seriesTicker: event.seriesTicker,
-      volume24h: event.volume24h,
-      openInterest: event.openInterest,
-      yesBid: event.yesBid,
-      yesAsk: event.yesAsk,
-      noBid: event.noBid,
-      noAsk: event.noAsk,
-      spread: event.spread,
-      tokens: event.tokens,
-      imageUrl: event.imageUrl,
+      ticker: event.eventId,
+      seriesTicker: market?.marketId || '',
+      volume24h: pricing?.volume24h ? parseFloat(pricing.volume24h) / 1_000_000 : 0,
+      openInterest: pricing?.openInterest ? parseFloat(pricing.openInterest) / 1_000_000 : 0,
+      yesBid: yesPriceUsd,
+      yesAsk: yesPriceUsd,
+      noBid: noPriceUsd,
+      noAsk: noPriceUsd,
+      spread: 0,
+      tokens: market?.onChain ? {
+        yesMint: market.onChain.yesMint || null,
+        noMint: market.onChain.noMint || null,
+        marketLedger: market.onChain.marketPubkey,
+        isInitialized: true,
+        redemptionStatus: 'open' as const,
+      } : null,
     } as DFlowData,
   };
 }
@@ -97,15 +102,12 @@ export default function MarketDetailPage() {
   const marketId = decodeURIComponent(params.id as string);
   const { isAuthenticated: authenticated, login } = useUser();
 
-  const [market, setMarket] = useState<DFlowEvent | null>(null);
+  const [market, setMarket] = useState<JupiterEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradingModal, setShowTradingModal] = useState(false);
   const [side, setSide] = useState<'YES' | 'NO'>('YES');
-  const [relatedMarkets, setRelatedMarkets] = useState<DFlowEvent[]>([]);
-  const [timeRange, setTimeRange] = useState<TimeRange>('1W');
-  const [candles, setCandles] = useState<DFlowCandleData[]>([]);
-  const [chartLoading, setChartLoading] = useState(true);
+  const [relatedMarkets, setRelatedMarkets] = useState<JupiterEvent[]>([]);
 
   // Load market data
   useEffect(() => {
@@ -113,14 +115,18 @@ export default function MarketDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getDFlowEventByTicker(marketId);
-        setMarket(data);
+        const response = await getJupiterEvent(marketId);
+        if (response.success && response.data) {
+          setMarket(response.data);
+        } else {
+          setError('Market not found');
+        }
 
         // Load related markets
-        const hotResponse = await getDFlowHotMarkets(8);
-        if (hotResponse.success && hotResponse.events) {
-          const filtered = hotResponse.events
-            .filter(e => e.ticker !== data.ticker)
+        const hotResponse = await getJupiterHotEvents(8);
+        if (hotResponse.success && hotResponse.data) {
+          const filtered = hotResponse.data
+            .filter(e => e.eventId !== marketId)
             .slice(0, 4);
           setRelatedMarkets(filtered);
         }
@@ -135,41 +141,6 @@ export default function MarketDetailPage() {
     }
   }, [marketId]);
 
-  // Load chart data
-  // IMPORTANT: DFlow candlesticks API requires marketTicker (e.g., KXUCLGAME-26MAR17MCIRMA-RMA)
-  // Not event ticker (e.g., KXUCLGAME-26MAR17MCIRMA)
-  useEffect(() => {
-    async function loadCandles() {
-      // Use marketTicker for candlesticks, fallback to ticker if not available
-      const chartTicker = market?.marketTicker || market?.ticker;
-      if (!chartTicker) return;
-
-      setChartLoading(true);
-      try {
-        // DFlow only supports: 1m, 1h, 1d resolutions
-        const resolutionMap: Record<TimeRange, '1m' | '1h' | '1d'> = {
-          '6H': '1m',  // 1-minute candles for 6 hours
-          '1D': '1m',  // 1-minute candles for 1 day
-          '1W': '1h',  // 1-hour candles for 1 week
-          '1M': '1h',  // 1-hour candles for 1 month
-          'ALL': '1d', // Daily candles for all time
-        };
-        const response = await getDFlowCandlesticks(chartTicker, resolutionMap[timeRange]);
-        if (response.success && response.candles) {
-          setCandles(response.candles);
-        } else {
-          setCandles([]);
-        }
-      } catch (err) {
-        console.error('Failed to load candles:', err);
-        setCandles([]);
-      } finally {
-        setChartLoading(false);
-      }
-    }
-    loadCandles();
-  }, [market?.marketTicker, market?.ticker, timeRange]);
-
   const handleShare = useCallback(async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -181,29 +152,41 @@ export default function MarketDetailPage() {
     }
   }, [market]);
 
-  // Chart data calculation
-  const chartData = useMemo(() => {
-    if (candles.length === 0) return null;
-    const prices = candles.map(c => c.close);
-    const minPrice = Math.min(...prices) * 0.95;
-    const maxPrice = Math.max(...prices) * 1.05;
-    const priceRange = maxPrice - minPrice || 1;
+  const category = market ? categorizeMarket(market.title || '') : '';
 
-    const points = candles.map((c, i) => {
-      const x = (i / (candles.length - 1)) * 100;
-      const y = 100 - ((c.close - minPrice) / priceRange) * 100;
-      return `${x},${y}`;
-    }).join(' ');
+  // Extract market data from Jupiter event into compatible format
+  const marketData = useMemo(() => {
+    if (!market) return null;
+    const mkt = market.markets?.[0];
+    const pricing = mkt?.pricing;
 
-    const firstPrice = prices[0];
-    const lastPrice = prices[prices.length - 1];
-    const priceChange = lastPrice - firstPrice;
-    const priceChangePct = firstPrice > 0 ? (priceChange / firstPrice) * 100 : 0;
+    // Parse pricing (micro USD to decimal)
+    const yesPriceUsd = pricing?.buyYesPriceUsd ? parseFloat(pricing.buyYesPriceUsd) / 1_000_000 : 0.5;
+    const noPriceUsd = pricing?.buyNoPriceUsd ? parseFloat(pricing.buyNoPriceUsd) / 1_000_000 : 0.5;
+    const sellYesPriceUsd = pricing?.sellYesPriceUsd ? parseFloat(pricing.sellYesPriceUsd) / 1_000_000 : yesPriceUsd;
+    const sellNoPriceUsd = pricing?.sellNoPriceUsd ? parseFloat(pricing.sellNoPriceUsd) / 1_000_000 : noPriceUsd;
 
-    return { points, priceChangePct, isPositive: priceChange >= 0 };
-  }, [candles]);
-
-  const category = market ? categorizeMarket(market.title) : '';
+    return {
+      title: market.title || mkt?.title || '',
+      subtitle: mkt?.title !== market.title ? mkt?.title : null,
+      imageUrl: market.imageUrl || market.metadata?.imageUrl || null,
+      yesPct: Math.round(yesPriceUsd * 100),
+      noPct: Math.round(noPriceUsd * 100),
+      yesAsk: yesPriceUsd,
+      yesBid: sellYesPriceUsd,
+      noAsk: noPriceUsd,
+      noBid: sellNoPriceUsd,
+      spread: Math.abs(yesPriceUsd - sellYesPriceUsd),
+      volume: pricing?.volume ? parseFloat(pricing.volume) / 1_000_000 : 0,
+      volume24h: pricing?.volume24h ? parseFloat(pricing.volume24h) / 1_000_000 : 0,
+      openInterest: pricing?.openInterest ? parseFloat(pricing.openInterest) / 1_000_000 : 0,
+      liquidity: pricing?.liquidity ? parseFloat(pricing.liquidity) / 1_000_000 : 0,
+      endDate: market.endTime || mkt?.closeTime || null,
+      status: market.status || 'active',
+      url: `https://app.jup.ag/predictions/${market.eventId}`,
+      source: mkt?.provider || 'jupiter',
+    };
+  }, [market]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // LOADING STATE
@@ -225,7 +208,7 @@ export default function MarketDetailPage() {
   // ERROR STATE
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  if (error || !market) {
+  if (error || !market || !marketData) {
     return (
       <div className="page">
         <div className="error-container">
@@ -254,8 +237,8 @@ export default function MarketDetailPage() {
   // MAIN CONTENT
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  const yesPrice = Math.round(market.yesAsk * 100);
-  const noPrice = Math.round(market.noAsk * 100);
+  const yesPrice = marketData.yesPct;
+  const noPrice = marketData.noPct;
 
   return (
     <div className="page">
@@ -285,24 +268,24 @@ export default function MarketDetailPage() {
         <main className="main">
           {/* Title Section */}
           <section className="title-section">
-            {market.imageUrl && (
+            {marketData.imageUrl && (
               <img
-                src={market.imageUrl}
+                src={marketData.imageUrl}
                 alt=""
                 className="market-image"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
             <div className="title-content">
-              <h1>{market.title}</h1>
-              {market.subtitle && <p className="subtitle">{market.subtitle}</p>}
+              <h1>{marketData.title}</h1>
+              {marketData.subtitle && <p className="subtitle">{marketData.subtitle}</p>}
             </div>
           </section>
 
           {/* Probability Hero */}
           <section className="probability-hero">
             <div className="prob-main">
-              <span className="prob-number">{market.yesPct.toFixed(0)}</span>
+              <span className="prob-number">{marketData.yesPct}</span>
               <span className="prob-percent">%</span>
               <span className="prob-label">chance</span>
             </div>
@@ -311,69 +294,32 @@ export default function MarketDetailPage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                 </svg>
-                <span>{formatTimeRemaining(market.strikeDate || null)}</span>
+                <span>{formatTimeRemaining(marketData.endDate)}</span>
               </div>
               <div className="meta-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" />
                 </svg>
-                <span>{formatVolume(market.volume24h)} 24h</span>
+                <span>{formatVolume(marketData.volume24h)} 24h</span>
               </div>
               <div className="meta-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                 </svg>
-                <span>{market.openInterest.toLocaleString()} traders</span>
+                <span>{Math.round(marketData.openInterest).toLocaleString()} traders</span>
               </div>
             </div>
           </section>
 
-          {/* Chart Section */}
+          {/* Chart Section - Simplified without candlestick API */}
           <section className="chart-section">
             <div className="chart-header">
               <div className="chart-info">
-                <span className="chart-price">{market.yesPct.toFixed(1)}%</span>
-                {chartData && (
-                  <span className={`chart-change ${chartData.isPositive ? 'up' : 'down'}`}>
-                    {chartData.isPositive ? '+' : ''}{chartData.priceChangePct.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-              <div className="time-selector">
-                {(['6H', '1D', '1W', '1M', 'ALL'] as TimeRange[]).map((t) => (
-                  <button
-                    key={t}
-                    className={`time-btn ${timeRange === t ? 'active' : ''}`}
-                    onClick={() => setTimeRange(t)}
-                  >
-                    {t}
-                  </button>
-                ))}
+                <span className="chart-price">{marketData.yesPct}%</span>
               </div>
             </div>
             <div className="chart-canvas">
-              {chartLoading ? (
-                <div className="chart-loading">Loading chart...</div>
-              ) : chartData ? (
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="chart-svg">
-                  <defs>
-                    <linearGradient id="chartFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={chartData.isPositive ? '#F59E0B' : '#F43F5E'} stopOpacity="0.3" />
-                      <stop offset="100%" stopColor={chartData.isPositive ? '#F59E0B' : '#F43F5E'} stopOpacity="0.02" />
-                    </linearGradient>
-                  </defs>
-                  <polygon points={`0,100 ${chartData.points} 100,100`} fill="url(#chartFill)" />
-                  <polyline
-                    points={chartData.points}
-                    fill="none"
-                    stroke={chartData.isPositive ? '#F59E0B' : '#F43F5E'}
-                    strokeWidth="0.5"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
-              ) : (
-                <div className="chart-empty">No chart data available</div>
-              )}
+              <div className="chart-empty">Price history coming soon</div>
             </div>
           </section>
 
@@ -385,42 +331,26 @@ export default function MarketDetailPage() {
                 <h3>Resolution</h3>
                 <p>
                   This market resolves to &ldquo;Yes&rdquo; if the event occurs before{' '}
-                  <strong>{market.strikeDate ? formatDate(market.strikeDate) : 'the expiration date'}</strong>.
+                  <strong>{marketData.endDate ? formatDate(marketData.endDate) : 'the expiration date'}</strong>.
                   Otherwise, it resolves to &ldquo;No&rdquo;.
                 </p>
               </div>
-              {market.settlementSources && market.settlementSources.length > 0 && (
-                <div className="rule-block">
-                  <h3>Settlement Sources</h3>
-                  <div className="sources">
-                    {market.settlementSources.map((source, i) => (
-                      <a key={i} href={source.url} target="_blank" rel="noopener noreferrer" className="source-link">
-                        {source.name}
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div className="rule-block stats-grid">
                 <div className="stat-box">
                   <span className="stat-label">Total Volume</span>
-                  <span className="stat-value">{formatVolume(market.volume)}</span>
+                  <span className="stat-value">{formatVolume(marketData.volume)}</span>
                 </div>
                 <div className="stat-box">
                   <span className="stat-label">Liquidity</span>
-                  <span className="stat-value">{formatVolume(market.liquidity)}</span>
+                  <span className="stat-value">{formatVolume(marketData.liquidity)}</span>
                 </div>
                 <div className="stat-box">
                   <span className="stat-label">Platform</span>
-                  <span className="stat-value">DFlow</span>
+                  <span className="stat-value">Jupiter</span>
                 </div>
                 <div className="stat-box">
                   <span className="stat-label">Status</span>
-                  <span className={`stat-value status-${market.status}`}>{market.status}</span>
+                  <span className={`stat-value status-${marketData.status}`}>{marketData.status}</span>
                 </div>
               </div>
             </div>
@@ -431,15 +361,24 @@ export default function MarketDetailPage() {
             <section className="related-section">
               <h2>More Markets</h2>
               <div className="related-grid">
-                {relatedMarkets.map((m) => (
-                  <Link key={m.ticker} href={`/market/${encodeURIComponent(m.ticker)}`} className="related-card">
-                    <p className="related-title">{m.title}</p>
-                    <div className="related-footer">
-                      <span className="related-prob">{m.yesPct.toFixed(0)}%</span>
-                      <span className="related-vol">{formatVolume(m.volume)}</span>
-                    </div>
-                  </Link>
-                ))}
+                {relatedMarkets.map((m) => {
+                  const mkt = m.markets?.[0];
+                  const yesPct = mkt?.pricing?.buyYesPriceUsd
+                    ? Math.round(parseFloat(mkt.pricing.buyYesPriceUsd) / 1_000_000 * 100)
+                    : 50;
+                  const vol = mkt?.pricing?.volume
+                    ? parseFloat(mkt.pricing.volume) / 1_000_000
+                    : 0;
+                  return (
+                    <Link key={m.eventId} href={`/market/${encodeURIComponent(m.eventId)}`} className="related-card">
+                      <p className="related-title">{m.title}</p>
+                      <div className="related-footer">
+                        <span className="related-prob">{yesPct}%</span>
+                        <span className="related-vol">{formatVolume(vol)}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -450,7 +389,7 @@ export default function MarketDetailPage() {
           <div className="trading-card">
             <div className="trading-header">
               <h2>Trade</h2>
-              <a href={market.url} target="_blank" rel="noopener noreferrer" className="external-link">
+              <a href={marketData.url} target="_blank" rel="noopener noreferrer" className="external-link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                   <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
@@ -480,15 +419,15 @@ export default function MarketDetailPage() {
             <div className="orderbook">
               <div className="ob-row">
                 <span className="ob-label">Bid</span>
-                <span className="ob-value">{side === 'YES' ? (market.yesBid * 100).toFixed(1) : (market.noBid * 100).toFixed(1)}c</span>
+                <span className="ob-value">{side === 'YES' ? (marketData.yesBid * 100).toFixed(1) : (marketData.noBid * 100).toFixed(1)}c</span>
               </div>
               <div className="ob-row">
                 <span className="ob-label">Ask</span>
-                <span className="ob-value">{side === 'YES' ? (market.yesAsk * 100).toFixed(1) : (market.noAsk * 100).toFixed(1)}c</span>
+                <span className="ob-value">{side === 'YES' ? (marketData.yesAsk * 100).toFixed(1) : (marketData.noAsk * 100).toFixed(1)}c</span>
               </div>
               <div className="ob-row">
                 <span className="ob-label">Spread</span>
-                <span className="ob-value highlight">{(market.spread * 100).toFixed(1)}%</span>
+                <span className="ob-value highlight">{(marketData.spread * 100).toFixed(1)}%</span>
               </div>
             </div>
 
@@ -509,13 +448,13 @@ export default function MarketDetailPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" />
                 </svg>
-                <span>{formatVolume(market.volume)}</span>
+                <span>{formatVolume(marketData.volume)}</span>
               </div>
               <div className="qs-item">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                 </svg>
-                <span>{market.openInterest.toLocaleString()}</span>
+                <span>{Math.round(marketData.openInterest).toLocaleString()}</span>
               </div>
             </div>
           </div>

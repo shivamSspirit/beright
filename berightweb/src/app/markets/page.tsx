@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useBackendStatus } from '@/hooks/useMarkets';
 import { useMode } from '@/context/ModeContext';
 import { useUser } from '@/hooks/useUnifiedUser';
-import { ApiMarket, getDFlowHotMarkets, searchDFlowMarkets, DFlowEvent, getDFlowCandlesticks, DFlowCandleData, getJupiterHotEvents, searchJupiterEvents, JupiterEvent } from '@/lib/api';
+import { ApiMarket, getJupiterHotEvents, searchJupiterEvents, JupiterEvent } from '@/lib/api';
 import TradingModal from '@/components/TradingModal';
 import OnboardingTour from '@/components/OnboardingTour';
 import RestartTourButton from '@/components/RestartTourButton';
@@ -259,42 +259,11 @@ function generateSparkData(currentPrice: number, seed: string): SparkPoint[] {
   return points;
 }
 
-// Transform API candles to spark points
-function transformToSparkPoints(apiCandles: DFlowCandleData[]): SparkPoint[] {
-  return apiCandles.slice(-20).map(c => ({ value: c.close * 100 }));
-}
-
-// Global cache for spark data
-const sparkCache = new Map<string, { data: SparkPoint[]; timestamp: number }>();
-const SPARK_CACHE_TTL = 60000;
-
-function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: string; ticker?: string }) {
-  const [realData, setRealData] = useState<SparkPoint[] | null>(null);
-
-  useEffect(() => {
-    if (!ticker) return;
-
-    const cached = sparkCache.get(ticker);
-    if (cached && Date.now() - cached.timestamp < SPARK_CACHE_TTL) {
-      setRealData(cached.data);
-      return;
-    }
-
-    getDFlowCandlesticks(ticker, '1h')
-      .then(response => {
-        if (response.success && response.candles?.length > 0) {
-          const transformed = transformToSparkPoints(response.candles);
-          sparkCache.set(ticker, { data: transformed, timestamp: Date.now() });
-          setRealData(transformed);
-        }
-      })
-      .catch(() => {});
-  }, [ticker]);
-
+function ViralSparkline({ price, marketId }: { price: number; marketId: string }) {
+  // Generate sparkline data based on current price and market ID as seed
   const points = useMemo(() => {
-    if (realData && realData.length > 0) return realData;
     return generateSparkData(price, marketId);
-  }, [realData, price, marketId]);
+  }, [price, marketId]);
 
   const values = points.map(p => p.value);
   const min = Math.min(...values) * 0.92;
@@ -411,19 +380,16 @@ function ViralSparkline({ price, marketId, ticker }: { price: number; marketId: 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 interface MarketCardProps {
-  market: MarketWithDFlow;
-  onTrade?: (market: MarketWithDFlow) => void;
+  market: MarketWithJupiter;
+  onTrade?: (market: MarketWithJupiter) => void;
   index: number;
 }
 
 function MarketCard({ market, onTrade, index }: MarketCardProps) {
   const [imgError, setImgError] = useState(false);
-  const hasDFlow = !!market.dflow;
-  const hasJupiter = !!market.jupiter;
-  const isTradeable = hasDFlow || hasJupiter;
   const marketTitle = market.question || market.title;
-  // Get image from either source
-  const imageUrl = market.dflow?.imageUrl || market.jupiter?.imageUrl || market.jupiter?.metadata?.imageUrl;
+  // Get image from Jupiter source
+  const imageUrl = market.jupiter?.imageUrl || market.jupiter?.metadata?.imageUrl;
   const showImage = imageUrl && !imgError;
 
   // Calculate 24h change (mock based on seed for now, real data would come from API)
@@ -431,17 +397,18 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
   const change24h = ((seedNum % 20) - 10) * 0.5;
   const isUp = change24h >= 0;
 
-  // Spread calculation
-  const spread = market.dflow ? Math.abs((market.dflow.yesAsk || 0) - (market.dflow.yesBid || 0)) : 0;
+  // Spread calculation from Jupiter pricing
+  const jupiterMarket = market.jupiter?.markets?.[0];
+  const yesAsk = jupiterMarket?.pricing?.buyYesPriceUsd ? parseFloat(jupiterMarket.pricing.buyYesPriceUsd) / 1_000_000 : 0;
+  const yesBid = jupiterMarket?.pricing?.sellYesPriceUsd ? parseFloat(jupiterMarket.pricing.sellYesPriceUsd) / 1_000_000 : 0;
+  const spread = Math.abs(yesAsk - yesBid) * 100; // Convert to cents
 
   // Time remaining
   const timeLeft = formatTimeRemaining(market.endDate);
   const isLive = timeLeft !== 'TBD' && timeLeft !== 'Ended' && parseInt(timeLeft) <= 24 && timeLeft.includes('h');
 
-  // Get the market detail URL
-  const marketDetailUrl = hasDFlow && market.dflow?.ticker
-    ? `/market/${encodeURIComponent(market.dflow.ticker)}`
-    : hasJupiter && market.jupiter?.eventId
+  // Get the market detail URL - use Jupiter event ID
+  const marketDetailUrl = market.jupiter?.eventId
     ? `/market/${encodeURIComponent(market.jupiter.eventId)}`
     : null;
 
@@ -502,7 +469,6 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
           <ViralSparkline
             price={market.yesPct}
             marketId={market.id || market.title}
-            ticker={market.dflow?.ticker}
           />
         </div>
 
@@ -525,23 +491,21 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
 
       {/* Source badge & Trade button */}
       <div className={styles.cardFooter}>
-        <span className={`${styles.sourceBadge} ${hasDFlow ? styles.sourceBadgeDflow : styles.sourceBadgeJupiter}`}>
-          {hasDFlow ? 'DFlow' : 'Jupiter'}
+        <span className={`${styles.sourceBadge} ${styles.sourceBadgeJupiter}`}>
+          Jupiter
         </span>
-        {isTradeable && (
-          <button
-            className={styles.tradeBtn}
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onTrade?.(market);
-            }}
-            data-tour="trade-button"
-          >
-            Trade
-          </button>
-        )}
+        <button
+          className={styles.tradeBtn}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onTrade?.(market);
+          }}
+          data-tour="trade-button"
+        >
+          Trade
+        </button>
       </div>
     </Link>
   );
@@ -569,34 +533,11 @@ function SkeletonCard({ index }: { index: number }) {
 // MAIN PAGE
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-interface MarketWithDFlow extends ApiMarket {
-  dflow?: DFlowEvent;
-  jupiter?: JupiterEvent;
+interface MarketWithJupiter extends ApiMarket {
+  jupiter: JupiterEvent;
 }
 
-function dflowToApiMarket(event: DFlowEvent): MarketWithDFlow {
-  // Construct DFlow URL - use their app instead of Kalshi
-  const dflowUrl = `https://dflow.net/market/${event.ticker}`;
-
-  return {
-    id: event.ticker,
-    platform: 'dflow',
-    title: event.title,
-    question: event.title,
-    yesPrice: event.yesPrice || 0,
-    noPrice: event.noPrice || 0,
-    yesPct: Math.round(event.yesPct || 0),
-    noPct: Math.round(event.noPct || 0),
-    volume: event.volume || 0,
-    liquidity: event.liquidity || 0,
-    endDate: event.strikeDate ? new Date(event.strikeDate * 1000).toISOString() : null,
-    status: event.status as any || 'active',
-    url: dflowUrl,
-    dflow: event,
-  };
-}
-
-function jupiterToApiMarket(event: JupiterEvent): MarketWithDFlow | null {
+function jupiterToApiMarket(event: JupiterEvent): MarketWithJupiter | null {
   // Get the first market from the event
   const market = event.markets?.[0];
   if (!market) return null;
@@ -622,7 +563,7 @@ function jupiterToApiMarket(event: JupiterEvent): MarketWithDFlow | null {
   const jupiterUrl = `https://app.jup.ag/predictions/${event.eventId}`;
 
   return {
-    id: `jupiter-${event.eventId}`,
+    id: event.eventId,
     platform: 'kalshi' as const, // Jupiter aggregates Kalshi/Polymarket - use kalshi as compatible type
     title: event.title || market.title,
     question: event.title || market.title,
@@ -665,7 +606,7 @@ export default function MarketsPage() {
     }
   }, [isAuthenticated, isDemo, tourSteps.length]);
 
-  const [markets, setMarkets] = useState<MarketWithDFlow[]>([]);
+  const [markets, setMarkets] = useState<MarketWithJupiter[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -677,14 +618,8 @@ export default function MarketsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [totalLoaded, setTotalLoaded] = useState(0);
 
-  // Data source tracking
-  const [dataSources, setDataSources] = useState<{
-    dflow: { count: number; success: boolean };
-    jupiter: { count: number; success: boolean };
-  }>({ dflow: { count: 0, success: false }, jupiter: { count: 0, success: false } });
-
   // Trading modal state
-  const [tradingMarket, setTradingMarket] = useState<MarketWithDFlow | null>(null);
+  const [tradingMarket, setTradingMarket] = useState<MarketWithJupiter | null>(null);
 
   const fetchMarkets = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) {
@@ -699,45 +634,26 @@ export default function MarketsPage() {
       const currentCursor = isLoadMore ? cursor : 0;
       const limit = ITEMS_PER_PAGE;
 
-      // Fetch from both DFlow and Jupiter APIs in parallel
-      const [dflowResponse, jupiterResponse] = await Promise.allSettled([
-        searchQuery
-          ? searchDFlowMarkets(searchQuery, limit + currentCursor)
-          : getDFlowHotMarkets(limit + currentCursor),
-        searchQuery
-          ? searchJupiterEvents(searchQuery, limit + currentCursor)
-          : getJupiterHotEvents(limit + currentCursor),
-      ]);
+      // Fetch from Jupiter API only (Solana-native trading)
+      const jupiterResponse = searchQuery
+        ? await searchJupiterEvents(searchQuery, limit + currentCursor)
+        : await getJupiterHotEvents(limit + currentCursor);
 
-      const allMarkets: MarketWithDFlow[] = [];
-      const sources = {
-        dflow: { count: 0, success: false },
-        jupiter: { count: 0, success: false },
-      };
+      let jupiterMarkets: MarketWithJupiter[] = [];
 
-      // Process DFlow results
-      if (dflowResponse.status === 'fulfilled' && dflowResponse.value.success) {
-        const dflowMarkets = dflowResponse.value.events.map(dflowToApiMarket);
-        allMarkets.push(...dflowMarkets);
-        sources.dflow = { count: dflowMarkets.length, success: true };
-      }
-
-      // Process Jupiter results
-      if (jupiterResponse.status === 'fulfilled' && jupiterResponse.value.success) {
-        const jupiterMarkets = jupiterResponse.value.data
+      if (jupiterResponse.success) {
+        jupiterMarkets = jupiterResponse.data
           .map(jupiterToApiMarket)
-          .filter((m): m is MarketWithDFlow => m !== null);
-        allMarkets.push(...jupiterMarkets);
-        sources.jupiter = { count: jupiterMarkets.length, success: true };
+          .filter((m): m is MarketWithJupiter => m !== null);
       }
 
-      // Sort combined markets by volume (descending)
-      allMarkets.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+      // Sort markets by volume (descending)
+      jupiterMarkets.sort((a, b) => (b.volume || 0) - (a.volume || 0));
 
       // Apply pagination
       const newMarkets = isLoadMore
-        ? allMarkets.slice(currentCursor)
-        : allMarkets;
+        ? jupiterMarkets.slice(currentCursor)
+        : jupiterMarkets;
 
       if (isLoadMore) {
         setMarkets(prev => [...prev, ...newMarkets]);
@@ -745,8 +661,7 @@ export default function MarketsPage() {
         setMarkets(newMarkets);
       }
 
-      setDataSources(sources);
-      setTotalLoaded(allMarkets.length);
+      setTotalLoaded(jupiterMarkets.length);
       setHasMore(newMarkets.length >= limit);
       setCursor(currentCursor + newMarkets.length);
     } catch {
@@ -871,17 +786,12 @@ export default function MarketsPage() {
             <div className={styles.resultsInfo}>
               <span className={styles.resultsCount}>{filteredMarkets.length}</span>
               <span className={styles.resultsLabel}>markets</span>
-              {/* Source indicators - compact dots */}
+              {/* Source indicator - Jupiter only */}
               <div className={styles.sourceIndicators}>
-                {dataSources.dflow.success && (
-                  <span className={`${styles.sourceIndicator} ${styles.sourceIndicatorDflow}`} title={`DFlow: ${dataSources.dflow.count} markets`} />
-                )}
-                {dataSources.jupiter.success && (
-                  <span className={`${styles.sourceIndicator} ${styles.sourceIndicatorJupiter}`} title={`Jupiter: ${dataSources.jupiter.count} markets`} />
-                )}
-                {!dataSources.dflow.success && !dataSources.jupiter.success && (
-                  <span className={`${styles.sourceIndicator} ${styles.sourceIndicatorOffline}`} title="Offline" />
-                )}
+                <span
+                  className={`${styles.sourceIndicator} ${totalLoaded > 0 ? styles.sourceIndicatorJupiter : styles.sourceIndicatorOffline}`}
+                  title={totalLoaded > 0 ? `Jupiter: ${totalLoaded} markets` : 'Offline'}
+                />
               </div>
             </div>
           </div>
@@ -945,67 +855,43 @@ export default function MarketsPage() {
           )}
         </main>
 
-        {/* Trading Modal - Supports both DFlow and Jupiter markets */}
-        {tradingMarket && (tradingMarket.dflow || tradingMarket.jupiter) && (
+        {/* Trading Modal - Jupiter markets only (Solana-native) */}
+        {tradingMarket && tradingMarket.jupiter && (
           <TradingModal
             isOpen={true}
             onClose={() => setTradingMarket(null)}
-            prediction={
-              tradingMarket.dflow
-                ? // DFlow market structure
-                  {
-                    id: tradingMarket.id || tradingMarket.dflow.ticker,
-                    question: tradingMarket.question || tradingMarket.title,
-                    marketOdds: tradingMarket.yesPct,
-                    source: 'dflow',
-                    endDate: tradingMarket.endDate ?? undefined,
-                    dflow: {
-                      ticker: tradingMarket.dflow.ticker,
-                      seriesTicker: tradingMarket.dflow.seriesTicker || '',
-                      volume24h: tradingMarket.dflow.volume24h || tradingMarket.dflow.volume || 0,
-                      openInterest: tradingMarket.dflow.openInterest || 0,
-                      yesBid: tradingMarket.dflow.yesBid || 0,
-                      yesAsk: tradingMarket.dflow.yesAsk || 0,
-                      noBid: tradingMarket.dflow.noBid || 0,
-                      noAsk: tradingMarket.dflow.noAsk || 0,
-                      spread: tradingMarket.dflow.spread || 0,
-                      tokens: tradingMarket.dflow.tokens,
-                    },
-                  }
-                : // Jupiter market structure - map to DFlow-like format
-                  {
-                    id: tradingMarket.id || tradingMarket.jupiter!.eventId,
-                    question: tradingMarket.question || tradingMarket.title,
-                    marketOdds: tradingMarket.yesPct,
-                    source: tradingMarket.jupiter?.markets?.[0]?.provider || 'jupiter',
-                    endDate: tradingMarket.jupiter?.endTime ?? undefined,
-                    dflow: {
-                      ticker: tradingMarket.jupiter!.eventId,
-                      seriesTicker: tradingMarket.jupiter!.eventId,
-                      volume24h: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.volume24h || '0'),
-                      openInterest: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.openInterest || '0'),
-                      // Convert micro USD pricing to decimal (e.g., "500000" = $0.50 = 50%)
-                      yesBid: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.sellYesPriceUsd || '0') / 1_000_000,
-                      yesAsk: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.buyYesPriceUsd || '0') / 1_000_000,
-                      noBid: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.sellNoPriceUsd || '0') / 1_000_000,
-                      noAsk: parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.buyNoPriceUsd || '0') / 1_000_000,
-                      spread: Math.abs(
-                        parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.buyYesPriceUsd || '0') -
-                          parseFloat(tradingMarket.jupiter?.markets?.[0]?.pricing?.sellYesPriceUsd || '0')
-                      ) / 1_000_000,
-                      tokens: {
-                        yesMint: tradingMarket.jupiter?.markets?.[0]?.onChain?.yesMint || null,
-                        noMint: tradingMarket.jupiter?.markets?.[0]?.onChain?.noMint || null,
-                        marketLedger: tradingMarket.jupiter?.markets?.[0]?.onChain?.marketPubkey || null,
-                        isInitialized: !!(
-                          tradingMarket.jupiter?.markets?.[0]?.onChain?.yesMint &&
-                          tradingMarket.jupiter?.markets?.[0]?.onChain?.noMint
-                        ),
-                        redemptionStatus: 'open' as const,
-                      },
-                    },
-                  }
-            }
+            prediction={{
+              id: tradingMarket.id || tradingMarket.jupiter.eventId,
+              question: tradingMarket.question || tradingMarket.title,
+              marketOdds: tradingMarket.yesPct,
+              source: tradingMarket.jupiter.markets?.[0]?.provider || 'jupiter',
+              endDate: tradingMarket.jupiter.endTime ?? undefined,
+              dflow: {
+                ticker: tradingMarket.jupiter.eventId,
+                seriesTicker: tradingMarket.jupiter.eventId,
+                volume24h: parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.volume24h || '0'),
+                openInterest: parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.openInterest || '0'),
+                // Convert micro USD pricing to decimal (e.g., "500000" = $0.50 = 50%)
+                yesBid: parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.sellYesPriceUsd || '0') / 1_000_000,
+                yesAsk: parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.buyYesPriceUsd || '0') / 1_000_000,
+                noBid: parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.sellNoPriceUsd || '0') / 1_000_000,
+                noAsk: parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.buyNoPriceUsd || '0') / 1_000_000,
+                spread: Math.abs(
+                  parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.buyYesPriceUsd || '0') -
+                    parseFloat(tradingMarket.jupiter.markets?.[0]?.pricing?.sellYesPriceUsd || '0')
+                ) / 1_000_000,
+                tokens: {
+                  yesMint: tradingMarket.jupiter.markets?.[0]?.onChain?.yesMint || null,
+                  noMint: tradingMarket.jupiter.markets?.[0]?.onChain?.noMint || null,
+                  marketLedger: tradingMarket.jupiter.markets?.[0]?.onChain?.marketPubkey || null,
+                  isInitialized: !!(
+                    tradingMarket.jupiter.markets?.[0]?.onChain?.yesMint &&
+                    tradingMarket.jupiter.markets?.[0]?.onChain?.noMint
+                  ),
+                  redemptionStatus: 'open' as const,
+                },
+              },
+            }}
           />
         )}
       </div>

@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { animated, useSpring } from '@react-spring/web';
-import { DFlowData, DFlowTokens } from '@/lib/types';
-import { useDFlowTrading, TradingStep } from '@/hooks/useDFlowTrading';
+import { DFlowData } from '@/lib/types';
+import { useTrading, TradingStep } from '@/hooks/useTrading';
 import { useWalletBalance, formatBalance } from '@/hooks/useWalletBalance';
 import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
 import { usePredictions } from '@/hooks/usePredictions';
@@ -120,10 +120,9 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     isConnected,
     isReady,
     walletAddress,
-    executeTrade,
     connectWallet,
     reset,
-  } = useDFlowTrading();
+  } = useTrading();
 
   // Calibration - record every prediction on-chain
   const { recordPrediction } = usePredictionRecorder();

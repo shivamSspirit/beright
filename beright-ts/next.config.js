@@ -16,7 +16,11 @@ const nextConfig = {
   // External packages for server components (moved from experimental in Next.js 16)
   serverExternalPackages: ['@solana/web3.js'],
 
-  // Configure webpack for Node.js modules used in skills
+  // Empty turbopack config to silence Next.js 16 warning
+  // Turbopack handles Node.js modules automatically via serverExternalPackages
+  turbopack: {},
+
+  // Configure webpack for Node.js modules (fallback for --webpack flag)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't bundle Node.js modules for client-side

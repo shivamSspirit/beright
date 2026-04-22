@@ -20,7 +20,8 @@
     "telegram": "npm run telegram --workspace=beright-ts",
     "telegram:status": "npm run telegram:status --workspace=beright-ts",
     "telegram:unlock": "npm run telegram:unlock --workspace=beright-ts",
-    "heartbeat": "npm run heartbeat --workspace=beright-ts"
+    "heartbeat": "npm run heartbeat --workspace=beright-ts",
+    "test:calibration": "cd calibration-program && npm run test:calibration"
   },
   "devDependencies": {
     "turbo": "^2.4.4"
