@@ -1078,6 +1078,9 @@ export async function sendToGateway(
       walletAddress: options?.walletAddress,
       conversationId: options?.conversationId,
     }),
+    // Gateway may call LLMs + multiple providers; allow more time than normal API calls.
+    // This prevents the terminal from showing "Request timed out" while the backend is still working.
+    timeoutMs: 60_000,
   });
 }
 
