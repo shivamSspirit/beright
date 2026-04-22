@@ -12,6 +12,111 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { isDemo } from '../../../../lib/mode';
 import { getDemoLeaderboard, getDemoForecasterByWallet } from '../../../../lib/demo/mockLeaderboard';
+import calibrationIdl from '../../../../lib/onchain/calibration-idl.json';
+
+const CALIBRATION_PROGRAM_ID = new PublicKey((calibrationIdl as any).address);
+const PREDICTION_RECORD_ACCOUNT_SIZE = 185;
+const PREDICTION_RECORD_FORECASTER_OFFSET = 8 + 1; // discriminator (8) + bump (1)
+
+function readI64LE(buf: Buffer, offset: number): number {
+  const x = buf.readBigInt64LE(offset);
+  // committed_at is within safe range for JS number (unix seconds)
+  return Number(x);
+}
+
+function readOptionI64LE(buf: Buffer, offset: number): { value: number | null; next: number } {
+  const tag = buf.readUInt8(offset);
+  if (tag === 0) return { value: null, next: offset + 1 };
+  return { value: readI64LE(buf, offset + 1), next: offset + 1 + 8 };
+}
+
+function readOptionBool(buf: Buffer, offset: number): { value: boolean | null; next: number } {
+  const tag = buf.readUInt8(offset);
+  if (tag === 0) return { value: null, next: offset + 1 };
+  return { value: buf.readUInt8(offset + 1) === 1, next: offset + 1 + 1 };
+}
+
+function readOptionF64LE(buf: Buffer, offset: number): { value: number | null; next: number } {
+  const tag = buf.readUInt8(offset);
+  if (tag === 0) return { value: null, next: offset + 1 };
+  return { value: buf.readDoubleLE(offset + 1), next: offset + 1 + 8 };
+}
+
+function toHex32(buf: Buffer): string {
+  return buf.toString('hex');
+}
+
+function parsePredictionRecord(data: Buffer) {
+  // Layout matches `calibration-program/programs/calibration/src/state/prediction.rs`
+  let offset = 0;
+  offset += 8; // discriminator
+  const bump = data.readUInt8(offset); offset += 1;
+  const forecaster = new PublicKey(data.subarray(offset, offset + 32)).toBase58(); offset += 32;
+  const marketId = data.subarray(offset, offset + 32); offset += 32;
+  const predictedProbability = data.readDoubleLE(offset); offset += 8;
+  const directionRaw = data.readUInt8(offset); offset += 1;
+  const committedAt = readI64LE(data, offset); offset += 8;
+
+  const resolvedAtOpt = readOptionI64LE(data, offset); offset = resolvedAtOpt.next;
+  const outcomeOpt = readOptionBool(data, offset); offset = outcomeOpt.next;
+  const brierOpt = readOptionF64LE(data, offset); offset = brierOpt.next;
+  const logOpt = readOptionF64LE(data, offset); offset = logOpt.next;
+
+  const memoTxSig = data.subarray(offset, offset + 64); offset += 64;
+  const category = data.readUInt8(offset); offset += 1;
+  const version = data.readUInt8(offset); offset += 1;
+
+  return {
+    bump,
+    forecaster,
+    marketIdHex: toHex32(marketId),
+    predictedProbability,
+    direction: directionRaw === 0 ? 'yes' : 'no',
+    committedAt,
+    resolvedAt: resolvedAtOpt.value,
+    outcome: outcomeOpt.value,
+    brierScore: brierOpt.value,
+    logScore: logOpt.value,
+    memoTxSignatureHex: memoTxSig.toString('hex'),
+    category,
+    version,
+  };
+}
+
+async function getOnChainPredictionHistory(walletAddress: string, limit: number) {
+  const { Connection } = await import('@solana/web3.js');
+  const authority = new PublicKey(walletAddress);
+
+  const calibrationRpcUrl =
+    process.env.CALIBRATION_RPC_URL
+    || (process.env.CALIBRATION_USE_DEVNET !== 'false'
+      ? 'https://api.devnet.solana.com'
+      : (process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'));
+
+  const connection = new Connection(calibrationRpcUrl, 'confirmed');
+
+  const accounts = await connection.getProgramAccounts(CALIBRATION_PROGRAM_ID, {
+    commitment: 'confirmed',
+    filters: [
+      { dataSize: PREDICTION_RECORD_ACCOUNT_SIZE },
+      { memcmp: { offset: PREDICTION_RECORD_FORECASTER_OFFSET, bytes: authority.toBase58() } },
+    ],
+  });
+
+  const parsed = accounts
+    .map((a) => ({
+      predictionPda: a.pubkey.toBase58(),
+      ...parsePredictionRecord(Buffer.from(a.account.data)),
+    }))
+    .sort((a, b) => b.committedAt - a.committedAt);
+
+  return {
+    walletAddress,
+    network: process.env.CALIBRATION_USE_DEVNET !== 'false' ? 'devnet' : 'mainnet',
+    totalPredictions: parsed.length,
+    predictions: parsed.slice(0, Math.max(0, limit)),
+  };
+}
 
 // Dynamic import to avoid build issues with Anchor
 async function getOnChainStats(walletAddress: string) {
@@ -357,6 +462,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const wallet = searchParams.get('wallet');
   const leaderboard = searchParams.get('leaderboard');
+  const history = searchParams.get('history');
+  const limitParam = searchParams.get('limit');
+  const historyLimit = Math.min(Math.max(parseInt(limitParam || '10', 10) || 10, 1), 50);
 
   // ============================================
   // DEMO MODE: Return mock data
@@ -443,6 +551,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // Single wallet lookup
   if (wallet) {
+    if (history === 'true') {
+      try {
+        // Validate wallet address
+        new PublicKey(wallet);
+      } catch {
+        return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
+      }
+
+      try {
+        const historyData = await getOnChainPredictionHistory(wallet, historyLimit);
+        return NextResponse.json({ success: true, data: historyData });
+      } catch (error) {
+        console.error('[Calibration API] Error fetching on-chain prediction history:', error);
+        return NextResponse.json(
+          { success: false, error: error instanceof Error ? error.message : 'Failed to fetch on-chain history' },
+          { status: 500 }
+        );
+      }
+    }
+
     try {
       // Validate wallet address
       new PublicKey(wallet);

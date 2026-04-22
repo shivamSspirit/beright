@@ -641,6 +641,43 @@ export default function ProfilePage() {
     getStats: getLocalStats,
     isLoading: predictionsLoading,
   } = usePredictions(walletAddress);
+
+  // On-chain recent predictions (always available when wallet is connected)
+  const [onChainPredictions, setOnChainPredictions] = useState<any[] | null>(null);
+  const [onChainTotalPredictions, setOnChainTotalPredictions] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !walletAddress) {
+      setOnChainPredictions(null);
+      setOnChainTotalPredictions(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/v2/calibration?wallet=${walletAddress}&history=true&limit=10`);
+        const json = await res.json();
+        if (cancelled) return;
+
+        if (json?.success && json?.data) {
+          setOnChainTotalPredictions(json.data.totalPredictions ?? null);
+          setOnChainPredictions(Array.isArray(json.data.predictions) ? json.data.predictions : []);
+        } else {
+          setOnChainPredictions([]);
+          setOnChainTotalPredictions(null);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('[Profile] Failed to fetch on-chain prediction history:', err instanceof Error ? err.message : String(err));
+        setOnChainPredictions([]);
+        setOnChainTotalPredictions(null);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isAuthenticated, walletAddress]);
   const {
     tier,
     tierConfig,
@@ -734,13 +771,14 @@ export default function ProfilePage() {
     // In demo mode, prioritize local predictions count
     const localCount = localPredictions?.length ?? 0;
     const apiCount = user?.totalPredictions ?? apiStats?.totalPredictions ?? 0;
+    const onChainCount = onChainTotalPredictions ?? 0;
 
     return {
-      totalPredictions: isDemo ? Math.max(localCount, apiCount) : apiCount,
+      totalPredictions: isDemo ? Math.max(localCount, apiCount) : Math.max(apiCount, onChainCount),
       accuracy: user?.accuracy ?? apiStats?.accuracy ?? localStats.accuracy ?? 0,
       winStreak: user?.streak ?? (apiStats as any)?.streak?.current ?? 0,
     };
-  }, [user, apiStats, isDemo, localPredictions, localStats]);
+  }, [user, apiStats, isDemo, localPredictions, localStats, onChainTotalPredictions]);
 
   // Calculate XP and league (using shared utilities)
   const xp = Math.floor(stats.totalPredictions * 10 + stats.accuracy * 5);
@@ -771,14 +809,64 @@ export default function ProfilePage() {
   const [selectedPrediction, setSelectedPrediction] = useState<ActivityItem['predictionData'] | null>(null);
 
   const activities: ActivityItem[] = useMemo(() => {
-    if (!localPredictions || localPredictions.length === 0) {
-      return [];
+    // Prefer on-chain history when available
+    if (onChainPredictions && onChainPredictions.length > 0) {
+      return onChainPredictions.slice(0, 10).map((p) => {
+        const committedAtMs = (p.committedAt ?? 0) * 1000;
+        const timeAgo = committedAtMs ? getTimeAgo(new Date(committedAtMs)) : '--';
+
+        const marketLabel = typeof p.marketIdHex === 'string'
+          ? `Market ${p.marketIdHex.slice(0, 8)}...`
+          : 'Market';
+
+        // Try to enrich the label from locally saved predictions (if present)
+        let highlight = marketLabel;
+        if (localPredictions && typeof p.marketIdHex === 'string') {
+          const localMatch = localPredictions.find((lp) => {
+            const marketBytes = new TextEncoder().encode(lp.marketId || '');
+            const buf = new Uint8Array(32);
+            buf.set(marketBytes.slice(0, 32));
+            const hex = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+            return hex === p.marketIdHex;
+          });
+          if (localMatch?.question) {
+            highlight = localMatch.question.length > 40 ? `${localMatch.question.slice(0, 40)}...` : localMatch.question;
+          }
+        }
+
+        const direction = p.direction === 'yes' ? 'YES' : 'NO';
+        const explorerUrl = p.predictionPda
+          ? `https://explorer.solana.com/address/${p.predictionPda}?cluster=devnet`
+          : undefined;
+
+        return {
+          text: `Predicted ${direction} on`,
+          highlight,
+          time: timeAgo,
+          type: direction === 'YES' ? 'amber' : 'indigo',
+          onChainTx: undefined,
+          explorerUrl,
+          predictionData: {
+            id: p.predictionPda || '',
+            marketId: typeof p.marketIdHex === 'string' ? p.marketIdHex : '',
+            probability: typeof p.predictedProbability === 'number' ? p.predictedProbability : 0,
+            direction,
+            createdAt: committedAtMs ? new Date(committedAtMs).toISOString() : new Date().toISOString(),
+            resolvedAt: p.resolvedAt ? new Date(p.resolvedAt * 1000).toISOString() : undefined,
+            outcome: p.outcome ?? undefined,
+            brierScore: p.brierScore ?? undefined,
+            onChainTx: undefined,
+          },
+        } as ActivityItem;
+      });
     }
 
-    // Convert predictions to activity items - only show predictions with on-chain transactions
+    // Fallback: local predictions with tx (demo / older flows)
+    if (!localPredictions || localPredictions.length === 0) return [];
+
     return localPredictions
-      .filter((pred) => pred.onChainTx) // Only show predictions with valid tx hash
-      .slice(0, 10) // Show last 10 predictions
+      .filter((pred) => pred.onChainTx)
+      .slice(0, 10)
       .map((pred) => {
         const timeAgo = getTimeAgo(new Date(pred.createdAt));
         const questionShort = pred.question && pred.question.length > 40
@@ -805,7 +893,7 @@ export default function ProfilePage() {
           },
         } as ActivityItem;
       });
-  }, [localPredictions]);
+  }, [localPredictions, onChainPredictions]);
 
   // Helper function for time ago
   function getTimeAgo(date: Date): string {
