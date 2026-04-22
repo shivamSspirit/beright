@@ -16,6 +16,8 @@ import { useMode } from '@/context/ModeContext';
 
 // Always use devnet for calibration recording
 const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+const DEVNET_AIRDROP_LAMPORTS = 50_000_000; // 0.05 SOL
+const MIN_DEVNET_BALANCE_LAMPORTS = 10_000_000; // 0.01 SOL
 
 interface RecordParams {
   marketId: string;
@@ -85,6 +87,30 @@ export function usePredictionRecorder() {
   // This works for BOTH Demo (Jupiter) and Production (Privy) modes
   const connected = windowWalletState.connected || (walletAdapterConnected && !!walletAdapterPublicKey);
   const ownerPubkey = windowWalletState.publicKey || walletAdapterPublicKey?.toBase58() || null;
+
+  const ensureDevnetBalance = useCallback(async (connection: Connection, pubkeyBase58: string): Promise<void> => {
+    // Only attempt airdrop on devnet RPC URLs
+    if (!SOLANA_RPC.includes('devnet')) return;
+
+    try {
+      const { PublicKey } = await import('@solana/web3.js');
+      const pubkey = new PublicKey(pubkeyBase58);
+      const balance = await connection.getBalance(pubkey, 'confirmed');
+      if (balance >= MIN_DEVNET_BALANCE_LAMPORTS) return;
+
+      console.log('[Calibration] Low devnet SOL balance, requesting airdrop...', { balance });
+      const sig = await connection.requestAirdrop(pubkey, DEVNET_AIRDROP_LAMPORTS);
+      const latest = await connection.getLatestBlockhash('confirmed');
+      await connection.confirmTransaction(
+        { signature: sig, blockhash: latest.blockhash, lastValidBlockHeight: latest.lastValidBlockHeight },
+        'confirmed'
+      );
+      console.log('[Calibration] Airdrop confirmed:', sig);
+    } catch (error) {
+      // Airdrops can be rate limited; proceed and let the real tx error surface.
+      console.warn('[Calibration] Airdrop failed (continuing):', error instanceof Error ? error.message : String(error));
+    }
+  }, []);
 
   /**
    * Get the signTransaction function - UNIFIED for both Demo and Production
@@ -213,6 +239,10 @@ export function usePredictionRecorder() {
       const connection = new Connection(SOLANA_RPC, 'confirmed');
 
       try {
+        // Ensure the user has enough devnet SOL to pay for account creation + fees.
+        // This is a common failure mode in production (mainnet wallets often have 0 devnet SOL).
+        await ensureDevnetBalance(connection, ownerPubkey);
+
         // Step 1: Call API to build transaction (includes init if needed)
         console.log('[Calibration] 📝 Building transaction...');
         const res = await fetch('/api/v2/calibration', {
@@ -257,10 +287,26 @@ export function usePredictionRecorder() {
         // Step 4: Submit to network
         console.log('[Calibration] 📤 Submitting to devnet...');
         const signedTxSerialized = (signedTx as Transaction).serialize();
-        const signature = await connection.sendRawTransaction(signedTxSerialized, {
-          skipPreflight: false,
-          preflightCommitment: 'confirmed',
-        });
+        let signature: string;
+        try {
+          signature = await connection.sendRawTransaction(signedTxSerialized, {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+          });
+        } catch (sendErr) {
+          const msg = sendErr instanceof Error ? sendErr.message : String(sendErr);
+          // If we failed due to insufficient devnet funds, try one airdrop + retry once.
+          if (SOLANA_RPC.includes('devnet') && /insufficient funds|attempt to debit|custom program error: 0x1/i.test(msg)) {
+            console.warn('[Calibration] Send failed (likely low funds), attempting airdrop then retry once...');
+            await ensureDevnetBalance(connection, ownerPubkey);
+            signature = await connection.sendRawTransaction(signedTxSerialized, {
+              skipPreflight: false,
+              preflightCommitment: 'confirmed',
+            });
+          } else {
+            throw sendErr;
+          }
+        }
 
         // Step 5: Confirm
         console.log('[Calibration] ⏳ Confirming...');
