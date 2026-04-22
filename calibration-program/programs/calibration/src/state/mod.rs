@@ -4,8 +4,8 @@ pub mod prediction;
 // Compression state temporarily disabled
 // pub mod compressed_prediction;
 
-// Export V1 (for backward compatibility with existing deployed accounts)
-pub use forecaster::ForecasterState as ForecasterStateV1;
+// Export V1 layout (borsh body only; used for migration validation)
+pub use forecaster::ForecasterStateV1;
 
 // Export V2 (new schema with cross-platform support)
 pub use forecaster_v2::ForecasterState;

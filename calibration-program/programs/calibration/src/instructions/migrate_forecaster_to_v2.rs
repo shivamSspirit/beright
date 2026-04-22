@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::{program::invoke, system_instruction};
 use crate::state::{ForecasterState, ForecasterStateV1, ForecasterV2ErrorCode};
 
 /// Migrate a V1 forecaster account to V2 schema
@@ -28,18 +29,19 @@ pub struct MigrateForecasterToV2<'info> {
 
     /// Forecaster state account (PDA) - will be reallocated from V1 to V2
     ///
-    /// **IMPORTANT**: This account MUST be version 1 before migration.
-    /// Attempting to migrate a V2 account will fail with InvalidVersion error.
+    /// NOTE:
+    /// This is intentionally `UncheckedAccount` because a legacy V1 account cannot
+    /// be deserialized as V2 during Anchor account validation.
+    ///
+    /// CHECK: The PDA address is verified via seeds+bump, and we additionally
+    /// validate the embedded `authority` and `version` by deserializing the
+    /// existing V1 state in the handler before reallocating.
     #[account(
         mut,
         seeds = [b"forecaster", authority.key().as_ref()],
         bump,
-        constraint = forecaster_state.authority == authority.key() @ ForecasterV2ErrorCode::InvalidVersion,
-        realloc = ForecasterState::LEN,
-        realloc::payer = authority,
-        realloc::zero = false,  // CRITICAL: Do not zero - preserves existing V1 data
     )]
-    pub forecaster_state: Account<'info, ForecasterStateV1>,
+    pub forecaster_state: UncheckedAccount<'info>,
 
     /// System program (required for realloc)
     pub system_program: Program<'info, System>,
@@ -47,47 +49,65 @@ pub struct MigrateForecasterToV2<'info> {
 
 pub fn handler(ctx: Context<MigrateForecasterToV2>) -> Result<()> {
     let authority = ctx.accounts.authority.key();
+    let forecaster_state_ai = ctx.accounts.forecaster_state.to_account_info();
 
-    // Safety check: ensure we're migrating from V1
-    require!(
-        ctx.accounts.forecaster_state.version == 1,
-        ForecasterV2ErrorCode::InvalidVersion
-    );
+    // --------
+    // Validate V1 state (skip 8-byte discriminator)
+    // --------
+    {
+        let data = forecaster_state_ai.data.borrow();
+        require!(data.len() >= 8, ForecasterV2ErrorCode::InvalidVersion);
 
-    // Log pre-migration state for auditing
-    msg!(
-        "Migrating forecaster {} from V1 to V2",
-        authority
-    );
-    msg!(
-        "Pre-migration stats: {} total predictions, {} resolved, avg Brier: {:.4}",
-        ctx.accounts.forecaster_state.total_predictions,
-        ctx.accounts.forecaster_state.resolved_predictions,
-        ctx.accounts.forecaster_state.avg_brier_score
-    );
+        let mut cursor: &[u8] = &data[8..];
+        let v1_state = ForecasterStateV1::deserialize(&mut cursor)?;
 
-    // IMPORTANT:
-    // - The existing on-chain account is serialized as V1 (smaller).
-    // - This instruction reallocates it to V2 length.
-    // - After realloc, we must deserialize as V2 and initialize the new fields.
-    //
-    // We cannot declare the account as `Account<ForecasterState>` in the Accounts struct,
-    // because Anchor would attempt to deserialize V1 bytes as V2 during validation and fail.
-    let account_info = ctx.accounts.forecaster_state.to_account_info();
+        require!(v1_state.authority == authority, ForecasterV2ErrorCode::InvalidVersion);
+        require!(v1_state.version == 1, ForecasterV2ErrorCode::InvalidVersion);
 
-    // After realloc, interpret the account data as V2 and initialize all new fields safely.
-    let mut data = account_info.data.borrow_mut();
-    let mut cursor: &[u8] = &data;
-    let mut v2_state = ForecasterState::try_deserialize_unchecked(&mut cursor)?;
+        msg!("Migrating forecaster {} from V1 to V2", authority);
+        msg!(
+            "Pre-migration stats: {} total predictions, {} resolved, avg Brier: {:.4}",
+            v1_state.total_predictions,
+            v1_state.resolved_predictions,
+            v1_state.avg_brier_score
+        );
+    }
 
-    // Double-check authority matches (defense-in-depth)
+    // --------
+    // Ensure rent-exempt lamports for the new size, then realloc
+    // --------
+    let new_len = ForecasterState::LEN;
+    let rent = Rent::get()?;
+    let required_lamports = rent.minimum_balance(new_len);
+    let current_lamports = forecaster_state_ai.lamports();
+
+    if current_lamports < required_lamports {
+        let diff = required_lamports - current_lamports;
+        let ix = system_instruction::transfer(&authority, &forecaster_state_ai.key(), diff);
+        invoke(
+            &ix,
+            &[
+                ctx.accounts.authority.to_account_info(),
+                forecaster_state_ai.clone(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+    }
+
+    // Do NOT zero new bytes; keep V1 data intact.
+    forecaster_state_ai.realloc(new_len, false)?;
+
+    // --------
+    // Deserialize as V2, initialize new fields, and write back
+    // --------
+    let mut data_mut = forecaster_state_ai.data.borrow_mut();
+    let mut cursor2: &[u8] = &data_mut;
+    let mut v2_state = ForecasterState::try_deserialize_unchecked(&mut cursor2)?;
+
     require!(v2_state.authority == authority, ForecasterV2ErrorCode::InvalidVersion);
-
-    // This preserves all V1 fields and initializes all V2 additions.
     v2_state.migrate_from_v1()?;
 
-    // Write the updated V2 state back to the account.
-    let mut out: &mut [u8] = &mut data;
+    let mut out: &mut [u8] = &mut data_mut;
     v2_state.try_serialize(&mut out)?;
 
     // Log post-migration state
@@ -113,12 +133,7 @@ mod tests {
 
     #[test]
     fn test_migration_account_size_calculation() {
-        // Verify that V2 account size is correctly calculated
-        const V1_SIZE: usize = 230;  // 8 (discriminator) + 222 (V1 fields)
-        const V2_SIZE: usize = ForecasterState::LEN;
-
-        // V2 should be exactly V1 + 359 bytes
-        // NOTE: ForecasterState::LEN reflects the current on-chain measured size (borsh packing).
-        assert!(V2_SIZE > V1_SIZE, "V2 size must be larger than V1");
+        // Sanity check: V2 account size must be larger than the legacy V1 body.
+        assert!(ForecasterState::LEN > (8 + ForecasterStateV1::LEN_NO_DISCRIMINATOR));
     }
 }
