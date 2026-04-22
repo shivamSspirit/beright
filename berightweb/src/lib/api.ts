@@ -269,23 +269,26 @@ export class RateLimitError extends Error {
   }
 }
 
-async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+type ApiFetchOptions = RequestInit & { timeoutMs?: number };
+
+async function apiFetch<T>(endpoint: string, options?: ApiFetchOptions): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
   try {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timeoutMs = (options as any)?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const { timeoutMs, ...requestInit } = (options ?? {}) as ApiFetchOptions;
+    const effectiveTimeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const timeoutId =
-      controller && !options?.signal
-        ? setTimeout(() => controller.abort(new Error('Request timeout')), timeoutMs)
+      controller && !requestInit?.signal
+        ? setTimeout(() => controller.abort(new Error('Request timeout')), effectiveTimeoutMs)
         : null;
 
     const response = await fetch(url, {
-      ...options,
-      signal: options?.signal ?? controller?.signal,
+      ...requestInit,
+      signal: requestInit?.signal ?? controller?.signal,
       headers: {
         'Content-Type': 'application/json',
-        ...options?.headers,
+        ...requestInit?.headers,
       },
     });
     if (timeoutId) clearTimeout(timeoutId);
