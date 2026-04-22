@@ -105,10 +105,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const { Connection, PublicKey, Transaction, SystemProgram } = await import('@solana/web3.js');
     const { BN } = await import('@coral-xyz/anchor');
 
-    const connection = new Connection(
-      process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-      'confirmed'
-    );
+    const calibrationRpcUrl =
+      process.env.CALIBRATION_RPC_URL
+      || (process.env.CALIBRATION_USE_DEVNET !== 'false'
+        ? 'https://api.devnet.solana.com'
+        : (process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'));
+
+    const connection = new Connection(calibrationRpcUrl, 'confirmed');
 
     switch (action) {
       case 'derive-pda': {
@@ -197,16 +200,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const authority = new PublicKey(body.authority);
         const [forecasterPda] = deriveForecasterPda(authority);
 
-        // Check if initialized (use confirmed commitment for fresher data)
-        // Skip check if skipInitCheck=true to handle RPC cache issues
+        // Build a single transaction that can initialize + record in one signature.
+        // This matches the frontend expectation and eliminates the "NOT_INITIALIZED" UX.
+        let includesInit = false;
         if (!body.skipInitCheck) {
           const accountInfo = await connection.getAccountInfo(forecasterPda, { commitment: 'confirmed' });
-          if (!accountInfo) {
-            return NextResponse.json(
-              { success: false, error: 'Forecaster not initialized', code: 'NOT_INITIALIZED' },
-              { status: 400 }
-            );
-          }
+          includesInit = !accountInfo;
         }
 
         const marketIdHash = Buffer.alloc(32);
@@ -214,6 +213,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         const timestampSeed = new BN(Math.floor(Date.now() / 1000));
         const [predictionPda, predBump] = derivePredictionPda(authority, marketIdHash, timestampSeed);
+
+        const { TransactionInstruction } = await import('@solana/web3.js');
+
+        const instructions = [];
+
+        if (includesInit) {
+          // Build initialize instruction
+          const initDiscriminator = Buffer.from([16, 22, 244, 53, 163, 61, 216, 211]);
+          const initInstruction = new TransactionInstruction({
+            programId: CALIBRATION_PROGRAM_ID,
+            keys: [
+              { pubkey: authority, isSigner: true, isWritable: true },
+              { pubkey: forecasterPda, isSigner: false, isWritable: true },
+              { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            ],
+            data: initDiscriminator,
+          });
+          instructions.push(initInstruction);
+        }
 
         // Build record prediction instruction
         const discriminator = Buffer.from([6, 250, 152, 187, 248, 58, 42, 136]);
@@ -229,7 +247,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         offset += 64;
         dataBuffer.writeUInt8(body.category || 0, offset);
 
-        const { TransactionInstruction } = await import('@solana/web3.js');
         const instruction = new TransactionInstruction({
           programId: CALIBRATION_PROGRAM_ID,
           keys: [
@@ -241,7 +258,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           data: dataBuffer,
         });
 
-        const transaction = new Transaction().add(instruction);
+        instructions.push(instruction);
+
+        const transaction = new Transaction().add(...instructions);
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = authority;
@@ -254,6 +273,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             predictionPda: predictionPda.toBase58(),
             predictionBump: predBump,
             timestampSeed: timestampSeed.toString(),
+            includesInit,
             blockhash,
             lastValidBlockHeight,
           },

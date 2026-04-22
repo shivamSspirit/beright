@@ -307,7 +307,10 @@ export default function BeRightTerminal() {
     try {
       // Fetch markets from v2 feed API and terminal data in parallel
       const [hotData, terminalData] = await Promise.all([
-        getHotMarketsFeed(20),
+        getHotMarketsFeed(20).catch((err) => {
+          if (!silent) addAgentLog('SYSTEM', `Feed API failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
+          return { markets: [], count: 0 } as any;
+        }),
         fetchTerminalData().catch(() => ({ markets: [], arbitrage: [], portfolio: null, risk: null, connected: false })),
       ]);
 
@@ -332,7 +335,7 @@ export default function BeRightTerminal() {
         if (!silent) addAgentLog('SYSTEM', 'Portfolio synced', 'success');
       }
     } catch (error) {
-      if (!silent) addAgentLog('SYSTEM', 'Failed to fetch data', 'error');
+      if (!silent) addAgentLog('SYSTEM', `Failed to fetch data: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
 
     if (!silent) setIsLoading(false);

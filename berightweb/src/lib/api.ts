@@ -10,6 +10,8 @@
 // This avoids CORS issues and mixed content (HTTPS→HTTP) problems
 const API_BASE = '';
 
+const DEFAULT_TIMEOUT_MS = 15_000;
+
 // ============ TYPES (synced with beright-ts/types/) ============
 
 export type Platform = 'polymarket' | 'kalshi' | 'manifold' | 'limitless' | 'metaculus' | 'dflow';
@@ -271,13 +273,22 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   const url = `${API_BASE}${endpoint}`;
 
   try {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutMs = (options as any)?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const timeoutId =
+      controller && !options?.signal
+        ? setTimeout(() => controller.abort(new Error('Request timeout')), timeoutMs)
+        : null;
+
     const response = await fetch(url, {
       ...options,
+      signal: options?.signal ?? controller?.signal,
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
     });
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Handle rate limiting specifically (429 status)
     if (response.status === 429) {
@@ -318,6 +329,11 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
     return response.json();
   } catch (error) {
+    // Normalize abort errors into a user-friendly message
+    if (error instanceof Error && (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout'))) {
+      throw new Error('Request timed out. The backend may be waking up or under load. Please try again.');
+    }
+
     // Re-throw RateLimitError as-is
     if (error instanceof RateLimitError) {
       throw error;
