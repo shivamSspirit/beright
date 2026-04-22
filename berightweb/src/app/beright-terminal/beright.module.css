@@ -41,6 +41,10 @@
   padding: 16px 24px;
   border-bottom: 1px solid var(--terminal-border);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-fixed);
+  background: var(--terminal-bg);
 }
 
 .topBarLeft {
@@ -823,7 +827,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
+  height: 100dvh;
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  box-sizing: border-box;
   background: var(--terminal-bg);
   gap: 16px;
 }
@@ -868,7 +874,6 @@
   align-items: center;
   justify-content: center;
   height: 100dvh;
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
   box-sizing: border-box;
   background: var(--terminal-bg);
   background-image:
@@ -876,6 +881,7 @@
     radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
   gap: 24px;
   padding: 20px;
+  padding-bottom: calc(20px + var(--bottom-nav-height) + var(--safe-area-bottom));
 }
 
 .connectLogo {
@@ -982,8 +988,8 @@
 /* Tablet Portrait (768px - 1023px) */
 @media (max-width: 768px) {
   .terminalPage {
-    height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
-    max-height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
+    max-height: 100dvh;
   }
 
   .topBar {
@@ -1192,7 +1198,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
   }
 
   .connectLogoText {
@@ -1231,8 +1237,8 @@
 /* Mobile Large (640px - 767px) */
 @media (max-width: 640px) {
   .terminalPage {
-    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
-    max-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
+    max-height: 100dvh;
   }
 
   .topBar {
@@ -1363,7 +1369,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
   }
 
   .loadingText {
@@ -1406,8 +1412,8 @@
 /* Mobile Small (< 480px) */
 @media (max-width: 480px) {
   .terminalPage {
-    height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
-    max-height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
+    max-height: 100dvh;
   }
 
   .topBar {
@@ -1561,8 +1567,9 @@
 
   .loadingScreen,
   .connectScreen {
-    height: calc(100dvh - 60px - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
     padding: 16px;
+    padding-bottom: calc(16px + var(--bottom-nav-height) + var(--safe-area-bottom));
   }
 
   .loadingText {
