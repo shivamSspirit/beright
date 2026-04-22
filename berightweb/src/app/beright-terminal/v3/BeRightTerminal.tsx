@@ -858,7 +858,10 @@ export default function BeRightTerminal() {
   };
 
   return (
-    <div className={styles.terminalPage}>
+    <div
+      className={styles.terminalPage}
+      style={{ ['--app-header-offset' as any]: authenticated ? '72px' : '0px' }}
+    >
       {/* Onboarding Tour - Only in demo mode */}
       {isDemo && authenticated && tourSteps.length > 0 && (
         <OnboardingTour

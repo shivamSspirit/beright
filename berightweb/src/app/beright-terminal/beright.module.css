@@ -14,11 +14,9 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .terminalPage {
-  /* BottomNav is fixed; reserve space so the last row (CLI input) never sits under it */
-  height: 100dvh;
-  max-height: 100dvh;
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
-  box-sizing: border-box;
+  /* This page sits under the global Header spacer (when authed) and above the fixed BottomNav. */
+  height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+  max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   background: var(--terminal-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
@@ -827,9 +825,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100dvh;
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
-  box-sizing: border-box;
+  height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   background: var(--terminal-bg);
   gap: 16px;
 }
@@ -873,15 +869,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100dvh;
-  box-sizing: border-box;
+  height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   background: var(--terminal-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
     radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
   gap: 24px;
   padding: 20px;
-  padding-bottom: calc(20px + var(--bottom-nav-height) + var(--safe-area-bottom));
 }
 
 .connectLogo {
@@ -988,8 +982,8 @@
 /* Tablet Portrait (768px - 1023px) */
 @media (max-width: 768px) {
   .terminalPage {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   }
 
   .topBar {
@@ -1198,7 +1192,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   }
 
   .connectLogoText {
@@ -1237,8 +1231,8 @@
 /* Mobile Large (640px - 767px) */
 @media (max-width: 640px) {
   .terminalPage {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   }
 
   .topBar {
@@ -1369,7 +1363,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   }
 
   .loadingText {
@@ -1412,8 +1406,8 @@
 /* Mobile Small (< 480px) */
 @media (max-width: 480px) {
   .terminalPage {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
   }
 
   .topBar {
@@ -1567,9 +1561,8 @@
 
   .loadingScreen,
   .connectScreen {
-    height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
     padding: 16px;
-    padding-bottom: calc(16px + var(--bottom-nav-height) + var(--safe-area-bottom));
   }
 
   .loadingText {
