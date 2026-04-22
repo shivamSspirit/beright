@@ -819,36 +819,26 @@ export default function ProfilePage() {
           ? `Market ${p.marketIdHex.slice(0, 8)}...`
           : 'Market';
 
-        // Try to enrich the label AND attach a real transaction signature from locally saved predictions.
-        // If we cannot find a tx signature (devnet explorer history), we omit this activity item.
+        // Try to enrich the label from locally saved predictions (if present).
+        // TX signature comes from the backend (derived via getSignaturesForAddress(predictionPda)).
         let highlight = marketLabel;
-        let txSignature: string | undefined;
-        let explorerUrl: string | undefined;
-
-        if (localPredictions && typeof p.marketIdHex === 'string') {
-          const localMatch = localPredictions.find((lp) => {
-            const marketBytes = new TextEncoder().encode(lp.marketId || '');
-            const buf = new Uint8Array(32);
-            buf.set(marketBytes.slice(0, 32));
-            const hex = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
-            return hex === p.marketIdHex;
-          });
+        if (localPredictions) {
+          const marketIdText = typeof p.marketIdText === 'string' ? p.marketIdText : '';
+          const localMatch = marketIdText
+            ? localPredictions.find((lp) => lp.marketId === marketIdText)
+            : undefined;
 
           if (localMatch?.question) {
             highlight = localMatch.question.length > 40 ? `${localMatch.question.slice(0, 40)}...` : localMatch.question;
           }
-
-          if (localMatch?.onChainTx) {
-            txSignature = localMatch.onChainTx;
-            explorerUrl = localMatch.explorerUrl || `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`;
-          }
-        }
-
-        if (!txSignature) {
-          return null;
         }
 
         const direction = p.direction === 'yes' ? 'YES' : 'NO';
+        const txSignature = typeof p.txSignature === 'string' ? p.txSignature : null;
+        if (!txSignature) return null;
+
+        const explorerUrl = `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`;
+
         return {
           text: `Predicted ${direction} on`,
           highlight,
@@ -870,7 +860,9 @@ export default function ProfilePage() {
         } as ActivityItem;
       });
 
-      return items.filter(Boolean).slice(0, 10) as ActivityItem[];
+      const filtered = items.filter(Boolean) as ActivityItem[];
+      // If RPC couldn't find tx signatures (rare on devnet), fall back to local tx-backed activity.
+      if (filtered.length > 0) return filtered.slice(0, 10);
     }
 
     // Fallback: local predictions with tx (demo / older flows)

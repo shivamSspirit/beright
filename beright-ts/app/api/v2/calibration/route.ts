@@ -46,6 +46,18 @@ function toHex32(buf: Buffer): string {
   return buf.toString('hex');
 }
 
+function marketIdToText(buf32: Buffer): string {
+  // Market IDs are stored as utf-8 bytes, zero-padded to 32 bytes.
+  // Decode up to the first 0 byte.
+  const zeroIdx = buf32.indexOf(0);
+  const end = zeroIdx === -1 ? buf32.length : zeroIdx;
+  try {
+    return buf32.subarray(0, end).toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
 function parsePredictionRecord(data: Buffer) {
   // Layout matches `calibration-program/programs/calibration/src/state/prediction.rs`
   let offset = 0;
@@ -70,6 +82,7 @@ function parsePredictionRecord(data: Buffer) {
     bump,
     forecaster,
     marketIdHex: toHex32(marketId),
+    marketIdText: marketIdToText(marketId),
     predictedProbability,
     direction: directionRaw === 0 ? 'yes' : 'no',
     committedAt,
@@ -110,11 +123,26 @@ async function getOnChainPredictionHistory(walletAddress: string, limit: number)
     }))
     .sort((a, b) => b.committedAt - a.committedAt);
 
+  // Attach a real transaction signature for each prediction record (for explorer links).
+  // The account creation/write transaction will always include this PDA in its account keys.
+  const limited = parsed.slice(0, Math.max(0, limit));
+  const withTx = await Promise.all(
+    limited.map(async (p) => {
+      try {
+        const sigs = await connection.getSignaturesForAddress(new PublicKey(p.predictionPda), { limit: 1 }, 'confirmed');
+        const txSignature = sigs?.[0]?.signature || null;
+        return { ...p, txSignature };
+      } catch {
+        return { ...p, txSignature: null };
+      }
+    })
+  );
+
   return {
     walletAddress,
     network: process.env.CALIBRATION_USE_DEVNET !== 'false' ? 'devnet' : 'mainnet',
     totalPredictions: parsed.length,
-    predictions: parsed.slice(0, Math.max(0, limit)),
+    predictions: withTx,
   };
 }
 
