@@ -407,13 +407,19 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
   const timeLeft = formatTimeRemaining(market.endDate);
   const isLive = timeLeft !== 'TBD' && timeLeft !== 'Ended' && parseInt(timeLeft) <= 24 && timeLeft.includes('h');
 
-  // Get the market detail URL - use Jupiter event ID
-  // Demo mode uses `eventId = evt-...` but the backend also exposes a stable `id = jupiter-...`.
-  // Prefer `id` when present for a consistent single-market route across demo + production.
+  // Get the market detail URL.
+  // Jupiter's public route uses the *marketId* (e.g. POLY-75478). Prefer it when available.
+  // Demo mode doesn't have `marketId`, so fall back to eventId / demo id.
+  const primaryMarketId =
+    market.jupiter?.markets?.[0]?.marketId
+    || ((market.jupiter?.markets?.[0] as any)?.id as string | undefined)
+    || undefined;
+
   const maybeDemoId = (market.jupiter as any)?.id;
-  const jupiterRouteId = (typeof maybeDemoId === 'string' && maybeDemoId.startsWith('jupiter-'))
-    ? maybeDemoId
-    : market.jupiter?.eventId;
+  const jupiterRouteId =
+    primaryMarketId
+    || ((typeof maybeDemoId === 'string' && maybeDemoId.startsWith('jupiter-')) ? maybeDemoId : undefined)
+    || market.jupiter?.eventId;
   const marketDetailUrl = jupiterRouteId
     ? `/market/${encodeURIComponent(jupiterRouteId)}`
     : null;

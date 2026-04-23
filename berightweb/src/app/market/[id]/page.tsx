@@ -92,8 +92,9 @@ function transformToTradingPrediction(event: JupiterEvent) {
   };
 }
 
-function generateSparkData(currentPct: number, seed: string) {
-  const seedNum = seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+function generateSparkData(currentPct: number, seed?: string) {
+  const safeSeed = seed || 'beright';
+  const seedNum = safeSeed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
   const points: number[] = [];
   let price = Math.max(5, Math.min(95, currentPct * 0.85));
 
@@ -173,6 +174,7 @@ export default function MarketDetailPage() {
     const sellNoPriceUsd = pricing?.sellNoPriceUsd ? parseFloat(pricing.sellNoPriceUsd) / 1_000_000 : noPriceUsd;
 
     return {
+      id: mkt?.marketId || market.eventId || marketId,
       title: market.title || mkt?.title || '',
       subtitle: mkt?.title !== market.title ? mkt?.title : null,
       imageUrl: market.imageUrl || market.metadata?.imageUrl || null,
@@ -189,7 +191,7 @@ export default function MarketDetailPage() {
       liquidity: pricing?.liquidity ? parseFloat(pricing.liquidity) / 1_000_000 : 0,
       endDate: market.endTime || mkt?.closeTime || null,
       status: market.status || 'active',
-      url: `https://app.jup.ag/predictions/${market.eventId}`,
+      url: `https://jup.ag/prediction/${mkt?.marketId || market.eventId || marketId}`,
       source: mkt?.provider || 'jupiter',
     };
   }, [market]);
@@ -1202,7 +1204,7 @@ const pageStyles = `
   .qs-item svg { color: #64748B; }
 `;
 
-function SparklineChart({ pct, seed }: { pct: number; seed: string }) {
+function SparklineChart({ pct, seed }: { pct: number; seed?: string }) {
   const points = useMemo(() => generateSparkData(pct, seed), [pct, seed]);
   const width = 320;
   const height = 140;

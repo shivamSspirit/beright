@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getEvents,
   getEvent,
+  getMarket,
   searchEvents,
   getHotEvents,
 } from '../../../../../lib/jupiter/prediction';
@@ -109,14 +110,39 @@ export async function GET(request: NextRequest) {
     // Get single event by ID
     const eventId = searchParams.get('id');
     if (eventId) {
+      // Jupiter's public URL uses marketId (e.g. POLY-75478). Our route accepts both.
+      // 1) Try as eventId.
       const response = await getEvent(eventId);
-      if (!response.success) {
+      if (response.success && response.data) {
+        return NextResponse.json({ success: true, data: response.data });
+      }
+
+      // 2) Fallback: treat as marketId, fetch market, then fetch its event (and attach markets if missing).
+      const marketRes = await getMarket(eventId);
+      if (!marketRes.success || !marketRes.data) {
         return NextResponse.json(
-          { success: false, error: response.error || 'Event not found' },
+          { success: false, error: response.error || marketRes.error || 'Event not found' },
           { status: 404 }
         );
       }
-      return NextResponse.json({ success: true, data: response.data });
+
+      const eventRes = await getEvent(marketRes.data.eventId);
+      if (!eventRes.success || !eventRes.data) {
+        return NextResponse.json(
+          { success: false, error: eventRes.error || 'Event not found' },
+          { status: 404 }
+        );
+      }
+
+      // Ensure the requested market is present.
+      const existing = eventRes.data.markets || [];
+      const hasMarket = existing.some((m: any) => m.marketId === marketRes.data?.marketId);
+      const merged = {
+        ...eventRes.data,
+        markets: hasMarket ? existing : [marketRes.data, ...existing],
+      };
+
+      return NextResponse.json({ success: true, data: merged });
     }
 
     // Search events

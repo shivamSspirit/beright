@@ -1974,7 +1974,9 @@ export async function getJupiterEvent(eventId: string): Promise<{
   success: boolean;
   data: JupiterEvent | null;
 }> {
-  return apiFetch(`/api/v2/jupiter/events?id=${encodeURIComponent(eventId)}`);
+  // `id` can be either a Jupiter eventId or a Jupiter marketId (POLY-xxxx / KALSHI-xxxx).
+  // Backend resolves both.
+  return apiFetch(`/api/v2/jupiter/events?id=${encodeURIComponent(eventId)}&includeMarkets=true`);
 }
 
 /**
