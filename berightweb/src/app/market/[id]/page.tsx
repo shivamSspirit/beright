@@ -486,7 +486,7 @@ const pageStyles = `
     background: #0F172A;
     color: #F8FAFC;
     font-family: 'Exo 2', -apple-system, sans-serif;
-    padding-bottom: 80px;
+    padding-bottom: calc(var(--app-bottom-offset) + 16px);
   }
 
   /* ━━━ LOADING ━━━ */

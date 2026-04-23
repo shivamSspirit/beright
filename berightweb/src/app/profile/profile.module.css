@@ -20,9 +20,9 @@
     linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 40px 40px;
-  /* Account for bottom nav (72px) - header spacer is handled by providers */
-  min-height: calc(100vh - 72px);
-  padding-bottom: 72px;
+  /* Account for bottom nav + safe area (header spacer is handled by providers) */
+  min-height: calc(100dvh - var(--app-bottom-offset));
+  padding-bottom: var(--app-bottom-offset);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   position: relative;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { animated, useSpring } from '@react-spring/web';
 import { DFlowData } from '@/lib/types';
 import { useTrading, TradingStep } from '@/hooks/useTrading';
@@ -91,6 +92,12 @@ function getExplorerLinks(signature: string): ExplorerLink[] {
 // ============ COMPONENT ============
 
 export default function TradingModal({ prediction, isOpen, onClose }: TradingModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Trade state
   const [side, setSide] = useState<'YES' | 'NO'>('YES');
   const [amount, setAmount] = useState<string>('10');
@@ -366,12 +373,12 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
   // ============ RENDER ============
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const yesPrice = (dflow?.yesAsk || prediction.marketOdds / 100).toFixed(2);
   const noPrice = (dflow?.noAsk || (100 - prediction.marketOdds) / 100).toFixed(2);
 
-  return (
+  const modal = (
     <>
       <animated.div className="tm-backdrop" style={backdropSpring} onClick={handleClose} />
 
@@ -1455,4 +1462,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
       `}</style>
     </>
   );
+
+  // Ensure the modal overlays the global fixed BottomNav (and avoids stacking-context issues).
+  return createPortal(modal, document.body);
 }

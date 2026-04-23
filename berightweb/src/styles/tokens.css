@@ -308,6 +308,9 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
 
+  /* App chrome offsets */
+  --app-bottom-offset: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+
   /* Cards */
   --card-bg: var(--color-bg-surface-1);
   --card-border: var(--color-border);

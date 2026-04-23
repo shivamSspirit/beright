@@ -10,7 +10,7 @@
 .marketsPage {
   min-height: 100dvh;
   background: linear-gradient(180deg, var(--color-bg-void) 0%, var(--color-bg-deep) 50%, var(--color-bg-void) 100%);
-  padding-bottom: calc(80px + var(--safe-area-bottom));
+  padding-bottom: calc(var(--app-bottom-offset) + var(--space-6));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
