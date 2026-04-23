@@ -15,8 +15,8 @@
 
 .terminalPage {
   /* This page sits under the global Header spacer (when authed) and above the fixed BottomNav. */
-  height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-  max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+  height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
+  max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
   background: var(--terminal-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
@@ -27,6 +27,13 @@
   flex-direction: column;
   overflow: hidden;
   position: relative; /* anchor mobile overlays */
+}
+
+@supports (height: 100svh) {
+  .terminalPage {
+    height: calc(100svh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
+    max-height: calc(100svh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -160,6 +167,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .topBarRight {
@@ -936,7 +945,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+  height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
   background: var(--terminal-bg);
   gap: 16px;
 }
@@ -980,7 +989,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+  height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
   background: var(--terminal-bg);
   background-image:
     radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
@@ -1092,18 +1101,14 @@
 
 /* Tablet Portrait (768px - 1023px) */
 @media (max-width: 768px) {
-  .terminalPage {
-    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-  }
-
   .topBar {
     padding: 10px 12px;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   .topBarLeft {
-    flex: 1;
+    flex: 0 0 100%;
     min-width: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1125,6 +1130,18 @@
     padding: 6px 12px;
     font-size: 11px;
     white-space: nowrap;
+  }
+
+  .topBarRight {
+    order: 2;
+    flex: 1;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .topBarMobileActions {
+    order: 3;
+    margin-left: auto;
   }
 
   .cliWrapper {
@@ -1301,7 +1318,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
   }
 
   .connectLogoText {
@@ -1337,13 +1354,14 @@
   }
 }
 
+@media (max-width: 420px) {
+  .topBarRight span {
+    display: none;
+  }
+}
+
 /* Mobile Large (640px - 767px) */
 @media (max-width: 640px) {
-  .terminalPage {
-    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-  }
-
   .topBar {
     padding: 8px 10px;
   }
@@ -1472,7 +1490,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
   }
 
   .loadingText {
@@ -1514,11 +1532,6 @@
 
 /* Mobile Small (< 480px) */
 @media (max-width: 480px) {
-  .terminalPage {
-    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
-  }
-
   .topBar {
     padding: 6px 8px;
   }
@@ -1670,7 +1683,7 @@
 
   .loadingScreen,
   .connectScreen {
-    height: calc(100dvh - var(--app-header-offset, 0px) - var(--bottom-nav-height) - var(--safe-area-bottom));
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
     padding: 16px;
   }
 
@@ -2457,8 +2470,8 @@
 /* Very short screens - compact everything, narrower sidebar */
 @media (max-height: 500px) {
   .terminalPage {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
+    max-height: calc(100dvh - var(--app-header-offset, 0px) - var(--app-bottom-offset));
   }
 
   .mainGridThreeCol {

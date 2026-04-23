@@ -1045,9 +1045,9 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
           background: linear-gradient(180deg, #0f0f1a 0%, var(--bg-deep) 100%);
           color: var(--text-primary);
-          /* App shell sizing: account for global header spacer (72px) + fixed bottom nav + safe area. */
-          height: calc(100dvh - 72px - var(--app-bottom-offset));
-          height: calc(100svh - 72px - var(--app-bottom-offset));
+          /* App shell sizing: account for global header spacer + fixed bottom nav + safe area. */
+          height: calc(100dvh - var(--app-header-height) - var(--app-bottom-offset));
+          height: calc(100svh - var(--app-header-height) - var(--app-bottom-offset));
           min-height: 380px;
           width: 100%;
           overflow: hidden;

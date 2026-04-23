@@ -2701,6 +2701,13 @@ img {
   -webkit-tap-highlight-color: rgba(0, 255, 178, 0.1);
 }
 
+/* Keep app chrome offsets in sync with the fixed global Header. */
+@media (max-width: 768px) {
+  :root {
+    --app-header-height: 60px;
+  }
+}
+
 /* Safe area padding utilities */
 .safe-area-top {
   padding-top: env(safe-area-inset-top, 0px);

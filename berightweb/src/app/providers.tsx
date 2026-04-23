@@ -26,7 +26,7 @@ function DemoAppContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       {isAuthenticated && <Header />}
-      {isAuthenticated && <div style={{ height: '72px' }} />}
+      {isAuthenticated && <div style={{ height: 'var(--app-header-height)' }} />}
       {children}
       <OnboardingWrapper isAuthenticated={isAuthenticated} walletAddress={walletAddress} />
     </>
@@ -39,7 +39,7 @@ function ProductionAppContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       {isAuthenticated && <Header />}
-      {isAuthenticated && <div style={{ height: '72px' }} />}
+      {isAuthenticated && <div style={{ height: 'var(--app-header-height)' }} />}
       {children}
       <OnboardingWrapper isAuthenticated={isAuthenticated} walletAddress={walletAddress} />
     </>

@@ -301,6 +301,7 @@
   --nav-height-mobile: 56px;
   --bottom-nav-height: 72px;
   --page-header-height: 56px;
+  --app-header-height: 72px;
 
   /* Safe areas */
   --safe-area-top: env(safe-area-inset-top, 0px);

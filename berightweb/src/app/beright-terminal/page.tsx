@@ -16,7 +16,6 @@
  * 3. Legacy components: MatrixRain, BootSequence, MarketTicker, etc.
  */
 
-import { PageWrapper } from '@/components/ui';
 import BeRightTerminal from './v3/BeRightTerminal';
 import { useEffect } from 'react';
 
@@ -43,8 +42,6 @@ export default function BeRightTerminalPage() {
   }, []);
 
   return (
-    <PageWrapper showHeader={false} showFooter={false}>
-      <BeRightTerminal />
-    </PageWrapper>
+    <BeRightTerminal />
   );
 }
