@@ -69,10 +69,12 @@ export async function GET(request: NextRequest) {
       const eventId = searchParams.get('id');
       if (eventId) {
         const markets = getDemoMarketsWithJitter(20);
+        const normalized = eventId.startsWith('mkt-') ? eventId.slice('mkt-'.length) : eventId;
         const market = markets.find((m) =>
           `jupiter-${m.ticker}` === eventId ||
           `evt-${m.ticker}` === eventId ||
-          m.ticker === eventId
+          `mkt-${m.ticker}` === eventId ||
+          m.ticker === normalized
         );
         if (!market) {
           return NextResponse.json(

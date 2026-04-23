@@ -383,9 +383,10 @@ interface MarketCardProps {
   market: MarketWithJupiter;
   onTrade?: (market: MarketWithJupiter) => void;
   index: number;
+  isDemoMode: boolean;
 }
 
-function MarketCard({ market, onTrade, index }: MarketCardProps) {
+function MarketCard({ market, onTrade, index, isDemoMode }: MarketCardProps) {
   const [imgError, setImgError] = useState(false);
   const marketTitle = market.question || market.title;
   // Get image from Jupiter source
@@ -420,10 +421,17 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
   const isDemoLike = (id?: string | null) =>
     !!id && (id.startsWith('mkt-DEMO-') || id.startsWith('evt-DEMO-') || id.includes('-DEMO-'));
 
-  // If we can't find a real Jupiter `marketId`, only fall back to `eventId` when it looks real.
-  const jupiterRouteId =
-    primaryMarketId
-    || (!isDemoLike(market.jupiter?.eventId) ? market.jupiter?.eventId : undefined);
+  const demoRouteId =
+    (rawMarket?.id as string | undefined) // demo: "mkt-DEMO-..."
+    || market.jupiter?.eventId
+    || (market.jupiter as any)?.id
+    || market.id
+    || undefined;
+
+  // Production: avoid routing to demo IDs. Demo: always allow demo IDs.
+  const jupiterRouteId = isDemoMode
+    ? demoRouteId
+    : (primaryMarketId || (!isDemoLike(market.jupiter?.eventId) ? market.jupiter?.eventId : undefined));
   const marketDetailUrl = jupiterRouteId
     ? `/market/${encodeURIComponent(jupiterRouteId)}`
     : null;
@@ -840,6 +848,7 @@ export default function MarketsPage() {
                       market={market}
                       onTrade={setTradingMarket}
                       index={index}
+                      isDemoMode={isDemo}
                     />
                   </div>
                 ))}
