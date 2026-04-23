@@ -61,7 +61,11 @@ export const PLATFORM_FEE_CONFIG = {
  * Get API key from environment
  */
 function getApiKey(): string | undefined {
-  return process.env.JUPITER_PREDICTION_API_KEY;
+  return (
+    process.env.JUPITER_PREDICTION_API_KEY
+    || process.env.JUPITER_API_KEY
+    || process.env.JUP_API_KEY
+  );
 }
 
 /**
@@ -88,7 +92,8 @@ function buildHeaders(): Record<string, string> {
 
   const apiKey = getApiKey();
   if (apiKey) {
-    headers['X-API-Key'] = apiKey;
+    // Jupiter docs specify `x-api-key` (header name is case-insensitive, but keep it exact).
+    headers['x-api-key'] = apiKey;
   }
 
   return headers;
@@ -129,6 +134,15 @@ async function fetchApi<T>(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[Jupiter Prediction] API error ${response.status}:`, errorText);
+      if (response.status === 401 || response.status === 403) {
+        const hasKey = !!getApiKey();
+        return {
+          success: false,
+          error: hasKey
+            ? `Jupiter API auth failed (HTTP ${response.status}). Check that your API key is valid/active.`
+            : `Jupiter API key missing (HTTP ${response.status}). Set JUPITER_PREDICTION_API_KEY in the backend environment.`,
+        };
+      }
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
     }
 
