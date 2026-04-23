@@ -68,7 +68,11 @@ export async function GET(request: NextRequest) {
       const eventId = searchParams.get('id');
       if (eventId) {
         const markets = getDemoMarketsWithJitter(20);
-        const market = markets.find(m => `jupiter-${m.ticker}` === eventId || m.ticker === eventId);
+        const market = markets.find((m) =>
+          `jupiter-${m.ticker}` === eventId ||
+          `evt-${m.ticker}` === eventId ||
+          m.ticker === eventId
+        );
         if (!market) {
           return NextResponse.json(
             { success: false, error: 'Event not found' },
