@@ -1045,8 +1045,9 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
           font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
           background: linear-gradient(180deg, #0f0f1a 0%, var(--bg-deep) 100%);
           color: var(--text-primary);
-          /* Height: 100dvh - 72px (header spacer from providers) - 72px (bottom nav) */
-          height: calc(100dvh - 144px);
+          /* App shell sizing: account for global header spacer (72px) + fixed bottom nav + safe area. */
+          height: calc(100dvh - 72px - var(--app-bottom-offset));
+          height: calc(100svh - 72px - var(--app-bottom-offset));
           min-height: 380px;
           width: 100%;
           overflow: hidden;
@@ -1479,17 +1480,11 @@ export default function SwipeCards({ predictions, onVote }: SwipeCardsProps) {
 
         /* Controls */
         .controls {
-          padding: 0 24px 16px;
+          padding: 0 24px calc(var(--app-bottom-offset) + 12px);
           display: flex;
           justify-content: center;
           gap: 48px;
           z-index: 10;
-        }
-
-        @supports (padding-bottom: env(safe-area-inset-bottom)) {
-          .controls {
-            padding-bottom: calc(16px + env(safe-area-inset-bottom));
-          }
         }
 
         .control-btn {

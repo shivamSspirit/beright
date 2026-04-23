@@ -533,7 +533,7 @@ const SettingsPanel = ({
               </div>
             </div>
 
-            <Link href="/subscription" className={styles.btnPrimary} style={{ textDecoration: 'none', textAlign: 'center' }}>
+            <Link href="/subscription" className={styles.btnPrimary}>
               <Crown size={14} />
               Upgrade Plan
             </Link>

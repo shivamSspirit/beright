@@ -869,6 +869,10 @@
 
 .btnPrimary {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 10px;
   border-radius: 8px;
   font-family: var(--font-sans);
@@ -880,6 +884,7 @@
   background: var(--color-text-primary);
   color: #000;
   transition: all 0.2s;
+  text-decoration: none;
 }
 
 .btnPrimary:hover {

@@ -2388,6 +2388,23 @@
 
 /* When we hide side panels, expose them via a mobile sheet toggle in the top bar. */
 @media (max-width: 900px) {
+  .topBar {
+    gap: 10px;
+  }
+
+  .topBarLeft {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .topBarLeft::-webkit-scrollbar {
+    display: none;
+  }
+
   .topBarRight {
     display: none;
   }
