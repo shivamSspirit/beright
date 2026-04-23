@@ -74,6 +74,42 @@ function decodeMemoTxSignature(memoTxSignature: number[] | Uint8Array | Buffer |
   return bs58.encode(buf);
 }
 
+async function findRecordPredictionSignatures(
+  connection: Connection,
+  walletPubkey: PublicKey,
+  limit: number
+): Promise<Array<{ signature: string; blockTime: number | null }>> {
+  const sigInfos = await connection.getSignaturesForAddress(walletPubkey, { limit: Math.min(50, Math.max(1, limit * 5)) });
+  if (sigInfos.length === 0) return [];
+
+  // Only inspect a small number of transactions; RPC can be slow.
+  const candidates = sigInfos.slice(0, Math.min(20, sigInfos.length));
+
+  const results: Array<{ signature: string; blockTime: number | null }> = [];
+
+  for (const info of candidates) {
+    try {
+      const tx = await connection.getTransaction(info.signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+      const logMessages = tx?.meta?.logMessages || [];
+      const includesProgram = (tx?.transaction.message.staticAccountKeys || [])
+        .some((k) => k.equals(PROGRAM_ID));
+      const isRecordPrediction = logMessages.some((l) => l.includes('Instruction: RecordPrediction'));
+
+      if (includesProgram && isRecordPrediction) {
+        results.push({ signature: info.signature, blockTime: info.blockTime ?? null });
+        if (results.length >= limit) break;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return results;
+}
+
 /**
  * Get read-only Anchor program instance
  */
@@ -105,6 +141,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const wallet = searchParams.get('wallet');
     const limitParam = searchParams.get('limit');
     const limit = Math.max(1, Math.min(50, Number.parseInt(limitParam || '50', 10) || 50));
+    const history = searchParams.get('history') === 'true';
 
     if (!wallet) {
       return NextResponse.json(
@@ -125,6 +162,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const program = getReadOnlyProgram();
     const [forecasterStatePda] = deriveForecasterPda(walletPubkey);
+
+    // Optional: fetch the wallet's recent tx signatures for RecordPrediction so the UI can show an explorer link
+    // even if the on-chain account doesn't store a signature (programs can't read their own tx sig).
+    let recordPredictionSigs: Array<{ signature: string; blockTime: number | null }> = [];
+    if (history) {
+      try {
+        const connection = new Connection(DEVNET_RPC, 'confirmed');
+        recordPredictionSigs = await findRecordPredictionSignatures(connection, walletPubkey, Math.min(10, limit));
+      } catch (err) {
+        console.warn('[Calibration API] Failed to scan wallet tx signatures:', err instanceof Error ? err.message : String(err));
+      }
+    }
 
     // Fetch forecaster state
     let forecasterAccount;
@@ -198,6 +247,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       predictions.sort((a, b) =>
         (b.committedAt as number) - (a.committedAt as number)
       );
+
+      // If we don't have txSignature in the account, attempt a best-effort match from wallet tx history.
+      // We match by time: closest RecordPrediction tx blockTime to committedAt.
+      if (history && recordPredictionSigs.length > 0) {
+        for (const p of predictions) {
+          if (p.txSignature) continue;
+          const committedAt = typeof p.committedAt === 'number' ? p.committedAt : null;
+          if (!committedAt) continue;
+
+          let best: { signature: string; blockTime: number | null } | null = null;
+          let bestDelta = Number.POSITIVE_INFINITY;
+
+          for (const s of recordPredictionSigs) {
+            if (!s.blockTime) continue;
+            const delta = Math.abs(s.blockTime - committedAt);
+            if (delta < bestDelta) {
+              bestDelta = delta;
+              best = s;
+            }
+          }
+
+          // Only accept a close match (2 minutes) to avoid wrong links if wallet has other txs.
+          if (best && best.blockTime && bestDelta <= 120) {
+            p.txSignature = best.signature;
+            p.explorerUrl = `https://explorer.solana.com/tx/${best.signature}?cluster=devnet`;
+          }
+        }
+      }
     } catch (err) {
       console.error('[Calibration API] Error fetching predictions:', err);
     }
