@@ -739,6 +739,19 @@ export default function ProfilePage() {
     if (!walletAddress) return;
     try {
       const res = await fetch(`/api/notifications?wallet=${walletAddress}&limit=20`);
+      if (!res.ok) {
+        setNotificationCount(0);
+        return;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // When the route doesn't exist or upstream errors, Next may return an HTML error page.
+        // Avoid throwing "Unexpected token '<'".
+        setNotificationCount(0);
+        return;
+      }
+
       const data = await res.json();
       setNotificationCount(data.notifications?.filter((n: any) => n.status === 'pending').length || 0);
     } catch (error) {
