@@ -10,6 +10,7 @@ import { getAllExplorerUrls } from '@/lib/explorer';
 import { useSignalStream } from '@/hooks/useSignalStream';
 import { useConversationStore, useMessages, useIsProcessing, useConversationLoading } from '@/stores/conversationStore';
 import { useConversationRealtime, useJobPolling } from '@/hooks/useConversationRealtime';
+import { PanelLeft, PanelRight, X } from 'lucide-react';
 
 // Portfolio data structure from API
 interface PortfolioData {
@@ -69,6 +70,7 @@ export default function BeRightTerminal() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>('BERIGHT');
+  const [mobileSheet, setMobileSheet] = useState<'history' | 'portfolio' | null>(null);
 
   // Signal intelligence stream (SSE)
   const { signals, connected: signalsConnected } = useSignalStream();
@@ -191,6 +193,21 @@ export default function BeRightTerminal() {
       useConversationStore.getState().loadConversation(activeConversationId);
     }
   }, [walletAddress, activeConversationId, activeConversation, isLoadingConversation]);
+
+  // Close mobile sheet on Escape (mobile + desktop)
+  useEffect(() => {
+    if (!mobileSheet) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileSheet(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileSheet]);
+
+  // If user navigates away from chat, ensure the sheet doesn't "stick" in state.
+  useEffect(() => {
+    if (activeTab !== 'BERIGHT') setMobileSheet(null);
+  }, [activeTab]);
 
   // Real-time subscription for live message updates
   // This enables multi-tab sync and instant message delivery
@@ -899,12 +916,79 @@ export default function BeRightTerminal() {
           <span>LATENCY: {latencyDisplay}</span>
           <PulseIndicator state={signalsConnected ? 'active' : 'idle'} />
         </div>
+
+        {/* Mobile actions (shown via CSS breakpoints) */}
+        {activeTab === 'BERIGHT' && (
+          <div className={styles.topBarMobileActions} aria-label="Terminal panels">
+            <button
+              type="button"
+              className={styles.mobileActionBtn}
+              onClick={() => setMobileSheet((prev) => (prev === 'history' ? null : 'history'))}
+              aria-label="Open conversation history"
+            >
+              <PanelLeft size={18} />
+            </button>
+            <button
+              type="button"
+              className={styles.mobileActionBtn}
+              onClick={() => setMobileSheet((prev) => (prev === 'portfolio' ? null : 'portfolio'))}
+              aria-label="Open portfolio panel"
+            >
+              <PanelRight size={18} />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {renderContent()}
       </div>
+
+      {/* Mobile sheet overlay (conversation history / portfolio). Only relevant on BERIGHT tab. */}
+      {activeTab === 'BERIGHT' && mobileSheet && (
+        <div className={styles.mobileSheetLayer} role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className={styles.mobileSheetBackdrop}
+            onClick={() => setMobileSheet(null)}
+            aria-label="Close panel"
+          />
+          <div className={styles.mobileSheet}>
+            <div className={styles.mobileSheetHeader}>
+              <span className={styles.mobileSheetTitle}>
+                {mobileSheet === 'history' ? 'Conversations' : 'Portfolio'}
+              </span>
+              <button
+                type="button"
+                className={styles.mobileSheetClose}
+                onClick={() => setMobileSheet(null)}
+                aria-label="Close panel"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className={styles.mobileSheetBody}>
+              {mobileSheet === 'history' ? (
+                <ConversationSidebar
+                  walletAddress={walletAddress}
+                  onConversationSelect={(id) => {
+                    setActiveConversation(id);
+                    setMobileSheet(null);
+                  }}
+                />
+              ) : (
+                <PortfolioSidebar
+                  signals={signals}
+                  portfolioValue={portfolioData?.portfolioValue}
+                  dailyChange={portfolioData?.dailyChange}
+                  dailyChangePercent={portfolioData?.dailyChangePct}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CLI Input - Only show on BERIGHT (chat) tab */}
       {activeTab === 'BERIGHT' && (
