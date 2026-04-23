@@ -410,16 +410,20 @@ function MarketCard({ market, onTrade, index }: MarketCardProps) {
   // Get the market detail URL.
   // Jupiter's public route uses the *marketId* (e.g. POLY-75478). Prefer it when available.
   // Demo mode doesn't have `marketId`, so fall back to eventId / demo id.
+  const rawMarket = (market.jupiter?.markets?.[0] as any) || null;
   const primaryMarketId =
-    market.jupiter?.markets?.[0]?.marketId
-    || ((market.jupiter?.markets?.[0] as any)?.id as string | undefined)
+    (rawMarket?.marketId as string | undefined)
+    || (rawMarket?.id as string | undefined)
+    || (rawMarket?.market_id as string | undefined)
     || undefined;
 
-  const maybeDemoId = (market.jupiter as any)?.id;
+  const isDemoLike = (id?: string | null) =>
+    !!id && (id.startsWith('mkt-DEMO-') || id.startsWith('evt-DEMO-') || id.includes('-DEMO-'));
+
+  // If we can't find a real Jupiter `marketId`, only fall back to `eventId` when it looks real.
   const jupiterRouteId =
     primaryMarketId
-    || ((typeof maybeDemoId === 'string' && maybeDemoId.startsWith('jupiter-')) ? maybeDemoId : undefined)
-    || market.jupiter?.eventId;
+    || (!isDemoLike(market.jupiter?.eventId) ? market.jupiter?.eventId : undefined);
   const marketDetailUrl = jupiterRouteId
     ? `/market/${encodeURIComponent(jupiterRouteId)}`
     : null;
@@ -572,7 +576,12 @@ function jupiterToApiMarket(event: JupiterEvent): MarketWithJupiter | null {
     : 0;
 
   // Construct Jupiter URL
-  const jupiterUrl = `https://app.jup.ag/predictions/${event.eventId}`;
+  const marketId =
+    (market as any)?.marketId
+    || (market as any)?.id
+    || (market as any)?.market_id
+    || event.eventId;
+  const jupiterUrl = `https://jup.ag/prediction/${marketId}`;
 
   return {
     id: event.eventId,
