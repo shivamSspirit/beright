@@ -2896,6 +2896,54 @@ export interface Forecaster {
   expertise?: string[];
 }
 
+export interface LinkedPlatformSummary {
+  id: string;
+  platform: string;
+  platformUserId: string;
+  platformProfileUrl?: string;
+  verifiedAt?: string | null;
+  verificationMethod?: string;
+  importedStats?: {
+    brierScore?: number | null;
+    predictionCount?: number | null;
+    resolvedCount?: number | null;
+    accuracy?: number | null;
+    platformRank?: number | null;
+    platformPercentile?: number | null;
+    totalVolumeUsd?: number | null;
+    profitLossUsd?: number | null;
+    roi?: number | null;
+    importedAt?: string | null;
+  };
+  lastRefreshedAt?: string | null;
+  createdAt?: string;
+}
+
+export interface CompositeScoreBreakdown {
+  source: string;
+  displayName: string;
+  weight: number;
+  normalizedScore: number;
+  predictionCount: number;
+  isVerified: boolean;
+  brierScore: number;
+}
+
+export interface CompositeScoreData {
+  forecasterPubkey: string;
+  compositeScore: number;
+  tier: string;
+  breakdown: CompositeScoreBreakdown[];
+  totalPredictions: number;
+  lastCalculatedAt?: string;
+  scorePercent?: number;
+  onChainVerified?: boolean;
+  calibrationMultiplier?: number;
+  streakBonus?: number;
+  onChainMetrics?: unknown;
+  message?: string;
+}
+
 /**
  * Get top forecasters leaderboard
  */
@@ -2904,18 +2952,105 @@ export async function getForecasters(options?: {
   sortBy?: 'brier' | 'accuracy' | 'predictions' | 'streak';
   timeframe?: '7d' | '30d' | '90d' | 'all';
 }): Promise<{
-  success: boolean;
-  data: {
-    forecasters: Forecaster[];
-    count: number;
-  };
+  forecasters: Forecaster[];
+  total: number;
+  domain?: string;
 }> {
   const params = new URLSearchParams();
   if (options?.limit) params.set('limit', String(options.limit));
   if (options?.sortBy) params.set('sortBy', options.sortBy);
   if (options?.timeframe) params.set('timeframe', options.timeframe);
 
-  return apiFetch(`/api/forecasters?${params}`);
+  const raw = await apiFetch<any>(`/api/forecasters?${params}`);
+
+  const entries: any[] = Array.isArray(raw?.forecasters)
+    ? raw.forecasters
+    : Array.isArray(raw?.data?.forecasters)
+      ? raw.data.forecasters
+      : [];
+
+  const normalized: Forecaster[] = entries.map((entry, index) => {
+    const displayName = entry.displayName || entry.display_name || `Forecaster ${index + 1}`;
+    const username = entry.username
+      || entry.telegramUsername
+      || slugifyHandle(displayName)
+      || `forecaster-${index + 1}`;
+
+    const predictionCount = entry.predictions
+      ?? entry.predictionCount
+      ?? entry.prediction_count
+      ?? 0;
+
+    const resolvedPredictions = entry.resolvedPredictions
+      ?? entry.resolvedCount
+      ?? entry.resolved_count
+      ?? predictionCount;
+
+    const accuracy = normalizeAccuracy(
+      entry.accuracy
+      ?? entry.accuracy30d
+      ?? entry.accuracy_30d
+      ?? 0
+    );
+
+    const brierScore = entry.brierScore
+      ?? entry.brierOverall
+      ?? entry.brier_overall
+      ?? 0.25;
+
+    return {
+      id: String(entry.id ?? entry.telegramId ?? entry.telegram_id ?? username),
+      username,
+      displayName,
+      avatarUrl: entry.avatarUrl || entry.avatar_url,
+      brierScore,
+      accuracy,
+      predictions: predictionCount,
+      resolvedPredictions,
+      streak: entry.streak ?? entry.maxStreak ?? 0,
+      rank: entry.rank ?? entry.globalRank ?? entry.global_rank ?? index + 1,
+      onChainCount: entry.onChainCount ?? entry.on_chain_count ?? 0,
+      walletAddress: entry.walletAddress || entry.wallet_address,
+      expertise: entry.expertise || entry.badges || [],
+    };
+  });
+
+  return {
+    forecasters: normalized,
+    total: raw?.total ?? raw?.data?.count ?? normalized.length,
+    domain: raw?.domain,
+  };
+}
+
+export async function getForecasterCompositeScore(pubkey: string): Promise<{
+  success: boolean;
+  data: CompositeScoreData;
+}> {
+  return apiFetch(`/api/v2/forecaster/${encodeURIComponent(pubkey)}/composite-score`);
+}
+
+export async function getForecasterLinkedPlatforms(pubkey: string): Promise<{
+  success: boolean;
+  data: {
+    forecasterPubkey: string;
+    platforms: LinkedPlatformSummary[];
+    totalLinked: number;
+    verifiedCount: number;
+  };
+}> {
+  return apiFetch(`/api/v2/forecaster/${encodeURIComponent(pubkey)}/linked-platforms`);
+}
+
+function slugifyHandle(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function normalizeAccuracy(value: number): number {
+  if (value <= 1) return value * 100;
+  return value;
 }
 
 // ============ CRON/PROACTIVE API ============

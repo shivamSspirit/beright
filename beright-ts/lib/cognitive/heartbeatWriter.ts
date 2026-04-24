@@ -116,7 +116,7 @@ When this file is loaded during heartbeat:
 3. **Goal Management**
    - Review active goals and their priorities
    - Generate proactive goals from opportunities
-   - Delegate goals to appropriate agents (Scout, Analyst, Trader)
+   - Delegate goals to appropriate internal capabilities (Scout, Analyst, Trader)
 
 4. **Learning & Reflection**
    - Analyze recent episodes for patterns

@@ -11,7 +11,13 @@
  */
 
 import { Router, Route, RouteMatch, MatchType } from './types';
-import { ROUTES, PARAMETERIZED_PATTERNS, findRouteByPattern, findRouteByAlias } from './routes.config';
+import {
+  ROUTES,
+  PARAMETERIZED_PATTERNS,
+  findRouteByPattern,
+  findRouteByAlias,
+  findMatchingAlias,
+} from './routes.config';
 
 // =============================================================================
 // PATTERN ROUTER
@@ -41,9 +47,7 @@ export class PatternRouter implements Router {
     }
 
     // Check aliases
-    return ROUTES.some(r =>
-      r.aliases?.some(a => normalized.includes(a.toLowerCase()))
-    );
+    return ROUTES.some((route) => Boolean(findMatchingAlias(route, normalized)));
   }
 
   /**
@@ -123,14 +127,19 @@ export class PatternRouter implements Router {
     // Extract any query after the alias
     const lower = text.toLowerCase();
     let query = '';
+    const matchedAlias = findMatchingAlias(route, lower);
 
-    for (const alias of route.aliases || []) {
-      const aliasLower = alias.toLowerCase();
-      if (lower.includes(aliasLower)) {
-        // Get everything after the alias
-        const idx = lower.indexOf(aliasLower);
-        query = text.slice(idx + alias.length).trim();
-        break;
+    if (matchedAlias) {
+      const aliasRegex = new RegExp(
+        `\\b${matchedAlias
+          .trim()
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          .replace(/\s+/g, '\\s+')}\\b`,
+        'i'
+      );
+      const match = text.match(aliasRegex);
+      if (match && typeof match.index === 'number') {
+        query = text.slice(match.index + match[0].length).trim();
       }
     }
 

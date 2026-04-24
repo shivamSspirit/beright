@@ -2,7 +2,6 @@
  * Signal Channels — barrel export
  *
  * Signal channels are forecaster-led subscription feeds (Supabase-backed).
- * They are DISTINCT from the on-chain BeRight vault (see lib/onchain-vault/).
  *
  * Distribution channels (new):
  *   - Discord: Community alerts

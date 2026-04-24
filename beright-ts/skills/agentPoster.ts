@@ -1,5 +1,5 @@
 /**
- * Agent-Poster: Autonomous Forum Engagement Agent for BeRight Protocol
+ * BeRight Poster: Autonomous forum engagement automation for BeRight Protocol
  *
  * Intelligent, AI-powered forum engagement for Colosseum hackathon.
  * Uses Claude to generate contextual, valuable content.
@@ -111,7 +111,7 @@ let posterState: PosterState = loadState();
 
 // BeRight context for AI
 const BERIGHT_CONTEXT = `
-BeRight is an autonomous AI agent platform for prediction market intelligence.
+BeRight is a prediction market intelligence runtime built around a single OpenClaw agent: beright-terminal.
 
 KEY FEATURES:
 - Multi-platform aggregation: Polymarket, Kalshi, Manifold, Limitless, Metaculus
@@ -119,7 +119,7 @@ KEY FEATURES:
 - Named entity matching to eliminate false positives
 - On-chain verification via Solana Memo Program
 - Format: BERIGHT:PREDICT:v1|pubkey|market|prob|dir|ts|hash
-- Multi-agent system: Scout (fast scanning), Analyst (deep research), Trader (execution)
+- Internal capabilities: Scout (fast scanning), Analyst (deep research), Trader (execution)
 - 24/7 autonomous heartbeat loop with 5-minute cycles
 - Whale tracking via Helius RPC
 - Superforecaster methodology with base rates and reference classes
@@ -174,7 +174,7 @@ const FALLBACK_POSTS = [
 - Commits predictions to Solana Memo for verifiable track records
 
 **Technical approach:**
-We use a multi-agent system where Scout (Sonnet) handles fast scanning, Analyst (Opus) does deep research, and Trader executes positions. The 24/7 heartbeat loop monitors for opportunities every 5 minutes.
+BeRight runs as a single terminal runtime with internal capabilities: Scout (Sonnet) handles fast scanning, Analyst (Opus) does deep research, and Trader handles execution. The 24/7 heartbeat loop monitors for opportunities every 5 minutes.
 
 What prediction market challenges have you faced? Would love to hear from others in this space.`,
     tags: ['progress-update', 'defi', 'ai'],
@@ -221,7 +221,7 @@ Anyone else working on cross-platform market matching?`,
     tags: ['trading', 'defi'],
   },
   {
-    title: 'Building Autonomous AI Agents That Run 24/7',
+    title: 'Building an Autonomous Runtime That Runs 24/7',
     body: `BeRight runs autonomously around the clock. Here's our architecture:
 
 **Heartbeat Loop:**
@@ -230,11 +230,11 @@ Anyone else working on cross-platform market matching?`,
 - Whale wallet monitoring via Helius RPC
 - News sentiment analysis
 
-**Multi-Agent Coordination:**
-- Orchestrator (Opus 4.5) delegates to specialists
-- Scout: Fast market scanning
-- Analyst: Deep superforecaster research
-- Trader: Position execution with risk checks
+**Internal Capability Coordination:**
+- beright-terminal owns the runtime shell
+- Scout handles fast market scanning
+- Analyst handles deep superforecaster research
+- Trader handles execution with risk checks
 
 **Challenges we solved:**
 1. Rate limiting without losing opportunities
@@ -311,22 +311,22 @@ What forecasting methodologies are others using?`,
     tags: ['ai', 'progress-update'],
   },
   {
-    title: 'Multi-Agent Architecture: Lessons from BeRight',
-    body: `Running multiple AI agents in production taught us valuable lessons:
+    title: 'Capability Architecture: Lessons from BeRight',
+    body: `Running a single runtime with specialized internal capabilities taught us valuable lessons:
 
-SPECIALIZATION WORKS: Our Scout agent (Sonnet) scans fast. Analyst agent (Opus) goes deep. Trader agent executes with caution. Each does what it's best at.
+SPECIALIZATION WORKS: Our Scout capability (Sonnet) scans fast. Analyst capability (Opus) goes deep. Trader capability handles execution with caution. Each focuses on what it does best.
 
 COST OPTIMIZATION: 80% of queries use Sonnet (cheaper, faster). Only complex analysis escalates to Opus. This cut costs 5x.
 
-STATE MANAGEMENT: Agents share state via files + database. No complex message passing. Simple beats clever.
+STATE MANAGEMENT: Capabilities share state via files + database. No complex message passing. Simple beats clever.
 
-ERROR HANDLING: Every agent assumes others might fail. Graceful degradation is built in.
+ERROR HANDLING: Every capability assumes other subsystems might fail. Graceful degradation is built in.
 
 LOGGING: We log every decision, every API call, every state change. Essential for debugging autonomous systems.
 
-The hardest part: getting agents to NOT do things. Constraints are more important than capabilities.
+The hardest part: getting autonomous systems to NOT do things. Constraints are more important than capabilities.
 
-What multi-agent patterns have worked for others?`,
+What capability-composition patterns have worked for others?`,
     tags: ['ai', 'infra'],
   },
   {
@@ -384,7 +384,7 @@ function generateUniquePostTitle(baseTitle: string): string {
 // Fallback comments for when AI is unavailable
 const FALLBACK_COMMENTS = [
   "Interesting approach! We faced similar challenges building BeRight. Our solution was to use named entity matching with an 85% threshold to eliminate false positives. Have you considered semantic similarity for fuzzy matching?",
-  "Great progress! The multi-agent architecture resonates with us - we use Scout (fast scanning), Analyst (deep research), and Trader (execution) as specialists. The key insight was letting each agent focus on what it does best.",
+  "Great progress! The capability-based architecture resonates with us - we use Scout (fast scanning), Analyst (deep research), and Trader (execution) internally. The key insight was letting each capability focus on what it does best.",
   "This is aligned with what we've seen too. Our 24/7 heartbeat loop processes similar patterns. The challenge is balancing thoroughness with latency - we settled on 5-minute cycles as a sweet spot.",
   "Love the technical depth here. For on-chain verification, we commit predictions to Solana Memo Program with format BERIGHT:PREDICT:v1|pubkey|market|prob|dir|ts|hash. Creates an immutable audit trail.",
   "Solid implementation! We aggregate 5 platforms (Polymarket, Kalshi, Manifold, Limitless, Metaculus) and the hardest part was normalizing the data formats. Each API has its own quirks.",
@@ -412,7 +412,7 @@ async function generatePost(
       messages: [
         {
           role: 'user',
-          content: `You are Agent-Poster for BeRight Protocol. Generate a forum post for the Colosseum hackathon.
+          content: `You are BeRight Poster for BeRight Protocol. Generate a forum post for the Colosseum hackathon.
 
 ${BERIGHT_CONTEXT}
 
@@ -504,7 +504,7 @@ async function generateComment(post: any): Promise<string | null> {
       messages: [
         {
           role: 'user',
-          content: `You are Agent-Poster for BeRight Protocol. Generate a thoughtful comment on this forum post.
+          content: `You are BeRight Poster for BeRight Protocol. Generate a thoughtful comment on this forum post.
 
 ${BERIGHT_CONTEXT}
 
@@ -552,7 +552,7 @@ async function generatePostTopic(): Promise<string> {
     'Progress update on multi-platform arbitrage detection',
     'How we solved market matching with named entity extraction',
     'On-chain prediction verification with Solana Memo',
-    'Building a multi-agent system for prediction markets',
+    'Building a single runtime with internal capabilities for prediction markets',
     'Lessons from aggregating 5 prediction market APIs',
     'Why Brier scores matter for forecaster reputation',
     'Autonomous heartbeat loops for 24/7 market monitoring',
@@ -790,7 +790,7 @@ export async function runPosterCycle(): Promise<SkillResponse> {
     saveState(posterState);
   }
 
-  console.log(`\n[${timestamp}] Agent-Poster cycle starting...`);
+  console.log(`\n[${timestamp}] BeRight Poster cycle starting...`);
   console.log(`State: ${posterState.postsToday} posts, ${posterState.commentsToday} comments, ${posterState.commentedPostIds.length} tracked`);
 
   try {
@@ -859,7 +859,7 @@ export async function runPosterCycle(): Promise<SkillResponse> {
   const maxComments = getAgentCustomSetting('poster', 'maxCommentsPerDay', 15);
 
   return {
-    text: `## Agent-Poster Cycle Complete
+    text: `## BeRight Poster Cycle Complete
 
 **Time:** ${timestamp}
 
@@ -878,7 +878,7 @@ ${results.map(r => `- ${r}`).join('\n')}
  * Run continuous autonomous loop
  */
 export async function runContinuousLoop(intervalSeconds = 180): Promise<void> {
-  console.log(`\n🤖 Agent-Poster - Autonomous Mode`);
+  console.log(`\n🤖 BeRight Poster - Autonomous Mode`);
   console.log(`   Interval: ${intervalSeconds}s (${intervalSeconds / 60}min)`);
   console.log(`   Press Ctrl+C to stop\n`);
 
@@ -929,7 +929,7 @@ export async function handlePosterCommand(args: string): Promise<SkillResponse> 
 
     case 'status':
       return {
-        text: `## Agent-Poster Status
+        text: `## BeRight Poster Status
 
 - Posts today: ${posterState.postsToday}/5
 - Comments today: ${posterState.commentsToday}/15
@@ -941,7 +941,7 @@ export async function handlePosterCommand(args: string): Promise<SkillResponse> 
 
     default:
       return {
-        text: `## Agent-Poster Commands
+        text: `## BeRight Poster Commands
 
 \`/poster post\` - Create AI-generated post
 \`/poster engage\` - Comment on relevant posts

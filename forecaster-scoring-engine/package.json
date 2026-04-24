@@ -1,0 +1,64 @@
+{
+  "name": "@beright/forecaster-scoring-engine",
+  "version": "1.0.0",
+  "description": "Off-chain scoring engine for BeRight forecaster reputation system",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "ingest:polymarket": "tsx src/cli/ingest-polymarket.ts",
+    "ingest:metaculus": "tsx src/cli/ingest-metaculus.ts",
+    "ingest:kalshi": "tsx src/cli/ingest-kalshi.ts",
+    "ingest:manifold": "tsx src/cli/ingest-manifold.ts",
+    "calculate:scores": "tsx src/cli/calculate-scores.ts",
+    "calculate:leaderboard": "tsx src/cli/calculate-leaderboard.ts",
+    "fetch:real": "tsx src/cli/fetch-real-leaderboard.ts",
+    "update:onchain": "tsx src/cli/update-onchain.ts"
+  },
+  "keywords": [
+    "solana",
+    "prediction-markets",
+    "reputation",
+    "scoring",
+    "forecasting"
+  ],
+  "author": "BeRight Protocol",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.95.8",
+    "@coral-xyz/anchor": "^0.32.1",
+    "@graphql-yoga/plugin-response-cache": "^3.10.0",
+    "graphql": "^16.9.0",
+    "graphql-request": "^7.1.2",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "bullmq": "^5.28.3",
+    "redis": "^4.7.0",
+    "zod": "^3.24.1",
+    "date-fns": "^4.1.0",
+    "lodash": "^4.17.21",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.10",
+    "@types/lodash": "^4.17.13",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.14",
+    "ts-jest": "^29.2.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import styles from '../beright.module.css';
 
 interface CLIInputProps {
   onCommand: (command: string) => void;
   isProcessing?: boolean;
   placeholder?: string;
+  draftCommand?: string;
 }
 
 /**
@@ -18,11 +19,19 @@ export default function CLIInput({
   onCommand,
   isProcessing = false,
   placeholder = 'Enter command (e.g., /hot, /research bitcoin, /arb) or type /help',
+  draftCommand,
 }: CLIInputProps) {
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!draftCommand) return;
+    setValue(draftCommand);
+    setHistoryIndex(-1);
+    inputRef.current?.focus();
+  }, [draftCommand]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && value.trim() && !isProcessing) {

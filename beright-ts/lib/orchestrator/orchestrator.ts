@@ -261,24 +261,24 @@ export class CommandOrchestrator {
   }
 
   // ===========================================================================
-  // MULTI-AGENT COORDINATION (Future)
+  // INTERNAL CAPABILITY COORDINATION (Future)
   // ===========================================================================
 
   /**
-   * Register an agent
+   * Register an internal capability handler
    */
   registerAgent(type: AgentType, handler: CommandHandler): void {
     this.agents.set(type, handler);
   }
 
   /**
-   * Plan multi-agent execution
+   * Plan internal capability execution
    *
    * Given a complex request, create an execution plan
-   * that coordinates multiple agents.
+   * that coordinates multiple internal capabilities.
    */
   async plan(_context: CommandContext): Promise<ExecutionPlan> {
-    // TODO: Implement multi-agent planning
+    // TODO: Implement capability planning
     // For now, return single-step plan
     return {
       id: uuid(),
@@ -292,7 +292,7 @@ export class CommandOrchestrator {
   }
 
   /**
-   * Execute a multi-agent plan
+   * Execute an internal capability plan
    */
   async executePlan(
     plan: ExecutionPlan,
@@ -303,7 +303,7 @@ export class CommandOrchestrator {
     for (const step of plan.steps) {
       const agent = this.agents.get(step.agentId);
       if (!agent) {
-        console.warn(`[Orchestrator] Agent ${step.agentId} not found`);
+        console.warn(`[Orchestrator] Capability ${step.agentId} not found`);
         continue;
       }
 
@@ -329,7 +329,7 @@ export class CommandOrchestrator {
   }
 
   /**
-   * Synthesize results from multiple agents
+   * Synthesize results from multiple capability steps
    */
   async synthesize(
     _context: CommandContext,

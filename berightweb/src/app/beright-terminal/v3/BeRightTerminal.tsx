@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Connection, Transaction, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { Connection, Transaction, PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useUser } from '@/hooks/useUnifiedUser';
 import { useMode } from '@/context/ModeContext';
-import { getHotMarketsFeed, sendToGateway, fetchTerminalData, GatewayResponse, ApiMarket, getFeed, FeedMarket, waitForJob } from '@/lib/api';
+import { getHotMarketsFeed, sendToGateway, fetchTerminalData, GatewayResponse, ApiMarket, waitForJob } from '@/lib/api';
 import { getAllExplorerUrls } from '@/lib/explorer';
 import { useSignalStream } from '@/hooks/useSignalStream';
 import { useConversationStore, useMessages, useIsProcessing, useConversationLoading } from '@/stores/conversationStore';
-import { useConversationRealtime, useJobPolling } from '@/hooks/useConversationRealtime';
+import { useConversationRealtime } from '@/hooks/useConversationRealtime';
 import { PanelLeft, PanelRight, X } from 'lucide-react';
 
 // Portfolio data structure from API
@@ -23,11 +23,62 @@ interface PortfolioData {
   tradingAllowed: boolean;
 }
 
+interface TerminalRiskData {
+  status?: {
+    tradingAllowed?: boolean;
+    exposure?: {
+      current?: number;
+      limit?: number;
+      utilizationPct?: number;
+    };
+    dailyStatus?: {
+      currentLoss?: number;
+      remainingLossAllowance?: number;
+    };
+    alerts?: {
+      unacknowledged?: number;
+      critical?: number;
+    };
+  };
+}
+
+interface PortfolioAlert {
+  id: string;
+  type: string;
+  priority: string;
+  title?: string;
+  message: string;
+  createdAt: string;
+}
+
+interface ResearchAggregationMarket {
+  marketId: string | null;
+  platform: string;
+  question: string;
+  title?: string;
+  yesPrice: number;
+  noPrice: number;
+  yesPct?: number;
+  noPct?: number;
+  volume: number;
+  liquidity: number;
+  url: string;
+  status?: string;
+  category?: string;
+}
+
+interface ResearchAggregation {
+  query: string;
+  marketCount: number;
+  articleCount: number;
+  postCount: number;
+  markets: ResearchAggregationMarket[];
+}
+
 // V3 Components
 import {
   PulseIndicator,
   NavPill,
-  MarketTable,
   ChatInterface,
   PortfolioSidebar,
   CLIInput,
@@ -81,6 +132,11 @@ export default function BeRightTerminal() {
 
   // Portfolio data (from /api/v2/portfolio)
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
+  const [riskData, setRiskData] = useState<TerminalRiskData | null>(null);
+  const [portfolioAlerts, setPortfolioAlerts] = useState<PortfolioAlert[]>([]);
+  const [lastDataRefreshAt, setLastDataRefreshAt] = useState<string | null>(null);
+  const [commandDraft, setCommandDraft] = useState<string>('');
+  const [latestResearch, setLatestResearch] = useState<ResearchAggregation | null>(null);
 
   // Pending transaction for wallet signing (from Trader agent)
   const [pendingTx, setPendingTx] = useState<{
@@ -98,7 +154,7 @@ export default function BeRightTerminal() {
 
   // Get messages from store (with selector for performance)
   const storeMessages = useMessages();
-  const { isProcessing, processingMessage } = useIsProcessing();
+  const { isProcessing } = useIsProcessing();
   const { isLoadingConversation, loadingError } = useConversationLoading();
 
   // Store actions - get via getState() to avoid re-renders (actions are stable)
@@ -140,7 +196,6 @@ export default function BeRightTerminal() {
 
   // Agent state
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
-  const [onlineAgents] = useState(['SCOUT', 'ANALYST', 'TRADER']);
 
   // Refresh interval ref
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -211,7 +266,7 @@ export default function BeRightTerminal() {
 
   // Real-time subscription for live message updates
   // This enables multi-tab sync and instant message delivery
-  const { isSubscribed: realtimeConnected } = useConversationRealtime({
+  useConversationRealtime({
     conversationId: activeConversationId,
     walletAddress: walletAddress || null,
     enabled: !!walletAddress && !!activeConversationId,
@@ -349,8 +404,12 @@ export default function BeRightTerminal() {
           openPositions: p.overview?.openPositions || 0,
           tradingAllowed: p.risk?.tradingAllowed ?? true,
         });
+        setPortfolioAlerts(p.alerts?.recent || []);
         if (!silent) addAgentLog('SYSTEM', 'Portfolio synced', 'success');
       }
+
+      setRiskData(terminalData.risk || null);
+      setLastDataRefreshAt(new Date().toISOString());
     } catch (error) {
       if (!silent) addAgentLog('SYSTEM', `Failed to fetch data: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
@@ -385,6 +444,40 @@ export default function BeRightTerminal() {
     if (lower.startsWith('/arb')) return 'ANALYST';
     if (lower.startsWith('/trade') || lower.startsWith('/buy') || lower.startsWith('/sell')) return 'TRADER';
     return 'ANALYST';
+  };
+
+  const extractResearchAggregation = (command: string, data: unknown): ResearchAggregation | null => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+
+    const candidate = data as Record<string, any>;
+    const markets = Array.isArray(candidate.markets) ? candidate.markets : null;
+    if (!markets || markets.length === 0) return null;
+
+    const query = typeof candidate.query === 'string'
+      ? candidate.query
+      : command.replace(/^\/research\s*/i, '').trim();
+
+    return {
+      query,
+      marketCount: typeof candidate.marketCount === 'number' ? candidate.marketCount : markets.length,
+      articleCount: candidate.news?.articleCount ?? 0,
+      postCount: candidate.reddit?.postCount ?? 0,
+      markets: markets.map((market: any) => ({
+        marketId: market.marketId ?? market.id ?? null,
+        platform: market.platform ?? 'unknown',
+        question: market.question ?? market.title ?? 'Unknown market',
+        title: market.title,
+        yesPrice: market.yesPrice ?? market.probability ?? 0.5,
+        noPrice: market.noPrice ?? (1 - (market.yesPrice ?? market.probability ?? 0.5)),
+        yesPct: market.yesPct ?? Math.round((market.yesPrice ?? market.probability ?? 0.5) * 100),
+        noPct: market.noPct ?? Math.round((market.noPrice ?? (1 - (market.yesPrice ?? market.probability ?? 0.5))) * 100),
+        volume: market.volume ?? market.volume24h ?? 0,
+        liquidity: market.liquidity ?? 0,
+        url: market.url ?? '',
+        status: market.status,
+        category: market.category,
+      })),
+    };
   };
 
   // Process terminal command
@@ -507,6 +600,10 @@ export default function BeRightTerminal() {
 
           // Handle data from final response
           if (finalResponse.data) {
+            const researchAggregation = extractResearchAggregation(cmd, finalResponse.data);
+            if (researchAggregation) {
+              setLatestResearch(researchAggregation);
+            }
             if (Array.isArray(finalResponse.data) && finalResponse.data.length > 0 && finalResponse.data[0].title) {
               setMarkets(finalResponse.data);
             }
@@ -535,6 +632,10 @@ export default function BeRightTerminal() {
 
         // Update markets if data returned
         if (response.data) {
+          const researchAggregation = extractResearchAggregation(cmd, response.data);
+          if (researchAggregation) {
+            setLatestResearch(researchAggregation);
+          }
           if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].title) {
             setMarkets(response.data);
           }
@@ -792,10 +893,48 @@ export default function BeRightTerminal() {
     }
   }, [pendingTx, solanaWallet, signAndSubmitTransaction]);
 
-  // Calculate latency display
-  const latencyDisplay = useMemo(() => {
-    return signalsConnected ? '12ms' : '--';
-  }, [signalsConnected]);
+  const dataFreshnessLabel = useMemo(() => {
+    const timestamps = [lastDataRefreshAt, signals[0]?.createdAt].filter(Boolean) as string[];
+    if (timestamps.length === 0) return 'no feed';
+
+    const newestTimestamp = timestamps
+      .map((value) => new Date(value).getTime())
+      .reduce((latest, current) => Math.max(latest, current), 0);
+
+    const diffSeconds = Math.max(Math.round((Date.now() - newestTimestamp) / 1000), 0);
+    if (diffSeconds < 5) return 'live';
+    if (diffSeconds < 60) return `${diffSeconds}s old`;
+
+    const diffMinutes = Math.round(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m old`;
+
+    return `${Math.round(diffMinutes / 60)}h old`;
+  }, [lastDataRefreshAt, signals]);
+
+  const featuredMarket = useMemo(() => {
+    if (markets.length === 0) return null;
+
+    return [...markets].sort((left, right) => {
+      const leftScore = left.volume + left.liquidity * 0.35;
+      const rightScore = right.volume + right.liquidity * 0.35;
+      return rightScore - leftScore;
+    })[0];
+  }, [markets]);
+
+  const rankedResearchMarkets = useMemo(() => {
+    if (!latestResearch) return [];
+
+    return [...latestResearch.markets].sort((left, right) => {
+      const leftScore = left.volume + left.liquidity * 0.35;
+      const rightScore = right.volume + right.liquidity * 0.35;
+      return rightScore - leftScore;
+    });
+  }, [latestResearch]);
+
+  const openMarketVenue = useCallback((url: string) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
 
   // Loading state
   if (!ready) {
@@ -833,11 +972,11 @@ export default function BeRightTerminal() {
     }
 
     if (activeTab === 'AGENTS') {
-      return <AgentsPage onlineAgents={onlineAgents} />;
+      return <AgentsPage />;
     }
 
     if (activeTab === 'LOGS') {
-      return <LogsPage logs={agentLogs} />;
+      return <LogsPage logs={agentLogs} signals={signals} alerts={portfolioAlerts} />;
     }
 
     // Main BERIGHT view - three column layout: conversations | chat | portfolio
@@ -859,15 +998,78 @@ export default function BeRightTerminal() {
             isLoadingConversation={isLoadingConversation}
             loadingError={loadingError}
           />
+          {activeTab === 'BERIGHT' && latestResearch && rankedResearchMarkets.length > 0 ? (
+            <div className={styles.researchExecutionPanel}>
+              <div className={styles.researchExecutionHeader}>
+                <div>
+                  <div className={styles.panelLabel}>Research Market Execution</div>
+                  <h3 className={styles.researchExecutionTitle}>{latestResearch.query}</h3>
+                </div>
+                <div className={styles.researchExecutionSummary}>
+                  <span className={styles.panelBadge}>{latestResearch.marketCount} markets</span>
+                  <span className={styles.dataSourceBadge}>{latestResearch.articleCount} articles</span>
+                  <span className={styles.marketCategoryBadge}>{latestResearch.postCount} posts</span>
+                </div>
+              </div>
+
+              <div className={styles.researchExecutionGrid}>
+                {rankedResearchMarkets.map((market, index) => (
+                  <article
+                    key={`${market.platform}-${market.marketId || market.question}-${index}`}
+                    className={styles.researchExecutionCard}
+                  >
+                    <div className={styles.researchExecutionCardTop}>
+                      <div className={styles.opportunityCardBadges}>
+                        <span className={styles.marketCategoryBadge}>{market.platform}</span>
+                        {market.category ? (
+                          <span className={styles.marketCategoryBadge}>{market.category}</span>
+                        ) : null}
+                        <span className={styles.dataSourceBadge}>
+                          YES {market.yesPct ?? Math.round(market.yesPrice * 100)}c
+                        </span>
+                      </div>
+                      <span className={styles.researchExecutionRank}>#{index + 1}</span>
+                    </div>
+
+                    <h4 className={styles.researchExecutionCardTitle}>{market.question}</h4>
+
+                    <div className={styles.researchExecutionMeta}>
+                      <span>Vol {formatCompactUsd(market.volume)}</span>
+                      <span>Liq {formatCompactUsd(market.liquidity)}</span>
+                      <span>{market.status || 'live'}</span>
+                    </div>
+
+                    <div className={styles.researchExecutionActions}>
+                      <button
+                        type="button"
+                        className={styles.primaryAction}
+                        disabled={!market.url}
+                        onClick={() => openMarketVenue(market.url)}
+                      >
+                        {market.url ? `Bet on ${market.platform}` : 'Venue unavailable'}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {/* Right Panel - Portfolio */}
         <aside className={styles.panelLast} data-tour="portfolio-sidebar">
           <PortfolioSidebar
             signals={signals}
+            featuredMarket={featuredMarket}
             portfolioValue={portfolioData?.portfolioValue}
             dailyChange={portfolioData?.dailyChange}
             dailyChangePercent={portfolioData?.dailyChangePct}
+            openPositions={portfolioData?.openPositions}
+            marketExposure={portfolioData?.marketExposure}
+            tradingAllowed={portfolioData?.tradingAllowed}
+            risk={riskData?.status}
+            dataFreshnessLabel={dataFreshnessLabel}
+            researchAggregation={latestResearch}
           />
         </aside>
       </main>
@@ -913,7 +1115,7 @@ export default function BeRightTerminal() {
           >
             {isLoading ? '⟳' : '↻'}
           </button>
-          <span>LATENCY: {latencyDisplay}</span>
+          <span>DATA: {dataFreshnessLabel}</span>
           <PulseIndicator state={signalsConnected ? 'active' : 'idle'} />
         </div>
 
@@ -983,6 +1185,13 @@ export default function BeRightTerminal() {
                   portfolioValue={portfolioData?.portfolioValue}
                   dailyChange={portfolioData?.dailyChange}
                   dailyChangePercent={portfolioData?.dailyChangePct}
+                  featuredMarket={featuredMarket}
+                  openPositions={portfolioData?.openPositions}
+                  marketExposure={portfolioData?.marketExposure}
+                  tradingAllowed={portfolioData?.tradingAllowed}
+                  risk={riskData?.status}
+                  dataFreshnessLabel={dataFreshnessLabel}
+                  researchAggregation={latestResearch}
                 />
               )}
             </div>
@@ -993,9 +1202,22 @@ export default function BeRightTerminal() {
       {/* CLI Input - Only show on BERIGHT (chat) tab */}
       {activeTab === 'BERIGHT' && (
         <div data-tour="cli-input">
-          <CLIInput onCommand={processCommand} isProcessing={isProcessing} />
+          <CLIInput
+            onCommand={(command) => {
+              setCommandDraft('');
+              processCommand(command);
+            }}
+            isProcessing={isProcessing}
+            draftCommand={commandDraft}
+          />
         </div>
       )}
     </div>
   );
+}
+
+function formatCompactUsd(value: number) {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${Math.round(value)}`;
 }

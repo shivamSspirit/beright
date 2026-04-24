@@ -19,7 +19,6 @@ const NAV_SECTIONS = [
   { id: 'commands', label: 'Commands' },
   { id: 'api', label: 'API Reference' },
   { id: 'roadmap', label: 'Roadmap' },
-  { id: 'litepaper', label: 'Litepaper', isLink: true, href: '/docs/litepaper' },
 ];
 
 // SVG Icon components for agents
@@ -250,12 +249,12 @@ const ROADMAP = [
   },
   {
     phase: 3,
-    title: 'DeFi Integration',
+    title: 'Reputation Layer',
     status: 'future',
     items: [
-      { label: 'Conviction Pools Launch', done: false },
-      { label: 'Forecaster Staking', done: false },
-      { label: 'Cross-Platform Liquidity', done: false },
+      { label: 'Leaderboard rollout', done: false },
+      { label: 'Calibration analytics', done: false },
+      { label: 'Prediction history indexing', done: false },
       { label: 'Auto-Execution Strategies', done: false },
     ],
   },
@@ -379,7 +378,6 @@ export default function DocsPage() {
 
           <div className={styles.navSection}>
             <span className={styles.navLabel}>Resources</span>
-            <Link href="/docs/litepaper" className={styles.navItem}>Litepaper</Link>
             <Link href="/docs/faq" className={styles.navItem}>FAQ</Link>
           </div>
         </nav>
@@ -448,15 +446,15 @@ export default function DocsPage() {
             <div className={styles.grid2}>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Forecasters</h3>
-                <p style={{ fontSize: '14px', margin: 0 }}>Build verifiable track records with on-chain Brier scores. Prove your edge and attract capital through Conviction Pools.</p>
+                <p style={{ fontSize: '14px', margin: 0 }}>Build verifiable track records with on-chain Brier scores, resolution history, and a public calibration profile.</p>
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Active Traders</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>Get AI-powered edge detection, real-time arbitrage alerts, and whale tracking. Execute with zero fees on Jupiter.</p>
               </div>
               <div className={styles.card}>
-                <h3 className={styles.h3}>Capital Providers</h3>
-                <p style={{ fontSize: '14px', margin: 0 }}>Invest in forecasting skill via Conviction Pools. Delegate capital to proven predictors, earn 30% of pool profits.</p>
+                <h3 className={styles.h3}>Researchers</h3>
+                <p style={{ fontSize: '14px', margin: 0 }}>Use unified market data, AI synthesis, and track-recorded forecaster output to validate ideas faster.</p>
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>Developers</h3>
@@ -480,18 +478,18 @@ export default function DocsPage() {
         {activeSection === 'forecaster-network' && (
           <section className={styles.contentSection}>
             <div className={styles.sectionHeader}>
-              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>DeFi Primitive</span>
+              <span className={`${styles.sectionBadge} ${styles.sectionBadgeLive}`}>Live</span>
               <h1 className={styles.sectionTitle}>Forecaster Network</h1>
               <p className={styles.sectionSubtitle}>
-                On-chain reputation, conviction pools, and the calibration economy
+                On-chain reputation, calibration, and verified forecasting history
               </p>
             </div>
 
             <div className={`${styles.contentBlock} ${styles.highlightBox} ${styles.highlightBoxGreen}`}>
-              <span className={styles.calloutLabel}>Forecasting as an Asset Class</span>
+              <span className={styles.calloutLabel}>Forecasting as a Verifiable Reputation Layer</span>
               <p className={styles.paragraph} style={{ margin: 0 }}>
-                BeRight transforms forecasting skill into a permissionless financial primitive. Build verifiable track records,
-                attract capital to your conviction pools, and earn performance fees. Your Brier score is your credit rating.
+                BeRight turns prediction quality into a measurable public signal. Every recorded forecast contributes to a
+                calibration history that can power rankings, profile credibility, and future network permissions.
               </p>
             </div>
 
@@ -500,8 +498,8 @@ export default function DocsPage() {
               <h3 className={styles.h3}>Permissionless Skill Graph</h3>
               <p className={styles.paragraph}>
                 Every prediction you make is recorded on-chain with its corresponding outcome and Brier score. Your track record
-                is immutable, portable, and verifiable by anyone. Elite forecasters earn verified status and attract capital
-                to their conviction pools. The better your calibration, the more capital you can manage.
+                is immutable, portable, and verifiable by anyone. Better calibration translates into stronger reputation,
+                better leaderboard placement, and more trust in your output across the platform.
               </p>
 
               <h3 className={styles.h3} style={{ marginTop: '24px' }}>How It Works</h3>
@@ -521,13 +519,13 @@ export default function DocsPage() {
                 <div className={styles.card}>
                   <h3 className={styles.h3}>3. Unlock Tiers</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    ELITE (&lt;0.15), VERIFIED (&lt;0.20), or ROOKIE (&lt;0.30). Higher tiers unlock larger pool sizes and premium features.
+                    ELITE (&lt;0.15), VERIFIED (&lt;0.20), or ROOKIE (&lt;0.30). Higher tiers unlock stronger visibility, trust, and future network permissions.
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>4. Launch Pool</h3>
+                  <h3 className={styles.h3}>4. Review Performance</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    Create a Conviction Pool, attract LPs, and earn 30% performance fees on all pool profits.
+                    Inspect resolved predictions, transaction-linked activity, and calibration history from a single reputation surface.
                   </p>
                 </div>
               </div>
@@ -546,63 +544,62 @@ export default function DocsPage() {
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>Network Effect</h3>
+                  <h3 className={styles.h3}>Credibility Signal</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Better calibration<br/>→ more capital
+                    Better calibration<br/>→ stronger reputation
                   </p>
                 </div>
               </div>
             </div>
 
-            <h2 className={styles.h2}><span className={styles.h2Accent} />DeFi Primitive: Forecaster Pools</h2>
+            <h2 className={styles.h2}><span className={styles.h2Accent} />Reputation Surfaces</h2>
             <div className={styles.contentBlock}>
-              <h3 className={styles.h3}>Conviction-Backed Staking</h3>
+              <h3 className={styles.h3}>How Reputation Is Used</h3>
               <p className={styles.paragraph}>
-                Forecaster Pools are permissionless prediction market hedge funds. Capital providers (LPs) stake in pools
-                managed by elite forecasters. Pool operators deploy capital across markets based on their conviction.
-                Profits are split: 50% to forecasters, 30% to delegators, and 20% to platform. It's like an index fund
-                for alpha, but the "fund manager" has a verifiable, on-chain track record.
+                Reputation data is useful only if the product surfaces it well. BeRight uses prediction history, calibration,
+                and ranking signals across profiles, leaderboard views, and AI-assisted market workflows so strong forecasters
+                are discoverable and measurable.
               </p>
 
-              <h3 className={styles.h3} style={{ marginTop: '24px' }}>Pool Economics</h3>
+              <h3 className={styles.h3} style={{ marginTop: '24px' }}>Where It Shows Up</h3>
               <div className={styles.grid2}>
                 <div className={`${styles.card} ${styles.solutionCard}`}>
-                  <h3 className={styles.h3}>For Forecasters (Pool Operators)</h3>
+                  <h3 className={styles.h3}>For Forecasters</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Earn 50% of pool profits<br/>
-                    • Manage up to $500K (ELITE tier)<br/>
-                    • Must maintain Brier &lt; 0.20<br/>
-                    • Build reputation and earn recurring revenue
+                    • Public calibration history<br/>
+                    • Ranked performance surfaces<br/>
+                    • Verifiable prediction archive<br/>
+                    • Wallet-linked reputation
                   </p>
                 </div>
                 <div className={`${styles.card} ${styles.solutionCard}`}>
-                  <h3 className={styles.h3}>For Delegators (Capital Providers)</h3>
+                  <h3 className={styles.h3}>For Traders and Researchers</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Earn 30% of pool profits<br/>
-                    • Passive alpha exposure (no trading)<br/>
-                    • Verifiable operator track record<br/>
-                    • Withdraw anytime (no lock-up)
+                    • Discover reliable forecasters<br/>
+                    • Compare historical accuracy<br/>
+                    • Inspect on-chain activity<br/>
+                    • Validate AI-assisted calls
                   </p>
                 </div>
               </div>
 
               <div className={styles.grid3} style={{ marginTop: '24px' }}>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>Fee Structure</h3>
+                  <h3 className={styles.h3}>Public Score</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    50/30/20 split<br/>Forecasters/Delegators/Platform
+                    Brier-based<br/>Lower is better
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>Pool Creation</h3>
+                  <h3 className={styles.h3}>Resolution Linked</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Min Brier &lt; 0.20<br/>VERIFIED tier+
+                    Predictions resolve<br/>against outcomes
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <h3 className={styles.h3}>Security</h3>
+                  <h3 className={styles.h3}>Portable Profile</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    No lock-up<br/>Withdraw anytime
+                    One wallet<br/>one track record
                   </p>
                 </div>
               </div>
@@ -612,33 +609,33 @@ export default function DocsPage() {
             <div className={styles.contentBlock}>
               <h3 className={styles.h3}>Proof of Skill Economy</h3>
               <p className={styles.paragraph}>
-                Your Brier score determines your tier. Lower scores unlock higher pool sizes, premium features, and
-                more capital inflow. Think of it as a credit score for forecasting—except it's earned, not bought.
+                Your Brier score determines your tier. Lower scores unlock stronger trust signals, better visibility,
+                and clearer proof that your forecasting process works in production.
               </p>
 
               <div className={styles.platformTable}>
                 <div className={styles.tableHeader}>
                   <div>Tier</div>
                   <div>Brier Score</div>
-                  <div>Max Pool Size</div>
+                  <div>Status</div>
                   <div>Min Predictions</div>
                 </div>
                 <div className={styles.tableRow}>
                   <div className={styles.platformName}>ELITE</div>
                   <div className={styles.platformType}>&lt; 0.15</div>
-                  <div className={styles.platformChain}>$500K</div>
+                  <div className={styles.platformChain}>Highest trust</div>
                   <div className={styles.statusLive}>100+</div>
                 </div>
                 <div className={styles.tableRow}>
                   <div className={styles.platformName}>VERIFIED</div>
                   <div className={styles.platformType}>&lt; 0.20</div>
-                  <div className={styles.platformChain}>$100K</div>
+                  <div className={styles.platformChain}>Ranked profile</div>
                   <div className={styles.statusLive}>50+</div>
                 </div>
                 <div className={styles.tableRow}>
                   <div className={styles.platformName}>ROOKIE</div>
                   <div className={styles.platformType}>&lt; 0.30</div>
-                  <div className={styles.platformChain}>$25K</div>
+                  <div className={styles.platformChain}>Starter status</div>
                   <div className={styles.statusLive}>10+</div>
                 </div>
               </div>
@@ -658,22 +655,21 @@ export default function DocsPage() {
               <div className={styles.card}>
                 <h3 className={styles.h3}>For Forecasters</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
-                  Your edge becomes an income stream. Build a track record, launch a pool, earn performance fees.
-                  No VC needed, no permission required.
+                  Your edge becomes measurable. Build a track record, improve calibration, and earn durable credibility
+                  inside the product.
                 </p>
               </div>
               <div className={styles.card}>
-                <h3 className={styles.h3}>For Capital Providers</h3>
+                <h3 className={styles.h3}>For Traders and Researchers</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
-                  Access alpha without trading yourself. Stake with elite forecasters, earn passive returns,
-                  track performance on-chain.
+                  Access alpha without relying on screenshots or self-reporting. Use ranked, verifiable forecaster history
+                  as part of your decision process.
                 </p>
               </div>
               <div className={styles.card}>
                 <h3 className={styles.h3}>For the Ecosystem</h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
-                  More capital → more liquidity → tighter spreads → better markets.
-                  Forecaster pools create a flywheel effect.
+                  Better reputation data improves discovery, ranking quality, and trust across the forecasting network.
                 </p>
               </div>
               <div className={styles.card}>

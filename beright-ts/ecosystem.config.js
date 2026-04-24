@@ -36,11 +36,11 @@ module.exports = {
       max_memory_restart: '512M',
     },
 
-    // Telegram Bot
+    // OpenClaw Gateway
     {
-      name: 'telegram',
-      script: 'npx',
-      args: 'ts-node skills/telegram.ts',
+      name: 'openclaw-gateway',
+      script: 'openclaw',
+      args: 'gateway',
       cwd: __dirname,
       watch: false,
       autorestart: true,
@@ -49,8 +49,8 @@ module.exports = {
       env: {
         NODE_ENV: 'development',
       },
-      error_file: path.join(__dirname, 'logs/telegram-error.log'),
-      out_file: path.join(__dirname, 'logs/telegram-out.log'),
+      error_file: path.join(__dirname, 'logs/openclaw-gateway-error.log'),
+      out_file: path.join(__dirname, 'logs/openclaw-gateway-out.log'),
       merge_logs: true,
       max_memory_restart: '256M',
     },

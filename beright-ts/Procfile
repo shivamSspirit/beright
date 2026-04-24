@@ -2,5 +2,5 @@
 # Main web process
 web: npm start
 
-# Background worker for Telegram bot (optional, can run as separate service)
-# worker: npx ts-node skills/telegram.ts
+# Background worker for OpenClaw Gateway (optional, can run as separate service)
+# worker: openclaw gateway

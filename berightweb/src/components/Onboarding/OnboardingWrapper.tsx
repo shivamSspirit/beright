@@ -7,7 +7,6 @@ import OnboardingModal, { useOnboarding } from './OnboardingModal';
 const EXCLUDED_PATHS = [
   '/docs',
   '/docs/',
-  '/landing',
   '/coming-soon',
   '/embed',
   '/', // Don't show on landing page

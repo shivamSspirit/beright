@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { animated, useSpring } from '@react-spring/web';
 import { DFlowData } from '@/lib/types';
+import { useMode } from '@/context/ModeContext';
 import { useTrading, TradingStep } from '@/hooks/useTrading';
 import { useWalletBalance, formatBalance } from '@/hooks/useWalletBalance';
 import { usePredictionRecorder } from '@/hooks/usePredictionRecorder';
@@ -93,6 +94,7 @@ function getExplorerLinks(signature: string): ExplorerLink[] {
 
 export default function TradingModal({ prediction, isOpen, onClose }: TradingModalProps) {
   const [mounted, setMounted] = useState(false);
+  const { isDemo } = useMode();
 
   useEffect(() => {
     setMounted(true);
@@ -144,7 +146,8 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
 
   const dflow = prediction.dflow;
   const tokens = dflow?.tokens;
-  const isTokenized = tokens?.yesMint && tokens?.noMint && tokens?.isInitialized;
+  const isTokenized = Boolean(tokens?.yesMint && tokens?.noMint && tokens?.isInitialized);
+  const canTrade = isDemo || isTokenized;
   const isTrading = step !== 'idle' && step !== 'success' && step !== 'error';
 
   // ============ ANIMATIONS ============
@@ -246,7 +249,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
    * Execute trade
    */
   const handleTrade = useCallback(async () => {
-    if (!isTokenized || !tokens?.yesMint || !tokens?.noMint) return;
+    if (!canTrade) return;
     if (isSubmitting) return;
 
     const numAmount = parseFloat(amount);
@@ -319,7 +322,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
     } finally {
       setIsSubmitting(false);
     }
-  }, [isTokenized, tokens, amount, side, inputToken, prediction.id, prediction.question, prediction.source, prediction.marketOdds, dflow, recordPrediction, savePrediction, isSubmitting]);
+  }, [canTrade, amount, side, inputToken, prediction.id, prediction.question, prediction.source, prediction.marketOdds, dflow, recordPrediction, savePrediction, isSubmitting]);
 
   /**
    * Copy transaction signature to clipboard
@@ -539,7 +542,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 {estimatedOutput !== null && (
                   <div className="tm-estimate">
                     <span>≈ {estimatedOutput.toFixed(1)} {side} shares</span>
-                    {isTokenized && <span className="tm-chain">◎ Solana</span>}
+                    {canTrade && <span className="tm-chain">◎ Solana</span>}
                   </div>
                 )}
 
@@ -563,7 +566,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 )}
 
                 {/* Warning */}
-                {!isTokenized && (
+                {!canTrade && (
                   <div className="tm-warning">Market not available for trading</div>
                 )}
 
@@ -571,7 +574,7 @@ export default function TradingModal({ prediction, isOpen, onClose }: TradingMod
                 <button
                   className={`tm-action ${!isConnected ? 'connect' : side.toLowerCase()}`}
                   onClick={!isConnected ? connectWallet : handleTrade}
-                  disabled={isTrading || isSubmitting || (isConnected && !isTokenized)}
+                  disabled={isTrading || isSubmitting || (isConnected && !canTrade)}
                 >
                   {isSubmitting ? (
                     <span className="tm-action-loading">

@@ -45,7 +45,7 @@ export const FAQ_ITEMS: FAQItem[] = [
 • **Find opportunities** — Aggregate odds from Polymarket, Kalshi, Jupiter, and more
 • **Get AI insights** — One-line edge analysis on every market
 • **Build reputation** — Track your accuracy with on-chain Brier scores
-• **Earn from skill** — Top forecasters can launch Conviction Pools and manage capital
+• **Prove your edge** — Build a public calibration history and verified prediction record
 
 Think of it as Bloomberg Terminal meets AI copilot for prediction markets.`,
   },
@@ -120,22 +120,23 @@ You get unified search, cross-platform arbitrage detection, and whale tracking �
 The AI routes your request to the right agent (Scout, Analyst, or Trader) automatically.`,
   },
   {
-    id: 'conviction-pools',
+    id: 'onchain-reputation',
     category: 'Platform',
-    question: 'How do Conviction Pools work?',
-    answer: `Conviction Pools let you invest in forecasting skill.
+    question: 'How does on-chain reputation work?',
+    answer: `BeRight records prediction activity and calibration data on Solana-linked infrastructure.
 
-**For capital providers:**
-• Deposit to a pool run by a top forecaster
-• They trade on your behalf using their edge
-• You earn 30% of profits (50% to forecaster, 20% to protocol)
+**What gets tracked:**
+• Your wallet address
+• The market and side you predicted
+• Timing and forecast metadata
+• Brier-style calibration outcomes as markets resolve
 
-**For forecasters:**
-• Build a verified track record (Brier < 0.20)
-• Launch a pool and attract capital
-• Earn 50% of profits as performance fee
+**Why it matters:**
+• Your track record is verifiable
+• Rankings can use the same underlying history
+• Reputation is portable across the BeRight product surface
 
-Funds are held in on-chain smart contracts — forecasters can trade but never withdraw your capital.`,
+The goal is simple: make forecasting skill measurable instead of self-reported.`,
   },
 
   // ===========================================================================
@@ -149,7 +150,7 @@ Funds are held in on-chain smart contracts — forecasters can trade but never w
 
 **Pro ($19/mo)** — 10-20 arbitrage alerts, 50 Terminal queries/day, portfolio tracking, 20 AI fact-checks, unlimited trading
 
-**Alpha ($49/mo)** — All AI agents, deep research, 100 Terminal queries/day, AI alerts, 30+ arbitrage detection, 50+ AI fact-checks, invest in Conviction Pools
+**Alpha ($49/mo)** — All AI agents, deep research, 100 Terminal queries/day, AI alerts, 30+ arbitrage detection, 50+ AI fact-checks
 
 All paid plans include a 7-day money-back guarantee.`,
   },

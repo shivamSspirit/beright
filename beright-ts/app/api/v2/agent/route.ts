@@ -1,27 +1,27 @@
 /**
  * Agent API v2
  *
- * Direct access to the BeRight Agent System (Scout, Analyst, Trader, Orchestrator).
- * This bypasses the legacy telegramHandler and uses the new agentic architecture.
+ * Direct access to the BeRight Terminal runtime.
+ * This uses the same OpenClaw-style execution bridge as the rest of beright-ts.
  *
  * Architecture:
  * ┌─────────────────────────────────────────────────────────────┐
- * │                      ORCHESTRATOR                           │
- * │               (Understands → Routes → Synthesizes)          │
+ * │                    BERIGHT-TERMINAL                         │
+ * │           (Router → Orchestrator → Handlers)               │
  * └──────────────────────────┬──────────────────────────────────┘
  *                            │
  *        ┌───────────────────┼───────────────────┐
  *        ▼                   ▼                   ▼
  * ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
  * │    SCOUT     │   │   ANALYST    │   │   TRADER     │
- * │ Speed+Breadth│   │    Depth     │   │  Execution   │
+ * │ Capability   │   │ Capability   │   │ Capability   │
  * └──────────────┘   └──────────────┘   └──────────────┘
  *
  * @author BeRight Protocol
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { processMessage, AGENT_ROLES, getToolCounts } from '../../../../agents';
+import { executeBeRightOpenClawRequest } from '../../../../lib/runtime/openclaw';
 import { checkAgentAccess, getTierContext, checkAndIncrementUsage } from '../../../../lib/stripe/middleware';
 
 export const runtime = 'nodejs';
@@ -59,13 +59,13 @@ setInterval(() => {
 /**
  * POST /api/v2/agent
  *
- * Send a message to the agent system.
+ * Send a message to the BeRight Terminal runtime.
  *
  * Body:
  * - message: string (required) - The user's message
  * - sessionId: string (optional) - Session ID for context
  * - userId: string (optional) - User ID
- * - agent: string (optional) - Force routing to specific agent (scout, analyst, trader)
+ * - agent: string (optional) - Preferred internal capability hint (scout, analyst, trader)
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         }, { status: 429 });
       }
 
-      // If a specific agent is forced, check access to that agent
+      // If a specific capability is requested, check access to that capability tier
       if (forcedAgent) {
         const agentCheck = await checkAgentAccess(userId, forcedAgent);
         if (!agentCheck.allowed) {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
             error: 'tier_required',
             message: agentCheck.reason,
             data: {
-              text: `The ${forcedAgent} agent requires a higher tier. ${agentCheck.reason}`,
+              text: `The ${forcedAgent} capability requires a higher tier. ${agentCheck.reason}`,
               mood: 'UPGRADE_REQUIRED',
             },
             tier: agentCheck.tier,
@@ -143,18 +143,33 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Agent API] Processing: "${message.slice(0, 50)}..." | Session: ${activeSessionId}`);
 
-    // Route to agent system
-    const response = await processMessage(message);
+    const execution = await executeBeRightOpenClawRequest({
+      gateway: 'api',
+      userId: userId || activeSessionId,
+      chatId: activeSessionId,
+      text: message,
+      raw: {
+        source: 'api-v2-agent',
+        preferredCapability: forcedAgent,
+      },
+      isAuthenticated: !!userId,
+    });
 
-    // Extract routing info from response data
-    const responseData = response.data as { routing?: { agent?: string; intent?: string; confidence?: number; executionMs?: number } } | undefined;
-    const agentId = responseData?.routing?.agent;
+    const responseText = execution.formatted.text;
+    const responseMood = execution.result.hints?.mood || 'NEUTRAL';
+    const semanticData = execution.result.data as {
+      agentUsed?: string;
+      capabilityUsed?: string;
+      understanding?: { confidence?: number };
+    } | undefined;
+    const agentId = semanticData?.agentUsed || 'beright-terminal';
+    const capabilityId = semanticData?.capabilityUsed;
 
     // Record agent response
     session.messages.push({
       role: 'agent',
-      content: response.text,
-      agent: agentId,
+      content: responseText,
+      agent: capabilityId || agentId,
       timestamp: Date.now(),
     });
 
@@ -178,11 +193,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        text: response.text,
-        mood: response.mood || 'NEUTRAL',
+        text: responseText,
+        mood: responseMood,
         agent: agentId,
-        agentEmoji: agentId ? AGENT_ROLES[agentId as keyof typeof AGENT_ROLES]?.emoji : '🎯',
-        metadata: responseData?.routing,
+        capability: capabilityId,
+        agentEmoji: '🎯',
+        metadata: {
+          handlerId: execution.result.meta?.handlerId,
+          routeId: execution.result.meta?.routeId,
+          confidence: semanticData?.understanding?.confidence,
+          preferredCapability: forcedAgent,
+        },
       },
       session: {
         id: activeSessionId,
@@ -214,7 +235,7 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/v2/agent
  *
- * Get agent system info and capabilities.
+ * Get runtime info and internal capabilities.
  */
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
@@ -233,35 +254,34 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Return agent system info
-  const toolCounts = getToolCounts();
-
   return NextResponse.json({
     success: true,
     data: {
       version: '3.0.0',
-      architecture: 'Bloomberg Terminal',
-      agents: {
+      architecture: 'OpenClaw runtime with internal capabilities',
+      agent: {
+        id: 'beright-terminal',
+        available: true,
+      },
+      capabilities: {
         scout: {
-          ...AGENT_ROLES.scout,
+          name: 'Scout',
+          role: 'Fast scanning and market discovery',
           available: true,
         },
         analyst: {
-          ...AGENT_ROLES.analyst,
+          name: 'Analyst',
+          role: 'Deep research and probability analysis',
           available: true,
         },
         trader: {
-          ...AGENT_ROLES.trader,
-          available: true,
-        },
-        orchestrator: {
-          ...AGENT_ROLES.orchestrator,
+          name: 'Trader',
+          role: 'Execution, quotes, and portfolio actions',
           available: true,
         },
       },
-      toolCounts,
       activeSessions: sessionCache.size,
-      capabilities: [
+      features: [
         'Natural language market queries',
         'Multi-platform market search',
         'Arbitrage detection',

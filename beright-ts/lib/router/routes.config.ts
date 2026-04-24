@@ -2,7 +2,7 @@
  * Routes Configuration
  *
  * Central configuration for all command routes.
- * Replaces 100+ if/else statements in telegramHandler.ts.
+ * Replaces the legacy Telegram monolith with a configuration-driven router.
  *
  * To add a new command:
  * 1. Add route definition here
@@ -85,7 +85,15 @@ export const ROUTES: Route[] = [
     id: 'alpha',
     handler: 'alpha',
     patterns: ['/alpha', '/edge', '/opportunities'],
-    aliases: ['find alpha', 'trading opportunities', 'find edge'],
+    aliases: [
+      'find alpha',
+      'trading opportunities',
+      'find edge',
+      'current alpha',
+      'where money is moving',
+      'money is moving',
+      'market alpha',
+    ],
     goals: ['DISCOVER_OPPORTUNITIES'],
     domains: ['PREDICTION_MARKETS'],
     requiresAuth: false,
@@ -944,7 +952,28 @@ export function findRouteByPattern(pattern: string): Route | undefined {
  */
 export function findRouteByAlias(text: string): Route | undefined {
   const normalizedText = text.toLowerCase().trim();
-  return ROUTES.find(r =>
-    r.aliases?.some(a => normalizedText.includes(a.toLowerCase()))
-  );
+  return ROUTES.find((route) => findMatchingAlias(route, normalizedText));
+}
+
+/**
+ * Find a matching alias for a route using boundary-aware matching.
+ *
+ * This avoids collisions like "prediction market" incorrectly matching
+ * the "predict" alias for the /predict route.
+ */
+export function findMatchingAlias(route: Route, text: string): string | undefined {
+  const aliases = route.aliases ?? [];
+
+  const sortedAliases = [...aliases].sort((left, right) => right.length - left.length);
+  return sortedAliases.find((alias) => buildAliasRegex(alias).test(text));
+}
+
+function buildAliasRegex(alias: string): RegExp {
+  const escaped = alias
+    .trim()
+    .toLowerCase()
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '\\s+');
+
+  return new RegExp(`\\b${escaped}\\b`, 'i');
 }

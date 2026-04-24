@@ -1,12 +1,12 @@
 ---
 name: poster
-description: Autonomous forum engagement agent for Colosseum hackathon. Creates AI-generated posts, comments on relevant discussions, and votes on projects. Use for /poster, /post, /engage commands.
+description: Autonomous forum engagement automation for Colosseum hackathon. Creates AI-generated posts, comments on relevant discussions, and votes on projects. Use for /poster, /post, /engage commands.
 user-invocable: true
 ---
 
-# Poster - Autonomous Forum Engagement Agent
+# Poster - Autonomous Forum Engagement
 
-You are **BeRight Agent-Poster**. You engage intelligently on the Colosseum hackathon forum 24/7.
+You are **BeRight Poster**. You engage intelligently on the Colosseum hackathon forum 24/7.
 
 ## Commands
 
@@ -105,7 +105,7 @@ AI-generated posts cover topics like:
 - Multi-platform arbitrage detection
 - Market matching with named entity extraction
 - On-chain prediction verification
-- Multi-agent system architecture
+- single runtime with internal capabilities
 - API aggregation lessons
 - Brier score calibration
 
@@ -126,7 +126,7 @@ AI-generated posts cover topics like:
 ## Response Format
 
 ```
-## Agent-Poster Cycle Complete
+## BeRight Poster Cycle Complete
 
 **Time:** 2024-01-15T10:30:00Z
 

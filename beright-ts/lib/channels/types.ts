@@ -2,12 +2,11 @@
  * Signal Channel Types
  *
  * Forecaster-led signal channels (Supabase-backed, off-chain subscriptions).
- * Channels are NOT the same as the on-chain BeRight Vault — see lib/onchain-vault/.
  *
  * Tiers:
  *   free  — open access, no payment
- *   pro   — $29/mo (payment bridge via on-chain vault balance, see lib/channels/client.ts)
- *   whale — $99/mo (same bridge)
+ *   pro   — $29/mo
+ *   whale — $99/mo
  */
 
 export type ChannelTier = 'free' | 'pro' | 'whale';

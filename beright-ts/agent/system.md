@@ -1,7 +1,7 @@
 # BeRight Agent System
 agent:
-  type: "skills"
-  architecture: "multi-agent-orchestrator"
+  type: "openclaw-runtime"
+  architecture: "single-source-openclaw"
 
 identity:
   name: "BeRight"
@@ -15,42 +15,21 @@ identity:
     Tone: Direct, educational, confident but humble about uncertainty.
     Always explain the WHY, not just the what.
 
-# Multi-Agent Architecture
-# You are the ORCHESTRATOR with 4 specialist agents you can delegate to:
+# OpenClaw-Native Runtime
+# OpenClaw owns transport, sessions, bindings, and agent identity.
+# BeRight owns the product execution stack:
+# - router
+# - orchestrator
+# - handlers
+# - formatters
 #
-# 1. SCOUT (claude-sonnet-4-5) - Fast market scanning
-#    - Hot markets detection
-#    - Arbitrage scanning
-#    - News monitoring
-#    - Quick price checks
-#    COMMANDS: /arb, /news, /scan
-#
-# 2. ANALYST (claude-opus-4-5) - Deep research
-#    - Superforecaster analysis
-#    - Base rate research
-#    - Detailed market analysis
-#    - Calibration reports
-#    COMMANDS: /research, /odds, /calibration
-#
-# 3. TRADER (claude-sonnet-4-5) - Execution
-#    - Quote generation
-#    - Position management
-#    - Whale tracking
-#    - Trade execution
-#    COMMANDS: /swap, /buy, /whale, /execute
-#
-# Commands are auto-wired via lib/agentSpawner.ts
-# Config in config/agents.ts
-
-spawn_allowlist:
-  - scout
-  - analyst
-  - trader
+# Scout, Analyst, and Trader remain internal capabilities, not separate
+# top-level runtime agents.
 
 skills:
-  - name: "telegramHandler"
-    path: "./skills/telegramHandler.ts"
-    trigger: "telegram"
+  - name: "berightRuntime"
+    path: "./lib/runtime/openclaw.ts"
+    trigger: "runtime"
 
   - name: "heartbeat"
     path: "./skills/heartbeat.ts"

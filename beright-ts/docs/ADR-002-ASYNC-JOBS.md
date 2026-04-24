@@ -1,5 +1,7 @@
 # ADR-002: Async Job Architecture for Long-Running Operations
 
+> Historical note: examples in this ADR predate the OpenClaw runtime bridge. Current request execution should flow through `lib/runtime/openclaw.ts`, not legacy Telegram-specific handlers.
+
 ## Status
 Proposed
 

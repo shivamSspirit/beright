@@ -67,12 +67,12 @@ export class TelegramFormatter implements Formatter {
       return this.formatError(result.error, context);
     }
 
-    // Dispatch to type-specific formatter based on handler
+      // Dispatch to type-specific formatter based on handler
     const handlerId = context.route.handler;
 
     switch (handlerId) {
       case 'hotMarkets':
-        return this.formatMarkets(result.data as MarketData[], context);
+        return this.formatMarkets(this.extractMarkets(result.data), context);
 
       case 'dflowSearch':
         return this.formatDFlowSearch(result, context);
@@ -271,6 +271,24 @@ export class TelegramFormatter implements Formatter {
       text: this.truncate(text),
       parseMode: 'Markdown',
     };
+  }
+
+  /**
+   * Extract market arrays from handler result payloads.
+   *
+   * Some handlers return wrapped objects like:
+   * { markets, totalCount, sources, timestamp }
+   */
+  private extractMarkets(data: unknown): MarketData[] {
+    if (Array.isArray(data)) {
+      return data as MarketData[];
+    }
+
+    if (data && typeof data === 'object' && Array.isArray((data as { markets?: unknown[] }).markets)) {
+      return (data as { markets: MarketData[] }).markets;
+    }
+
+    return [];
   }
 
   /**

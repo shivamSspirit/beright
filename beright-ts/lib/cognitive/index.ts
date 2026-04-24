@@ -6,13 +6,13 @@
  * - Goal Management (creation, delegation, lifecycle)
  * - Episodic Memory (learning from past experiences)
  * - Cognitive Loop (perceive → deliberate → act → reflect)
- * - Multi-Agent Coordination (true agent independence)
+ * - Internal capability coordination for autonomous subsystems
  *
  * Integration with OpenClaw:
  * - Uses OpenClaw's memory system (MEMORY.md) for persistent context
  * - Integrates with heartbeat for autonomous operation
  * - Uses hooks for event-driven triggers
- * - Supports multi-agent routing for agent isolation
+ * - Supports internal capability routing where autonomous subsystems still need it
  */
 
 // Core types
@@ -103,7 +103,7 @@ export {
   resetCognitiveState,
 } from './cognitiveLoop';
 
-// Multi-Agent Coordinator
+// Legacy Capability Coordinator
 export {
   default as multiAgent,
   AGENT_DEFINITIONS,

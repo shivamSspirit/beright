@@ -4,7 +4,7 @@
  * Drop-in replacement for the regex-based intent classifier.
  * This file provides a migration path from the old system to the new semantic agent.
  *
- * Usage in telegramHandler.ts:
+ * Usage in the legacy Telegram flow:
  *
  * BEFORE:
  * ```typescript

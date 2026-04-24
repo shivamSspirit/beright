@@ -62,17 +62,16 @@ module.exports = {
     },
 
     // ============================================
-    // OPTIONAL: Telegram Bot
+    // OPTIONAL: OpenClaw Gateway
     // Uncomment if you have enough memory (adds ~200MB)
     // ============================================
     // {
-    //   name: 'telegram',
-    //   script: 'npx',
-    //   args: 'ts-node --transpile-only skills/telegram.ts',
+    //   name: 'openclaw-gateway',
+    //   script: 'openclaw',
+    //   args: 'gateway',
     //   cwd: '/app',
     //   env: {
     //     NODE_ENV: 'production',
-    //     TS_NODE_TRANSPILE_ONLY: 'true',
     //     MEMORY_DIR: MEMORY_DIR,
     //   },
     //   instances: 1,
@@ -80,8 +79,8 @@ module.exports = {
     //   autorestart: true,
     //   watch: false,
     //   max_memory_restart: '200M',
-    //   error_file: path.join(LOGS_DIR, 'telegram-error.log'),
-    //   out_file: path.join(LOGS_DIR, 'telegram-out.log'),
+    //   error_file: path.join(LOGS_DIR, 'openclaw-gateway-error.log'),
+    //   out_file: path.join(LOGS_DIR, 'openclaw-gateway-out.log'),
     //   log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     //   restart_delay: 5000,
     //   max_restarts: 10,

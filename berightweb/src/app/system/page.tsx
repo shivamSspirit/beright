@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   getHotMarkets,
@@ -124,14 +124,26 @@ interface AccuracyData {
   details: string;
 }
 
+interface RuntimeLayer {
+  id: string;
+  label: string;
+  layer: 'user' | 'intelligence' | 'services' | 'platforms' | 'data';
+  nodes: Array<{
+    name: string;
+    description: string;
+    status: 'online' | 'offline';
+    type: 'interface' | 'agent' | 'orchestrator' | 'service' | 'platform' | 'database' | 'blockchain';
+  }>;
+}
+
 // Real services we need to check
 const initialServices: ServiceStatus[] = [
   { name: 'BeRight API', status: 'checking', port: 3001, description: 'Core API server - Next.js routes' },
-  { name: 'BeRight Web', status: 'checking', port: 3000, description: 'Frontend dashboard - React 19' },
-  { name: 'BeRight Terminal', status: 'online', description: 'User interface - 50+ commands' },
-  { name: 'Heartbeat', status: 'offline', description: 'Autonomous scanner - 30min cycle' },
-  { name: 'Orchestrator', status: 'offline', description: 'Multi-agent coordination' },
-  { name: 'Signal Stream', status: 'offline', description: 'Real-time SSE feed' },
+  { name: 'BeRight Web', status: 'checking', port: 3000, description: 'Frontend dashboard and terminal shell' },
+  { name: 'BeRight Terminal', status: 'online', description: 'Single runtime agent interface' },
+  { name: 'OpenClaw Runtime', status: 'checking', description: 'Unified request bridge for web and Telegram' },
+  { name: 'Handler Registry', status: 'checking', description: 'Router -> orchestrator -> handlers' },
+  { name: 'Signal Stream', status: 'offline', description: 'Real-time provider telemetry feed' },
 ];
 
 const platforms: PlatformHealth[] = [
@@ -145,66 +157,126 @@ const platforms: PlatformHealth[] = [
 // Truth claims vs reality
 const truthMetrics: TruthMetric[] = [
   {
-    claim: 'Arbitrage detection accuracy: 99.1%',
-    reality: '111 out of 112 detections verified',
-    score: 99.1,
-    evidence: 'Tested over 112 scan cycles with logged results',
-    status: 'verified',
-  },
-  {
-    claim: 'Multi-platform aggregation (5 platforms)',
-    reality: 'All 5 platform APIs integrated and tested',
+    claim: 'Single runtime agent architecture',
+    reality: 'beright-terminal is the only top-level runtime agent',
     score: 100,
-    evidence: 'Polymarket, Kalshi, Manifold, Limitless, Metaculus',
+    evidence: 'Web requests enter the OpenClaw runtime bridge before routing',
     status: 'verified',
   },
   {
-    claim: 'On-chain prediction tracking',
-    reality: 'Solana Memo Program integration working',
+    claim: 'Internal capabilities stay inside one shell',
+    reality: 'Scout, Analyst, and Trader are modes, not separate runtime agents',
     score: 100,
-    evidence: 'Mainnet transactions confirmed',
+    evidence: 'Backend docs and runtime metadata now describe them as internal capabilities',
     status: 'verified',
   },
   {
-    claim: '50+ Terminal commands',
-    reality: 'Terminal deployed with full command support',
+    claim: 'Unified execution path',
+    reality: 'Web terminal now runs through runtime -> router -> orchestrator -> formatter',
     score: 100,
-    evidence: '47 skill modules, Terminal live',
+    evidence: 'The same runtime bridge powers the web terminal and agent API route',
     status: 'verified',
   },
   {
-    claim: 'Brier score calibration',
-    reality: 'Program on devnet, not mainnet',
-    score: 50,
-    evidence: 'Anchor program tested, not production',
+    claim: 'Multi-platform aggregation (5 providers)',
+    reality: 'Polymarket, Kalshi, Manifold, Limitless, and Metaculus adapters remain active',
+    score: 100,
+    evidence: 'Hot markets and arbitrage continue to pull from the same provider set',
+    status: 'verified',
+  },
+  {
+    claim: 'Telegram is fully OpenClaw-native',
+    reality: 'Core runtime is aligned, but the final gateway rollout is still in progress',
+    score: 60,
+    evidence: 'The backend shell is unified; ingress migration is not the final end-state yet',
     status: 'partial',
   },
   {
-    claim: 'Copy trading feature',
-    reality: 'Not yet implemented',
-    score: 0,
-    evidence: 'Planned for Phase 4',
-    status: 'unverified',
+    claim: 'Semantic-first routing',
+    reality: 'Semantic fallback works, but pattern routing still runs first',
+    score: 45,
+    evidence: 'UnifiedRouter still favors pattern matching before semantic handling',
+    status: 'partial',
   },
 ];
 
 // Product accuracy data
 const accuracyData: AccuracyData[] = [
-  { category: 'Lines of Code', claimed: '25,000+', actual: '25,847', verified: true, details: 'TypeScript across 3 workspaces' },
-  { category: 'Skill Modules', claimed: '47', actual: 47, verified: true, details: 'In beright-ts/skills/' },
-  { category: 'Library Modules', claimed: '30', actual: 30, verified: true, details: 'In beright-ts/lib/' },
-  { category: 'API Endpoints', claimed: '30+', actual: 32, verified: true, details: 'REST + Gateway' },
-  { category: 'Terminal Commands', claimed: '50+', actual: 52, verified: true, details: 'Including aliases' },
-  { category: 'Database Tables', claimed: '25', actual: 25, verified: true, details: 'Supabase with RLS' },
-  { category: 'Active Users', claimed: 'TBD', actual: 0, verified: true, details: 'Not deployed yet' },
-  { category: 'Revenue', claimed: 'TBD', actual: '$0', verified: true, details: 'Pre-launch' },
+  { category: 'Frontend entry', claimed: 'User types in BeRight Terminal', actual: 'Web terminal posts the message to /api/v2/agent', verified: true, details: 'The UI sends text plus session metadata into the backend' },
+  { category: 'Request bridge', claimed: 'One runtime entrypoint', actual: 'executeBeRightOpenClawRequest()', verified: true, details: 'This standardizes message -> router -> orchestrator -> formatter' },
+  { category: 'Fast path', claimed: 'Direct commands resolve immediately', actual: 'UnifiedRouter checks PatternRouter first', verified: true, details: 'Exact commands can skip heavy semantic work' },
+  { category: 'Claude path', claimed: 'Claude reasons when interpretation is needed', actual: 'semantic handler -> semanticOrchestrator -> semanticAgent -> llmChat', verified: true, details: 'Claude is mainly used for natural-language understanding and synthesis' },
+  { category: 'Capability routing', claimed: 'One agent shell, internal modes underneath', actual: 'beright-terminal chooses SELF / SCOUT / ANALYST / TRADER', verified: true, details: 'Capabilities are internal execution modes, not separate top-level agents' },
+  { category: 'Product execution', claimed: 'BeRight code does the real product work', actual: 'Handlers call markets, scoring, memory, wallet, Solana, and analytics modules', verified: true, details: 'This is where market fetches, calculations, and actions happen' },
+  { category: 'Response return', claimed: 'Frontend gets formatted terminal output', actual: 'Formatter shapes the result and ChatService/API returns it to the UI', verified: true, details: 'The user sees the final message after formatting and persistence' },
+  { category: 'Memory + persistence', claimed: 'Conversation state is retained around the flow', actual: 'ChatService persists messages and memory services enrich future turns', verified: true, details: 'Context exists, but routing is not yet fully semantic-first' },
 ];
 
-const agents = [
-  { id: 'scout', name: 'SCOUT', role: 'Market Scanner', status: 'standby', color: '#00C2FF', tasks: ['Quick scans', 'Trend detection', 'Arb detection'], accuracy: 99.1 },
-  { id: 'analyst', name: 'ANALYST', role: 'Deep Research', status: 'standby', color: '#A78BFA', tasks: ['Probability estimation', 'Research synthesis', 'Base rates'], accuracy: null },
-  { id: 'trader', name: 'TRADER', role: 'Execution', status: 'standby', color: '#10B981', tasks: ['Risk validation', 'Position sizing', 'Order execution'], accuracy: null },
-  { id: 'orchestrator', name: 'ORCHESTRATOR', role: 'Coordination', status: 'standby', color: '#FB923C', tasks: ['Agent routing', 'Cognitive loop', 'Memory'], accuracy: null },
+const runtimeCards = [
+  { id: 'user', name: 'USER INPUT', role: 'Terminal entry', status: 'active', color: '#00C2FF', tasks: ['User types into the BeRight web terminal', 'Frontend sends text, session, and user context to the backend', 'The terminal waits for a structured reply'], accuracy: null },
+  { id: 'openclaw', name: 'OPENCLAW', role: 'Runtime shell', status: 'active', color: '#FB923C', tasks: ['ChatService and /api/v2/agent call executeBeRightOpenClawRequest()', 'Normalized message and gateway context are created', 'UnifiedRouter checks for a direct command match first'], accuracy: null },
+  { id: 'claude', name: 'CLAUDE', role: 'Semantic reasoning', status: 'standby', color: '#A78BFA', tasks: ['Triggered mainly when the request is not a clean command match', 'semanticOrchestrator and semanticAgent interpret the intent', 'Chooses the right internal capability and produces language-level reasoning'], accuracy: null },
+  { id: 'beright', name: 'BERIGHT', role: 'Product execution', status: 'active', color: '#10B981', tasks: ['Handlers call BeRight modules for markets, scoring, memory, wallets, and Solana', 'Formatter converts the result into terminal-safe output', 'The final response is returned to the frontend and rendered in chat'], accuracy: null },
+];
+
+const runtimeLayers: RuntimeLayer[] = [
+  {
+    id: 'ingress',
+    label: '1. USER MESSAGE',
+    layer: 'user',
+    nodes: [
+      { name: 'BeRight Terminal', description: 'User types a message in the web chat UI', status: 'online', type: 'interface' },
+      { name: '/api/v2/agent', description: 'Backend endpoint receives text and session identifiers', status: 'online', type: 'interface' },
+    ],
+  },
+  {
+    id: 'runtime',
+    label: '2. OPENCLAW RUNTIME',
+    layer: 'intelligence',
+    nodes: [
+      { name: 'ChatService', description: 'Persists the turn and forwards execution', status: 'online', type: 'service' },
+      { name: 'executeBeRightOpenClawRequest', description: 'Canonical runtime bridge for the request', status: 'online', type: 'orchestrator' },
+      { name: 'beright-terminal', description: 'Single top-level runtime agent identity', status: 'online', type: 'agent' },
+    ],
+  },
+  {
+    id: 'control',
+    label: '3. ROUTING DECISION',
+    layer: 'services',
+    nodes: [
+      { name: 'UnifiedRouter', description: 'PatternRouter tries exact commands first', status: 'online', type: 'service' },
+      { name: 'Semantic Fallback', description: 'Unmatched text is routed to the semantic handler', status: 'online', type: 'service' },
+    ],
+  },
+  {
+    id: 'product',
+    label: '4. CLAUDE + BERIGHT',
+    layer: 'platforms',
+    nodes: [
+      { name: 'semanticOrchestrator', description: 'Builds semantic understanding and chooses capability', status: 'online', type: 'platform' },
+      { name: 'Claude via llmChat', description: 'Handles natural-language reasoning and synthesis', status: 'online', type: 'platform' },
+      { name: 'Orchestrator + Handlers', description: 'Executes the selected BeRight product action', status: 'online', type: 'platform' },
+    ],
+  },
+  {
+    id: 'sources',
+    label: '5. RESPONSE OUT',
+    layer: 'data',
+    nodes: [
+      { name: 'Markets / Memory / Solana', description: 'BeRight modules fetch data or compute outputs', status: 'online', type: 'database' },
+      { name: 'Formatter', description: 'Turns raw results into terminal-safe text and metadata', status: 'online', type: 'service' },
+      { name: 'Frontend Reply', description: 'The user sees the final assistant message in chat', status: 'online', type: 'blockchain' },
+    ],
+  },
+];
+
+const requestLifecycle = [
+  'USER TYPES',
+  'API RECEIVES',
+  'RUNTIME BUILDS CONTEXT',
+  'ROUTER MATCHES',
+  'CLAUDE REASONS IF NEEDED',
+  'BERIGHT EXECUTES + RETURNS',
 ];
 
 export default function SystemObservatory() {
@@ -266,6 +338,9 @@ export default function SystemObservatory() {
         if (s.name === 'BeRight Web') {
           return { ...s, status: 'online', lastPing: new Date() };
         }
+        if (s.name === 'OpenClaw Runtime' || s.name === 'Handler Registry') {
+          return { ...s, status: healthy ? 'online' : 'warning', lastPing: new Date() };
+        }
         return s;
       }));
 
@@ -303,7 +378,7 @@ export default function SystemObservatory() {
       setIsBackendOnline(false);
       setServices(prev => prev.map(s => ({
         ...s,
-        status: s.name === 'BeRight Web' ? 'online' : 'offline',
+        status: s.name === 'BeRight Web' || s.name === 'BeRight Terminal' ? 'online' : 'offline',
       })));
     }
 
@@ -321,18 +396,6 @@ export default function SystemObservatory() {
   const overallTruthScore = Math.round(truthMetrics.reduce((acc, m) => acc + m.score, 0) / truthMetrics.length);
   const verifiedCount = truthMetrics.filter(m => m.status === 'verified').length;
   const partialCount = truthMetrics.filter(m => m.status === 'partial').length;
-
-  // Data flow animation
-  const [activeFlows, setActiveFlows] = useState<number[]>([]);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const newFlows = Array.from({ length: Math.floor(Math.random() * 5) + 2 }, () =>
-        Math.floor(Math.random() * 10)
-      );
-      setActiveFlows(newFlows);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className={styles.observatoryPage}>
@@ -386,8 +449,8 @@ export default function SystemObservatory() {
           { id: 'overview', label: 'OVERVIEW', iconKey: 'overview' },
           { id: 'truth', label: 'TRUTH', iconKey: 'truth' },
           { id: 'live', label: 'LIVE DATA', iconKey: 'live' },
-          { id: 'agents', label: 'AGENTS', iconKey: 'agents' },
-          { id: 'metrics', label: 'ACCURACY', iconKey: 'metrics' },
+          { id: 'agents', label: 'RUNTIME', iconKey: 'agents' },
+          { id: 'metrics', label: 'SYSTEM FACTS', iconKey: 'metrics' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -521,32 +584,32 @@ export default function SystemObservatory() {
                   </div>
                 </div>
 
-                {/* Priority Actions */}
+                {/* Behind The Scenes */}
                 <div className={styles.overviewCard}>
                   <div className={styles.cardHeader}>
-                    <span className={styles.cardIcon}>🚀</span>
-                    <span className={styles.cardTitle}>PRIORITY ACTIONS</span>
+                    <span className={styles.cardIcon}>🧭</span>
+                    <span className={styles.cardTitle}>BEHIND THE SCENES</span>
                   </div>
-                  <div className={styles.priorityList}>
-                    <div className={styles.priorityItem} data-priority="p0">
-                      <span className={styles.priorityBadge}>P0</span>
-                      <span>Launch Terminal publicly</span>
-                      <span className={styles.priorityStatus}>DONE</span>
+                  <div className={styles.featuresList}>
+                    <div className={styles.featureRow}>
+                      <span className={styles.featureName}>1. User sends a message</span>
+                      <span className={styles.featureStatus} data-status="proven">TERMINAL UI</span>
                     </div>
-                    <div className={styles.priorityItem} data-priority="p0">
-                      <span className={styles.priorityBadge}>P0</span>
-                      <span>Fix missing API endpoints</span>
-                      <span className={styles.priorityStatus}>BLOCKING</span>
+                    <div className={styles.featureRow}>
+                      <span className={styles.featureName}>2. API receives the turn</span>
+                      <span className={styles.featureStatus} data-status="proven">/API/V2/AGENT</span>
                     </div>
-                    <div className={styles.priorityItem} data-priority="p1">
-                      <span className={styles.priorityBadge}>P1</span>
-                      <span>Get 10 beta users</span>
-                      <span className={styles.priorityStatus}>PENDING</span>
+                    <div className={styles.featureRow}>
+                      <span className={styles.featureName}>3. OpenClaw routes it</span>
+                      <span className={styles.featureStatus} data-status="working">FAST PATH FIRST</span>
                     </div>
-                    <div className={styles.priorityItem} data-priority="p1">
-                      <span className={styles.priorityBadge}>P1</span>
-                      <span>Wire signal stream SSE</span>
-                      <span className={styles.priorityStatus}>PENDING</span>
+                    <div className={styles.featureRow}>
+                      <span className={styles.featureName}>4. Claude reasons if needed</span>
+                      <span className={styles.featureStatus} data-status="devnet">SEMANTIC PATH</span>
+                    </div>
+                    <div className={styles.featureRow}>
+                      <span className={styles.featureName}>5. BeRight executes and replies</span>
+                      <span className={styles.featureStatus} data-status="working">FORMAT + RETURN</span>
                     </div>
                   </div>
                 </div>
@@ -580,7 +643,7 @@ export default function SystemObservatory() {
                   </svg>
                   <div className={styles.truthCenterLarge}>
                     <span className={styles.truthPercentageLarge}>{animatedTruthScore.toFixed(1)}%</span>
-                    <span className={styles.truthSubtextLarge}>PRODUCT TRUTH SCORE</span>
+                    <span className={styles.truthSubtextLarge}>ARCHITECTURE TRUTH SCORE</span>
                   </div>
                 </div>
                 <div className={styles.truthDescription}>
@@ -666,7 +729,7 @@ export default function SystemObservatory() {
                   <span className={styles.offlineIcon}>⚠️</span>
                   <h3>Backend Offline</h3>
                   <p>Start the backend server to see live data:</p>
-                  <code>cd beright-ts && npm run dev</code>
+                  <code>npm run dev --workspace beright-ts</code>
                 </div>
               ) : (
                 <div className={styles.liveGrid}>
@@ -724,7 +787,7 @@ export default function SystemObservatory() {
             </motion.div>
           )}
 
-          {/* AGENTS TAB */}
+          {/* RUNTIME TAB */}
           {activeTab === 'agents' && (
             <motion.div
               key="agents"
@@ -733,8 +796,13 @@ export default function SystemObservatory() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
+              <div className={styles.accuracyHeader}>
+                <h2>FROM MESSAGE TO ANSWER</h2>
+                <p>What happens after a user sends a chat message into BeRight Terminal, where Claude is used, and where BeRight's own product logic takes over.</p>
+              </div>
+
               <div className={styles.agentsGrid}>
-                {agents.map((agent, i) => (
+                {runtimeCards.map((agent, i) => (
                   <motion.div
                     key={agent.id}
                     className={styles.agentCard}
@@ -789,20 +857,46 @@ export default function SystemObservatory() {
                 ))}
               </div>
 
-              {/* Cognitive Loop */}
               <div className={styles.cognitiveLoop}>
-                <h3 className={styles.sectionTitle}>COGNITIVE LOOP (30 MIN CYCLE)</h3>
+                <h3 className={styles.sectionTitle}>BEHIND THE SCENES</h3>
+                <div className={styles.architectureDiagram}>
+                  {runtimeLayers.map(layer => (
+                    <div key={layer.id} className={styles.archLayer} data-layer={layer.layer}>
+                      <div className={styles.layerLabel}>{layer.label}</div>
+                      <div className={styles.archNodes}>
+                        {layer.nodes.map(node => (
+                          <div key={node.name} className={styles.archNode} data-type={node.type}>
+                            <span className={styles.nodeName}>{node.name}</span>
+                            <span className={styles.nodeDesc}>{node.description}</span>
+                            <span className={styles.nodeStatus} data-status={node.status}>
+                              {node.status.toUpperCase()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className={styles.flowLines}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} className={styles.flowLine} style={{ '--delay': `${i * 0.15}s` } as React.CSSProperties} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.cognitiveLoop}>
+                <h3 className={styles.sectionTitle}>REQUEST LIFECYCLE</h3>
                 <div className={styles.loopDiagram}>
-                  {['PERCEIVE', 'UPDATE BELIEFS', 'DELIBERATE', 'ACT', 'REFLECT'].map((step, i) => (
+                  {requestLifecycle.map((step, i) => (
                     <div
                       key={i}
                       className={styles.loopStep}
                       style={{ '--step-index': i } as React.CSSProperties}
-                      data-active={Math.floor(pulseCount / 3) % 5 === i}
+                      data-active={Math.floor(pulseCount / 3) % requestLifecycle.length === i}
                     >
                       <div className={styles.stepNumber}>{i + 1}</div>
                       <div className={styles.stepName}>{step}</div>
-                      {i < 4 && <div className={styles.stepArrow}>→</div>}
+                      {i < requestLifecycle.length - 1 && <div className={styles.stepArrow}>→</div>}
                     </div>
                   ))}
                 </div>
@@ -820,8 +914,8 @@ export default function SystemObservatory() {
               exit={{ opacity: 0, y: -20 }}
             >
               <div className={styles.accuracyHeader}>
-                <h2>PRODUCT ACCURACY REPORT</h2>
-                <p>Comparing claimed features vs. actual implementation</p>
+                <h2>SYSTEM FACT REPORT</h2>
+                <p>Comparing the architecture story on this page with what the backend actually runs</p>
               </div>
 
               <div className={styles.accuracyTable}>
@@ -858,86 +952,101 @@ export default function SystemObservatory() {
               {/* Key Metrics Cards */}
               <div className={styles.metricsGrid}>
                 <div className={styles.metricsCard}>
-                  <h3 className={styles.metricsTitle}>ARBITRAGE PERFORMANCE</h3>
+                  <h3 className={styles.metricsTitle}>DIRECT COMMAND PATH</h3>
                   <div className={styles.bigMetric}>
-                    <span className={styles.bigValue}>111/112</span>
-                    <span className={styles.bigLabel}>Successful Detections</span>
+                    <span className={styles.bigValue}>FAST</span>
+                    <span className={styles.bigLabel}>When the text matches a known command or route</span>
                   </div>
-                  <div className={styles.tractionBar}>
-                    <div className={styles.tractionFill} style={{ width: '99.1%' }} />
+                  <div className={styles.valueList}>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>UnifiedRouter matches the route quickly</span>
+                    </div>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>Orchestrator executes the handler directly</span>
+                    </div>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>Claude can be skipped for simple commands</span>
+                    </div>
                   </div>
-                  <span className={styles.tractionLabel}>99.1% Accuracy - VERIFIED</span>
                 </div>
 
                 <div className={styles.metricsCard}>
-                  <h3 className={styles.metricsTitle}>PLATFORM COVERAGE</h3>
+                  <h3 className={styles.metricsTitle}>SEMANTIC PATH</h3>
                   <div className={styles.bigMetric}>
-                    <span className={styles.bigValue}>5/5</span>
-                    <span className={styles.bigLabel}>Platforms Integrated</span>
+                    <span className={styles.bigValue}>CLAUDE</span>
+                    <span className={styles.bigLabel}>Used when the user speaks naturally or ambiguously</span>
                   </div>
-                  <div className={styles.platformList}>
-                    {platforms.map((p, i) => (
-                      <span key={i} className={styles.platformPill}>{SystemIcons[p.iconKey]} {p.name}</span>
-                    ))}
+                  <div className={styles.valueList}>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>`semantic` handler invokes semanticOrchestrator</span>
+                    </div>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>`semanticAgent` interprets user intent and chooses a capability</span>
+                    </div>
+                    <div className={styles.valueItem} data-status="yes">
+                      <span className={styles.valueCheck}>✓</span>
+                      <span>`llmChat` calls Claude for reasoning and response synthesis</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className={styles.metricsCard} data-highlight="true">
-                  <h3 className={styles.metricsTitle}>VALUE DELIVERED</h3>
+                  <h3 className={styles.metricsTitle}>WHAT BERIGHT CODE DOES</h3>
                   <div className={styles.valueList}>
                     <div className={styles.valueItem} data-status="yes">
                       <span className={styles.valueCheck}>✓</span>
-                      <span>Cross-platform market aggregation</span>
+                      <span>Fetches hot markets and arbitrage data from provider adapters</span>
                     </div>
                     <div className={styles.valueItem} data-status="yes">
                       <span className={styles.valueCheck}>✓</span>
-                      <span>Real arbitrage opportunity detection</span>
+                      <span>Runs scoring, memory, wallet, and Solana-linked product logic</span>
                     </div>
                     <div className={styles.valueItem} data-status="yes">
                       <span className={styles.valueCheck}>✓</span>
-                      <span>On-chain prediction tracking</span>
+                      <span>Formats the output so the frontend can render a clean terminal reply</span>
                     </div>
                     <div className={styles.valueItem} data-status="yes">
                       <span className={styles.valueCheck}>✓</span>
-                      <span>BeRight Terminal (live)</span>
-                    </div>
-                    <div className={styles.valueItem} data-status="no">
-                      <span className={styles.valueCheck}>○</span>
-                      <span>Active user base (0 users)</span>
+                      <span>Persists the conversation around the response path</span>
                     </div>
                   </div>
                 </div>
 
                 <div className={styles.metricsCard}>
-                  <h3 className={styles.metricsTitle}>WHAT'S REAL VS CLAIMED</h3>
+                  <h3 className={styles.metricsTitle}>KNOWN GAPS</h3>
                   <div className={styles.realVsClaimed}>
                     <div className={styles.rvcItem}>
-                      <span className={styles.rvcLabel}>Code Complete</span>
+                      <span className={styles.rvcLabel}>Semantic Routing</span>
                       <div className={styles.rvcBar}>
-                        <div className={styles.rvcFill} style={{ width: '70%' }} />
+                        <div className={styles.rvcFill} style={{ width: '45%' }} />
                       </div>
-                      <span className={styles.rvcValue}>70%</span>
+                      <span className={styles.rvcValue}>45%</span>
                     </div>
                     <div className={styles.rvcItem}>
-                      <span className={styles.rvcLabel}>Deployed</span>
+                      <span className={styles.rvcLabel}>Telegram Gateway</span>
                       <div className={styles.rvcBar}>
-                        <div className={styles.rvcFill} style={{ width: '0%' }} data-low="true" />
+                        <div className={styles.rvcFill} style={{ width: '60%' }} />
                       </div>
-                      <span className={styles.rvcValue}>0%</span>
+                      <span className={styles.rvcValue}>60%</span>
                     </div>
                     <div className={styles.rvcItem}>
-                      <span className={styles.rvcLabel}>Users</span>
+                      <span className={styles.rvcLabel}>Provider Telemetry</span>
                       <div className={styles.rvcBar}>
-                        <div className={styles.rvcFill} style={{ width: '0%' }} data-low="true" />
+                        <div className={styles.rvcFill} style={{ width: '55%' }} />
                       </div>
-                      <span className={styles.rvcValue}>0</span>
+                      <span className={styles.rvcValue}>55%</span>
                     </div>
                     <div className={styles.rvcItem}>
-                      <span className={styles.rvcLabel}>Revenue</span>
+                      <span className={styles.rvcLabel}>Channel Parity</span>
                       <div className={styles.rvcBar}>
-                        <div className={styles.rvcFill} style={{ width: '0%' }} data-low="true" />
+                        <div className={styles.rvcFill} style={{ width: '65%' }} />
                       </div>
-                      <span className={styles.rvcValue}>$0</span>
+                      <span className={styles.rvcValue}>65%</span>
                     </div>
                   </div>
                 </div>

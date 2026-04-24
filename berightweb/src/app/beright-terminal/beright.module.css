@@ -355,6 +355,92 @@
   height: 100%;
 }
 
+.researchExecutionPanel {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(11, 16, 26, 0.96) 0%, rgba(7, 11, 18, 0.99) 100%);
+  padding: 16px 18px 18px;
+}
+
+.researchExecutionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.researchExecutionTitle {
+  margin: 8px 0 0;
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.researchExecutionSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.researchExecutionGrid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.researchExecutionCard {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+}
+
+.researchExecutionCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.researchExecutionRank {
+  font-family: var(--terminal-font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.researchExecutionCardTitle {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.researchExecutionMeta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--terminal-font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.56);
+}
+
+.researchExecutionActions {
+  margin-top: 14px;
+}
+
+.researchExecutionActions .primaryAction {
+  width: 100%;
+}
+
 .panelHeader {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.5);
@@ -733,6 +819,19 @@
 @media (max-width: 1023px) {
   .cliWrapper {
     padding: 14px 16px;
+  }
+
+  .researchExecutionHeader {
+    flex-direction: column;
+  }
+
+  .researchExecutionSummary {
+    justify-content: flex-start;
+  }
+
+  .researchExecutionGrid {
+    grid-template-columns: 1fr;
+    max-height: 260px;
   }
 }
 
@@ -1851,6 +1950,466 @@
   background: rgba(255, 71, 87, 0.08);
 }
 
+.terminalIntroBlock {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(0, 255, 178, 0.08), transparent 35%),
+    linear-gradient(180deg, rgba(13, 18, 30, 0.92) 0%, rgba(8, 12, 22, 0.98) 100%);
+}
+
+.terminalIntroEyebrow {
+  font-family: var(--terminal-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.54);
+  margin-bottom: 8px;
+}
+
+.terminalIntroTitle {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.03em;
+}
+
+.terminalIntroMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--terminal-font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.58);
+  min-width: 260px;
+  align-self: flex-end;
+}
+
+.metricStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.metricCard {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metricCardLabel {
+  font-family: var(--terminal-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.metricCardValue {
+  font-size: 26px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: -0.03em;
+}
+
+.metricCardDetail {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.opportunityBoard,
+.forecasterGrid,
+.journalList {
+  display: grid;
+  gap: 14px;
+}
+
+.opportunityCard,
+.forecasterCard,
+.journalCard,
+.sidebarSectionCard {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(16, 22, 35, 0.95) 0%, rgba(9, 14, 24, 0.98) 100%);
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.18);
+}
+
+.opportunityCard,
+.forecasterCard,
+.journalCard {
+  padding: 18px;
+}
+
+.opportunityCardHeader,
+.forecasterHeader,
+.journalTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.opportunityCardTitleWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.opportunityCardBadges,
+.forecasterMetaRow,
+.tagRow,
+.linkedPlatformRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.marketCategoryBadge,
+.executionBadge,
+.dataSourceBadge,
+.linkedPlatformChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-family: var(--terminal-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.marketCategoryBadge {
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dataSourceBadge {
+  color: var(--terminal-primary);
+  background: rgba(0, 255, 178, 0.08);
+  border-color: rgba(0, 255, 178, 0.18);
+}
+
+.executionBadge {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.executionBadgeLive,
+.journalRiskLow,
+.sidebarMetricGood {
+  color: var(--terminal-primary);
+  background: rgba(0, 255, 178, 0.08);
+  border-color: rgba(0, 255, 178, 0.18);
+}
+
+.executionBadgeWatch,
+.journalRiskMedium,
+.sidebarMetricWarn {
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.08);
+  border-color: rgba(255, 209, 102, 0.18);
+}
+
+.executionBadgeThin,
+.executionBadgeStale,
+.journalRiskHigh,
+.sidebarMetricBad {
+  color: #ff7b7b;
+  background: rgba(255, 123, 123, 0.08);
+  border-color: rgba(255, 123, 123, 0.18);
+}
+
+.executionBadgeLow,
+.executionBadgeMedium,
+.executionBadgeHigh {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sidebarMetricNeutral {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.opportunityCardTitle,
+.journalHeadline,
+.sidebarFeatureTitle {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.opportunityPriceBlock,
+.forecasterScoreBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.opportunityPrice {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--terminal-primary);
+  text-shadow: var(--terminal-glow-primary);
+}
+
+.opportunityPriceSub,
+.forecasterScoreLabel,
+.journalSource,
+.journalTime,
+.sidebarMetricLabel {
+  font-family: var(--terminal-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.opportunityReason,
+.journalDetail {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.opportunityStats,
+.forecasterStats,
+.compactMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.opportunityStatCell,
+.sidebarMetricCard {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.opportunityStatLabel {
+  font-family: var(--terminal-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.opportunityStatValue,
+.sidebarMetricValue,
+.forecasterScoreValue {
+  font-size: 18px;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.opportunityFootnote,
+.forecasterFootnote {
+  margin-top: 14px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.opportunityActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.primaryAction,
+.secondaryAction {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 0 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.primaryAction:hover,
+.secondaryAction:hover {
+  transform: translateY(-1px);
+}
+
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible,
+.feedTab:focus-visible,
+.navItem:focus-visible,
+.refreshBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 178, 0.3);
+}
+
+.primaryAction {
+  background: linear-gradient(135deg, #00FFB2 0%, #00E6A0 100%);
+  color: #02140d;
+}
+
+.secondaryAction {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.86);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.forecasterGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.forecasterRank {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 255, 178, 0.08);
+  color: var(--terminal-primary);
+  font-weight: 700;
+  font-family: var(--terminal-font-mono);
+}
+
+.forecasterIdentity {
+  flex: 1;
+}
+
+.forecasterIdentity h3 {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.forecasterIdentity span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 13px;
+}
+
+.linkedPlatformChip {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.journalCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.journalTopRow {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.journalHeadline {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sidebarSectionCard {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.compactMetricGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.sidebarFeatureTitle {
+  font-size: 16px;
+}
+
+.signalMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.signalFreshness {
+  margin-left: auto;
+  font-family: var(--terminal-font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.researchMarketList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.researchMarketCard {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.researchMarketTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.researchMarketTitle {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.researchMarketMeta {
+  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.58);
+  font-family: var(--terminal-font-mono);
+}
+
+.researchMarketActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.researchMarketActions .primaryAction,
+.researchMarketActions .secondaryAction {
+  min-height: 38px;
+  flex: 1;
+}
+
 /* ML Feed Table Enhancements */
 .marketQuestion {
   display: flex;
@@ -2682,5 +3241,50 @@
   40% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .metricStrip,
+  .forecasterGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .terminalIntroBlock {
+    flex-direction: column;
+  }
+
+  .terminalIntroMeta {
+    min-width: 0;
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 768px) {
+  .metricStrip,
+  .forecasterGrid,
+  .opportunityStats,
+  .forecasterStats,
+  .compactMetricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .opportunityCardHeader,
+  .forecasterHeader {
+    flex-direction: column;
+  }
+
+  .opportunityPriceBlock,
+  .forecasterScoreBlock {
+    align-items: flex-start;
+  }
+
+  .opportunityActions {
+    flex-direction: column;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    width: 100%;
   }
 }

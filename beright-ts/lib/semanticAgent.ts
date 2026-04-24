@@ -1,11 +1,11 @@
 /**
  * Semantic Understanding Agent
  *
- * This is the "brain" of BeRight - an LLM-powered agent that:
+ * This is the "brain" of BeRight - an LLM-powered runtime component that:
  * 1. Understands ANY natural language input
  * 2. Has deep knowledge of prediction markets
  * 3. Reasons about user intent semantically (no regex)
- * 4. Routes to appropriate specialist agents
+ * 4. Routes to appropriate internal specialist capabilities
  *
  * OpenClaw Architecture:
  * - SOUL.md defines personality and methodology

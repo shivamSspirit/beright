@@ -21,14 +21,6 @@ import { devBackend } from './devBackend';
 import { devFrontend } from './devFrontend';
 import { devTest } from './devTest';
 
-// Import AI builder for complex tasks
-let builderAI: typeof import('./builderAI') | null = null;
-try {
-  builderAI = require('./builderAI');
-} catch {
-  console.log('[Builder] BuilderAI not available (missing Anthropic SDK?)');
-}
-
 const execAsync = promisify(exec);
 
 const ROOT = path.join(__dirname, '..');
@@ -345,30 +337,18 @@ async function executeTestTask(task: BuildTask): Promise<{ success: boolean; fil
 }
 
 /**
- * Execute a TypeScript error fix using Claude AI
+ * Execute a TypeScript error fix
  */
 async function executeTypeErrorFix(task: BuildTask): Promise<{ success: boolean; filesChanged: string[] }> {
-  if (!builderAI) {
-    console.log(`[Builder] TypeScript error detected but BuilderAI not available: ${task.description}`);
-    return { success: false, filesChanged: [] };
-  }
-
-  // TODO: Implement fixTypeScriptError via Claude Code CLI or API
-  console.log(`[Builder] TypeScript error fix not yet implemented: ${task.description}`);
+  console.log(`[Builder] TypeScript error fix should be routed through smartBuilder.ts: ${task.description}`);
   return { success: false, filesChanged: [] };
 }
 
 /**
- * Execute a feature task using Claude AI
+ * Execute a feature task
  */
 async function executeFeatureTask(task: BuildTask): Promise<{ success: boolean; filesChanged: string[] }> {
-  if (!builderAI) {
-    console.log(`[Builder] Feature requires BuilderAI: ${task.description}`);
-    return { success: false, filesChanged: [] };
-  }
-
-  // TODO: Implement autonomousImplement via Claude Code CLI or API
-  console.log(`[Builder] Feature implementation not yet implemented: ${task.description}`);
+  console.log(`[Builder] Feature task should be routed through smartBuilder.ts: ${task.description}`);
   return { success: false, filesChanged: [] };
 }
 
@@ -393,16 +373,9 @@ async function executeTask(task: BuildTask, log: BuildLog): Promise<{
   } else if (task.type === 'fix' && task.source === 'error') {
     result = await executeTypeErrorFix(task);
   } else if (task.type === 'feat' || task.type === 'refactor') {
-    // Use Claude AI for feature implementation
     result = await executeFeatureTask(task);
   } else {
-    // For other tasks, try Claude AI if available
-    if (builderAI) {
-      result = await executeFeatureTask(task);
-    } else {
-      console.log(`[Builder] Task requires BuilderAI: ${task.description}`);
-      result = { success: false, filesChanged: [] };
-    }
+    result = await executeFeatureTask(task);
   }
 
   if (!result.success) {
@@ -539,7 +512,7 @@ export async function buildOnce(): Promise<SkillResponse> {
         failed++;
         task.status = 'failed';
         results.push(`  Skipped (requires manual implementation)`);
-        logAction(log, `execute:${task.id}`, 'skipped', 'Requires Claude API');
+        logAction(log, `execute:${task.id}`, 'skipped', 'Route this task through smartBuilder.ts');
       }
 
       log.tasks.push(task);

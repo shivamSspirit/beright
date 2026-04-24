@@ -14,6 +14,12 @@ interface NavPillProps {
  */
 export default function NavPill({ activeTab, onTabChange }: NavPillProps) {
   const tabs: TabName[] = ['BERIGHT', 'MARKETS', 'AGENTS', 'LOGS'];
+  const labels: Record<TabName, string> = {
+    BERIGHT: 'RESEARCH',
+    MARKETS: 'OPPS',
+    AGENTS: 'TRADERS',
+    LOGS: 'JOURNAL',
+  };
 
   return (
     <nav className={styles.navPill}>
@@ -23,7 +29,7 @@ export default function NavPill({ activeTab, onTabChange }: NavPillProps) {
           className={`${styles.navItem} ${activeTab === tab ? styles.navItemActive : ''}`}
           onClick={() => onTabChange(tab)}
         >
-          {tab}
+          {labels[tab]}
         </button>
       ))}
     </nav>

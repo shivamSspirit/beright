@@ -101,11 +101,11 @@ All memory files stored in `memory/` directory:
 
 | File | Purpose |
 |------|---------|
-| `IDENTITY.md` | Agent identity + multi-agent architecture |
+| `IDENTITY.md` | Agent identity + OpenClaw runtime architecture |
 | `SOUL.md` | Agent personality + methodology |
 | `HEARTBEAT.md` | Dynamic status for 30-min heartbeat checks |
 | `MEMORY.md` | Synced lessons + episodic memory |
-| `AGENTS.md` | Multi-agent system documentation |
+| `AGENTS.md` | BeRight Terminal runtime architecture |
 | `USER.md` | User context |
 
 ---

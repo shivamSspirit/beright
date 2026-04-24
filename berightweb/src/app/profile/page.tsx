@@ -9,7 +9,7 @@ import { usePredictions } from '@/hooks/usePredictions';
 import {
   TrendingUp, Flame, ChevronRight, Copy,
   ExternalLink, Check, Bell, Settings, HelpCircle, Zap, RefreshCw,
-  Info, Star, Wallet, ArrowUp, LogOut, BookOpen, Crown, CreditCard
+  Info, Star, Wallet, ArrowUp, LogOut, BookOpen, Crown, CreditCard, Target
 } from 'lucide-react';
 import { PageWrapper } from '@/components/ui';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -578,6 +578,15 @@ const SettingsPanel = ({
             <ChevronRight size={14} className={styles.menuItemArrow} />
           </button>
 
+          <Link href="/calibration" className={styles.menuItem}>
+            <Target size={16} className={styles.menuItemIcon} />
+            <div className={styles.menuItemContent}>
+              <div className={styles.menuItemTitle}>Calibration</div>
+              <div className={styles.menuItemDesc}>View Brier score and calibration stats</div>
+            </div>
+            <ChevronRight size={14} className={styles.menuItemArrow} />
+          </Link>
+
           <button className={styles.menuItem} onClick={onReplayOnboarding}>
             <BookOpen size={16} className={styles.menuItemIcon} />
             <div className={styles.menuItemContent}>
@@ -600,9 +609,6 @@ const SettingsPanel = ({
       </Inset>
     </Plate>
 
-    <div className={styles.profileLink}>
-      <a href="#" className={styles.link}>View public profile →</a>
-    </div>
   </>
 );
 
@@ -1048,6 +1054,10 @@ export default function ProfilePage() {
               <Settings size={18} />
               Settings
             </button>
+            <Link href="/calibration" className={styles.navItem}>
+              <Target size={18} />
+              Calibration
+            </Link>
           </nav>
 
           <ReferralCard walletAddress={walletAddress || undefined} referralCount={0} />

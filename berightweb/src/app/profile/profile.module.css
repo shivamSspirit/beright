@@ -1213,6 +1213,8 @@
   border: none;
   width: 100%;
   text-align: left;
+  text-decoration: none;
+  color: inherit;
 }
 
 .menuItem:last-child {
@@ -1277,12 +1279,6 @@
 .menuItemDanger:hover {
   background: rgba(244, 63, 94, 0.08);
 }
-
-.profileLink {
-  text-align: center;
-  padding-bottom: 8px;
-}
-
 
 /* ═══════════════════════════════════════════════════════════════
    LOADING & STATES

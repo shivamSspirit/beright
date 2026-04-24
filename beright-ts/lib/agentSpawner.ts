@@ -1,15 +1,18 @@
 /**
- * Agent Spawner - Multi-agent delegation system for BeRight Protocol
+ * Internal capability dispatcher for the BeRight Terminal runtime.
  *
- * Each agent (Scout, Analyst, Trader) is invoked as a real Claude LLM call
- * using its configured system prompt, model, and temperature.
- * Skills run first to gather context; Claude reasons about the results.
- *
- * Falls back to keyword matching if ANTHROPIC_API_KEY is not set.
+ * `beright-terminal` is the only top-level runtime agent.
+ * This module dispatches semantic work to internal capabilities
+ * like scout, analyst, and trader.
  */
 
 import { SkillResponse, Mood } from '../types/index';
-import { AGENTS, AgentConfig, isAgentAllowed, getAgentConfig } from '../config/agents';
+import {
+  AgentConfig,
+  BeRightCapabilityId,
+  isAgentAllowed,
+  getAgentConfig,
+} from '../config/agents';
 import { llmChat } from './llm';
 
 // Agent execution context
@@ -203,21 +206,18 @@ function wantsIntent(task: string, intentType: keyof typeof INTENT_KEYWORDS): bo
 }
 
 /**
- * Spawn an agent to handle a task
- *
- * This is the main entry point for multi-agent delegation.
- * The orchestrator calls this to delegate work to specialist agents.
+ * Dispatch semantic work to an internal capability.
  */
 export async function spawnAgent(task: AgentTask): Promise<AgentResult> {
   const { agentId, task: taskDescription, context, priority = 'normal', timeout = 30000 } = task;
 
-  // Validate agent
+  // Validate capability
   if (!isAgentAllowed(agentId)) {
     return {
       agentId,
       success: false,
       response: {
-        text: `❌ Agent "${agentId}" is not in the spawn allowlist.\n\nAllowed agents: scout, analyst, trader`,
+        text: `❌ Capability "${agentId}" is not available.\n\nAvailable capabilities: scout, analyst, trader`,
         mood: 'ERROR' as Mood,
       },
       executionTimeMs: 0,
@@ -230,7 +230,7 @@ export async function spawnAgent(task: AgentTask): Promise<AgentResult> {
       agentId,
       success: false,
       response: {
-        text: `❌ Agent "${agentId}" not found in configuration.`,
+        text: `❌ Capability "${agentId}" not found in configuration.`,
         mood: 'ERROR' as Mood,
       },
       executionTimeMs: 0,
@@ -251,7 +251,7 @@ export async function spawnAgent(task: AgentTask): Promise<AgentResult> {
   const startTime = Date.now();
 
   try {
-    // Execute agent task
+    // Execute capability task
     const result = await executeAgentTask(agentConfig, taskDescription, context, timeout);
 
     // Update spawn status
@@ -271,7 +271,7 @@ export async function spawnAgent(task: AgentTask): Promise<AgentResult> {
       agentId,
       success: false,
       response: {
-        text: `❌ Agent ${agentConfig.name} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        text: `❌ Capability ${agentConfig.name} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         mood: 'ERROR' as Mood,
       },
       executionTimeMs,
@@ -280,14 +280,14 @@ export async function spawnAgent(task: AgentTask): Promise<AgentResult> {
 }
 
 /**
- * Execute the agent task via real Anthropic API call.
+ * Execute the capability task via real Anthropic API call.
  *
  * Flow:
  * 1. Run relevant skill(s) to gather raw data (fast, deterministic)
  * 2. Call Claude with the agent's system prompt + raw data as context
  * 3. Claude reasons about the data and produces a natural language response
  *
- * Falls back to keyword-based routing if API key is absent.
+ * Falls back to deterministic capability logic if API access is absent.
  */
 async function executeAgentTask(
   agent: AgentConfig,
@@ -298,6 +298,11 @@ async function executeAgentTask(
   const startTime = Date.now();
 
   try {
+    // Trader must stay deterministic to avoid hallucinated execution paths.
+    if (agent.id === 'trader') {
+      return await executeTraderTask(agent, task, context);
+    }
+
     // Step 1: Gather raw context from skills (fast, deterministic)
     const rawContext = await gatherSkillContext(agent, task);
 
@@ -340,14 +345,14 @@ async function executeAgentTask(
       return {
         agentId: agent.id,
         success: false,
-        response: { text: `Unknown agent type: ${agent.id}`, mood: 'ERROR' as Mood },
+        response: { text: `Unknown capability type: ${agent.id}`, mood: 'ERROR' as Mood },
         executionTimeMs: Date.now() - startTime,
       };
   }
 }
 
 /**
- * Run the relevant skills for an agent and return raw text context.
+ * Run the relevant skills for a capability and return raw text context.
  * This is the "perception" layer — fast, deterministic data gathering.
  * Claude then reasons about this data.
  */
@@ -414,7 +419,7 @@ async function gatherSkillContext(agent: AgentConfig, task: string): Promise<str
 }
 
 /**
- * Scout agent execution - Fast market scanning
+ * Scout capability execution - Fast market scanning
  * Enhanced with Tavily for real-time news
  */
 async function executeScoutTask(
@@ -490,7 +495,7 @@ async function executeScoutTask(
 }
 
 /**
- * Analyst agent execution - Deep research
+ * Analyst capability execution - Deep research
  * Enhanced with Tavily for comprehensive research
  */
 async function executeAnalystTask(
@@ -566,7 +571,7 @@ async function executeAnalystTask(
 }
 
 /**
- * Trader agent execution - Trade execution
+ * Trader capability execution - Trade execution
  *
  * Supports live Jupiter Prediction Market execution when wallet pubkey is provided.
  * Returns unsigned transaction for wallet signing by the frontend.
@@ -588,6 +593,15 @@ async function executeTraderTask(
 
   // Extract wallet pubkey from context (set when called from web terminal)
   const walletPubkey = context?.username; // username field carries wallet pubkey from gateway
+  const wantsTradeGuidance =
+    taskLower.includes('how can i trade') ||
+    taskLower.includes('how do i trade') ||
+    taskLower.includes('where can i trade') ||
+    taskLower.includes('where do i trade') ||
+    taskLower.includes('trade that market') ||
+    taskLower.includes('trade this market') ||
+    taskLower.includes('bet on that market') ||
+    taskLower.includes('bet on this market');
 
   if (taskLower.includes('swap')) {
     // Token swap
@@ -606,6 +620,28 @@ async function executeTraderTask(
     // Whale tracking
     response = await whaleWatch();
     response.text = `💱 *TRADER: WHALE ACTIVITY*\n${'─'.repeat(30)}\n\n${response.text}`;
+  } else if (wantsTradeGuidance) {
+    response = {
+      text:
+        `💱 *TRADER: PREDICTION MARKET EXECUTION*\n${'─'.repeat(30)}\n\n` +
+        `I can only guide execution for *prediction market venues*, not Binance spot/perps or generic crypto futures.\n\n` +
+        `*How to trade a prediction market:*\n` +
+        `1. Open the exact market on its venue (Polymarket, Kalshi, Jupiter prediction, or DFlow)\n` +
+        `2. Choose *YES* or *NO*\n` +
+        `3. Enter your stake in USD/USDC\n` +
+        `4. Check price, liquidity, spread, and fees before submitting\n` +
+        `5. Confirm the order on the venue\n\n` +
+        `*If this came from the terminal research panel:*\n` +
+        `• Use the *Bet on <platform>* action to open the live market\n` +
+        `• For Jupiter-supported markets, you can also use:\n` +
+        `  \`trade <amount> yes on <market>\`\n` +
+        `  Example: \`trade 10 yes on bitcoin above 100k\`\n\n` +
+        `*If you want exact execution guidance,* send the market title or URL and I’ll tell you:\n` +
+        `• which venue it is on\n` +
+        `• whether BeRight can route it directly\n` +
+        `• the exact next action to place the bet`,
+      mood: 'NEUTRAL' as Mood,
+    };
   } else if (taskLower.includes('buy') || taskLower.includes('trade') || taskLower.includes('execute')) {
     // Trade execution - supports live Jupiter execution with wallet
     // Match patterns like: "trade 5 yes on bitcoin" or "buy yes $10 bitcoin"
@@ -871,7 +907,7 @@ function formatVolume(v: number): string {
 }
 
 /**
- * Spawn multiple agents in parallel
+ * Dispatch multiple internal capabilities in parallel
  */
 export async function spawnAgentsParallel(tasks: AgentTask[]): Promise<AgentResult[]> {
   return Promise.all(tasks.map(task => spawnAgent(task)));

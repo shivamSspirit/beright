@@ -7,15 +7,14 @@
  * Flow:
  * 1. Get or create conversation
  * 2. Save user message to DB
- * 3. Process through agent handler
+ * 3. Process through the BeRight OpenClaw runtime
  * 4. Save agent response to DB
  * 5. Return with IDs for frontend sync
  */
 
 import { conversations, messages } from '../supabase/conversations';
-import { secureTelegramHandler } from '../secureHandler';
-import { TelegramMessage, SkillResponse } from '../../types/index';
-import type { Conversation, Message, AgentType } from '../supabase/types';
+import { executeBeRightOpenClawRequest } from '../runtime/openclaw';
+import type { Conversation, AgentType } from '../supabase/types';
 
 // ============================================
 // TYPES
@@ -51,7 +50,7 @@ export interface ChatError {
 }
 
 // ============================================
-// AGENT ROUTING (mirrors telegramHandler logic)
+// AGENT ROUTING (temporary metadata heuristic)
 // ============================================
 
 function detectAgentType(message: string): AgentType {
@@ -237,25 +236,26 @@ export class ChatService {
       // Add to session history
       await addToSessionHistory(sessionId, 'user', message);
 
-      // Step 3: Process through agent handler
-      const pseudoMessage: TelegramMessage = {
-        message_id: Date.now(),
-        date: Math.floor(Date.now() / 1000),
-        chat: {
-          id: parseInt(sessionId.replace(/\D/g, '').slice(0, 10)) || Date.now(),
-          type: 'private',
-        },
-        from: {
-          id: userId ? parseInt(userId.replace(/\D/g, '').slice(0, 10)) || Date.now() : Date.now(),
-          first_name: 'Web User',
-          username: walletAddress || userId || undefined,
-        },
-        text: message.trim(),
-      };
-
       console.log(`[ChatService] Processing: "${message.slice(0, 50)}..." | Conv: ${conversationId} | Agent: ${agentType}`);
 
-      const response = await secureTelegramHandler(pseudoMessage);
+      const execution = await executeBeRightOpenClawRequest({
+        gateway: 'web',
+        userId: userId || walletAddress || sessionId,
+        chatId: sessionId,
+        text: message,
+        raw: {
+          source: 'chat-service',
+          conversationId,
+          sessionId,
+        },
+        isAuthenticated: !!walletAddress,
+      });
+
+      const response = {
+        text: execution.formatted.text,
+        mood: execution.result.hints?.mood,
+        data: execution.result.data,
+      };
 
       // Step 4: Save agent response to DB (if wallet connected)
       let agentMessageId = `temp-agent-${Date.now()}`;
@@ -299,16 +299,13 @@ export class ChatService {
         }).catch((err) => console.error('[ChatService] Memory extraction failed (agent):', err));
       }
 
-      // Step 6: Format and return response
-      const formattedText = formatResponseForWeb(response.text);
-
       return {
         success: true,
         conversationId,
         userMessageId,
         agentMessageId,
         sessionId,
-        text: formattedText,
+        text: response.text,
         rawText: response.text,
         mood: response.mood,
         agentType,
@@ -380,28 +377,6 @@ function generateTitle(message: string): string {
   }
 
   return title;
-}
-
-/**
- * Convert Telegram markdown to web-friendly format
- */
-function formatResponseForWeb(text: string): string {
-  let formatted = text;
-
-  // Remove markdown code fences
-  formatted = formatted.replace(/^```markdown\s*/i, '').replace(/```\s*$/, '');
-  formatted = formatted.replace(/^```\s*/gm, '').replace(/```\s*$/gm, '');
-
-  // Convert Telegram bold *text* to markdown bold **text**
-  formatted = formatted.replace(/\*([^*]+)\*/g, '**$1**');
-
-  // Convert Telegram italic _text_ to markdown italic *text*
-  formatted = formatted.replace(/_([^_]+)_/g, '*$1*');
-
-  // Normalize excessive line breaks
-  formatted = formatted.replace(/\n{3,}/g, '\n\n');
-
-  return formatted.trim();
 }
 
 export default ChatService;

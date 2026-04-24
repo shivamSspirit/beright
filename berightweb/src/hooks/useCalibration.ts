@@ -11,9 +11,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-import { useWallets, useSignTransaction } from '@privy-io/react-auth/solana';
-import { Transaction, Connection } from '@solana/web3.js';
+import { Transaction, Connection, VersionedTransaction } from '@solana/web3.js';
+import { useUser } from '@/hooks/useUnifiedUser';
 
 const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 
@@ -64,14 +63,16 @@ export interface RecordPredictionParams {
   category?: number;
 }
 
+interface WalletFuncs {
+  signTransaction?: (tx: Transaction | VersionedTransaction | Uint8Array) => Promise<Transaction | VersionedTransaction | Uint8Array>;
+}
+
 // ============================================================================
 // HOOK
 // ============================================================================
 
 export function useCalibration() {
-  const { authenticated } = usePrivy();
-  const { wallets } = useWallets();
-  const { signTransaction } = useSignTransaction();
+  const { isAuthenticated, walletAddress } = useUser();
 
   const [forecasterState, setForecasterState] = useState<ForecasterState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -80,10 +81,50 @@ export function useCalibration() {
   const [lastTx, setLastTx] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Get connected Solana wallet (useWallets from solana module already filters to Solana wallets)
-  const solanaWallet = wallets.length > 0 ? wallets[0] : null;
-  const connected = authenticated && !!solanaWallet;
-  const ownerPubkey = solanaWallet?.address || null;
+  const connected = isAuthenticated && !!walletAddress;
+  const ownerPubkey = walletAddress || null;
+
+  const signBuiltTransaction = useCallback(
+    async (transaction: Transaction | VersionedTransaction): Promise<Transaction | VersionedTransaction> => {
+      if (typeof window === 'undefined') {
+        throw new Error('Wallet not available');
+      }
+
+      const walletFuncs = (window as Window & { __BERIGHT_WALLET_FUNCS__?: WalletFuncs }).__BERIGHT_WALLET_FUNCS__;
+      if (!walletFuncs?.signTransaction) {
+        throw new Error('Wallet signing not available');
+      }
+
+      try {
+        const signed = await walletFuncs.signTransaction(transaction);
+        if (signed instanceof Transaction || signed instanceof VersionedTransaction) {
+          return signed;
+        }
+
+        if (signed instanceof Uint8Array) {
+          return transaction instanceof Transaction
+            ? Transaction.from(signed)
+            : VersionedTransaction.deserialize(signed);
+        }
+      } catch {
+        const serialized = transaction.serialize({ requireAllSignatures: false });
+        const signed = await walletFuncs.signTransaction(serialized);
+
+        if (signed instanceof Transaction || signed instanceof VersionedTransaction) {
+          return signed;
+        }
+
+        if (signed instanceof Uint8Array) {
+          return transaction instanceof Transaction
+            ? Transaction.from(signed)
+            : VersionedTransaction.deserialize(signed);
+        }
+      }
+
+      throw new Error('Wallet returned unsupported signed transaction format');
+    },
+    []
+  );
 
   // ─────────────────────────────────────────────────────────────────────────────
   // FETCH FORECASTER STATE
@@ -165,18 +206,11 @@ export function useCalibration() {
             throw new Error(initJson.error || 'Failed to initialize forecaster');
           }
 
-          if (initJson.success && solanaWallet) {
+          if (initJson.success) {
             const initTxBytes = Buffer.from(initJson.data.transaction, 'base64');
             const initTransaction = Transaction.from(initTxBytes);
-
-            // Serialize for Privy signing
-            const serializedInitTx = initTransaction.serialize({ requireAllSignatures: false });
-
-            // Sign with Privy
-            const { signedTransaction: signedInitTxBytes } = await signTransaction({
-              transaction: serializedInitTx,
-              wallet: solanaWallet,
-            });
+            const signedInitTransaction = await signBuiltTransaction(initTransaction);
+            const signedInitTxBytes = signedInitTransaction.serialize();
 
             // Send transaction
             const initSig = await connection.sendRawTransaction(signedInitTxBytes);
@@ -210,18 +244,8 @@ export function useCalibration() {
         const txBytes = Buffer.from(json.data.transaction, 'base64');
         const transaction = Transaction.from(txBytes);
 
-        if (!solanaWallet) {
-          throw new Error('Wallet not available');
-        }
-
-        // Serialize for Privy signing
-        const serializedTx = transaction.serialize({ requireAllSignatures: false });
-
-        // Sign with Privy
-        const { signedTransaction: signedTxBytes } = await signTransaction({
-          transaction: serializedTx,
-          wallet: solanaWallet,
-        });
+        const signedTransaction = await signBuiltTransaction(transaction);
+        const signedTxBytes = signedTransaction.serialize();
 
         // Send transaction
         const signature = await connection.sendRawTransaction(signedTxBytes);
@@ -241,7 +265,7 @@ export function useCalibration() {
         setTxLoading(false);
       }
     },
-    [connected, ownerPubkey, isInitialized, signTransaction, fetchForecasterState, solanaWallet]
+    [connected, ownerPubkey, isInitialized, signBuiltTransaction, fetchForecasterState]
   );
 
   // ─────────────────────────────────────────────────────────────────────────────

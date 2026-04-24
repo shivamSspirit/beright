@@ -1,9 +1,9 @@
 /**
  * Orchestrator Layer Types
  *
- * The Orchestrator is where agency emerges.
+ * The Orchestrator is where BeRight runtime coordination emerges.
  * It handles:
- * - Multi-agent coordination (Scout → Analyst → Trader)
+ * - Internal capability coordination (Scout → Analyst → Trader)
  * - Planning and execution
  * - Context management
  * - Learning from outcomes
@@ -395,7 +395,7 @@ export interface OrchestratorHooks {
 // =============================================================================
 
 /**
- * Agent types for multi-agent coordination
+ * Capability types for internal coordination
  */
 export type AgentType = 'forecaster' | 'scout' | 'analyst' | 'trader';
 
@@ -417,7 +417,7 @@ export interface AgentTask {
 }
 
 /**
- * Execution plan for multi-agent coordination
+ * Execution plan for internal capability coordination
  */
 export interface ExecutionPlan {
   /** Plan ID */

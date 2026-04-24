@@ -1,11 +1,9 @@
 /**
- * Multi-Agent Coordinator - True agent coordination with independent goals
+ * Legacy capability coordinator for autonomous subsystems.
  *
- * Unlike the previous agentSpawner which was just function dispatch,
- * this coordinator manages agents that have their own goals, beliefs,
- * and can negotiate with each other.
- *
- * Integrates with OpenClaw's multi-agent routing for true agent isolation.
+ * `beright-terminal` is the single runtime agent. This module is retained as
+ * an internal coordination prototype for long-running cognitive flows that may
+ * still model Scout/Analyst/Trader as independent capabilities.
  */
 
 import * as fs from 'fs';
@@ -86,16 +84,16 @@ export const AGENT_DEFINITIONS: AgentDefinition[] = [
     name: 'BeRight Orchestrator',
     role: 'orchestrator',
     capabilities: ['coordination', 'planning', 'conflict_resolution', 'goal_generation'],
-    systemPrompt: `You are the BeRight Orchestrator - the central coordinator of a multi-agent prediction market system.
+    systemPrompt: `You are the BeRight coordinator for an internal capability-driven prediction market runtime.
 
 Your responsibilities:
 1. Generate and prioritize goals based on market opportunities
-2. Delegate tasks to specialist agents (Scout, Analyst, Trader)
-3. Resolve conflicts between agents
+2. Delegate tasks to specialist capabilities (Scout, Analyst, Trader)
+3. Resolve conflicts between capabilities
 4. Maintain overall system coherence
 5. Report to users when attention is needed
 
-You have access to the full world state and can create goals for any agent.`,
+You have access to the full world state and can create goals for any capability.`,
     model: 'opus',
     maxConcurrentGoals: 5,
   },
@@ -206,7 +204,7 @@ function loadCoordinatorState(): CoordinatorState {
       defaults.pendingConflicts = data.pendingConflicts || [];
     }
   } catch (error) {
-    console.warn('[MultiAgent] Failed to load state:', error);
+    console.warn('[CapabilityCoordinator] Failed to load state:', error);
   }
 
   return defaults;
@@ -228,7 +226,7 @@ function saveCoordinatorState(): void {
 
     fs.writeFileSync(AGENTS_STATE_FILE, JSON.stringify(serializable, null, 2));
   } catch (error) {
-    console.error('[MultiAgent] Failed to save state:', error);
+    console.error('[CapabilityCoordinator] Failed to save state:', error);
   }
 }
 
@@ -632,7 +630,7 @@ export async function coordinate(): Promise<{
   coordinatorState.lastCoordination = new Date();
   saveCoordinatorState();
 
-  console.log(`[MultiAgent] Coordination: ${result.messagesProcessed} msgs, ${result.conflictsResolved} conflicts, ${result.goalsReassigned} reassigned`);
+  console.log(`[CapabilityCoordinator] Coordination: ${result.messagesProcessed} msgs, ${result.conflictsResolved} conflicts, ${result.goalsReassigned} reassigned`);
 
   return result;
 }
@@ -642,10 +640,10 @@ export async function coordinate(): Promise<{
 // ============================================
 
 /**
- * Get multi-agent status summary
+ * Get internal capability coordination status summary
  */
 export function getAgentsSummary(): string {
-  let summary = `## Multi-Agent Status\n\n`;
+  let summary = `## Capability Coordination Status\n\n`;
 
   for (const [agentId, state] of coordinatorState.agents) {
     const def = getAgentDefinition(agentId);

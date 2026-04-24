@@ -3,7 +3,7 @@
  *
  * This is the brain of BeRight - it uses semantic understanding to:
  * 1. Understand ANY natural language input
- * 2. Route to the appropriate agent/skill
+ * 2. Route to the appropriate internal capability/skill
  * 3. Generate intelligent responses
  *
  * This replaces regex-based intent classification with true understanding.
@@ -11,7 +11,7 @@
  * OpenClaw Pattern:
  * - Loads SOUL.md and IDENTITY.md as context
  * - Uses LLM to understand, not pattern match
- * - Routes to Scout/Analyst/Trader based on semantic understanding
+ * - Routes to internal Scout/Analyst/Trader capabilities based on semantic understanding
  */
 
 import {
@@ -49,15 +49,18 @@ export interface OrchestratorResponse {
   mood: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'EDUCATIONAL' | 'ERROR';
   data?: unknown;
   understanding?: SemanticUnderstanding;
-  agentUsed?: RecommendedAgent;
+  agentUsed: 'beright-terminal';
+  capabilityUsed?: RecommendedAgent;
 }
 
 export interface ConversationContext {
   chatId: string;
   userId: string;
-  username?: string; // Solana wallet pubkey when from gateway
+  username?: string; // Wallet pubkey when available from gateway context
   recentMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
+
+const BERIGHT_TERMINAL_AGENT_ID = 'beright-terminal' as const;
 
 // ============================================================================
 // Main Orchestrator
@@ -71,7 +74,7 @@ export interface ConversationContext {
  * OpenClaw Pattern:
  * - Memory: Tracks conversation context and user preferences
  * - Understanding: LLM-based semantic analysis
- * - Routing: Intelligent agent selection
+ * - Routing: Intelligent capability selection inside beright-terminal
  * - Learning: Records episodes for future improvement
  */
 export async function orchestrate(
@@ -120,22 +123,23 @@ export async function orchestrate(
       text: understanding.directAnswer,
       mood: 'NEUTRAL',
       understanding,
-      agentUsed: 'SELF',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'SELF',
     };
   }
 
   // Step 4: Route to appropriate handler
   const routing = routeToAgent(understanding);
 
-  console.log(`[Orchestrator] Routing: ${routing.primary}${routing.secondary ? ` → ${routing.secondary}` : ''} with skills: [${routing.skills.join(', ')}]`);
+  console.log(`[Orchestrator] Capability routing: ${routing.primary}${routing.secondary ? ` → ${routing.secondary}` : ''} with skills: [${routing.skills.join(', ')}]`);
 
   // Step 5: Execute based on routing
   let response: OrchestratorResponse;
 
   // Pass context through for wallet-aware operations
-  const agentContext = context ? {
+  const capabilityContext = context ? {
     userId: context.userId,
-    username: context.username, // Wallet pubkey from gateway
+    username: context.username,
   } : undefined;
 
   switch (routing.primary) {
@@ -144,19 +148,19 @@ export async function orchestrate(
       break;
 
     case 'SCOUT':
-      response = await handleScout(understanding, message, routing.skills, agentContext);
+      response = await handleScout(understanding, message, routing.skills, capabilityContext);
       break;
 
     case 'ANALYST':
-      response = await handleAnalyst(understanding, message, routing.skills, agentContext);
+      response = await handleAnalyst(understanding, message, routing.skills, capabilityContext);
       break;
 
     case 'TRADER':
-      response = await handleTrader(understanding, message, routing.skills, agentContext);
+      response = await handleTrader(understanding, message, routing.skills, capabilityContext);
       break;
 
     case 'HYBRID':
-      response = await handleHybrid(understanding, message, routing, agentContext);
+      response = await handleHybrid(understanding, message, routing, capabilityContext);
       break;
 
     default:
@@ -174,7 +178,7 @@ export async function orchestrate(
     userId,
     chatId,
     trigger: message,
-    action: `Routed to ${routing.primary} agent`,
+    action: `Routed to ${routing.primary} capability`,
     outcome: response.text.slice(0, 200),
     intent: understanding.goal,
     agent: routing.primary,
@@ -187,7 +191,8 @@ export async function orchestrate(
   return {
     ...response,
     understanding,
-    agentUsed: routing.primary,
+    agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+    capabilityUsed: routing.primary,
   };
 }
 
@@ -223,17 +228,21 @@ Understanding: ${understanding.interpretation}`,
     return {
       text: "I can help with prediction market intelligence. Try /hot for trending markets or ask me about any topic.",
       mood: 'NEUTRAL',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'SELF',
     };
   }
 
   return {
     text: response.text,
     mood: 'NEUTRAL',
+    agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+    capabilityUsed: 'SELF',
   };
 }
 
 /**
- * Scout agent - fast scanning, data retrieval
+ * Scout capability - fast scanning, data retrieval
  */
 async function handleScout(
   understanding: SemanticUnderstanding,
@@ -258,18 +267,22 @@ async function handleScout(
       text: result.response?.text || 'No data found.',
       mood: mapMood(result.response?.mood),
       data: result.response?.data,
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'SCOUT',
     };
   } catch (error) {
     console.error('[Orchestrator] Scout error:', error);
     return {
       text: "Couldn't fetch market data right now. Try again in a moment.",
       mood: 'ERROR',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'SCOUT',
     };
   }
 }
 
 /**
- * Analyst agent - deep reasoning, synthesis
+ * Analyst capability - deep reasoning, synthesis
  */
 async function handleAnalyst(
   understanding: SemanticUnderstanding,
@@ -293,18 +306,22 @@ async function handleAnalyst(
       text: result.response?.text || 'Analysis complete but no insights generated.',
       mood: mapMood(result.response?.mood),
       data: result.response?.data,
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'ANALYST',
     };
   } catch (error) {
     console.error('[Orchestrator] Analyst error:', error);
     return {
       text: "Deep analysis unavailable right now. Try a simpler query or /hot for trending markets.",
       mood: 'ERROR',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'ANALYST',
     };
   }
 }
 
 /**
- * Trader agent - execution, quotes
+ * Trader capability - execution, quotes
  */
 async function handleTrader(
   understanding: SemanticUnderstanding,
@@ -317,7 +334,14 @@ async function handleTrader(
 
   const task: AgentTask = {
     agentId: 'trader',
-    task: `${understanding.interpretation}. Topic: ${understanding.topic || message}${walletPubkey ? `. WalletPubkey: ${walletPubkey}` : ''}`,
+    task:
+      `Prediction-market-only execution request. ` +
+      `${understanding.interpretation}. ` +
+      `Original user message: ${message}. ` +
+      `Topic: ${understanding.topic || message}. ` +
+      `Do not switch to Binance, spot, perps, options, or generic crypto trading. ` +
+      `If the exact prediction market or venue is unclear, ask for the market title or URL instead of guessing.` +
+      `${walletPubkey ? ` WalletPubkey: ${walletPubkey}` : ''}`,
     context: {
       userId: agentContext?.userId,
       username: walletPubkey, // Wallet pubkey for live execution
@@ -331,18 +355,22 @@ async function handleTrader(
       text: result.response?.text || 'Trade information unavailable.',
       mood: mapMood(result.response?.mood),
       data: result.response?.data,
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'TRADER',
     };
   } catch (error) {
     console.error('[Orchestrator] Trader error:', error);
     return {
       text: "Trading functions unavailable right now.",
       mood: 'ERROR',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'TRADER',
     };
   }
 }
 
 /**
- * Hybrid - Scout first for data, then Analyst for reasoning
+ * Hybrid capability flow - Scout first for data, then Analyst for reasoning
  */
 async function handleHybrid(
   understanding: SemanticUnderstanding,
@@ -385,12 +413,16 @@ async function handleHybrid(
       text: analystResult.response?.text || 'Analysis complete.',
       mood: mapMood(analystResult.response?.mood),
       data: { scoutData, analysis: analystResult.response?.data },
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'HYBRID',
     };
   } catch (error) {
     console.error('[Orchestrator] Analyst phase failed:', error);
     return {
       text: "Couldn't complete analysis. Try /hot for trending markets.",
       mood: 'ERROR',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'HYBRID',
     };
   }
 }
@@ -431,12 +463,16 @@ Ambiguities: ${understanding.ambiguities?.join(', ') || 'none detected'}`,
 
 Or just tell me what market you're curious about.`,
       mood: 'NEUTRAL',
+      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      capabilityUsed: 'SELF',
     };
   }
 
   return {
     text: response.text,
     mood: 'NEUTRAL',
+    agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+    capabilityUsed: 'SELF',
   };
 }
 

@@ -1,8 +1,8 @@
 /**
  * Unified Gateway API
  *
- * This endpoint provides the same command routing as Telegram,
- * allowing the web terminal to use the full agent/skill system.
+ * This endpoint routes web terminal requests through the same
+ * BeRight OpenClaw runtime bridge used by the product execution stack.
  *
  * POST /api/gateway
  * Body: {
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
       '/subscribe', '/unsubscribe', '/alerts', '/signals',
       '/follow @user', '/unfollow @user', '/toplists',
       '/connect <wallet>', '/profile', '/memory',
-      '/my-vault', '/channels', '/create-channel', '/subscribe-channel',
+      '/channels', '/create-channel', '/subscribe-channel',
       '/agent', '/signal YES|NO "<market>" <prob>',
     ],
   });

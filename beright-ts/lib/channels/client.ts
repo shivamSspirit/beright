@@ -3,8 +3,6 @@
  *
  * CRUD for signal channels, subscriptions, and signal broadcasting.
  * All persistence is Supabase. On-chain commitment is optional (non-fatal).
- *
- * NOT the on-chain BeRight vault — see lib/onchain-vault/ for that.
  */
 
 import { supabaseAdmin, isSupabaseConfigured } from '../supabase/client';
@@ -97,23 +95,9 @@ export async function subscribeToChannel(
   channelId: string,
   subscriberTelegramId: number,
   tier: ChannelTier = 'free',
-  ownerWallet?: string,             // required for paid tiers
+  ownerWallet?: string,
 ): Promise<{ success: boolean; message: string }> {
   if (!isSupabaseConfigured) return { success: false, message: 'Service unavailable' };
-
-  // Gate paid tiers: check on-chain vault balance covers the monthly price
-  if (tier !== 'free') {
-    const channel = await getChannelById(channelId);
-    if (channel && channel.monthly_price_usd > 0) {
-      const gated = await checkVaultAccess(ownerWallet, channel.monthly_price_usd);
-      if (!gated.allowed) {
-        return {
-          success: false,
-          message: `Insufficient vault balance for ${TIER_LABEL[tier]} tier. Need ~$${channel.monthly_price_usd} in SOL. Deposit at /my-vault first.`,
-        };
-      }
-    }
-  }
 
   const { data: existing } = await supabaseAdmin
     .from('channel_subscriptions')
@@ -276,66 +260,6 @@ export async function getChannelSignals(channelId: string, limit = 10): Promise<
     .order('created_at', { ascending: false })
     .limit(limit);
   return (data || []) as ChannelSignal[];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERNAL HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function getChannelById(channelId: string): Promise<SignalChannel | null> {
-  if (!isSupabaseConfigured) return null;
-  const { data } = await supabaseAdmin
-    .from('signal_channels')
-    .select('*')
-    .eq('id', channelId)
-    .single();
-  return data as SignalChannel | null;
-}
-
-/**
- * Check if a wallet's on-chain vault holds enough SOL to cover a USD price.
- * Uses the vault-onchain API so no Solana connection is needed here.
- * Falls back to allowing access if the vault API is unavailable.
- */
-async function checkVaultAccess(
-  walletAddress: string | undefined,
-  monthlyCostUsd: number,
-): Promise<{ allowed: boolean; reason: string }> {
-  if (!walletAddress) {
-    return { allowed: false, reason: 'No wallet linked. Use /connect to link your Solana wallet.' };
-  }
-
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/vault-onchain?owner=${walletAddress}&cluster=devnet`);
-    if (!res.ok) throw new Error(`vault API ${res.status}`);
-
-    const json = await res.json() as {
-      initialized: boolean;
-      state: { vaultSol: number } | null;
-    };
-
-    if (!json.initialized || !json.state) {
-      return { allowed: false, reason: 'Vault not initialized. Use /my-vault to create one.' };
-    }
-
-    // Approximate: 1 SOL ≈ $150 (production: replace with live price oracle)
-    const SOL_PRICE_USD = 150;
-    const requiredSol = monthlyCostUsd / SOL_PRICE_USD;
-
-    if (json.state.vaultSol < requiredSol) {
-      return {
-        allowed: false,
-        reason: `Vault balance ${json.state.vaultSol.toFixed(4)} SOL < ${requiredSol.toFixed(4)} SOL needed`,
-      };
-    }
-
-    return { allowed: true, reason: 'Vault balance sufficient' };
-  } catch {
-    // Non-fatal: if vault API is down, don't block subscriptions
-    console.warn('[channels] checkVaultAccess: vault API unavailable, granting access');
-    return { allowed: true, reason: 'Vault API unavailable — access granted' };
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

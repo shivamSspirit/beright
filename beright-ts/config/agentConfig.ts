@@ -1,7 +1,7 @@
 /**
- * Unified Agent Configuration for BeRight Protocol
+ * Unified automation/capability configuration for BeRight Protocol
  *
- * SINGLE SOURCE OF TRUTH for all agent-level settings.
+ * SINGLE SOURCE OF TRUTH for automation and internal capability settings.
  * Change here → syncs across Web, Telegram, and all gateways.
  *
  * Usage:
@@ -10,7 +10,7 @@
  */
 
 // ============================================
-// AGENT OPERATIONAL SETTINGS
+// AUTOMATION / CAPABILITY OPERATIONAL SETTINGS
 // ============================================
 
 export interface AgentOperationalConfig {
@@ -47,16 +47,16 @@ export interface AgentOperationalConfig {
 }
 
 // ============================================
-// AGENT CONFIGURATIONS
+// AUTOMATION / CAPABILITY CONFIGURATIONS
 // ============================================
 
 export const AGENT_CONFIG: Record<string, AgentOperationalConfig> = {
   // ──────────────────────────────────────────
-  // POSTER AGENT - Forum Engagement
+  // POSTER AUTOMATION - Forum Engagement
   // ──────────────────────────────────────────
   poster: {
     id: 'poster',
-    name: 'Agent-Poster',
+    name: 'BeRight Poster',
     description: 'Autonomous forum engagement for Colosseum hackathon',
     enabled: true,
 
@@ -88,7 +88,7 @@ export const AGENT_CONFIG: Record<string, AgentOperationalConfig> = {
   },
 
   // ──────────────────────────────────────────
-  // SCOUT AGENT - Fast Market Scanning
+  // SCOUT CAPABILITY - Fast Market Scanning
   // ──────────────────────────────────────────
   scout: {
     id: 'scout',
@@ -120,7 +120,7 @@ export const AGENT_CONFIG: Record<string, AgentOperationalConfig> = {
   },
 
   // ──────────────────────────────────────────
-  // ANALYST AGENT - Deep Research
+  // ANALYST CAPABILITY - Deep Research
   // ──────────────────────────────────────────
   analyst: {
     id: 'analyst',
@@ -152,7 +152,7 @@ export const AGENT_CONFIG: Record<string, AgentOperationalConfig> = {
   },
 
   // ──────────────────────────────────────────
-  // TRADER AGENT - Execution
+  // TRADER CAPABILITY - Execution
   // ──────────────────────────────────────────
   trader: {
     id: 'trader',
@@ -186,7 +186,7 @@ export const AGENT_CONFIG: Record<string, AgentOperationalConfig> = {
   },
 
   // ──────────────────────────────────────────
-  // BUILDER AGENT - Autonomous Development
+  // BUILDER AUTOMATION - Autonomous Development
   // ──────────────────────────────────────────
   builder: {
     id: 'builder',

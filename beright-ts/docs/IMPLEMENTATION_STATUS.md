@@ -137,8 +137,8 @@ vercel
 # Test gateway health
 curl http://localhost:3001/api/health
 
-# Check Telegram bot status
-npx ts-node skills/telegram.ts --status
+# Start OpenClaw gateway
+npm run gateway
 
 # Test signal stream
 curl -N "http://localhost:3001/api/v2/signals/stream"

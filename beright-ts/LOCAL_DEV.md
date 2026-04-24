@@ -24,15 +24,10 @@ npm run dev
 # Runs on http://localhost:3001
 ```
 
-### Telegram Bot
+### Telegram via OpenClaw Gateway
 ```bash
-npx ts-node skills/telegram.ts
-
-# Check status
-npx ts-node skills/telegram.ts --status
-
-# Force unlock if stuck
-npx ts-node skills/telegram.ts --force-unlock
+npm run openclaw:install-config
+npm run gateway
 ```
 
 ## API Endpoints
@@ -69,8 +64,8 @@ SUPABASE_SERVICE_KEY=...   # Database auth
 # Test API
 curl http://localhost:3001/api/health
 
-# Test Telegram bot
-# Send message to @Beuniqueebot
+# Test Telegram terminal
+# Start OpenClaw gateway, then send a message to the Telegram bot bound in openclaw.json
 ```
 
 ## Railway Deployment

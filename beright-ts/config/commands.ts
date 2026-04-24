@@ -456,9 +456,6 @@ COPY TRADING
 /signals - View predictions from followed
 /toplists - Find top forecasters
 
-ON-CHAIN VAULT
-/my-vault - View your BeRight vault balance & status
-
 SIGNAL CHANNELS (Vault v0)
 /channels - Browse top forecaster channels
 /subscribe-channel <slug> - Subscribe to a channel

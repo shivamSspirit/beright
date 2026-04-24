@@ -1,5 +1,7 @@
 # ADR-002: Telegram as Pure Gateway
 
+> Historical note: this ADR is superseded by [OPENCLAW_TARGET_ARCHITECTURE.md](./OPENCLAW_TARGET_ARCHITECTURE.md). BeRight no longer owns Telegram polling or webhook ingress inside `beright-ts`; OpenClaw Gateway is the runtime source of truth.
+
 ## Status
 **ACCEPTED** - 2026-02-28
 

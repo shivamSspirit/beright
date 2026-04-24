@@ -36,6 +36,7 @@ export interface SemanticResult {
     confidence: number;
   };
   agentUsed?: string;
+  capabilityUsed?: string;
   data?: unknown;
 }
 
@@ -81,6 +82,7 @@ export const semanticHandler: CommandHandler<SemanticResult> = {
             }
           : undefined,
         agentUsed: response.agentUsed,
+        capabilityUsed: response.capabilityUsed,
         data: response.data,
       };
 

@@ -77,7 +77,7 @@ export interface RateLimit {
  *
  * Defines how a command or intent maps to a handler.
  * This is the configuration-driven approach that replaces
- * 100+ if/else statements in telegramHandler.ts.
+ * the legacy Telegram command monolith.
  */
 export interface Route {
   /** Unique route identifier */

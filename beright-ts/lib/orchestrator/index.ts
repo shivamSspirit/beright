@@ -6,6 +6,48 @@
  * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
+// Force-load handler modules so their registerHandler() side effects run.
+import './handlers/hotMarkets';
+import './handlers/brief';
+import './handlers/research';
+import './handlers/alpha';
+import './handlers/dflowSearch';
+import './handlers/quote';
+import './handlers/trade';
+import './handlers/positions';
+import './handlers/portfolio';
+import './handlers/pnl';
+import './handlers/me';
+import './handlers/calibration';
+import './handlers/leaderboard';
+import './handlers/compare';
+import './handlers/predict';
+import './handlers/smartPredict';
+import './handlers/semanticPredict';
+import './handlers/intelligence';
+import './handlers/recommendations';
+import './handlers/feedback';
+import './handlers/learnings';
+import './handlers/swap';
+import './handlers/wallet';
+import './handlers/follow';
+import './handlers/signals';
+import './handlers/alert';
+import './handlers/whale';
+import './handlers/arbitrage';
+import './handlers/subscribe';
+import './handlers/help';
+import './handlers/settings';
+import './handlers/semantic';
+import './handlers/kalshiOverview';
+import './handlers/kalshiMarkets';
+import './handlers/kalshiBuy';
+import './handlers/kalshiSell';
+import './handlers/kalshiPositions';
+import './handlers/kalshiBalance';
+import './handlers/kalshiOrders';
+import './handlers/kalshiCancel';
+
 // Orchestrator types
 export * from './types';
 

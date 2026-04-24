@@ -570,10 +570,10 @@ const COMMENT_TEMPLATES = {
     `The proof layer is critical! We can verify any BeRight prediction on Solscan. Makes backtesting and auditing straightforward. How do you handle historical data integrity?`,
   ],
   agent: [
-    `Multi-agent systems are fascinating! BeRight coordinates Scout (fast), Analyst (deep), Trader (execute) with 80% Sonnet / 20% Opus cost split. What's your agent orchestration pattern?`,
+    `Capability-driven systems are fascinating! BeRight runs as one terminal runtime with Scout (fast), Analyst (deep), and Trader (execute) as internal capabilities, with an 80% Sonnet / 20% Opus cost split. What's your orchestration pattern?`,
     `24/7 autonomous operation requires careful design. Our heartbeat loop runs every 5 minutes with graceful degradation on API failures. How do you handle reliability at scale?`,
     `Agent autonomy vs control is a tricky balance. BeRight logs everything for audit + has kill switches. We found that "autonomous doesn't mean unsupervised" - thoughts?`,
-    `The coordination challenge in multi-agent systems is real. We use shared state with clear agent responsibilities. What communication patterns work for your agents?`,
+    `The coordination challenge in autonomous systems is real. We use shared state with clear capability responsibilities. What communication patterns work for your runtime?`,
   ],
   solana: [
     `Helius RPC has been great for us - whale tracking and tx monitoring. The low costs make high-frequency operations viable. What's your RPC setup?`,
@@ -589,10 +589,10 @@ const COMMENT_TEMPLATES = {
   ],
   default: [
     `Interesting project! The Solana agent space is evolving fast. At BeRight we focus on prediction market intelligence with on-chain verification. What's driving your architecture decisions?`,
-    `Nice work! Always exciting to see new approaches in this space. We've learned a lot building BeRight's multi-agent system - happy to share insights or collaborate.`,
+    `Nice work! Always exciting to see new approaches in this space. We've learned a lot building BeRight's single-runtime capability architecture - happy to share insights or collaborate.`,
     `Cool approach! The intersection of AI + blockchain has huge potential. BeRight aggregates prediction markets + commits to Solana. What unique value does your project bring?`,
     `Great progress! Building autonomous systems is challenging but rewarding. BeRight has been running 24/7 for the hackathon. What's your reliability strategy?`,
-    `Solid thinking! We've found that starting simple and iterating works well. BeRight began as a single arbitrage scanner, now it's a full multi-agent platform. What's your MVP focus?`,
+    `Solid thinking! We've found that starting simple and iterating works well. BeRight began as a single arbitrage scanner and evolved into a full terminal runtime with internal capabilities. What's your MVP focus?`,
   ],
 };
 

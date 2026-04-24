@@ -638,7 +638,7 @@ ${'='.repeat(60)}
   Cognitive:  Perceive -> Deliberate -> Act -> Reflect
   Goals:      Persistent goal-driven behavior
   Memory:     Episodic learning from experiences
-  Agents:     Scout, Analyst, Trader (coordinated)
+  Runtime:    beright-terminal with Scout, Analyst, Trader capabilities
 
   === DATA SOURCES ===
   Scanning: Polymarket, Kalshi, Manifold, Limitless, Metaculus

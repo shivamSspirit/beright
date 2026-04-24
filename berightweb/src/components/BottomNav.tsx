@@ -87,7 +87,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   // Don't show on certain routes (e.g., landing, auth, etc.)
-  const hiddenRoutes = ['/landing', '/coming-soon', '/embed'];
+  const hiddenRoutes = ['/coming-soon', '/embed'];
   if (hiddenRoutes.some(route => pathname?.startsWith(route))) {
     return null;
   }

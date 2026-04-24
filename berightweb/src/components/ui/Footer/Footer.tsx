@@ -48,9 +48,7 @@ const DEFAULT_SECTIONS: FooterSection[] = [
     title: 'Resources',
     links: [
       { href: '/docs', label: 'Documentation' },
-      { href: '/docs/api', label: 'API Reference' },
       { href: '/docs/faq', label: 'FAQ' },
-      { href: '/docs/fees', label: 'Fees' },
     ],
   },
   {
@@ -84,7 +82,6 @@ export function Footer({
           </div>
           <nav className={styles.minimalLinks}>
             <Link href="/docs">Docs</Link>
-            <Link href="/docs/api">API</Link>
             <Link href="/docs/faq">FAQ</Link>
           </nav>
           <span className={styles.copyright}>
