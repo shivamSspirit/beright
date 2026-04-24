@@ -30,6 +30,19 @@ Off-chain TypeScript service that calculates cross-platform forecaster scores an
 
 **Final Score**: 0-1000 scale with Bayesian shrinkage toward prior mean of 500
 
+## V3 Direction
+
+This repository now has a forward path for `Scoring V3` in [`SCORING_V3.md`](./SCORING_V3.md).
+
+V3 introduces three outputs instead of one:
+
+- `IScore`: imported historical score
+- `NScore`: BeRight-native score
+- `VScore`: unified vault score
+
+The current `src/calculators/*` path remains the legacy engine.
+The new `src/v3/*` path is the replacement design for the first layer of the BeRight network.
+
 ---
 
 ## 🏗️ Architecture
@@ -111,9 +124,23 @@ npm run ingest:manifold
 # Calculate scores for all forecasters
 npm run calculate:scores
 
+# Calculate V3 snapshots and calibration handoff summaries
+npm run calculate:v3 -- --input data/v3-example-input.json
+
 # Update on-chain Solana accounts
 npm run update:onchain
 ```
+
+### V3 Snapshot Outputs
+
+`calculate:v3` writes two files:
+
+- `score-snapshots.json`
+  Full V3 score envelopes with deterministic snapshot hash
+- `calibration-summaries.json`
+  Compact summaries intended for the calibration-layer sync job
+
+This is the contract between the scoring layer and the future calibration-layer handoff.
 
 ---
 

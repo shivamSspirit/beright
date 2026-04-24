@@ -11,13 +11,14 @@ name = "calibration"
 [features]
 default = []
 cpi = ["no-entrypoint"]
+init-if-needed = ["anchor-lang/init-if-needed"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = "0.32"
+anchor-lang = { version = "0.32", features = ["init-if-needed"] }
 # Force compatible versions for rustc 1.79.0-dev
 indexmap = "=2.2.6"  # Last version supporting rustc 1.79
 proc-macro-crate = "=3.1.0"  # Compatible with rustc 1.79

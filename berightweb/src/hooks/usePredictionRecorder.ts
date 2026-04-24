@@ -6,13 +6,13 @@
  * Every prediction on the platform is recorded on-chain (devnet) to track forecaster accuracy.
  * Returns transaction signature for display in profile.
  *
- * Uses window globals set by both DemoWalletProvider and PrivyProvider for unified access.
+ * Uses the shared Beright wallet bridge so demo and production modes expose
+ * the same wallet contract to calibration recording.
  */
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Transaction, Connection, VersionedTransaction } from '@solana/web3.js';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { useMode } from '@/context/ModeContext';
+import { useBerightWallet } from '@/context/BerightWalletContext';
 
 // Always use devnet for calibration recording
 const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
@@ -26,67 +26,13 @@ interface RecordParams {
   category?: number;
 }
 
-// Window globals type for wallet state (set by both DemoWalletProvider and PrivyProvider)
-interface WalletState {
-  connected: boolean;
-  publicKey: string | null;
-}
-
-interface WalletFuncs {
-  signTransaction?: (tx: Transaction | VersionedTransaction | Uint8Array) => Promise<Transaction | VersionedTransaction | Uint8Array>;
-  rawSignTransaction?: unknown;
-}
-
 export function usePredictionRecorder() {
-  const { isDemo } = useMode();
-
-  // Try to use wallet adapter (works in both modes as a fallback)
-  let walletAdapterPublicKey = null;
-  let walletSignTransaction = null;
-  let walletAdapterConnected = false;
-
-  try {
-    const wallet = useWallet();
-    walletAdapterPublicKey = wallet.publicKey;
-    walletSignTransaction = wallet.signTransaction;
-    walletAdapterConnected = wallet.connected;
-  } catch {
-    // Wallet adapter not available (might be outside provider)
-    console.log('[Calibration] Wallet adapter not available, using window globals');
-  }
-
-  // State from window globals (works for both Demo and Privy)
-  const [windowWalletState, setWindowWalletState] = useState<WalletState>({
-    connected: false,
-    publicKey: null,
-  });
-
-  // Poll for wallet state from window globals (both providers set this)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const checkWallet = () => {
-      const walletState = (window as Window & { __BERIGHT_WALLET__?: WalletState }).__BERIGHT_WALLET__;
-      if (walletState) {
-        setWindowWalletState({
-          connected: walletState.connected,
-          publicKey: walletState.publicKey,
-        });
-      }
-    };
-
-    // Check immediately
-    checkWallet();
-
-    // Poll every 500ms
-    const interval = setInterval(checkWallet, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  // UNIFIED: Use window globals as primary source (both providers set these)
-  // This works for BOTH Demo (Jupiter) and Production (Privy) modes
-  const connected = windowWalletState.connected || (walletAdapterConnected && !!walletAdapterPublicKey);
-  const ownerPubkey = windowWalletState.publicKey || walletAdapterPublicKey?.toBase58() || null;
+  const {
+    connected,
+    publicKey: ownerPubkey,
+    provider,
+    signTransaction,
+  } = useBerightWallet();
 
   const ensureDevnetBalance = useCallback(async (connection: Connection, pubkeyBase58: string): Promise<void> => {
     // Only attempt airdrop on devnet RPC URLs
@@ -112,85 +58,29 @@ export function usePredictionRecorder() {
     }
   }, []);
 
-  /**
-   * Get the signTransaction function - UNIFIED for both Demo and Production
-   * Both DemoWalletProvider and PrivyProvider set window.__BERIGHT_WALLET_FUNCS__
-   */
-  const getSignTransaction = useCallback((): ((tx: Transaction | VersionedTransaction) => Promise<Transaction | VersionedTransaction>) | null => {
-    const provider = typeof window !== 'undefined' ? (window as Window & { __BERIGHT_PROVIDER__?: string }).__BERIGHT_PROVIDER__ : 'unknown';
-
-    console.log('[Calibration] getSignTransaction - checking sources:', {
-      isDemo,
-      provider,
-      hasWalletAdapter: !!walletSignTransaction,
-      hasWindowGlobal: !!(typeof window !== 'undefined' && (window as Window & { __BERIGHT_WALLET_FUNCS__?: WalletFuncs }).__BERIGHT_WALLET_FUNCS__?.signTransaction),
-    });
-
-    // PRIMARY: Use window globals (both providers set this)
-    if (typeof window !== 'undefined') {
-      const walletFuncs = (window as Window & { __BERIGHT_WALLET_FUNCS__?: WalletFuncs }).__BERIGHT_WALLET_FUNCS__;
-
-      if (walletFuncs?.signTransaction) {
-        console.log(`[Calibration] ✓ Using window global signTransaction (${provider} provider)`);
-
-        // The signTransaction function signature differs between providers:
-        // - Jupiter/Demo: (tx: Transaction) => Promise<Transaction>
-        // - Privy: (tx: Uint8Array) => Promise<Uint8Array>
-        // We detect and handle both
-
-        return async (tx: Transaction | VersionedTransaction): Promise<Transaction | VersionedTransaction> => {
-          try {
-            // Try direct call first (Jupiter wallet adapter style)
-            const result = await walletFuncs.signTransaction!(tx);
-
-            // If result is a Transaction/VersionedTransaction, return directly
-            if (result instanceof Transaction || result instanceof VersionedTransaction) {
-              console.log('[Calibration] ✓ Direct Transaction signing succeeded');
-              return result;
-            }
-
-            // If result is Uint8Array (Privy style), deserialize
-            if (result instanceof Uint8Array) {
-              console.log('[Calibration] ✓ Uint8Array signing succeeded, deserializing');
-              if (tx instanceof Transaction) {
-                return Transaction.from(result);
-              } else {
-                return VersionedTransaction.deserialize(result);
-              }
-            }
-
-            // Unknown result type - try to use as-is
-            console.log('[Calibration] Unknown result type, attempting to use as-is');
-            return result as Transaction | VersionedTransaction;
-          } catch (err) {
-            // If direct call fails, try serializing first (for Privy)
-            console.log('[Calibration] Direct signing failed, trying serialized approach');
-            const serialized = tx.serialize({ requireAllSignatures: false });
-            const signedBytes = await walletFuncs.signTransaction!(serialized as unknown as Transaction);
-
-            if (signedBytes instanceof Uint8Array) {
-              if (tx instanceof Transaction) {
-                return Transaction.from(signedBytes);
-              } else {
-                return VersionedTransaction.deserialize(signedBytes);
-              }
-            }
-
-            throw err;
-          }
-        };
-      }
+  const signWithWallet = useCallback(async (
+    transaction: Transaction | VersionedTransaction
+  ): Promise<Transaction | VersionedTransaction | null> => {
+    if (!signTransaction) {
+      console.log('[Calibration] ✗ No signTransaction function available');
+      return null;
     }
 
-    // FALLBACK: Try wallet adapter directly
-    if (walletSignTransaction) {
-      console.log('[Calibration] ✓ Using wallet adapter signTransaction (direct fallback)');
-      return walletSignTransaction;
+    console.log('[Calibration] Using wallet signer from provider:', provider);
+    const signed = await signTransaction(transaction);
+
+    if (signed instanceof Transaction || signed instanceof VersionedTransaction) {
+      return signed;
     }
 
-    console.log('[Calibration] ✗ No signTransaction function available');
-    return null;
-  }, [isDemo, walletSignTransaction]);
+    if (signed instanceof Uint8Array) {
+      return transaction instanceof Transaction
+        ? Transaction.from(signed)
+        : VersionedTransaction.deserialize(signed);
+    }
+
+    throw new Error('Wallet returned an unsupported signed transaction type');
+  }, [provider, signTransaction]);
 
   /**
    * Record a prediction to the on-chain calibration program
@@ -202,8 +92,6 @@ export function usePredictionRecorder() {
    */
   const recordPrediction = useCallback(
     async (params: RecordParams): Promise<string | null> => {
-      const provider = typeof window !== 'undefined' ? (window as Window & { __BERIGHT_PROVIDER__?: string }).__BERIGHT_PROVIDER__ : 'unknown';
-
       console.log('[Calibration] ═══════════════════════════════════════════════════');
       console.log('[Calibration] 🚀 Recording prediction on-chain');
       console.log('[Calibration] Market:', params.marketId);
@@ -216,7 +104,6 @@ export function usePredictionRecorder() {
         return null;
       }
 
-      const signTransaction = getSignTransaction();
       if (!signTransaction) {
         console.error('[Calibration] ❌ No signTransaction function available');
         return null;
@@ -281,7 +168,11 @@ export function usePredictionRecorder() {
 
         // Step 3: Sign transaction (user signs ONCE)
         console.log('[Calibration] 🔐 Requesting wallet signature...');
-        const signedTx = await signTransaction(transaction);
+        const signedTx = await signWithWallet(transaction);
+        if (!signedTx) {
+          console.error('[Calibration] ❌ Wallet signature failed');
+          return null;
+        }
         console.log('[Calibration] ✓ Transaction signed');
 
         // Step 4: Submit to network
@@ -332,14 +223,14 @@ export function usePredictionRecorder() {
           console.error('[Calibration] Stack:', err.stack);
           // Check for Solana-specific errors
           if ('logs' in err) {
-            console.error('[Calibration] Program logs:', (err as any).logs);
+            console.error('[Calibration] Program logs:', (err as Error & { logs?: unknown }).logs);
           }
         }
         console.error('[Calibration] ═══════════════════════════════════════════════════');
         return null;
       }
     },
-    [connected, ownerPubkey, getSignTransaction]
+    [connected, ownerPubkey, provider, signTransaction, ensureDevnetBalance, signWithWallet]
   );
 
   return {

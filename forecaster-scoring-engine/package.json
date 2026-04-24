@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "test": "jest",
     "typecheck": "tsc --noEmit",
+    "calculate:v3": "tsx src/cli/calculate-v3-snapshots.ts",
     "ingest:polymarket": "tsx src/cli/ingest-polymarket.ts",
     "ingest:metaculus": "tsx src/cli/ingest-metaculus.ts",
     "ingest:kalshi": "tsx src/cli/ingest-kalshi.ts",

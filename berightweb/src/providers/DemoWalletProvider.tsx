@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * DemoWalletProvider - Jupiter Unified Wallet Kit for Demo Mode
+ * DemoWalletProvider - Jupiter Vault Adapter for Demo Mode
  *
- * Uses Jupiter's wallet adapter for demo/devnet mode.
+ * Uses the Jupiter vault adapter wallet flow for demo/devnet mode.
  * Provides standard Solana wallet functionality without Privy.
  */
 
@@ -13,7 +13,8 @@ import {
   UnifiedWalletButton,
 } from '@jup-ag/wallet-adapter';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { clusterApiUrl, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Transaction, VersionedTransaction } from '@solana/web3.js';
+import { BerightWalletProvider } from '@/context/BerightWalletContext';
 
 // ============================================================================
 // TYPES
@@ -29,44 +30,43 @@ interface DemoWalletProviderProps {
 
 function WalletDebugBridge({ children }: { children: ReactNode }) {
   const { wallet, publicKey, connected, connecting, disconnect, signTransaction, signAllTransactions, signMessage } = useWallet();
+  const walletState = useMemo(() => ({
+    connected,
+    connecting,
+    disconnecting: false,
+    publicKey: publicKey?.toString() || null,
+    walletName: wallet?.adapter?.name || null,
+    walletIcon: wallet?.adapter?.icon || null,
+  }), [connected, connecting, publicKey, wallet]);
+
+  const walletFuncs = useMemo(() => ({
+    disconnect,
+    signTransaction: signTransaction ? async (tx: unknown) => {
+      try {
+        console.log('[DemoWallet] signTransaction called, tx type:', tx?.constructor?.name);
+        const signed = await signTransaction(tx as Transaction | VersionedTransaction);
+        console.log('[DemoWallet] signTransaction success');
+        return signed;
+      } catch (err) {
+        console.error('[DemoWallet] signTransaction failed:', err);
+        throw err;
+      }
+    } : undefined,
+    signAllTransactions,
+    signMessage,
+  }), [disconnect, signTransaction, signAllTransactions, signMessage]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Expose Jupiter wallet state to window
-    const walletState = {
-      connected,
-      connecting,
-      disconnecting: false,
-      publicKey: publicKey?.toString() || null,
-      walletName: wallet?.adapter?.name || null,
-      walletIcon: wallet?.adapter?.icon || null,
-    };
-
+    // Expose demo wallet state to window for legacy hooks.
     (window as Window & { __BERIGHT_WALLET__?: typeof walletState }).__BERIGHT_WALLET__ = walletState;
     (window as Window & { __BERIGHT_WALLET_RAW__?: typeof wallet }).__BERIGHT_WALLET_RAW__ = wallet;
     (window as Window & { __BERIGHT_MODE__?: string }).__BERIGHT_MODE__ = 'demo';
     (window as Window & { __BERIGHT_PROVIDER__?: string }).__BERIGHT_PROVIDER__ = 'jupiter';
 
-    // Expose wallet functions for escrow hook
-    // The signTransaction function needs to be bound to work correctly
-    (window as Window & { __BERIGHT_WALLET_FUNCS__?: unknown }).__BERIGHT_WALLET_FUNCS__ = {
-      disconnect,
-      signTransaction: signTransaction ? async (tx: unknown) => {
-        try {
-          console.log('[DemoWallet] signTransaction called, tx type:', tx?.constructor?.name);
-          // signTransaction from wallet-adapter returns the signed transaction directly
-          const signed = await signTransaction(tx as Transaction | VersionedTransaction);
-          console.log('[DemoWallet] signTransaction success');
-          return signed;
-        } catch (err) {
-          console.error('[DemoWallet] signTransaction failed:', err);
-          throw err;
-        }
-      } : null,
-      signAllTransactions,
-      signMessage,
-    };
+    // Keep window bridge for legacy hooks while newer code uses BerightWalletContext.
+    (window as Window & { __BERIGHT_WALLET_FUNCS__?: unknown }).__BERIGHT_WALLET_FUNCS__ = walletFuncs;
 
     console.log('[DemoWallet] Debug state:', {
       mode: 'demo',
@@ -77,9 +77,23 @@ function WalletDebugBridge({ children }: { children: ReactNode }) {
       hasSignTransaction: !!signTransaction,
     });
 
-  }, [wallet, publicKey, connected, connecting, disconnect, signTransaction, signAllTransactions, signMessage]);
+  }, [wallet, walletState, walletFuncs, publicKey, connected, connecting, signTransaction]);
 
-  return <>{children}</>;
+  return (
+    <BerightWalletProvider
+      value={{
+        connected,
+        connecting,
+        publicKey: walletState.publicKey,
+        walletName: walletState.walletName,
+        provider: 'jupiter',
+        disconnect: disconnect ? async () => disconnect() : undefined,
+        signTransaction: walletFuncs.signTransaction,
+      }}
+    >
+      {children}
+    </BerightWalletProvider>
+  );
 }
 
 // ============================================================================
@@ -87,11 +101,6 @@ function WalletDebugBridge({ children }: { children: ReactNode }) {
 // ============================================================================
 
 export function DemoWalletProvider({ children }: DemoWalletProviderProps) {
-  // Use devnet RPC
-  const endpoint = useMemo(() => {
-    return process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || clusterApiUrl('devnet');
-  }, []);
-
   return (
     <UnifiedWalletProvider
       wallets={[]}

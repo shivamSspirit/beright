@@ -13,6 +13,100 @@ export const CALIBRATION_PROGRAM_ID = new PublicKey(
   'GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ'
 );
 
+export type ScoreVersion = 'v3';
+export type SyncedForecasterStatus =
+  | 'ImportedCandidate'
+  | 'BootstrapEligible'
+  | 'NativeCalibrating'
+  | 'NativeVerified'
+  | 'VaultEligible'
+  | 'VaultScaled'
+  | 'Restricted';
+export type SyncedForecasterTier =
+  | 'restricted'
+  | 'bootstrap'
+  | 'standard'
+  | 'advanced'
+  | 'elite';
+
+export interface ScoreRiskCaps {
+  maxActiveSleeveBps: number;
+  maxMarketExposureBps: number;
+  maxThemeExposureBps: number;
+  probationary: boolean;
+}
+
+export interface CalibrationScoreSummaryInput {
+  forecasterId: string;
+  scoreVersion: ScoreVersion;
+  scoreEpochHash: string;
+  snapshotHash: string;
+  vaultScore: number;
+  importedScore: number | null;
+  nativeScore: number | null;
+  confidenceBps: number;
+  nativeResolvedCount: number;
+  importedResolvedCount: number;
+  status: SyncedForecasterStatus;
+  tier: SyncedForecasterTier;
+  penaltyFlags: number;
+  riskCaps: ScoreRiskCaps;
+  calculatedAtUnixSeconds: number;
+}
+
+const SCORE_VERSION_MAP: Record<ScoreVersion, number> = {
+  v3: 3,
+};
+
+const STATUS_MAP: Record<SyncedForecasterStatus, number> = {
+  ImportedCandidate: 0,
+  BootstrapEligible: 1,
+  NativeCalibrating: 2,
+  NativeVerified: 3,
+  VaultEligible: 4,
+  VaultScaled: 5,
+  Restricted: 6,
+};
+
+const STATUS_LABELS: Record<number, SyncedForecasterStatus> = {
+  0: 'ImportedCandidate',
+  1: 'BootstrapEligible',
+  2: 'NativeCalibrating',
+  3: 'NativeVerified',
+  4: 'VaultEligible',
+  5: 'VaultScaled',
+  6: 'Restricted',
+};
+
+const TIER_MAP: Record<SyncedForecasterTier, number> = {
+  restricted: 0,
+  bootstrap: 1,
+  standard: 2,
+  advanced: 3,
+  elite: 4,
+};
+
+const TIER_LABELS: Record<number, SyncedForecasterTier> = {
+  0: 'restricted',
+  1: 'bootstrap',
+  2: 'standard',
+  3: 'advanced',
+  4: 'elite',
+};
+
+function hexToBytes(hex: string): number[] {
+  const normalized = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (normalized.length !== 64) {
+    throw new Error(`Expected 32-byte hex string, got length ${normalized.length / 2}`);
+  }
+
+  return Array.from(Buffer.from(normalized, 'hex'));
+}
+
+function bytesToHex(bytes: Uint8Array | number[]): string {
+  return Buffer.from(bytes).toString('hex');
+}
+
 /**
  * Derive forecaster state PDA
  */
@@ -51,10 +145,35 @@ export function derivePredictionPda(
 }
 
 /**
+ * Derive score config PDA
+ */
+export function deriveScoreConfigPda(
+  programId: PublicKey = CALIBRATION_PROGRAM_ID
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('score_config')],
+    programId
+  );
+}
+
+/**
+ * Derive V3 score snapshot PDA
+ */
+export function deriveScoreSnapshotV3Pda(
+  forecasterPubkey: PublicKey,
+  programId: PublicKey = CALIBRATION_PROGRAM_ID
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('score_v3'), forecasterPubkey.toBuffer()],
+    programId
+  );
+}
+
+/**
  * Initialize forecaster calibration state
  */
 export async function initializeForecaster(
-  program: Program,
+  program: Program<any>,
   forecasterKeypair: Keypair
 ): Promise<string> {
   const [forecasterStatePda] = deriveForecasterPda(
@@ -85,7 +204,7 @@ export async function initializeForecaster(
  * Record a prediction
  */
 export async function recordPrediction(
-  program: Program,
+  program: Program<any>,
   forecasterKeypair: Keypair,
   marketId: string, // Will be hashed to 32 bytes
   predictedProbability: number, // 0.0 - 1.0
@@ -150,7 +269,7 @@ export async function recordPrediction(
  * Resolve a prediction
  */
 export async function resolvePrediction(
-  program: Program,
+  program: Program<any>,
   forecasterKeypair: Keypair,
   predictionPda: PublicKey,
   outcome: boolean
@@ -181,10 +300,137 @@ export async function resolvePrediction(
 }
 
 /**
+ * Initialize score-sync config PDA
+ */
+export async function initializeScoreConfig(
+  program: Program<any>,
+  authorityKeypair: Keypair
+): Promise<string> {
+  const [scoreConfigPda] = deriveScoreConfigPda(program.programId);
+
+  const tx = await program.methods
+    .initializeScoreConfig()
+    .accounts({
+      authority: authorityKeypair.publicKey,
+      scoreConfig: scoreConfigPda,
+      systemProgram: web3.SystemProgram.programId,
+    })
+    .signers([authorityKeypair])
+    .rpc();
+
+  console.log('Score config initialized:', {
+    authority: authorityKeypair.publicKey.toBase58(),
+    scoreConfig: scoreConfigPda.toBase58(),
+    tx,
+  });
+
+  return tx;
+}
+
+/**
+ * Update score-sync config authority or pause state
+ */
+export async function updateScoreConfig(
+  program: Program<any>,
+  authorityKeypair: Keypair,
+  params: {
+    nextAuthority: PublicKey;
+    acceptedScoreVersion?: ScoreVersion;
+    paused: boolean;
+  }
+): Promise<string> {
+  const [scoreConfigPda] = deriveScoreConfigPda(program.programId);
+
+  const tx = await program.methods
+    .updateScoreConfig(
+      params.nextAuthority,
+      SCORE_VERSION_MAP[params.acceptedScoreVersion ?? 'v3'],
+      params.paused
+    )
+    .accounts({
+      authority: authorityKeypair.publicKey,
+      scoreConfig: scoreConfigPda,
+    })
+    .signers([authorityKeypair])
+    .rpc();
+
+  console.log('Score config updated:', {
+    authority: authorityKeypair.publicKey.toBase58(),
+    nextAuthority: params.nextAuthority.toBase58(),
+    paused: params.paused,
+    tx,
+  });
+
+  return tx;
+}
+
+/**
+ * Sync a calibration-ready V3 score summary onchain
+ */
+export async function syncScoreSnapshotV3(
+  program: Program<any>,
+  authorityKeypair: Keypair,
+  forecasterPubkey: PublicKey,
+  summary: CalibrationScoreSummaryInput,
+  proofHashHex?: string
+): Promise<string> {
+  const [scoreConfigPda] = deriveScoreConfigPda(program.programId);
+  const [scoreSnapshotPda] = deriveScoreSnapshotV3Pda(
+    forecasterPubkey,
+    program.programId
+  );
+
+  const args = {
+    scoreVersion: SCORE_VERSION_MAP[summary.scoreVersion],
+    status: STATUS_MAP[summary.status],
+    tier: TIER_MAP[summary.tier],
+    snapshotHash: hexToBytes(summary.snapshotHash),
+    scoreEpochHash: hexToBytes(summary.scoreEpochHash),
+    proofHash: proofHashHex ? hexToBytes(proofHashHex) : Array(32).fill(0),
+    hasImportedScore: summary.importedScore !== null,
+    importedScore: summary.importedScore ?? 0,
+    hasNativeScore: summary.nativeScore !== null,
+    nativeScore: summary.nativeScore ?? 0,
+    vaultScore: summary.vaultScore,
+    confidenceBps: summary.confidenceBps,
+    nativeResolvedCount: summary.nativeResolvedCount,
+    importedResolvedCount: summary.importedResolvedCount,
+    maxActiveSleeveBps: summary.riskCaps.maxActiveSleeveBps,
+    maxMarketExposureBps: summary.riskCaps.maxMarketExposureBps,
+    maxThemeExposureBps: summary.riskCaps.maxThemeExposureBps,
+    probationary: summary.riskCaps.probationary,
+    penaltyFlags: summary.penaltyFlags,
+    calculatedAt: new BN(summary.calculatedAtUnixSeconds),
+  };
+
+  const tx = await program.methods
+    .syncScoreSnapshotV3(args)
+    .accounts({
+      authority: authorityKeypair.publicKey,
+      scoreConfig: scoreConfigPda,
+      forecaster: forecasterPubkey,
+      scoreSnapshotV3: scoreSnapshotPda,
+      systemProgram: web3.SystemProgram.programId,
+    })
+    .signers([authorityKeypair])
+    .rpc();
+
+  console.log('Score snapshot synced:', {
+    authority: authorityKeypair.publicKey.toBase58(),
+    forecaster: forecasterPubkey.toBase58(),
+    vaultScore: summary.vaultScore,
+    scoreSnapshot: scoreSnapshotPda.toBase58(),
+    tx,
+  });
+
+  return tx;
+}
+
+/**
  * Fetch forecaster calibration stats
  */
 export async function getForecasterStats(
-  program: Program,
+  program: Program<any>,
   forecasterPubkey: PublicKey
 ): Promise<any> {
   const [forecasterStatePda] = deriveForecasterPda(
@@ -212,10 +458,73 @@ export async function getForecasterStats(
 }
 
 /**
+ * Fetch score-sync config
+ */
+export async function getScoreConfig(program: Program<any>): Promise<any> {
+  const [scoreConfigPda] = deriveScoreConfigPda(program.programId);
+  const scoreConfig = await program.account.scoreConfig.fetch(scoreConfigPda);
+
+  return {
+    authority: scoreConfig.authority.toBase58(),
+    acceptedScoreVersion: scoreConfig.acceptedScoreVersion,
+    paused: scoreConfig.paused,
+    lastUpdatedSlot: scoreConfig.lastUpdatedSlot.toString(),
+  };
+}
+
+/**
+ * Fetch latest V3 score snapshot for a forecaster
+ */
+export async function getScoreSnapshotV3(
+  program: Program<any>,
+  forecasterPubkey: PublicKey
+): Promise<any | null> {
+  const [scoreSnapshotPda] = deriveScoreSnapshotV3Pda(
+    forecasterPubkey,
+    program.programId
+  );
+
+  try {
+    const snapshot = await program.account.scoreSnapshotV3.fetch(scoreSnapshotPda);
+
+    return {
+      forecaster: snapshot.forecaster.toBase58(),
+      scoreVersion: snapshot.scoreVersion,
+      status: STATUS_LABELS[snapshot.status] ?? 'Restricted',
+      tier: TIER_LABELS[snapshot.tier] ?? 'restricted',
+      snapshotHash: bytesToHex(snapshot.snapshotHash),
+      scoreEpochHash: bytesToHex(snapshot.scoreEpochHash),
+      proofHash: bytesToHex(snapshot.proofHash),
+      importedScore: snapshot.hasImportedScore ? snapshot.importedScore : null,
+      nativeScore: snapshot.hasNativeScore ? snapshot.nativeScore : null,
+      vaultScore: snapshot.vaultScore,
+      confidenceBps: snapshot.confidenceBps,
+      nativeResolvedCount: snapshot.nativeResolvedCount,
+      importedResolvedCount: snapshot.importedResolvedCount,
+      maxActiveSleeveBps: snapshot.maxActiveSleeveBps,
+      maxMarketExposureBps: snapshot.maxMarketExposureBps,
+      maxThemeExposureBps: snapshot.maxThemeExposureBps,
+      probationary: snapshot.probationary,
+      penaltyFlags: snapshot.penaltyFlags,
+      calculatedAt: new Date(snapshot.calculatedAt.toNumber() * 1000),
+      updatedAt: new Date(snapshot.updatedAt.toNumber() * 1000),
+      updatedSlot: snapshot.updatedSlot.toString(),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('Account does not exist') || message.includes('Account not found')) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Fetch prediction record details
  */
 export async function getPredictionRecord(
-  program: Program,
+  program: Program<any>,
   predictionPda: PublicKey
 ): Promise<any> {
   const prediction = await program.account.predictionRecord.fetch(predictionPda);
@@ -240,7 +549,7 @@ export async function getPredictionRecord(
  * Get top forecasters (requires fetching all forecaster accounts)
  */
 export async function getTopForecasters(
-  program: Program,
+  program: Program<any>,
   limit: number = 10
 ): Promise<any[]> {
   const forecasters = await program.account.forecasterState.all();
@@ -293,7 +602,7 @@ export const SPL_NOOP_PROGRAM_ID = new PublicKey(
  * @param maxBufferSize - Buffer size (8-2048, affects concurrent writes)
  */
 export async function initializeMerkleTree(
-  program: Program,
+  program: Program<any>,
   payer: Keypair,
   treeKeypair: Keypair,
   treeAuthority: PublicKey,
@@ -339,7 +648,7 @@ export async function initializeMerkleTree(
  * @param category - Market category (0-255)
  */
 export async function recordCompressedPrediction(
-  program: Program,
+  program: Program<any>,
   forecasterKeypair: Keypair,
   merkleTree: PublicKey,
   marketId: string,
@@ -426,7 +735,9 @@ export async function getCompressedPredictions(
     }),
   });
 
-  const { result } = await response.json();
+  const { result } = await response.json() as {
+    result?: { items?: any[] };
+  };
 
   return result?.items?.map((item: any) => ({
     id: item.id,

@@ -23,8 +23,8 @@ export function calculateS2(predictions: Prediction[]): number {
   }
 
   // Base rate: overall frequency of YES outcomes
-  const outcomes = resolved.map(p => (p.outcome ? 1.0 : 0.0));
-  const baseRate = outcomes.reduce((sum, o) => sum + o, 0) / outcomes.length;
+  const outcomes: number[] = resolved.map(p => (p.outcome ? 1.0 : 0.0));
+  const baseRate = outcomes.reduce<number>((sum, o) => sum + o, 0) / outcomes.length;
 
   // Resolution: mean squared distance from base rate
   const forecasts = resolved.map(p => p.entryPrice ?? p.predictedProbability);

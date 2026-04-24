@@ -34,4 +34,31 @@ pub enum CalibrationError {
 
     #[msg("Invalid timestamp")]
     InvalidTimestamp,
+
+    #[msg("Score sync is currently paused")]
+    ScoreSyncPaused,
+
+    #[msg("Invalid score version")]
+    InvalidScoreVersion,
+
+    #[msg("Invalid score value")]
+    InvalidScoreValue,
+
+    #[msg("Invalid confidence bps")]
+    InvalidConfidenceBps,
+
+    #[msg("Invalid risk cap bps")]
+    InvalidRiskCapBps,
+
+    #[msg("Invalid or zero hash")]
+    InvalidHash,
+
+    #[msg("Forecaster mismatch for score snapshot")]
+    ForecasterMismatch,
+
+    #[msg("Invalid forecaster status")]
+    InvalidForecasterStatus,
+
+    #[msg("Invalid forecaster tier")]
+    InvalidForecasterTier,
 }

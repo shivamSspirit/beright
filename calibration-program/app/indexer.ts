@@ -82,7 +82,9 @@ export async function fetchCompressedPredictions(
     }),
   });
 
-  const { result } = await response.json();
+  const { result } = await response.json() as {
+    result?: { items?: any[] };
+  };
 
   if (!result?.items) {
     return [];
@@ -123,7 +125,7 @@ export async function fetchCompressedPredictions(
         return null;
       }
     })
-    .filter(Boolean);
+    .filter((prediction): prediction is CompressedPredictionMeta => prediction !== null);
 
   // Filter by forecaster if specified
   if (forecaster) {
@@ -162,7 +164,9 @@ export async function fetchCompressedPredictionByIndex(
     }),
   });
 
-  const { result } = await response.json();
+  const { result } = await response.json() as {
+    result?: any;
+  };
 
   if (!result) return null;
 

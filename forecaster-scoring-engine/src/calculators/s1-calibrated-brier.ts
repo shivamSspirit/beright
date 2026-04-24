@@ -202,16 +202,16 @@ function findBinIndex(forecast: number, bins: number[]): number {
  * - Reliability: calibration error
  */
 function calculateMurphyDecomposition(predictions: Prediction[]): BrierDecomposition {
-  const outcomes = predictions.map(p => (p.outcome ? 1.0 : 0.0));
+  const outcomes: number[] = predictions.map(p => (p.outcome ? 1.0 : 0.0));
   const forecasts = predictions.map(p => p.entryPrice ?? p.predictedProbability);
 
   const n = predictions.length;
 
   // Base rate (mean outcome)
-  const baseRate = outcomes.reduce((sum, o) => sum + o, 0) / n;
+  const baseRate = outcomes.reduce<number>((sum, o) => sum + o, 0) / n;
 
   // Uncertainty: mean(outcome * (1 - outcome))
-  const uncertainty = outcomes.reduce((sum, o) => sum + o * (1 - o), 0) / n;
+  const uncertainty = outcomes.reduce<number>((sum, o) => sum + o * (1 - o), 0) / n;
 
   // Resolution: mean((forecast - baseRate)^2)
   const resolution = forecasts.reduce((sum, f) => sum + Math.pow(f - baseRate, 2), 0) / n;

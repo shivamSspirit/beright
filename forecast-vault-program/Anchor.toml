@@ -1,0 +1,21 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+forecast_vault = "3RG5h37iiugivHp6R2LkkzaivCoGUnGaMYjV3mgJKmKM" # pragma: allowlist secret
+
+[programs.devnet]
+forecast_vault = "3RG5h37iiugivHp6R2LkkzaivCoGUnGaMYjV3mgJKmKM" # pragma: allowlist secret
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "echo \"Add forecast-vault tests before running anchor test\""

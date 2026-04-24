@@ -28,6 +28,29 @@ pub mod calibration {
         instructions::initialize_forecaster::handler(ctx)
     }
 
+    /// Initialize score-sync configuration for V3 scoring snapshots.
+    ///
+    /// Creates a PDA at [b"score_config"] to store the protocol authority
+    /// and accepted score version for snapshot writes.
+    pub fn initialize_score_config(ctx: Context<InitializeScoreConfig>) -> Result<()> {
+        instructions::manage_score_config::initialize_handler(ctx)
+    }
+
+    /// Update score-sync configuration authority, version, or pause state.
+    pub fn update_score_config(
+        ctx: Context<UpdateScoreConfig>,
+        next_authority: Pubkey,
+        accepted_score_version: u8,
+        paused: bool,
+    ) -> Result<()> {
+        instructions::manage_score_config::update_handler(
+            ctx,
+            next_authority,
+            accepted_score_version,
+            paused,
+        )
+    }
+
     /// Record a new prediction
     ///
     /// Creates a PDA at [b"prediction", authority.key(), market_id, timestamp]
@@ -74,6 +97,17 @@ pub mod calibration {
         outcome: bool,
     ) -> Result<()> {
         instructions::resolve_prediction::handler(ctx, outcome)
+    }
+
+    /// Sync the latest accepted V3 scoring snapshot for a forecaster.
+    ///
+    /// Creates or updates a PDA at [b"score_v3", forecaster_pubkey] with the
+    /// latest imported/native/unified score summary produced by the scoring engine.
+    pub fn sync_score_snapshot_v3(
+        ctx: Context<SyncScoreSnapshotV3>,
+        args: SyncScoreSnapshotV3Args,
+    ) -> Result<()> {
+        instructions::sync_score_snapshot_v3::handler(ctx, args)
     }
 
     // COMPRESSION FEATURES TEMPORARILY DISABLED FOR BUILD COMPATIBILITY

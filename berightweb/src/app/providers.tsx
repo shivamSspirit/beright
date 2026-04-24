@@ -48,7 +48,7 @@ function ProductionAppContent({ children }: { children: React.ReactNode }) {
 
 /**
  * Demo mode provider stack
- * Uses Jupiter Unified Wallet Kit for direct wallet connections
+ * Uses the Jupiter vault adapter flow for demo wallet connections
  */
 function DemoProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -87,7 +87,7 @@ function ModeAwareProviders({ children }: { children: React.ReactNode }) {
   }
 
   if (isDemo) {
-    console.log('[Providers] Using Demo mode (Jupiter wallet)');
+    console.log('[Providers] Using Demo mode (Jupiter vault adapter)');
     return <DemoProviders>{children}</DemoProviders>;
   }
 

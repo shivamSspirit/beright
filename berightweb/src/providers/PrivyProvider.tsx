@@ -4,6 +4,8 @@ import { ReactNode, useEffect, useMemo } from 'react';
 import { PrivyProvider as PrivyAuthProvider, usePrivy } from '@privy-io/react-auth';
 import { toSolanaWalletConnectors, useWallets, useSignTransaction } from '@privy-io/react-auth/solana';
 import { createSolanaRpc, createSolanaRpcSubscriptions } from '@solana/kit';
+import { Transaction, VersionedTransaction } from '@solana/web3.js';
+import { BerightWalletProvider } from '@/context/BerightWalletContext';
 
 interface PrivyProviderProps {
   children: React.ReactNode;
@@ -53,20 +55,46 @@ function PrivyWalletBridge({ children }: { children: ReactNode }) {
     : null;
 
   const publicKey = solanaWallet?.address || linkedWalletAddress || null;
+  const walletState = useMemo(() => ({
+    connected: authenticated && !!publicKey,
+    connecting: !ready || !walletsReady,
+    disconnecting: false,
+    publicKey,
+    walletName: (solanaWallet as { name?: string })?.name || 'Privy',
+    walletIcon: null,
+  }), [authenticated, publicKey, ready, walletsReady, solanaWallet]);
+
+  const walletFuncs = useMemo(() => ({
+    login,
+    logout,
+    signTransaction: signTransaction && solanaWallet
+      ? async (tx: Transaction | VersionedTransaction | Uint8Array) => {
+        const txBytes = tx instanceof Uint8Array
+            ? tx
+            : tx.serialize({ requireAllSignatures: false });
+
+          console.log('[Privy] Signing transaction with wallet:', {
+            address: solanaWallet.address?.slice(0, 8),
+            type: (solanaWallet as { walletClientType?: string }).walletClientType,
+          });
+
+          type PrivyWalletArgument = Parameters<NonNullable<typeof signTransaction>>[0]['wallet'];
+          const { signedTransaction } = await signTransaction({
+            transaction: txBytes,
+            wallet: solanaWallet as PrivyWalletArgument,
+          });
+
+          return signedTransaction;
+        }
+      : undefined,
+    rawSignTransaction: signTransaction,
+    solanaWallet,
+  }), [login, logout, signTransaction, solanaWallet]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     // Expose Privy wallet state to window
-    const walletState = {
-      connected: authenticated && !!publicKey,
-      connecting: !ready || !walletsReady,
-      disconnecting: false,
-      publicKey,
-      walletName: (solanaWallet as { name?: string })?.name || 'Privy',
-      walletIcon: null,
-    };
-
     (window as Window & { __BERIGHT_WALLET__?: typeof walletState }).__BERIGHT_WALLET__ = walletState;
     (window as Window & { __BERIGHT_WALLET_RAW__?: typeof solanaWallet }).__BERIGHT_WALLET_RAW__ = solanaWallet;
     (window as Window & { __BERIGHT_MODE__?: string }).__BERIGHT_MODE__ = 'production';
@@ -85,54 +113,8 @@ function PrivyWalletBridge({ children }: { children: ReactNode }) {
       selectedWallet: solanaWallet?.address?.slice(0, 8) || 'none',
     };
 
-    // Expose wallet functions for escrow hook
-    (window as Window & { __BERIGHT_WALLET_FUNCS__?: unknown }).__BERIGHT_WALLET_FUNCS__ = {
-      login,
-      logout,
-      signTransaction: signTransaction ? async (tx: Uint8Array) => {
-        // Helper to get current wallet from window state (live reference)
-        const getCurrentWallet = () => {
-          const rawWallet = (window as Window & { __BERIGHT_WALLET_RAW__?: unknown }).__BERIGHT_WALLET_RAW__;
-          return rawWallet || null;
-        };
-
-        // Wait for wallet to be ready (with timeout)
-        let currentWallet = getCurrentWallet();
-        let attempts = 0;
-        const maxAttempts = 10; // 5 seconds max wait
-
-        while (!currentWallet && attempts < maxAttempts) {
-          console.log(`[Privy] Waiting for wallet initialization (attempt ${attempts + 1}/${maxAttempts})...`);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          attempts++;
-          currentWallet = getCurrentWallet(); // Re-check live wallet state
-        }
-
-        if (!currentWallet) {
-          const debugState = (window as Window & { __BERIGHT_PRIVY__?: Record<string, unknown> }).__BERIGHT_PRIVY__;
-          console.error('[Privy] Wallet not ready after timeout', debugState);
-          throw new Error(
-            'Solana wallet not ready. Please ensure you are logged in and wallet is connected.'
-          );
-        }
-
-        console.log('[Privy] Signing transaction with wallet:', {
-          address: (currentWallet as { address?: string }).address?.slice(0, 8),
-          type: (currentWallet as { walletClientType?: string }).walletClientType,
-        });
-
-        // Cast to any to bypass type checking - we've already validated the wallet exists
-        const { signedTransaction } = await signTransaction({
-          transaction: tx,
-          wallet: currentWallet as any,
-        });
-
-        return signedTransaction;
-      } : null,
-      // Raw Privy signTransaction for advanced use
-      rawSignTransaction: signTransaction,
-      solanaWallet,
-    };
+    // Keep window bridge for legacy hooks while newer code uses BerightWalletContext.
+    (window as Window & { __BERIGHT_WALLET_FUNCS__?: unknown }).__BERIGHT_WALLET_FUNCS__ = walletFuncs;
 
     console.log('[PrivyWallet] Debug state:', {
       mode: 'production',
@@ -148,9 +130,24 @@ function PrivyWalletBridge({ children }: { children: ReactNode }) {
       hasSignTransaction: !!signTransaction,
     });
 
-  }, [ready, authenticated, walletsReady, user, solanaWallets, solanaWallet, publicKey, login, logout, signTransaction]);
+  }, [ready, authenticated, walletsReady, user, solanaWallets, solanaWallet, walletState, walletFuncs, publicKey, signTransaction]);
 
-  return <>{children}</>;
+  return (
+    <BerightWalletProvider
+      value={{
+        connected: walletState.connected,
+        connecting: walletState.connecting,
+        publicKey: walletState.publicKey,
+        walletName: walletState.walletName,
+        provider: 'privy',
+        login: login ? async () => login() : undefined,
+        logout: logout ? async () => logout() : undefined,
+        signTransaction: walletFuncs.signTransaction,
+      }}
+    >
+      {children}
+    </BerightWalletProvider>
+  );
 }
 
 // ============================================================================

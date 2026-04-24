@@ -43,6 +43,17 @@ This Solana program tracks forecaster predictions and calculates calibration met
 - **Calibration analysis** - Track prediction calibration across probability buckets
 - **🆕 State Compression** - 99% cost reduction via Merkle trees (optional)
 
+## V3 Score Sync
+
+The calibration program now also exposes a dedicated V3 score-sync surface for the scoring engine:
+
+- `ScoreConfig` PDA at `[b"score_config"]`
+  Stores the protocol authority, accepted score version, and pause state for score writes.
+- `ScoreSnapshotV3` PDA at `[b"score_v3", forecaster_pubkey]`
+  Stores the latest accepted imported score, native score, unified vault score, confidence, status, tier, caps, and snapshot hashes for a forecaster.
+
+This keeps the native calibration history (`ForecasterState`) separate from the off-chain scoring engine output. The scoring layer computes the math; the calibration layer only anchors the accepted summary onchain.
+
 ## Architecture
 
 ### Accounts
