@@ -6,7 +6,7 @@
  */
 
 import { BaseIngestor, IngestorConfig } from './base';
-import { Prediction, PredictionDirection } from '../types';
+import { V3Prediction } from '../v3/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface MetaculusQuestion {
@@ -67,7 +67,7 @@ export class MetaculusIngestor extends BaseIngestor {
   /**
    * Fetch predictions for a Metaculus user
    */
-  async fetchUserPredictions(username: string): Promise<Prediction[]> {
+  async fetchUserPredictions(username: string): Promise<V3Prediction[]> {
     try {
       // First, get user ID from username
       const user = await this.fetchUser(username);
@@ -85,7 +85,7 @@ export class MetaculusIngestor extends BaseIngestor {
       const questionMap = new Map(questions.map(q => [q.id, q]));
 
       // Convert to Prediction format
-      const convertedPredictions: Prediction[] = [];
+      const convertedPredictions: V3Prediction[] = [];
 
       for (const pred of predictions) {
         const question = questionMap.get(pred.question);
@@ -104,9 +104,10 @@ export class MetaculusIngestor extends BaseIngestor {
           ? (question.community_prediction.q3 - question.community_prediction.q1)
           : 0.5;
 
-        const prediction: Prediction = {
+        const prediction: V3Prediction = {
           id: uuidv4(),
           forecasterId: username,
+          source: 'imported',
           platform: 'metaculus',
           marketId: question.id.toString(),
           marketTitle: question.title,
@@ -128,16 +129,7 @@ export class MetaculusIngestor extends BaseIngestor {
           communityMedian: question.community_prediction?.q2,
           communitySpread,
           difficulty: communitySpread,  // Higher spread = harder question
-
-          // Calculated metrics
-          isLateEntry: this.isLateEntry(
-            this.normalizeTimestamp(pred.t),
-            this.normalizeTimestamp(question.publish_time),
-            this.normalizeTimestamp(question.close_time)
-          ),
-
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          category: 'imported:metaculus',
         };
 
         convertedPredictions.push(prediction);
@@ -261,20 +253,6 @@ export class MetaculusIngestor extends BaseIngestor {
     }
 
     return questions;
-  }
-
-  /**
-   * Check if prediction was made late (in last 10% of market duration)
-   */
-  private isLateEntry(
-    predictionTime: Date,
-    openTime: Date,
-    closeTime: Date
-  ): boolean {
-    const marketDuration = closeTime.getTime() - openTime.getTime();
-    const timeUntilClose = closeTime.getTime() - predictionTime.getTime();
-
-    return timeUntilClose < 0.1 * marketDuration;
   }
 
   /**

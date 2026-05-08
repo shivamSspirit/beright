@@ -6,7 +6,7 @@
  */
 
 import { BaseIngestor, IngestorConfig } from './base';
-import { Prediction, PredictionDirection } from '../types';
+import { V3Prediction } from '../v3/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface PolymarketMarket {
@@ -68,7 +68,7 @@ export class PolymarketIngestor extends BaseIngestor {
   /**
    * Fetch predictions for a Polymarket wallet address
    */
-  async fetchUserPredictions(walletAddress: string): Promise<Prediction[]> {
+  async fetchUserPredictions(walletAddress: string): Promise<V3Prediction[]> {
     try {
       // Fetch user's orders (trade history)
       const orders = await this.fetchUserOrders(walletAddress);
@@ -82,7 +82,7 @@ export class PolymarketIngestor extends BaseIngestor {
       const marketMap = new Map(markets.map(m => [m.id, m]));
 
       // Convert orders to Prediction format
-      const predictions: Prediction[] = [];
+      const predictions: V3Prediction[] = [];
 
       for (const order of orders) {
         if (order.status !== 'MATCHED') continue;  // Only matched orders
@@ -97,18 +97,22 @@ export class PolymarketIngestor extends BaseIngestor {
         const isResolved = market.closed;
         const outcome = isResolved ? this.getMarketOutcome(market, order.outcome) : undefined;
 
-        const prediction: Prediction = {
+        // V3 expects `predictedProbability` / `entryPrice` to be the implied probability of YES.
+        // If the user traded the NO token, convert token price (P(NO)) to P(YES)=1-P(NO).
+        const impliedYesProb = order.outcome === 'YES' ? order.price : (1 - order.price);
+
+        const prediction: V3Prediction = {
           id: uuidv4(),
           forecasterId: walletAddress,
+          source: 'imported',
           platform: 'polymarket',
           marketId: market.id,
           marketTitle: market.question,
-          predictedProbability: order.price,
+          predictedProbability: impliedYesProb,
           direction: order.outcome === 'YES' ? 'YES' : 'NO',
 
           // CLOB-specific fields
-          entryPrice: order.price,
-          exitPrice: position?.average_entry_price,
+          entryPrice: impliedYesProb,
           positionSize: order.size,
 
           // Outcome
@@ -120,14 +124,8 @@ export class PolymarketIngestor extends BaseIngestor {
           marketCloseTime: this.normalizeTimestamp(market.end_date_iso),
 
           // Context
-          volume: market.volume,
+          category: 'imported:polymarket',
           difficulty: this.estimateDifficulty(order.price),
-
-          // Calculated metrics
-          isExtremePrice: order.price < 0.2 || order.price > 0.8,
-
-          createdAt: new Date(),
-          updatedAt: new Date(),
         };
 
         predictions.push(prediction);

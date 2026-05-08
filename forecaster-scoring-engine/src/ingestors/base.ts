@@ -3,7 +3,7 @@
  * All platform-specific ingestors extend this
  */
 
-import { Prediction, Platform } from '../types';
+import { V3Prediction } from '../v3/types';
 import axios, { AxiosInstance } from 'axios';
 import pino from 'pino';
 
@@ -15,12 +15,12 @@ export interface IngestorConfig {
 }
 
 export abstract class BaseIngestor {
-  protected platform: Platform;
+  protected platform: string;
   protected config: IngestorConfig;
   protected client: AxiosInstance;
   protected logger: pino.Logger;
 
-  constructor(platform: Platform, config: IngestorConfig) {
+  constructor(platform: string, config: IngestorConfig) {
     this.platform = platform;
     this.config = config;
 
@@ -82,13 +82,13 @@ export abstract class BaseIngestor {
   /**
    * Fetch predictions for a specific user
    */
-  abstract fetchUserPredictions(userId: string): Promise<Prediction[]>;
+  abstract fetchUserPredictions(userId: string): Promise<V3Prediction[]>;
 
   /**
    * Fetch predictions for multiple users (batch)
    */
-  async fetchBatchUserPredictions(userIds: string[]): Promise<Map<string, Prediction[]>> {
-    const results = new Map<string, Prediction[]>();
+  async fetchBatchUserPredictions(userIds: string[]): Promise<Map<string, V3Prediction[]>> {
+    const results = new Map<string, V3Prediction[]>();
 
     for (const userId of userIds) {
       try {

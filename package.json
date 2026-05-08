@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "beright-ts",
-    "berightweb"
+    "berightweb",
+    "forecaster-scoring-engine"
   ],
   "scripts": {
     "agent": "npm run agent --workspace=beright-ts",

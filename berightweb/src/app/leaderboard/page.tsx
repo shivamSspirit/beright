@@ -24,6 +24,7 @@ interface LeaderboardEntry {
   profit: string;
   accuracy: number;
   streak: number;
+  vaultScore?: number;
   trend: 'up' | 'down' | 'neutral';
   change: number | null;
   league?: string;
@@ -32,7 +33,7 @@ interface LeaderboardEntry {
   isOnChainVerified?: boolean;
   brierScore?: number;
   tier?: string;
-  grade?: string;
+  status?: string;
 }
 
 type MetricTab = 'PROFIT' | 'STREAK' | 'ALPHA';
@@ -121,9 +122,15 @@ export default function LeaderboardPage() {
   const [activeMetric, setActiveMetric] = useState<DesktopMetric>('Profit');
   const [activeTime, setActiveTime] = useState<DesktopTime>('This Month');
 
+  const normalizeAccuracy = (value: unknown): number => {
+    const v = typeof value === 'number' ? value : 0;
+    // Some sources return 0-1, others 0-100.
+    return v <= 1 ? Number((v * 100).toFixed(1)) : Number(v.toFixed(1));
+  };
+
   // Merge real leaderboard, on-chain data, and API data
   const leaderboardData: LeaderboardEntry[] = useMemo(() => {
-    // Priority 1: Real leaderboard from Metaculus & Polymarket (with V2 scores)
+    // Priority 1: Real leaderboard from Metaculus & Polymarket (V3 scores)
     const realEntries: LeaderboardEntry[] = realLeaderboard.map((entry, index) => ({
       rank: entry.rank,
       username: entry.username,
@@ -132,15 +139,15 @@ export default function LeaderboardPage() {
       profit: entry.profit,
       accuracy: entry.accuracy,
       streak: entry.streak,
+      vaultScore: entry.vaultScore,
       trend: 'neutral' as const,
       change: null,
       league: entry.tier,
       predictions: entry.predictions,
-      // V2 scoring fields
+      // V3 scoring fields
       isOnChainVerified: entry.isOnChainVerified,
-      brierScore: entry.brierScore,
       tier: entry.tier,
-      grade: entry.grade,
+      status: entry.status,
     }));
 
     // Priority 2: On-chain forecasters (these are verified on-chain)
@@ -150,17 +157,18 @@ export default function LeaderboardPage() {
       walletAddress: forecaster.walletAddress,
       avatar: demoAvatars[index % demoAvatars.length],
       profit: '-', // On-chain doesn't track profit
-      accuracy: forecaster.accuracy || 0,
+      accuracy: normalizeAccuracy(forecaster.accuracy),
       streak: forecaster.streak || 0,
+      vaultScore: forecaster.vaultScore,
       trend: 'neutral' as const,
       change: null,
-      league: forecaster.tier?.toUpperCase() || 'UNRANKED',
+      league: forecaster.tier?.toUpperCase() || 'RESTRICTED',
       predictions: forecaster.totalPredictions || 0,
       // On-chain specific fields
       isOnChainVerified: true,
       brierScore: forecaster.brierScore,
       tier: forecaster.tier,
-      grade: forecaster.grade,
+      status: forecaster.status,
     }));
 
     // Then, map API data (off-chain)
@@ -176,8 +184,9 @@ export default function LeaderboardPage() {
         walletAddress: entry.walletAddress,
         avatar: demoAvatars[(onChainEntries.length + index) % demoAvatars.length],
         profit: entry.profit ? formatCurrency(entry.profit, { compact: true, showSign: true }) : '-',
-        accuracy: onChainMatch?.accuracy || entry.accuracy || 0,
+        accuracy: normalizeAccuracy(onChainMatch?.accuracy ?? entry.accuracy),
         streak: onChainMatch?.streak || entry.streak || 0,
+        vaultScore: onChainMatch?.vaultScore || entry.vaultScore || 0,
         trend: entry.change > 0 ? 'up' : entry.change < 0 ? 'down' : 'neutral',
         change: entry.change || null,
         league: onChainMatch?.tier?.toUpperCase() || computeLeagueFromAccuracy(entry.accuracy || 0),
@@ -185,7 +194,7 @@ export default function LeaderboardPage() {
         isOnChainVerified: !!onChainMatch,
         brierScore: onChainMatch?.brierScore,
         tier: onChainMatch?.tier,
-        grade: onChainMatch?.grade,
+        status: onChainMatch?.status,
       };
     });
 

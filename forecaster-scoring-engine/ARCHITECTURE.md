@@ -1,6 +1,6 @@
 # Forecaster Scoring Engine - Architecture
 
-**Status**: Phase 2 & 3 Implementation
+**Status**: Current implementation: Scoring V3
 **Date**: 2026-04-17
 **Engineer**: Genius Mode Engaged
 
@@ -9,9 +9,9 @@
 ## Overview
 
 The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
-1. Ingests prediction data from multiple platforms (Polymarket, Metaculus, Kalshi, Manifold)
-2. Calculates sophisticated reputation scores (S1-S6 components)
-3. Writes aggregated scores to on-chain Solana accounts (ForecasterState V2)
+1. Ingests prediction data from the implemented adapters (currently Polymarket and Metaculus)
+2. Calculates V3 imported/native/vault scores and score snapshots
+3. Exports leaderboard data and calibration handoff payloads for downstream consumers
 
 ---
 
@@ -21,61 +21,40 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 ┌─────────────────────────────────────────────────────────────┐
 │                  Data Ingestion Layer                       │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │Polymarket│  │Metaculus │  │  Kalshi  │  │ Manifold │   │
-│  │ Adapter  │  │ Adapter  │  │ Adapter  │  │ Adapter  │   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
-│       │             │              │             │          │
-│       └─────────────┴──────────────┴─────────────┘          │
+│  ┌──────────┐  ┌──────────┐                                 │
+│  │Polymarket│  │Metaculus │                                 │
+│  │ Adapter  │  │ Adapter  │                                 │
+│  └────┬─────┘  └────┬─────┘                                 │
+│       │             │                                        │
+│       └─────────────┴─────────────────────────────────────── │
 │                           │                                 │
 └───────────────────────────┼─────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Data Normalization & Deduplication             │
+│                Scoring & Snapshot Layer                     │
 ├─────────────────────────────────────────────────────────────┤
-│  • Normalize market IDs across platforms                   │
-│  • Link user identities (wallet → username → profile)      │
-│  • Deduplicate cross-posted markets                        │
-│  • Calculate market metadata (difficulty, spread, volume)  │
+│  • V3 imported/native score calculation                    │
+│  • Calibration handoff envelope generation                 │
 └───────────────────────────┬─────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Scoring Calculation Engine                │
+│                        Output Layer                         │
 ├─────────────────────────────────────────────────────────────┤
-│  Component Calculators:                                     │
-│  ├─ S1: Dual-Path Calibrated Brier                         │
-│  │   ├─ Trade-Implied (Polymarket, Kalshi)                 │
-│  │   └─ Calibration-Binned (Metaculus, Manifold)           │
-│  ├─ S2: Resolution Score (Murphy decomposition)            │
-│  ├─ S3: Edge Score                                          │
-│  │   ├─ Economic Edge (CLOB platforms)                     │
-│  │   └─ Informational Edge (forecast platforms)            │
-│  ├─ S4: Difficulty-Weighted Score                          │
-│  ├─ S5: Volume & Consistency                               │
-│  └─ S6: Cross-Platform Consistency (NEW)                   │
-│                                                             │
-│  Composite Calculators:                                    │
-│  ├─ Raw Composite (weighted sum of S1-S6)                  │
-│  ├─ Confidence Weight (Bayesian shrinkage)                 │
-│  └─ Final Composite (confidence-adjusted)                  │
-│                                                             │
-│  Anti-Gaming Filters:                                      │
-│  ├─ MM/Arb Detection                                        │
-│  ├─ Late-Entry Detection                                    │
-│  ├─ Easy-Question Farming Detection                        │
-│  └─ Tier Assignment (1-5)                                   │
+│  • leaderboard.json                                        │
+│  • leaderboard-stats.json                                  │
+│  • score-snapshots.json                                    │
+│  • calibration-summaries.json                              │
 └───────────────────────────┬─────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  On-Chain Score Updater                     │
+│                    Future Integration                       │
 ├─────────────────────────────────────────────────────────────┤
-│  • Build Solana transactions                               │
-│  • Update ForecasterState V2 accounts                      │
-│  • Store proof hashes for verification                     │
-│  • Batch updates for efficiency                            │
+│  • Additional adapters (Kalshi, Manifold, others)          │
+│  • Identity linking and orchestration services             │
+│  • On-chain score synchronization                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,10 +63,10 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 ## Data Sources
 
 ### 1. Polymarket (CLOB - Trade Data)
-- **API**: Goldsky subgraph (GraphQL)
+- **API**: Polymarket APIs (Gamma/Data/CLOB)
 - **Data**: Order fills, position history, P&L
 - **Update Frequency**: Real-time via webhooks
-- **Key Metrics**: Entry price, exit price, volume, duration
+- **Key Metrics**: Entry price, size, timestamps
 
 ### 2. Metaculus (Forecast Platform)
 - **API**: REST API (https://www.metaculus.com/api2/)
@@ -95,188 +74,36 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 - **Update Frequency**: Daily batch sync
 - **Key Metrics**: Forecast probability, timestamp, community median
 
-### 3. Kalshi (CLOB - Regulated Exchange)
+### 3. Kalshi (Planned Adapter)
 - **API**: REST API (https://api.elections.kalshi.com/trade-api/v2)
-- **Data**: Order history, settlement outcomes
-- **Update Frequency**: Daily batch sync
-- **Key Metrics**: Entry price, settlement outcome, fees
+- **Status**: Not implemented in `src/` today
+- **Intended Data**: Order history, settlement outcomes
 
-### 4. Manifold (Play Money Platform)
+### 4. Manifold (Planned Adapter)
 - **API**: REST API (https://api.manifold.markets/v0)
-- **Data**: Bet history, market resolutions
-- **Update Frequency**: Daily batch sync
-- **Key Metrics**: Bet probability, outcome, market type
+- **Status**: Not implemented in `src/` today
+- **Intended Data**: Bet history, market resolutions
 
 ---
 
-## Score Calculation Formulas
+## Score Calculation (V3)
 
-### S1: Dual-Path Calibrated Brier (28% weight)
+Scoring V3 is the canonical system implemented in `src/v3/*` and specified in `SCORING_V3.md`.
 
-#### Path A: Trade-Implied (Polymarket, Kalshi)
-For CLOB platforms where users trade at specific prices:
+At a high level:
 
-```typescript
-// Entry price is the implied probability
-const brierScore = (outcome - entryPrice) ** 2;
+- Build two datasets: `imported` and `native`
+- Apply exponential time decay to resolved predictions
+- Compute proper-scoring-rule quality (Brier + log), calibration quality, difficulty weighting, consensus edge, and consistency
+- Compute confidence via effective sample size (ESS)
+- Apply anti-gaming penalties as multiplicative score reductions
+- Emit `IScore`, `NScore`, and a blended `VScore` (vault score)
 
-// Calibration bins based on entry price
-const binEdges = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-const bin = findBin(entryPrice, binEdges);
-const binAccuracy = resolvedInBin / totalInBin;
-const s1TradeImplied = 1000 * (1 - avgBrier) * (binAccuracy);
-```
-
-#### Path B: Calibration-Binned (Metaculus, Manifold)
-For forecast platforms where users submit continuous probabilities:
-
-```typescript
-// Standard Brier score
-const brierScore = (outcome - forecastProb) ** 2;
-
-// Murphy-Yates decomposition
-const uncertainty = mean(outcomes * (1 - outcomes));  // Inherent in market
-const resolution = mean((forecast - mean(outcomes)) ** 2);  // Informativeness
-const reliability = mean((forecast - calibrationCurve(forecast)) ** 2);  // Calibration
-
-const s1CalibrationBinned = 1000 * (resolution - reliability) / uncertainty;
-```
-
-#### Composite S1
-```typescript
-const s1Composite = (
-  (s1TradeImplied * tradeCount + s1CalibrationBinned * forecastCount) /
-  (tradeCount + forecastCount)
-);
-```
-
-### S2: Resolution Score (22% weight)
-
-Measures informativeness (how far from base rate):
-
-```typescript
-const baseRate = mean(allOutcomes);  // e.g., 0.5 for binary
-const resolution = mean(forecasts.map(f => (f - baseRate) ** 2));
-const s2 = 1000 * Math.sqrt(resolution);  // Normalize to 0-1000
-```
-
-### S3: Edge Score (18% weight)
-
-#### Economic Edge (Polymarket, Kalshi)
-Profit over expected value from random trading:
-
-```typescript
-const actualPnL = sum(trades.map(t => t.pnl));
-const randomPnL = sum(trades.map(t => (0.5 - t.entryPrice) * t.size));
-const economicEdge = actualPnL - randomPnL;
-const s3Economic = 1000 * (1 + Math.tanh(economicEdge / totalVolume));
-```
-
-#### Informational Edge (Metaculus, Manifold)
-Log-odds advantage over community median:
-
-```typescript
-const logOddsUser = Math.log(forecast / (1 - forecast));
-const logOddsCommunity = Math.log(communityMedian / (1 - communityMedian));
-const logOddsOutcome = outcome ? Infinity : -Infinity;  // Simplified
-
-const informationalEdge = mean(forecasts.map(f =>
-  Math.abs(logOddsUser - logOddsOutcome) < Math.abs(logOddsCommunity - logOddsOutcome) ? 1 : 0
-));
-
-const s3Informational = 1000 * informationalEdge;
-```
-
-#### Composite S3
-```typescript
-const s3Composite = (
-  (s3Economic * tradeVolume + s3Informational * forecastCount) /
-  (tradeVolume + forecastCount)
-);
-```
-
-### S4: Difficulty-Weighted Score (13% weight)
-
-Harder questions get more weight:
-
-```typescript
-// Difficulty = community spread (high spread = uncertain = hard)
-const difficulty = stdDev(communityForecasts);
-
-const weightedBrier = sum(predictions.map(p =>
-  (1 - p.brierScore) * p.difficulty
-)) / sum(predictions.map(p => p.difficulty));
-
-const s4 = 1000 * weightedBrier;
-```
-
-### S5: Volume & Consistency (8% weight)
-
-Reward sustained activity:
-
-```typescript
-const volumeScore = Math.min(1000, totalPredictions / 100);  // Cap at 100 predictions
-
-// Consistency = active weeks / total weeks
-const activeWeeks = new Set(predictions.map(p => getWeek(p.timestamp))).size;
-const totalWeeks = weeksBetween(firstPrediction, lastPrediction);
-const consistencyScore = 1000 * (activeWeeks / totalWeeks);
-
-const s5 = 0.6 * volumeScore + 0.4 * consistencyScore;
-```
-
-### S6: Cross-Platform Consistency (11% weight)
-
-**This is the moat** - measures skill transferability:
-
-```typescript
-const platformScores = [
-  polymarketComposite,  // e.g., 750
-  metaculusComposite,   // e.g., 720
-  kalshiComposite,      // e.g., 730
-  manifoldComposite     // e.g., 680
-].filter(s => s !== null);  // Only platforms with activity
-
-if (platformScores.length < 2) {
-  s6 = 0;  // Need 2+ platforms
-} else {
-  const minScore = Math.min(...platformScores);
-  const maxScore = Math.max(...platformScores);
-  s6 = 1000 * (minScore / maxScore);  // 1.0 = perfectly consistent
-}
-```
-
-### Final Composite Score
-
-```typescript
-// Component weights (sum to 100%)
-const weights = {
-  s1: 0.28,  // Calibrated Brier
-  s2: 0.22,  // Resolution
-  s3: 0.18,  // Edge
-  s4: 0.13,  // Difficulty
-  s5: 0.08,  // Volume & Consistency
-  s6: 0.11,  // Cross-Platform
-};
-
-// Raw composite (0-1000)
-const rawComposite =
-  weights.s1 * s1 +
-  weights.s2 * s2 +
-  weights.s3 * s3 +
-  weights.s4 * s4 +
-  weights.s5 * s5 +
-  weights.s6 * s6;
-
-// Bayesian shrinkage toward prior mean of 500
-const totalResolved = predictions.filter(p => p.resolved).length;
-const confidenceWeight = totalResolved / (totalResolved + 100);
-
-// Final score (0-1000)
-const finalComposite = Math.round(
-  confidenceWeight * rawComposite + (1 - confidenceWeight) * 500
-);
-```
+See:
+- `SCORING_V3.md`
+- `src/v3/metrics.ts`
+- `src/v3/antiGaming.ts`
+- `src/v3/calculator.ts`
 
 ---
 
@@ -454,43 +281,23 @@ CREATE UNIQUE INDEX idx_forecasters_solana ON forecasters(solana_forecaster_pda)
 ## Service Components
 
 ### 1. Data Ingestors (`src/ingestors/`)
-- `polymarket.ts` - Goldsky subgraph queries
+- `polymarket.ts` - Polymarket API ingestion
 - `metaculus.ts` - REST API polling
-- `kalshi.ts` - REST API polling
-- `manifold.ts` - REST API polling
 - `base.ts` - Abstract base class
 
-### 2. Score Calculators (`src/calculators/`)
-- `s1-calibrated-brier.ts`
-- `s2-resolution.ts`
-- `s3-edge.ts`
-- `s4-difficulty-weighted.ts`
-- `s5-volume-consistency.ts`
-- `s6-cross-platform.ts`
-- `composite.ts`
-- `anti-gaming.ts`
+### 2. V3 Scoring (`src/v3/`)
+- `calculator.ts` - Imported/native score calculation
+- `metrics.ts` - Shared V3 metric helpers
+- `handoff.ts` - Snapshot and calibration summary builders
+- `config.ts` - Versioned scoring configuration
+- `types.ts` - V3 score model
 
-### 3. Identity Linker (`src/identity/`)
-- `linker.ts` - Core linking logic
-- `confidence-scorer.ts` - Linkage confidence
-- `self-declaration-handler.ts` - User claims
+### 3. CLI Entrypoints (`src/cli/`)
+- `calculate-leaderboard.ts` - Leaderboard export
+- `fetch-real-leaderboard.ts` - Small real-data leaderboard export
+- `calculate-v3-snapshots.ts` - V3 score snapshot generation
 
-### 4. On-Chain Updater (`src/onchain/`)
-- `solana-client.ts` - Connection management
-- `account-updater.ts` - ForecasterState updates
-- `transaction-builder.ts` - Build update txs
-- `batch-processor.ts` - Batch updates
-
-### 5. Orchestrator (`src/orchestrator/`)
-- `scheduler.ts` - Cron jobs
-- `pipeline.ts` - Full score calculation pipeline
-- `worker.ts` - Background job processor
-
-### 6. API Server (`src/api/`)
-- `server.ts` - Express server
-- `routes/scores.ts` - Get forecaster scores
-- `routes/rankings.ts` - Leaderboards
-- `routes/identity.ts` - Link accounts
+The placeholder `src/api`, `src/db`, `src/identity`, `src/onchain`, `src/orchestrator`, and `src/utils` directories were removed because they contained no implementation.
 
 ---
 
@@ -550,10 +357,10 @@ CREATE UNIQUE INDEX idx_forecasters_solana ON forecasters(solana_forecaster_pda)
 ## Next Steps
 
 1. ✅ Design complete
-2. ⏳ Implement core calculators (S1-S6)
-3. ⏳ Build platform ingestors
-4. ⏳ Create identity linking service
-5. ⏳ Build on-chain updater
+2. ✅ Implement V3 scoring + penalties
+3. ⏳ Expand platform ingestors (Kalshi/Manifold/etc.)
+4. ⏳ Build identity linking service
+5. ⏳ Build on-chain score updater
 6. ⏳ Deploy to production
 7. ⏳ Empirical validation with top 100 forecasters
 

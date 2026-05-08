@@ -2,7 +2,7 @@
  * Real Leaderboard API Route
  *
  * Serves real forecaster data from Metaculus and Polymarket
- * with V2 BeRight scores
+ * with BeRight Scoring V3
  */
 
 import { NextResponse } from 'next/server';

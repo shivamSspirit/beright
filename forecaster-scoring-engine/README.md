@@ -2,33 +2,16 @@
 
 > **The most sophisticated forecaster reputation system in crypto**
 
-Off-chain TypeScript service that calculates cross-platform forecaster scores and writes them to Solana's BeRight Calibration Program (V2).
+Off-chain TypeScript service that calculates cross-platform forecaster scores, exports leaderboard data, and produces V3 score snapshots for downstream calibration handoff.
 
 ---
 
 ## 🎯 What This Does
 
-1. **Ingests** prediction data from 4 platforms (Polymarket, Metaculus, Kalshi, Manifold)
-2. **Calculates** 6 component scores (S1-S6) using state-of-the-art forecasting metrics
-3. **Detects** gaming patterns (MM wallets, late-entry snipers, easy-question farmers)
-4. **Writes** aggregated reputation scores to on-chain Solana accounts
-
-**The Moat**: S6 Cross-Platform Consistency score - measures skill transferability across different prediction markets. Nobody else has this.
-
----
-
-## 📊 Scoring Components
-
-| Component | Weight | What It Measures | Platforms |
-|-----------|--------|------------------|-----------|
-| **S1** Calibrated Brier | 28% | Forecast accuracy with calibration | All |
-| **S2** Resolution | 22% | Informativeness (distance from base rate) | All |
-| **S3** Edge | 18% | Economic profit (CLOB) / Beat community (forecast) | All |
-| **S4** Difficulty-Weighted | 13% | Performance on hard questions | All |
-| **S5** Volume & Consistency | 8% | Sustained activity over time | All |
-| **S6** Cross-Platform | 11% | **Skill transferability** (min/max ratio) | All |
-
-**Final Score**: 0-1000 scale with Bayesian shrinkage toward prior mean of 500
+1. **Ingests** prediction data from the currently implemented adapters (Polymarket and Metaculus)
+2. **Scores** imported/native history using Scoring V3 proper-scoring-rule metrics (Brier + log), calibration quality, difficulty-weighted quality, consensus edge, and consistency
+3. **Penalizes** gaming patterns (late-entry, easy-market farming, extreme-price farming, category concentration)
+4. **Exports** leaderboard JSON and calibration-ready V3 score snapshots
 
 ## V3 Direction
 
@@ -40,44 +23,36 @@ V3 introduces three outputs instead of one:
 - `NScore`: BeRight-native score
 - `VScore`: unified vault score
 
-The current `src/calculators/*` path remains the legacy engine.
-The new `src/v3/*` path is the replacement design for the first layer of the BeRight network.
+`src/v3/*` is the canonical scoring engine for the first layer of the BeRight network.
 
 ---
 
 ## 🏗️ Architecture
 
+Current implementation:
+
 ```
 Data Sources
     ↓
 ┌─────────────────────────────────────────┐
-│  Platform Ingestors (GraphQL + REST)   │
-│  • Polymarket (Goldsky subgraph)       │
+│  Platform Ingestors                     │
+│  • Polymarket (API)                    │
 │  • Metaculus (REST API)                │
-│  • Kalshi (REST API)                   │
-│  • Manifold (REST API)                 │
 └────────────────┬────────────────────────┘
                  ↓
 ┌─────────────────────────────────────────┐
-│  PostgreSQL Database                    │
-│  • predictions table                    │
-│  • forecasters table                    │
-│  • identity_links table                 │
+│  V3 Scoring Engine                      │
+│  • Imported score (IScore)              │
+│  • Native score (NScore)                │
+│  • Unified vault score (VScore)         │
 └────────────────┬────────────────────────┘
                  ↓
 ┌─────────────────────────────────────────┐
-│  Score Calculation Engine               │
-│  • S1-S6 Component Calculators          │
-│  • Composite Score Calculator           │
-│  • Anti-Gaming Detection                │
-│  • Confidence Weighting (Bayesian)      │
-└────────────────┬────────────────────────┘
-                 ↓
-┌─────────────────────────────────────────┐
-│  Solana On-Chain Updater                │
-│  • Build transactions                   │
-│  • Update ForecasterState V2 accounts   │
-│  • Store proof hashes                   │
+│  JSON Outputs                           │
+│  • leaderboard.json                     │
+│  • leaderboard-stats.json               │
+│  • score-snapshots.json                 │
+│  • calibration-summaries.json           │
 └─────────────────────────────────────────┘
 ```
 
@@ -87,48 +62,34 @@ Data Sources
 
 ### Prerequisites
 
-- Node.js 20+
-- PostgreSQL 14+
-- Redis 7+
-- Solana wallet with devnet/mainnet SOL
+- Node.js 18+
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
 
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your API keys and database credentials
+# Verify the package
+npm run typecheck
 
-# Build TypeScript
-npm run build
+# Generate leaderboard outputs
+npm run calculate:leaderboard
 
-# Run database migrations (TODO: implement)
-npm run db:migrate
-
-# Start the service
-npm run dev
+# Generate V3 snapshots from a sample input
+npm run calculate:v3 -- --input data/v3-example-input.json
 ```
 
 ### CLI Tools
 
 ```bash
-# Ingest data from platforms
-npm run ingest:polymarket
-npm run ingest:metaculus
-npm run ingest:kalshi
-npm run ingest:manifold
-
-# Calculate scores for all forecasters
-npm run calculate:scores
+# Calculate leaderboard outputs from the legacy engine
+npm run calculate:leaderboard
 
 # Calculate V3 snapshots and calibration handoff summaries
 npm run calculate:v3 -- --input data/v3-example-input.json
 
-# Update on-chain Solana accounts
-npm run update:onchain
+# Fetch a small real-data leaderboard export
+npm run fetch:real
 ```
 
 ### V3 Snapshot Outputs
@@ -149,27 +110,14 @@ This is the contract between the scoring layer and the future calibration-layer 
 ```
 forecaster-scoring-engine/
 ├── src/
-│   ├── types/           # TypeScript type definitions
-│   ├── calculators/     # S1-S6 score calculators
-│   │   ├── s1-calibrated-brier.ts
-│   │   ├── component-scores.ts  (S2-S6)
-│   │   ├── composite.ts
-│   │   ├── anti-gaming.ts
-│   │   └── index.ts
+│   ├── index.ts          # Package exports
 │   ├── ingestors/       # Platform data fetchers
 │   │   ├── base.ts
 │   │   ├── polymarket.ts
 │   │   ├── metaculus.ts
-│   │   ├── kalshi.ts
-│   │   └── manifold.ts
-│   ├── identity/        # Cross-platform identity linking
-│   ├── onchain/         # Solana transaction builders
-│   ├── orchestrator/    # Cron jobs & pipeline orchestration
-│   ├── api/             # Express API server
-│   ├── db/              # Database schema & queries
-│   ├── utils/           # Shared utilities
+│   ├── v3/              # Scoring V3 calculator and snapshot handoff
 │   └── cli/             # CLI tools
-├── tests/               # Unit & integration tests
+├── data/                # Example inputs and generated outputs
 ├── ARCHITECTURE.md      # Detailed architecture documentation
 ├── package.json
 ├── tsconfig.json
@@ -181,17 +129,11 @@ forecaster-scoring-engine/
 ## 🧪 Testing
 
 ```bash
-# Run all tests
-npm test
+# TypeScript verification
+npm run typecheck
 
-# Run with coverage
-npm run test:coverage
-
-# Test specific calculator
-npm test -- s1-calibrated-brier
-
-# Test with real data from top 10 forecasters (Phase 4)
-npm run test:empirical
+# Smoke test the V3 path
+npm run calculate:v3 -- --input data/v3-example-input.json
 ```
 
 ---
@@ -262,7 +204,6 @@ CREATE TABLE forecasters (
 
 ### API Key Management
 - All keys in environment variables (never committed)
-- Use `.env.example` as template
 - Rotate keys monthly
 
 ### Solana Wallet
@@ -276,85 +217,12 @@ CREATE TABLE forecasters (
 
 ---
 
-## 🎓 Key Formulas
+## 🎓 Scoring Details
 
-### S1: Dual-Path Calibrated Brier
+Scoring V3 formulas and implementation live in:
 
-**Path A (Trade-Implied)**: For CLOB platforms
-```typescript
-brierScore = (outcome - entryPrice)²
-avgBrier = mean(brierScores)
-calibrationError = mean(|bin - binAccuracy|)
-s1 = 1000 × (1 - avgBrier) × (1 - calibrationError)
-```
-
-**Path B (Calibration-Binned)**: For forecast platforms
-```typescript
-// Murphy-Yates decomposition
-uncertainty = mean(outcome × (1 - outcome))
-resolution = mean((forecast - baseRate)²)
-reliability = mean((forecast - outcome)²)
-
-skill = (resolution - reliability) / uncertainty
-s1 = 500 + skill × 500  // Normalize to 0-1000
-```
-
-### S6: Cross-Platform Consistency
-
-```typescript
-platformScores = [poly, meta, kalshi, manifold].filter(s => s !== null)
-
-if (platformScores.length < 2) {
-  s6 = 0  // Need 2+ platforms
-} else {
-  s6 = 1000 × (min(scores) / max(scores))
-}
-```
-
-### Bayesian Shrinkage (Confidence Weighting)
-
-```typescript
-confidenceWeight = N / (N + 100)  // N = total resolved predictions
-finalScore = confidenceWeight × rawScore + (1 - confidenceWeight) × 500
-```
-
----
-
-## 📈 Phase 2 & 3 Status
-
-### ✅ Phase 2: Scoring Engine (COMPLETE)
-
-- [x] S1 dual-path calculator (trade + calibration)
-- [x] S2 resolution calculator
-- [x] S3 edge calculator (economic + informational)
-- [x] S4 difficulty-weighted calculator
-- [x] S5 volume & consistency calculator
-- [x] S6 cross-platform consistency calculator
-- [x] Composite calculator with confidence weighting
-- [x] Anti-gaming detection (MM, late-entry, easy-question)
-- [x] TypeScript types and interfaces
-- [x] Unit test infrastructure
-
-### ⏳ Phase 3: Data Pipeline (IN PROGRESS)
-
-- [x] Base ingestor architecture
-- [ ] Polymarket ingestor (Goldsky GraphQL)
-- [ ] Metaculus ingestor (REST API)
-- [ ] Kalshi ingestor (REST API)
-- [ ] Manifold ingestor (REST API)
-- [ ] Identity linking service
-- [ ] PostgreSQL schema implementation
-- [ ] Cron job orchestration
-- [ ] On-chain Solana updater
-
-### ⏳ Phase 4: Empirical Validation (PENDING)
-
-- [ ] Run on top 100 Polymarket wallets
-- [ ] Run on top 100 Metaculus forecasters
-- [ ] Lock in normalization constants (means & stddevs)
-- [ ] Validate anti-gaming filters catch known bad actors
-- [ ] Generate calibration reports
-- [ ] Deploy to production
+- `SCORING_V3.md`
+- `src/v3/*`
 
 ---
 
@@ -362,8 +230,7 @@ finalScore = confidenceWeight × rawScore + (1 - confidenceWeight) × 500
 
 ### Week 1 (Current)
 - ✅ Architecture design
-- ✅ Core calculators (S1-S6)
-- ✅ Anti-gaming detection
+- ✅ V3 scoring + anti-gaming penalties
 - ⏳ Platform ingestors
 
 ### Week 2
@@ -389,9 +256,7 @@ finalScore = confidenceWeight × rawScore + (1 - confidenceWeight) × 500
 ## 📚 References
 
 ### On-Chain Program
-- **V2 Schema**: `../calibration-program/programs/calibration/src/state/forecaster_v2.rs`
 - **Program ID (Devnet)**: `GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ`
-- **Implementation Summary**: `../calibration-program/V2_IMPLEMENTATION_SUMMARY.md`
 
 ### Research
 - Murphy & Yates (1984): "Brier Score Decomposition"
@@ -403,13 +268,12 @@ finalScore = confidenceWeight × rawScore + (1 - confidenceWeight) × 500
 ## 🏆 What Makes This Unique
 
 1. **Cross-Platform Aggregation**: First system to unify Polymarket + Metaculus + Kalshi + Manifold
-2. **Dual-Path S1**: Handles both CLOB (trade-based) and forecast (calibration-based) platforms correctly
-3. **S6 Consistency**: Novel metric that measures skill transferability (not just single-platform excellence)
-4. **Anti-Gaming**: Platform-specific gaming detection (MM/arb, late-entry, easy-question)
-5. **Bayesian Shrinkage**: Confidence weighting prevents small-sample gaming
-6. **On-Chain Verification**: Cryptographic proof hashes for score calculations
+2. **Proper Scoring Rules**: Decayed Brier + log score quality, plus calibration quality
+3. **Anti-Gaming**: Late-entry, easy-market farming, extreme-price farming, and concentration penalties
+4. **Confidence Modeling**: Effective sample size (ESS) confidence adjustment
+5. **On-Chain Verification**: Cryptographic snapshot hashes for score calculations
 
-**Competitive Moat**: The cross-platform dataset (linking Polymarket wallets to Metaculus usernames) is worth $1M+ and cannot be easily replicated.
+**Competitive Moat**: cross-platform linkage + long-horizon imported-to-native convergence.
 
 ---
 
@@ -435,6 +299,4 @@ MIT License - See LICENSE file
 
 ---
 
-**Status**: Phase 2 complete, Phase 3 in progress
-**Last Updated**: 2026-04-17
-**Version**: 1.0.0
+**Status**: Scoring V3 is canonical

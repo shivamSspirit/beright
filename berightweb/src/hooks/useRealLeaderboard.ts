@@ -1,6 +1,6 @@
 /**
  * Hook for fetching real leaderboard data from Metaculus and Polymarket
- * with V2 BeRight scores
+ * with BeRight Scoring V3
  */
 
 'use client';
@@ -13,25 +13,22 @@ export interface RealLeaderboardEntry {
   walletAddress?: string;
   platform: 'polymarket' | 'metaculus';
 
-  // Scores
+  // Display stats (not canonical scoring inputs)
   profit: string;
   accuracy: number;
   streak: number;
   predictions: number;
 
-  // V2 Scoring
-  finalCompositeScore: number;
-  tier: string; // 'TIER_1', 'TIER_2', etc.
-  grade: string; // 'A+', 'A', 'B+', etc.
-  brierScore: number;
-
-  // Components
-  s1: number;
-  s2: number;
-  s3: number;
-  s4: number;
-  s5: number;
-  s6: number;
+  // V3 Scoring (canonical)
+  scoreVersion: 'v3';
+  scoreEpoch: string;
+  vaultScore: number; // 0-1000
+  confidence: number; // 0-1
+  status: string;
+  tier: string;
+  importedResolvedCount: number;
+  nativeResolvedCount: number;
+  penaltyFlags?: string[];
 
   // Metadata
   isOnChainVerified: boolean;

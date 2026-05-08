@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUser } from '@/hooks/useUnifiedUser';
 import styles from './BottomNav.module.css';
 
 interface NavItem {
@@ -85,10 +86,17 @@ function NavItemComponent({ item, isActive }: { item: NavItem; isActive: boolean
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { isAuthenticated, isLoading } = useUser();
 
   // Don't show on certain routes (e.g., landing, auth, etc.)
   const hiddenRoutes = ['/coming-soon', '/embed'];
   if (hiddenRoutes.some(route => pathname?.startsWith(route))) {
+    return null;
+  }
+
+  // Hide on landing page (when at '/' and not authenticated)
+  // Don't flash nav while auth is loading
+  if (pathname === '/' && (isLoading || !isAuthenticated)) {
     return null;
   }
 

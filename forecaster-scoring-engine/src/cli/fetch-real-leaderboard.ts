@@ -1,27 +1,27 @@
 #!/usr/bin/env node
 /**
- * Fetch Real Leaderboard Data
+ * Fetch Real Leaderboard Data (V3)
  *
- * Fetches actual top forecasters from Metaculus and traders from Polymarket,
- * calculates their V2 scores, and exports to berightweb
+ * Fetches top forecasters from Metaculus and traders from Polymarket,
+ * computes BeRight Scoring V3 imported snapshots, and exports JSON
+ * to `berightweb/public/data/real-leaderboard.json`.
  */
 
-import { PolymarketIngestor } from '../ingestors/polymarket';
-import { MetaculusIngestor } from '../ingestors/metaculus';
-import { calculateCompleteScore } from '../calculators';
-import { ForecasterIdentity } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import pino from 'pino';
 
+import { MetaculusIngestor } from '../ingestors/metaculus';
+import { PolymarketIngestor } from '../ingestors/polymarket';
+import { calculateV3UnifiedScore, V3Identity, V3Prediction } from '../v3';
+
 const logger = pino({
-  name: 'fetch-real-leaderboard',
-  level: 'info',
+  name: 'fetch-real-leaderboard-v3',
+  level: process.env.LOG_LEVEL || 'info',
   transport: {
     target: 'pino-pretty',
-    options: {
-      colorize: true,
-    },
+    options: { colorize: true },
   },
 });
 
@@ -32,298 +32,204 @@ const TOP_METACULUS_FORECASTERS = [
   'SimonM',
 ];
 
-// Real Polymarket top traders (these are actual high-volume traders)
-// Note: These will need to be updated with real addresses from Polymarket API
+// Real Polymarket top traders (replace with real addresses from Polymarket APIs)
 const TOP_POLYMARKET_TRADERS = [
-  '0x00000048b0880f05C54B1E7f652A11aF8b16c1f2', // Known large trader
-  '0x00000004f5fc3e6c0a13c34c2f4b5b1b1b1b1b1b', // Placeholder - replace with real
-  '0x000000058b6e51c9e8c1e8f7e9b1c6b1c1c1c1c1', // Placeholder - replace with real
+  '0x00000048b0880f05C54B1E7f652A11aF8b16c1f2',
 ];
 
-interface WebLeaderboardEntry {
+type RealLeaderboardEntryV3 = {
   rank: number;
   username: string;
   walletAddress?: string;
   platform: 'polymarket' | 'metaculus';
 
-  // Scores
+  // Display stats (non-canonical)
   profit: string;
   accuracy: number;
   streak: number;
   predictions: number;
 
-  // V2 Scoring
-  finalCompositeScore: number;
-  tier: string; // 'TIER_1', 'TIER_2', etc.
-  grade: string; // 'A+', 'A', 'B+', etc.
-  brierScore: number;
-
-  // Components
-  s1: number;
-  s2: number;
-  s3: number;
-  s4: number;
-  s5: number;
-  s6: number;
+  // Canonical V3 scoring
+  scoreVersion: 'v3';
+  scoreEpoch: string;
+  vaultScore: number;
+  confidence: number;
+  status: string;
+  tier: string;
+  importedResolvedCount: number;
+  nativeResolvedCount: number;
+  penaltyFlags: string[];
 
   // Metadata
   isOnChainVerified: boolean;
   calculatedAt: string;
+};
+
+function computeAccuracy(predictions: V3Prediction[]): number {
+  const resolved = predictions.filter((p) => p.outcome !== undefined);
+  if (resolved.length === 0) return 0;
+
+  const correct = resolved.filter((p) => {
+    const yesProb = p.predictedProbability;
+    const chosenYes = p.direction === 'YES';
+    const predictedOutcome = chosenYes ? yesProb >= 0.5 : yesProb < 0.5;
+    return Boolean(p.outcome) === predictedOutcome;
+  }).length;
+
+  return correct / resolved.length;
+}
+
+function computePnL(predictions: V3Prediction[]): number {
+  // Only a lightweight display heuristic; V3 score uses proper scoring rules.
+  const resolved = predictions.filter((p) => p.outcome !== undefined && p.entryPrice !== undefined && p.positionSize !== undefined);
+  return resolved.reduce((sum, p) => {
+    const yesProb = p.entryPrice ?? p.predictedProbability;
+    const sideYes = p.direction === 'YES';
+    const outcomeYes = Boolean(p.outcome);
+    const positionSize = p.positionSize ?? 0;
+
+    // Treat as 1.0 payout on correct side, 0.0 otherwise, vs paid price.
+    const probPaid = sideYes ? yesProb : (1 - yesProb);
+    const payout = (sideYes === outcomeYes) ? 1.0 : 0.0;
+    return sum + (payout - probPaid) * positionSize;
+  }, 0);
 }
 
 async function main() {
-  logger.info('Fetching real forecaster data from Metaculus and Polymarket...');
+  logger.info('Fetching real imported forecaster data (V3)...');
 
-  const leaderboard: WebLeaderboardEntry[] = [];
+  const leaderboard: RealLeaderboardEntryV3[] = [];
+  const scoreEpoch = new Date().toISOString();
 
   // ============================================================
-  // METACULUS - Real forecasters
+  // METACULUS
   // ============================================================
-  logger.info(`Fetching ${TOP_METACULUS_FORECASTERS.length} Metaculus forecasters...`);
-
   const metaculusIngestor = new MetaculusIngestor();
-
   for (const username of TOP_METACULUS_FORECASTERS) {
     logger.info({ username }, 'Fetching Metaculus forecaster');
 
     try {
-      // Fetch predictions
-      const predictions = await metaculusIngestor.fetchUserPredictions(username);
-
-      if (predictions.length === 0) {
+      const importedPredictions = await metaculusIngestor.fetchUserPredictions(username);
+      if (importedPredictions.length === 0) {
         logger.warn({ username }, 'No predictions found, skipping');
         continue;
       }
 
-      logger.info(
-        { username, count: predictions.length },
-        'Fetched predictions'
-      );
-
-      // Create identity
-      const identity: ForecasterIdentity = {
-        id: username,
-        metaculusUsername: username,
-        linkageConfidence: 1.0,
-        linkageMethod: 'self_declared',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      const identity: V3Identity = {
+        forecasterId: username,
+        linkedAccounts: { metaculus: username },
       };
 
-      // Calculate score
-      const score = await calculateCompleteScore(username, identity, predictions);
+      const snapshot = calculateV3UnifiedScore({
+        forecasterId: username,
+        identity,
+        importedPredictions,
+        nativePredictions: [],
+        scoreEpoch,
+      });
 
-      // Convert to web format
-      const entry: WebLeaderboardEntry = {
+      const accuracy = computeAccuracy(importedPredictions);
+
+      leaderboard.push({
         rank: leaderboard.length + 1,
         username,
         platform: 'metaculus',
-        profit: '-', // Metaculus doesn't have profit
-        accuracy: score.accuracy,
-        streak: 0, // Calculate from predictions if needed
-        predictions: score.totalPredictions,
-        finalCompositeScore: score.finalCompositeScore,
-        tier: getTierLabel(score.tier),
-        grade: getGradeFromScore(score.finalCompositeScore),
-        brierScore: score.avgBrierScore,
-        s1: score.components.s1Composite,
-        s2: score.components.s2Resolution,
-        s3: score.components.s3Composite,
-        s4: score.components.s4DifficultyWeighted,
-        s5: score.components.s5VolumeConsistency,
-        s6: score.components.s6CrossPlatform,
-        isOnChainVerified: false, // Will be true once written to Solana
-        calculatedAt: new Date().toISOString(),
-      };
+        profit: '-',
+        accuracy: Number((accuracy * 100).toFixed(1)),
+        streak: 0,
+        predictions: importedPredictions.length,
+        scoreVersion: 'v3',
+        scoreEpoch: snapshot.scoreEpoch,
+        vaultScore: snapshot.vaultScore,
+        confidence: snapshot.confidence,
+        status: snapshot.status,
+        tier: snapshot.tier,
+        importedResolvedCount: snapshot.importedResolvedCount,
+        nativeResolvedCount: snapshot.nativeResolvedCount,
+        penaltyFlags: [...(snapshot.importedScore?.penalties.flags ?? [])].sort(),
+        isOnChainVerified: false,
+        calculatedAt: snapshot.calculatedAt.toISOString(),
+      });
 
-      leaderboard.push(entry);
-
-      logger.info(
-        {
-          username,
-          score: score.finalCompositeScore,
-          tier: entry.tier,
-          grade: entry.grade,
-        },
-        'Calculated score'
-      );
-
-      // Rate limiting
-      await sleep(3000);
+      await sleep(1500);
     } catch (error) {
-      logger.error({ username, error }, 'Failed to fetch forecaster');
+      logger.error({ username, error }, 'Failed to fetch Metaculus forecaster');
     }
   }
 
   // ============================================================
-  // POLYMARKET - Real traders
+  // POLYMARKET
   // ============================================================
-  logger.info(`Fetching ${TOP_POLYMARKET_TRADERS.length} Polymarket traders...`);
-
   const polymarketIngestor = new PolymarketIngestor();
-
-  for (const wallet of TOP_POLYMARKET_TRADERS) {
-    logger.info({ wallet }, 'Fetching Polymarket trader');
+  for (const walletAddress of TOP_POLYMARKET_TRADERS) {
+    logger.info({ walletAddress }, 'Fetching Polymarket trader');
 
     try {
-      // Fetch predictions
-      const predictions = await polymarketIngestor.fetchUserPredictions(wallet);
-
-      if (predictions.length === 0) {
-        logger.warn({ wallet }, 'No predictions found, skipping');
+      const importedPredictions = await polymarketIngestor.fetchUserPredictions(walletAddress);
+      if (importedPredictions.length === 0) {
+        logger.warn({ walletAddress }, 'No predictions found, skipping');
         continue;
       }
 
-      logger.info(
-        { wallet, count: predictions.length },
-        'Fetched predictions'
-      );
-
-      // Create identity
-      const identity: ForecasterIdentity = {
-        id: wallet,
-        polymarketWallet: wallet,
-        linkageConfidence: 1.0,
-        linkageMethod: 'cryptographic',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      const identity: V3Identity = {
+        forecasterId: walletAddress,
+        linkedAccounts: { polymarket: walletAddress },
       };
 
-      // Calculate score
-      const score = await calculateCompleteScore(wallet, identity, predictions);
+      const snapshot = calculateV3UnifiedScore({
+        forecasterId: walletAddress,
+        identity,
+        importedPredictions,
+        nativePredictions: [],
+        scoreEpoch,
+      });
 
-      // Calculate profit from predictions (simplified)
-      const profit = predictions
-        .filter(p => p.outcome !== undefined && p.positionSize)
-        .reduce((sum, p) => {
-          const outcome = p.outcome ? 1.0 : 0.0;
-          const entryPrice = p.entryPrice || 0.5;
-          const pnl = (outcome - entryPrice) * (p.positionSize || 0);
-          return sum + pnl;
-        }, 0);
+      const accuracy = computeAccuracy(importedPredictions);
+      const profit = computePnL(importedPredictions);
 
-      // Convert to web format
-      const entry: WebLeaderboardEntry = {
+      leaderboard.push({
         rank: leaderboard.length + 1,
-        username: `Trader ${wallet.slice(0, 6)}...`,
-        walletAddress: wallet,
+        username: `Trader ${walletAddress.slice(0, 6)}...`,
+        walletAddress,
         platform: 'polymarket',
-        profit: profit > 0 ? `+$${profit.toFixed(0)}` : `-$${Math.abs(profit).toFixed(0)}`,
-        accuracy: score.accuracy,
-        streak: 0, // Calculate from predictions if needed
-        predictions: score.totalPredictions,
-        finalCompositeScore: score.finalCompositeScore,
-        tier: getTierLabel(score.tier),
-        grade: getGradeFromScore(score.finalCompositeScore),
-        brierScore: score.avgBrierScore,
-        s1: score.components.s1Composite,
-        s2: score.components.s2Resolution,
-        s3: score.components.s3Composite,
-        s4: score.components.s4DifficultyWeighted,
-        s5: score.components.s5VolumeConsistency,
-        s6: score.components.s6CrossPlatform,
+        profit: profit >= 0 ? `+$${profit.toFixed(0)}` : `-$${Math.abs(profit).toFixed(0)}`,
+        accuracy: Number((accuracy * 100).toFixed(1)),
+        streak: 0,
+        predictions: importedPredictions.length,
+        scoreVersion: 'v3',
+        scoreEpoch: snapshot.scoreEpoch,
+        vaultScore: snapshot.vaultScore,
+        confidence: snapshot.confidence,
+        status: snapshot.status,
+        tier: snapshot.tier,
+        importedResolvedCount: snapshot.importedResolvedCount,
+        nativeResolvedCount: snapshot.nativeResolvedCount,
+        penaltyFlags: [...(snapshot.importedScore?.penalties.flags ?? [])].sort(),
         isOnChainVerified: false,
-        calculatedAt: new Date().toISOString(),
-      };
+        calculatedAt: snapshot.calculatedAt.toISOString(),
+      });
 
-      leaderboard.push(entry);
-
-      logger.info(
-        {
-          wallet,
-          score: score.finalCompositeScore,
-          tier: entry.tier,
-          grade: entry.grade,
-          profit: entry.profit,
-        },
-        'Calculated score'
-      );
-
-      // Rate limiting
-      await sleep(3000);
+      await sleep(1500);
     } catch (error) {
-      logger.error({ wallet, error }, 'Failed to fetch trader');
+      logger.error({ walletAddress, error }, 'Failed to fetch Polymarket trader');
     }
   }
 
   // ============================================================
-  // SORT AND EXPORT
+  // SORT + EXPORT
   // ============================================================
+  leaderboard.sort((a, b) => b.vaultScore - a.vaultScore);
+  leaderboard.forEach((entry, index) => { entry.rank = index + 1; });
 
-  // Sort by final composite score
-  leaderboard.sort((a, b) => b.finalCompositeScore - a.finalCompositeScore);
-
-  // Re-assign ranks
-  leaderboard.forEach((entry, index) => {
-    entry.rank = index + 1;
-  });
-
-  // Export to forecaster-scoring-engine data directory
-  const dataDir = path.join(process.cwd(), 'data');
-  await fs.mkdir(dataDir, { recursive: true });
-
-  const outputPath = path.join(dataDir, 'real-leaderboard.json');
+  const outputPath = path.join(process.cwd(), '..', 'berightweb', 'public', 'data', 'real-leaderboard.json');
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, JSON.stringify(leaderboard, null, 2));
 
-  logger.info({ path: outputPath, count: leaderboard.length }, 'Saved to scoring engine');
-
-  // Also export to berightweb public directory
-  const webDataDir = path.join(process.cwd(), '..', 'berightweb', 'public', 'data');
-  await fs.mkdir(webDataDir, { recursive: true });
-
-  const webOutputPath = path.join(webDataDir, 'real-leaderboard.json');
-  await fs.writeFile(webOutputPath, JSON.stringify(leaderboard, null, 2));
-
-  logger.info({ path: webOutputPath }, 'Saved to berightweb');
-
-  // Print summary
-  console.log('\n✅ REAL LEADERBOARD DATA FETCHED!\n');
-  console.log('Rank | Platform   | ID                | Score | Tier    | Predictions');
-  console.log('-----|------------|-------------------|-------|---------|------------');
-
-  leaderboard.forEach(entry => {
-    const id = entry.username.padEnd(17);
-    console.log(
-      `${String(entry.rank).padStart(4)} | ${entry.platform.padEnd(10)} | ${id} | ${String(entry.finalCompositeScore).padStart(5)} | ${entry.tier.padEnd(7)} | ${entry.predictions}`
-    );
-  });
-
-  console.log('\n📊 Summary:');
-  console.log(`  Total forecasters: ${leaderboard.length}`);
-  console.log(`  Metaculus: ${leaderboard.filter(e => e.platform === 'metaculus').length}`);
-  console.log(`  Polymarket: ${leaderboard.filter(e => e.platform === 'polymarket').length}`);
-  console.log(`  Average score: ${Math.round(leaderboard.reduce((sum, e) => sum + e.finalCompositeScore, 0) / leaderboard.length)}`);
-  console.log('\n');
-}
-
-function getTierLabel(tier: number): string {
-  const tierLabels: Record<number, string> = {
-    1: 'TIER_1',
-    2: 'TIER_2',
-    3: 'TIER_3',
-    4: 'TIER_4',
-    5: 'TIER_5',
-  };
-  return tierLabels[tier] || 'UNRANKED';
-}
-
-function getGradeFromScore(score: number): string {
-  if (score >= 900) return 'A+';
-  if (score >= 850) return 'A';
-  if (score >= 800) return 'A-';
-  if (score >= 750) return 'B+';
-  if (score >= 700) return 'B';
-  if (score >= 650) return 'B-';
-  if (score >= 600) return 'C+';
-  if (score >= 550) return 'C';
-  if (score >= 500) return 'C-';
-  if (score >= 450) return 'D+';
-  if (score >= 400) return 'D';
-  return 'F';
+  logger.info({ path: outputPath, count: leaderboard.length }, 'Exported real leaderboard (V3)');
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 main().catch((error) => {

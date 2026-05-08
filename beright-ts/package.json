@@ -65,9 +65,11 @@
     "dev:frontend": "ts-node skills/devFrontend.ts",
     "dev:backend": "ts-node skills/devBackend.ts",
     "dev:test": "ts-node skills/devTest.ts",
-    "validate": "npm run typecheck && npm run lint"
+    "validate": "npm run typecheck && npm run lint",
+    "db:landing-applications": "ts-node scripts/apply-landing-applications-migration.ts"
   },
   "dependencies": {
+    "@beright/forecaster-scoring-engine": "workspace:*",
     "@anthropic-ai/sdk": "^0.32.0",
     "@coral-xyz/anchor": "^0.32.1",
     "@meteora-ag/vault-sdk": "^2.3.1",

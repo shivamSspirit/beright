@@ -271,11 +271,10 @@ Penalty inputs:
 
 ### Phase 1
 
-Add V3 alongside legacy V2.
+Implement V3 as the canonical scorer.
 
-- keep `src/calculators/*` intact
-- add `src/v3/*`
-- add versioned score snapshot outputs
+- `src/v3/*` is the single scoring implementation
+- emit versioned score snapshots + calibration summaries
 
 ### Phase 2
 

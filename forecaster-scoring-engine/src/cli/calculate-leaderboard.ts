@@ -1,288 +1,182 @@
 #!/usr/bin/env node
 /**
- * Calculate Leaderboard Scores
+ * Calculate Leaderboard Scores (V3)
  *
  * Fetches top forecasters from Polymarket and Metaculus,
- * calculates their scores using our V2 system,
- * and exports to JSON for the BeRight web leaderboard
+ * computes BeRight Scoring V3 imported snapshots,
+ * and exports a combined leaderboard JSON to `forecaster-scoring-engine/data/leaderboard.json`.
  */
 
-import { PolymarketIngestor } from '../ingestors/polymarket';
-import { MetaculusIngestor } from '../ingestors/metaculus';
-import { calculateCompleteScore } from '../calculators';
-import { ForecasterIdentity, ForecasterScore } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
 import pino from 'pino';
 
+import { MetaculusIngestor } from '../ingestors/metaculus';
+import { PolymarketIngestor } from '../ingestors/polymarket';
+import { calculateV3UnifiedScore, V3Identity } from '../v3';
+
 const logger = pino({
-  name: 'calculate-leaderboard',
+  name: 'calculate-leaderboard-v3',
   level: process.env.LOG_LEVEL || 'info',
   transport: {
     target: 'pino-pretty',
-    options: {
-      colorize: true,
-    },
+    options: { colorize: true },
   },
 });
 
-interface LeaderboardEntry {
+type LeaderboardEntryV3 = {
   rank: number;
   forecasterId: string;
-  platform: 'polymarket' | 'metaculus' | 'cross-platform';
+  platform: 'polymarket' | 'metaculus';
   username?: string;
   walletAddress?: string;
 
-  // Scores
-  finalCompositeScore: number;
-  rawCompositeScore: number;
-  tier: number;
-  confidenceWeight: number;
+  scoreVersion: 'v3';
+  scoreEpoch: string;
+  vaultScore: number;
+  confidence: number;
+  status: string;
+  tier: string;
+  importedResolvedCount: number;
+  nativeResolvedCount: number;
+  penaltyFlags: string[];
 
-  // Component scores
-  s1: number;
-  s2: number;
-  s3: number;
-  s4: number;
-  s5: number;
-  s6: number;
-
-  // Stats
   totalPredictions: number;
-  totalResolved: number;
-  accuracy: number;
-  avgBrierScore: number;
-
-  // Anti-gaming
-  flags: string[];
-
-  // Metadata
   calculatedAt: string;
-}
+};
 
 async function main() {
-  logger.info('Starting leaderboard calculation...');
+  logger.info('Starting leaderboard calculation (V3)...');
 
   const polymarketTop = parseInt(process.env.POLYMARKET_TOP || '20', 10);
   const metaculusTop = parseInt(process.env.METACULUS_TOP || '20', 10);
+  const scoreEpoch = new Date().toISOString();
 
-  const leaderboard: LeaderboardEntry[] = [];
+  const leaderboard: LeaderboardEntryV3[] = [];
 
   // ============================================================
   // POLYMARKET
   // ============================================================
-  logger.info(`Fetching top ${polymarketTop} Polymarket traders...`);
-
   const polymarketIngestor = new PolymarketIngestor();
-
   try {
-    const polymarketTraders = await polymarketIngestor.getTopForecasters(polymarketTop);
-    logger.info({ count: polymarketTraders.length }, 'Found Polymarket traders');
+    const traders = await polymarketIngestor.getTopForecasters(polymarketTop);
+    for (const [index, walletAddress] of traders.entries()) {
+      logger.info({ walletAddress, progress: `${index + 1}/${traders.length}` }, 'Scoring Polymarket trader');
+      const importedPredictions = await polymarketIngestor.fetchUserPredictions(walletAddress);
+      if (importedPredictions.length === 0) continue;
 
-    for (const [index, trader] of polymarketTraders.entries()) {
-      logger.info(
-        { trader, progress: `${index + 1}/${polymarketTraders.length}` },
-        'Calculating Polymarket score'
-      );
+      const identity: V3Identity = {
+        forecasterId: walletAddress,
+        linkedAccounts: { polymarket: walletAddress },
+      };
 
-      try {
-        // Fetch predictions
-        const predictions = await polymarketIngestor.fetchUserPredictions(trader);
+      const snapshot = calculateV3UnifiedScore({
+        forecasterId: walletAddress,
+        identity,
+        importedPredictions,
+        nativePredictions: [],
+        scoreEpoch,
+      });
 
-        if (predictions.length === 0) {
-          logger.warn({ trader }, 'No predictions found, skipping');
-          continue;
-        }
+      leaderboard.push({
+        rank: leaderboard.length + 1,
+        forecasterId: walletAddress,
+        platform: 'polymarket',
+        walletAddress,
+        scoreVersion: 'v3',
+        scoreEpoch: snapshot.scoreEpoch,
+        vaultScore: snapshot.vaultScore,
+        confidence: snapshot.confidence,
+        status: snapshot.status,
+        tier: snapshot.tier,
+        importedResolvedCount: snapshot.importedResolvedCount,
+        nativeResolvedCount: snapshot.nativeResolvedCount,
+        penaltyFlags: [...(snapshot.importedScore?.penalties.flags ?? [])].sort(),
+        totalPredictions: importedPredictions.length,
+        calculatedAt: snapshot.calculatedAt.toISOString(),
+      });
 
-        // Create identity
-        const identity: ForecasterIdentity = {
-          id: trader,
-          polymarketWallet: trader,
-          linkageConfidence: 1.0,
-          linkageMethod: 'self_declared',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        // Calculate score
-        const score = await calculateCompleteScore(trader, identity, predictions);
-
-        // Add to leaderboard
-        leaderboard.push(convertToLeaderboardEntry(score, leaderboard.length + 1, 'polymarket'));
-
-        logger.info(
-          {
-            trader,
-            score: score.finalCompositeScore,
-            tier: score.tier,
-            predictions: predictions.length,
-          },
-          'Score calculated'
-        );
-
-        // Rate limiting
-        await sleep(2000);
-      } catch (error) {
-        logger.error({ trader, error }, 'Failed to calculate score');
-      }
+      await sleep(1200);
     }
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch Polymarket leaderboard');
+    logger.error({ error }, 'Failed to calculate Polymarket leaderboard');
   }
 
   // ============================================================
   // METACULUS
   // ============================================================
-  logger.info(`Fetching top ${metaculusTop} Metaculus forecasters...`);
-
   const metaculusIngestor = new MetaculusIngestor();
-
   try {
-    const metaculusForecasters = await metaculusIngestor.getTopForecasters(metaculusTop);
-    logger.info({ count: metaculusForecasters.length }, 'Found Metaculus forecasters');
+    const forecasters = await metaculusIngestor.getTopForecasters(metaculusTop);
+    for (const [index, username] of forecasters.entries()) {
+      logger.info({ username, progress: `${index + 1}/${forecasters.length}` }, 'Scoring Metaculus forecaster');
+      const importedPredictions = await metaculusIngestor.fetchUserPredictions(username);
+      if (importedPredictions.length === 0) continue;
 
-    for (const [index, forecaster] of metaculusForecasters.entries()) {
-      logger.info(
-        { forecaster, progress: `${index + 1}/${metaculusForecasters.length}` },
-        'Calculating Metaculus score'
-      );
+      const identity: V3Identity = {
+        forecasterId: username,
+        linkedAccounts: { metaculus: username },
+      };
 
-      try {
-        // Fetch predictions
-        const predictions = await metaculusIngestor.fetchUserPredictions(forecaster);
+      const snapshot = calculateV3UnifiedScore({
+        forecasterId: username,
+        identity,
+        importedPredictions,
+        nativePredictions: [],
+        scoreEpoch,
+      });
 
-        if (predictions.length === 0) {
-          logger.warn({ forecaster }, 'No predictions found, skipping');
-          continue;
-        }
+      leaderboard.push({
+        rank: leaderboard.length + 1,
+        forecasterId: username,
+        platform: 'metaculus',
+        username,
+        scoreVersion: 'v3',
+        scoreEpoch: snapshot.scoreEpoch,
+        vaultScore: snapshot.vaultScore,
+        confidence: snapshot.confidence,
+        status: snapshot.status,
+        tier: snapshot.tier,
+        importedResolvedCount: snapshot.importedResolvedCount,
+        nativeResolvedCount: snapshot.nativeResolvedCount,
+        penaltyFlags: [...(snapshot.importedScore?.penalties.flags ?? [])].sort(),
+        totalPredictions: importedPredictions.length,
+        calculatedAt: snapshot.calculatedAt.toISOString(),
+      });
 
-        // Create identity
-        const identity: ForecasterIdentity = {
-          id: forecaster,
-          metaculusUsername: forecaster,
-          linkageConfidence: 1.0,
-          linkageMethod: 'self_declared',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        // Calculate score
-        const score = await calculateCompleteScore(forecaster, identity, predictions);
-
-        // Add to leaderboard
-        leaderboard.push(convertToLeaderboardEntry(score, leaderboard.length + 1, 'metaculus'));
-
-        logger.info(
-          {
-            forecaster,
-            score: score.finalCompositeScore,
-            tier: score.tier,
-            predictions: predictions.length,
-          },
-          'Score calculated'
-        );
-
-        // Rate limiting
-        await sleep(2000);
-      } catch (error) {
-        logger.error({ forecaster, error }, 'Failed to calculate score');
-      }
+      await sleep(1200);
     }
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch Metaculus leaderboard');
+    logger.error({ error }, 'Failed to calculate Metaculus leaderboard');
   }
 
-  // ============================================================
-  // EXPORT
-  // ============================================================
+  leaderboard.sort((a, b) => b.vaultScore - a.vaultScore);
+  leaderboard.forEach((entry, index) => { entry.rank = index + 1; });
 
-  // Sort by final composite score (descending)
-  leaderboard.sort((a, b) => b.finalCompositeScore - a.finalCompositeScore);
-
-  // Re-assign ranks
-  leaderboard.forEach((entry, index) => {
-    entry.rank = index + 1;
-  });
-
-  // Export to JSON
   const outputDir = path.join(process.cwd(), 'data');
   await fs.mkdir(outputDir, { recursive: true });
-
   const outputPath = path.join(outputDir, 'leaderboard.json');
   await fs.writeFile(outputPath, JSON.stringify(leaderboard, null, 2));
 
   logger.info({ path: outputPath, count: leaderboard.length }, 'Leaderboard exported');
 
-  // Export summary stats
+  const statsPath = path.join(outputDir, 'leaderboard-stats.json');
   const stats = {
+    scoreVersion: 'v3',
     totalForecasters: leaderboard.length,
-    polymarketCount: leaderboard.filter(e => e.platform === 'polymarket').length,
-    metaculusCount: leaderboard.filter(e => e.platform === 'metaculus').length,
-    averageScore: leaderboard.reduce((sum, e) => sum + e.finalCompositeScore, 0) / leaderboard.length,
-    tier1Count: leaderboard.filter(e => e.tier === 1).length,
-    tier2Count: leaderboard.filter(e => e.tier === 2).length,
-    tier3Count: leaderboard.filter(e => e.tier === 3).length,
+    polymarketCount: leaderboard.filter((e) => e.platform === 'polymarket').length,
+    metaculusCount: leaderboard.filter((e) => e.platform === 'metaculus').length,
+    averageVaultScore: leaderboard.length > 0
+      ? leaderboard.reduce((sum, e) => sum + e.vaultScore, 0) / leaderboard.length
+      : 0,
     calculatedAt: new Date().toISOString(),
   };
-
-  const statsPath = path.join(outputDir, 'leaderboard-stats.json');
   await fs.writeFile(statsPath, JSON.stringify(stats, null, 2));
-
-  logger.info(stats, 'Summary stats');
-  logger.info('✅ Leaderboard calculation complete!');
-
-  // Print top 10
-  console.log('\n🏆 TOP 10 FORECASTERS:\n');
-  console.log('Rank | Platform   | ID                | Score | Tier | Predictions');
-  console.log('-----|------------|-------------------|-------|------|------------');
-
-  leaderboard.slice(0, 10).forEach(entry => {
-    const id = entry.username || entry.walletAddress?.slice(0, 8) || entry.forecasterId;
-    console.log(
-      `${String(entry.rank).padStart(4)} | ${entry.platform.padEnd(10)} | ${id.padEnd(17)} | ${String(entry.finalCompositeScore).padStart(5)} | ${entry.tier}    | ${entry.totalPredictions}`
-    );
-  });
-
-  console.log('\n');
-}
-
-function convertToLeaderboardEntry(
-  score: ForecasterScore,
-  rank: number,
-  platform: 'polymarket' | 'metaculus'
-): LeaderboardEntry {
-  return {
-    rank,
-    forecasterId: score.forecasterId,
-    platform,
-    username: score.identity.metaculusUsername,
-    walletAddress: score.identity.polymarketWallet,
-
-    finalCompositeScore: score.finalCompositeScore,
-    rawCompositeScore: score.rawCompositeScore,
-    tier: score.tier,
-    confidenceWeight: score.confidenceWeight,
-
-    s1: score.components.s1Composite,
-    s2: score.components.s2Resolution,
-    s3: score.components.s3Composite,
-    s4: score.components.s4DifficultyWeighted,
-    s5: score.components.s5VolumeConsistency,
-    s6: score.components.s6CrossPlatform,
-
-    totalPredictions: score.totalPredictions,
-    totalResolved: score.totalResolved,
-    accuracy: score.accuracy,
-    avgBrierScore: score.avgBrierScore,
-
-    flags: score.antiGaming.flags,
-
-    calculatedAt: score.calculatedAt.toISOString(),
-  };
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 main().catch((error) => {

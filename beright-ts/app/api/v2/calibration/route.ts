@@ -13,6 +13,7 @@ import { PublicKey } from '@solana/web3.js';
 import { isDemo } from '../../../../lib/mode';
 import { getDemoLeaderboard, getDemoForecasterByWallet } from '../../../../lib/demo/mockLeaderboard';
 import calibrationIdl from '../../../../lib/onchain/calibration-idl.json';
+import { calculateV3UnifiedScore, V3Prediction } from '../../../../../forecaster-scoring-engine/src/v3';
 
 const CALIBRATION_PROGRAM_ID = new PublicKey((calibrationIdl as any).address);
 const PREDICTION_RECORD_ACCOUNT_SIZE = 185;
@@ -96,6 +97,55 @@ function parsePredictionRecord(data: Buffer) {
   };
 }
 
+function toV3Direction(direction: 'yes' | 'no'): 'YES' | 'NO' {
+  return direction === 'yes' ? 'YES' : 'NO';
+}
+
+function parseOnChainCategory(category: number): string {
+  return `onchain:${category}`;
+}
+
+function toNativeV3Predictions(params: {
+  forecasterId: string;
+  rawPredictions: Array<{
+    predictionPda: string;
+    marketIdHex: string;
+    marketIdText: string;
+    predictedProbability: number;
+    direction: 'yes' | 'no';
+    committedAt: number;
+    resolvedAt: number | null;
+    outcome: boolean | null;
+    brierScore: number | null;
+    logScore: number | null;
+    category: number;
+  }>;
+}): V3Prediction[] {
+  const now = new Date();
+  return params.rawPredictions.map((prediction): V3Prediction => ({
+    id: prediction.predictionPda,
+    forecasterId: params.forecasterId,
+    source: 'native',
+    platform: 'beright',
+    marketId: prediction.marketIdText || prediction.marketIdHex,
+    marketTitle: prediction.marketIdText || prediction.marketIdHex,
+    predictedProbability: prediction.predictedProbability,
+    direction: toV3Direction(prediction.direction),
+    predictedAt: new Date(prediction.committedAt * 1000),
+    resolvedAt: prediction.resolvedAt ? new Date(prediction.resolvedAt * 1000) : undefined,
+    outcome: prediction.outcome ?? undefined,
+    category: parseOnChainCategory(prediction.category),
+    // The calibration program does not currently store these fields per-record.
+    entryPrice: undefined,
+    positionSize: undefined,
+    communityMedian: undefined,
+    communitySpread: undefined,
+    difficulty: undefined,
+    marketOpenTime: undefined,
+    marketCloseTime: undefined,
+  }));
+}
+
 async function getOnChainPredictionHistory(walletAddress: string, limit: number) {
   const { Connection } = await import('@solana/web3.js');
   const authority = new PublicKey(walletAddress);
@@ -158,22 +208,33 @@ async function getOnChainStats(walletAddress: string) {
       return null;
     }
 
-    // Calculate tier based on Brier score and predictions
-    let tier: 'superforecaster' | 'elite' | 'verified' | 'rookie' | 'unranked' = 'unranked';
-    if (stats.resolvedPredictions < 10) tier = 'unranked';
-    else if (stats.resolvedPredictions < 20) tier = 'rookie';
-    else if (stats.avgBrierScore < 0.12 && stats.resolvedPredictions >= 100) tier = 'superforecaster';
-    else if (stats.avgBrierScore < 0.18 && stats.resolvedPredictions >= 50) tier = 'elite';
-    else if (stats.avgBrierScore < 0.25 && stats.resolvedPredictions >= 20) tier = 'verified';
-    else tier = 'rookie';
+    // Compute V3-native score from per-prediction history (decayed scoring needs timestamps).
+    // Keep the on-chain aggregate stats for display/debug, but V3 is the canonical score.
+    const history = await getOnChainPredictionHistory(walletAddress, 500);
+    const nativePredictions = toNativeV3Predictions({
+      forecasterId: walletAddress,
+      rawPredictions: history.predictions.map((p) => ({
+        predictionPda: p.predictionPda,
+        marketIdHex: p.marketIdHex,
+        marketIdText: p.marketIdText,
+        predictedProbability: p.predictedProbability,
+        direction: p.direction as 'yes' | 'no',
+        committedAt: p.committedAt,
+        resolvedAt: p.resolvedAt ?? null,
+        outcome: p.outcome ?? null,
+        brierScore: p.brierScore ?? null,
+        logScore: p.logScore ?? null,
+        category: p.category,
+      })),
+    });
 
-    // Calculate grade
-    let grade = 'F';
-    if (stats.avgBrierScore < 0.1) grade = 'S';
-    else if (stats.avgBrierScore < 0.15) grade = 'A';
-    else if (stats.avgBrierScore < 0.2) grade = 'B';
-    else if (stats.avgBrierScore < 0.25) grade = 'C';
-    else if (stats.avgBrierScore < 0.3) grade = 'D';
+    const v3Snapshot = calculateV3UnifiedScore({
+      forecasterId: walletAddress,
+      identity: { forecasterId: walletAddress, solanaPubkey: walletAddress },
+      importedPredictions: [],
+      nativePredictions,
+      scoreEpoch: new Date().toISOString(),
+    });
 
     const [forecasterPda] = deriveForecasterPda(pubkey);
 
@@ -182,6 +243,7 @@ async function getOnChainStats(walletAddress: string) {
       forecasterPda: forecasterPda.toBase58(),
       programId: CALIBRATION_PROGRAM_ID.toBase58(),
       isOnChainVerified: true,
+      // Legacy aggregates from on-chain state (non-canonical)
       brierScore: stats.avgBrierScore,
       accuracy: stats.accuracy,
       totalPredictions: stats.totalPredictions,
@@ -190,11 +252,20 @@ async function getOnChainStats(walletAddress: string) {
       streak: stats.streakCorrect,
       maxStreak: stats.maxStreakCorrect,
       marketsTraded: stats.marketsTraded,
-      tier,
-      grade,
       calibrationBuckets: stats.calibrationBuckets,
       lastPrediction: stats.lastPredictionTs.toISOString(),
       createdAt: stats.createdAt.toISOString(),
+
+      // Canonical V3 score snapshot (native-only)
+      scoreVersion: v3Snapshot.scoreVersion,
+      scoreEpoch: v3Snapshot.scoreEpoch,
+      vaultScore: v3Snapshot.vaultScore,
+      confidence: v3Snapshot.confidence,
+      status: v3Snapshot.status,
+      tier: v3Snapshot.tier,
+      riskCaps: v3Snapshot.riskCaps,
+      nativeScore: v3Snapshot.nativeScore,
+      importedScore: v3Snapshot.importedScore,
     };
   } catch (error) {
     console.error('[Calibration API] Error fetching on-chain stats:', error);
@@ -542,13 +613,35 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             rank: f.rank,
             walletAddress: f.walletAddress,
             displayName: f.displayName,
+            // Demo fields (kept for UI), but V3 is canonical.
             brierScore: f.brierScore,
             accuracy: f.accuracy,
             totalPredictions: f.predictions,
             resolvedPredictions: f.resolvedPredictions,
             streak: f.streak,
-            tier: f.tier,
-            grade: f.grade,
+
+            scoreVersion: 'v3',
+            scoreEpoch: new Date().toISOString(),
+            vaultScore: Math.round((1 - Math.min(0.25, Math.max(0, f.brierScore))) / 0.25 * 1000),
+            confidence: f.resolvedPredictions / (f.resolvedPredictions + 75),
+            status: f.resolvedPredictions >= 20 ? 'NativeVerified' : 'NativeCalibrating',
+            tier: ((): 'restricted' | 'bootstrap' | 'standard' | 'advanced' | 'elite' => {
+              // Rough mapping for demo: treat superforecaster/elite as higher tiers.
+              if (f.tier === 'superforecaster') return 'elite';
+              if (f.tier === 'elite') return 'advanced';
+              if (f.tier === 'verified') return 'standard';
+              if (f.tier === 'rookie') return 'bootstrap';
+              return 'restricted';
+            })(),
+            riskCaps: {
+              maxActiveSleeveBps: 0,
+              maxMarketExposureBps: 0,
+              maxThemeExposureBps: 0,
+              probationary: true,
+            },
+            nativeScore: null,
+            importedScore: null,
+
             onChainCount: f.onChainCount,
             isOnChainVerified: true,
             _demo: true,
@@ -636,8 +729,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Sort by Brier score (lower is better)
-    forecasters.sort((a, b) => a.brierScore - b.brierScore);
+    // Sort by V3 vault score (higher is better)
+    forecasters.sort((a, b) => (b.vaultScore ?? 0) - (a.vaultScore ?? 0));
 
     // Add ranks
     const ranked = forecasters.map((f, i) => ({

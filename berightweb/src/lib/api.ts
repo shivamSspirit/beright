@@ -141,13 +141,22 @@ export interface LeaderboardEntry {
   avatarUrl?: string;
   avatar_url?: string; // snake_case from API
   telegramUsername?: string;
-  brierScore: number;
-  accuracy: number;
-  predictions: number;
-  streak: number;
+  // Legacy display stats (not canonical scoring inputs)
+  brierScore?: number;
+  accuracy?: number;
+  predictions?: number;
+  streak?: number;
   streakType?: 'win' | 'loss';
   isCurrentUser?: boolean;
   onChainCount?: number;
+
+  // V3 scoring
+  scoreVersion?: 'v3';
+  scoreEpoch?: string;
+  vaultScore?: number;
+  confidence?: number;
+  status?: string;
+  tier?: string;
 }
 
 export interface LeaderboardResponse {
@@ -611,18 +620,32 @@ export interface OnChainForecaster {
   forecasterPda: string;
   programId: string;
   isOnChainVerified: boolean;
-  brierScore: number;
-  accuracy: number;
-  totalPredictions: number;
-  resolvedPredictions: number;
-  correctPredictions: number;
-  streak: number;
-  maxStreak: number;
-  marketsTraded: number;
-  tier: 'superforecaster' | 'elite' | 'verified' | 'rookie' | 'unranked';
-  grade: string;
-  lastPrediction: string;
-  createdAt: string;
+
+  // Legacy aggregates from calibration program (kept for UI/debug)
+  brierScore?: number;
+  accuracy?: number;
+  totalPredictions?: number;
+  resolvedPredictions?: number;
+  correctPredictions?: number;
+  streak?: number;
+  maxStreak?: number;
+  marketsTraded?: number;
+  lastPrediction?: string;
+  createdAt?: string;
+
+  // Canonical V3 scoring snapshot (native-only)
+  scoreVersion: 'v3';
+  scoreEpoch: string;
+  vaultScore: number; // 0-1000
+  confidence: number; // 0-1
+  status: string;
+  tier: string;
+  riskCaps: {
+    maxActiveSleeveBps: number;
+    maxMarketExposureBps: number;
+    maxThemeExposureBps: number;
+    probationary: boolean;
+  };
 }
 
 export interface OnChainLeaderboardResponse {

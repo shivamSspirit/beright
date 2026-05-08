@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployments
   output: 'standalone',
 
+  // Hide dev indicators in production builds
+  devIndicators: false,
+
   // Fix Turbopack monorepo root detection
   turbopack: {
     root: path.join(__dirname, ".."),

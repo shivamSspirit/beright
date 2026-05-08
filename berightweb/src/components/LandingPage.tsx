@@ -749,7 +749,7 @@ function Footer() {
               Prediction-market intelligence and on-chain forecasting reputation for BeRight users.
             </p>
             <div className={styles.footerSocials}>
-              <a href="https://twitter.com/beright_fi" target="_blank" rel="noopener noreferrer">X</a>
+              <a href="https://x.com/AgentBEright" target="_blank" rel="noopener noreferrer">X</a>
             </div>
           </div>
 
