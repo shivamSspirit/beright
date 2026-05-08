@@ -15,8 +15,12 @@ export default function PageLoader() {
     return () => clearTimeout(timer);
   }, []);
 
+  if (!isLoading) {
+    return null;
+  }
+
   return (
-    <div className={`page-loader ${!isLoading ? 'hidden' : ''}`}>
+    <div className="page-loader" aria-hidden="true">
       <div className="loader-logo">
         <BrandLogo size={48} className="loader-sphere" />
         <span className="loader-text">beright AI</span>

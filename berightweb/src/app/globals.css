@@ -31,6 +31,7 @@
 .page-loader.hidden {
   opacity: 0;
   visibility: hidden;
+  display: none;
   pointer-events: none;
 }
 
