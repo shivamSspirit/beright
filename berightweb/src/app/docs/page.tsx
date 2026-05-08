@@ -998,32 +998,18 @@ export default function DocsPage() {
         {/* Page Navigation */}
         <nav className={styles.pageNav}>
           {prevSection ? (
-            prevSection.isLink && prevSection.href ? (
-              <Link href={prevSection.href} className={`${styles.pageNavBtn} ${styles.pageNavPrev}`}>
-                <span className={styles.navDirection}>← Previous</span>
-                <span className={styles.navPageTitle}>{prevSection.label}</span>
-              </Link>
-            ) : (
-              <button className={`${styles.pageNavBtn} ${styles.pageNavPrev}`} onClick={() => handleNavClick(prevSection.id)}>
-                <span className={styles.navDirection}>← Previous</span>
-                <span className={styles.navPageTitle}>{prevSection.label}</span>
-              </button>
-            )
+            <button className={`${styles.pageNavBtn} ${styles.pageNavPrev}`} onClick={() => handleNavClick(prevSection.id)}>
+              <span className={styles.navDirection}>← Previous</span>
+              <span className={styles.navPageTitle}>{prevSection.label}</span>
+            </button>
           ) : (
             <div />
           )}
           {nextSection ? (
-            nextSection.isLink && nextSection.href ? (
-              <Link href={nextSection.href} className={`${styles.pageNavBtn} ${styles.pageNavNext}`}>
-                <span className={styles.navDirection}>Next →</span>
-                <span className={styles.navPageTitle}>{nextSection.label}</span>
-              </Link>
-            ) : (
-              <button className={`${styles.pageNavBtn} ${styles.pageNavNext}`} onClick={() => handleNavClick(nextSection.id)}>
-                <span className={styles.navDirection}>Next →</span>
-                <span className={styles.navPageTitle}>{nextSection.label}</span>
-              </button>
-            )
+            <button className={`${styles.pageNavBtn} ${styles.pageNavNext}`} onClick={() => handleNavClick(nextSection.id)}>
+              <span className={styles.navDirection}>Next →</span>
+              <span className={styles.navPageTitle}>{nextSection.label}</span>
+            </button>
           ) : (
             <Link href="/docs/faq" className={`${styles.pageNavBtn} ${styles.pageNavNext}`}>
               <span className={styles.navDirection}>Next →</span>

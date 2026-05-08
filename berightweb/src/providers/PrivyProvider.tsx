@@ -67,7 +67,7 @@ function PrivyWalletBridge({ children }: { children: ReactNode }) {
   const walletFuncs = useMemo(() => ({
     login,
     logout,
-    signTransaction: signTransaction && solanaWallet
+    signTransaction: solanaWallet
       ? async (tx: Transaction | VersionedTransaction | Uint8Array) => {
         const txBytes = tx instanceof Uint8Array
             ? tx
