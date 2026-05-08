@@ -1898,12 +1898,20 @@
     grid-template-columns: 1fr;
   }
 
+  .whatItem {
+    min-height: auto;
+  }
+
   .activityKpis {
     grid-template-columns: repeat(3, 1fr);
   }
 
   .hero {
     padding: 48px 0 64px;
+  }
+
+  .heroTitle br {
+    display: none;
   }
 
   .lbHead, .lbRow {
@@ -1934,6 +1942,14 @@
 
   .navApplyButton {
     display: none;
+  }
+
+  .resultCaption {
+    font-size: 10px;
+  }
+
+  .resultStack {
+    max-width: 100%;
   }
 }
 
@@ -2282,7 +2298,11 @@
   }
 
   .heroTitle {
-    font-size: 30px;
+    font-size: 28px;
+  }
+
+  .heroSub {
+    font-size: 14px;
   }
 
   .resultCard {
@@ -2304,6 +2324,30 @@
   .tierAlloc {
     grid-column: 2;
     text-align: left;
+  }
+
+  .cohortIntro h2 {
+    font-size: 24px;
+  }
+
+  .cohortIntro p {
+    font-size: 14px;
+  }
+
+  .field input[type="text"],
+  .field input[type="email"] {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .statsStrip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .statDivider {
+    display: none;
   }
 }
 
