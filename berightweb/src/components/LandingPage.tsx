@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, FormEvent, FocusEvent, MouseEvent } f
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/useUnifiedUser';
 import { BadgeCheck, UserRound, Wallet, X, Menu } from 'lucide-react';
+import BrandLogo from './BrandLogo';
 import styles from './LandingPage.module.css';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -100,7 +101,7 @@ function Navigation() {
           onClick={() => scrollTo('top')}
           aria-label="Go to top"
         >
-          <span className={styles.brandMark} />
+          <BrandLogo size={24} />
           <span className={styles.brandName}>BeRight</span>
         </button>
         <div className={styles.navLinks}>
@@ -160,7 +161,7 @@ function ResultCard() {
       <div className={styles.resultCard}>
         <div className={styles.resultHeader}>
           <span className={styles.resultBrand}>
-            <span className={styles.brandMark} style={{ width: 16, height: 16 }} />
+            <BrandLogo size={18} />
             BeRight
           </span>
           <span className={styles.resultLive}>
@@ -735,7 +736,7 @@ function Footer() {
         <div className={styles.footerGrid}>
           <div className={styles.footerBrand}>
             <div className={styles.brand}>
-              <span className={styles.brandMark} />
+              <BrandLogo size={24} />
               <span className={styles.brandName}>BeRight</span>
             </div>
             <p className={styles.footerDesc}>
