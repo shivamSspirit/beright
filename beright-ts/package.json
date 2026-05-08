@@ -69,7 +69,7 @@
     "db:landing-applications": "ts-node scripts/apply-landing-applications-migration.ts"
   },
   "dependencies": {
-    "@beright/forecaster-scoring-engine": "workspace:*",
+    "@beright/forecaster-scoring-engine": "*",
     "@anthropic-ai/sdk": "^0.32.0",
     "@coral-xyz/anchor": "^0.32.1",
     "@meteora-ag/vault-sdk": "^2.3.1",
