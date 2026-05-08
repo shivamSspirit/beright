@@ -750,7 +750,6 @@ function Footer() {
             <h4>Protocol</h4>
             <a href="#how">How it works</a>
             <a href="#leaderboard">What you get</a>
-            <span>Score formula</span>
           </div>
 
           <div className={styles.footerCol}>
