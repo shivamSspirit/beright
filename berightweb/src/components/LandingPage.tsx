@@ -249,13 +249,6 @@ function HeroSection() {
             >
               Apply for Cohort 1 <span className={styles.arr}>→</span>
             </button>
-            <button
-              className={`${styles.btn} ${styles.btnGhost}`}
-              onClick={() => scrollTo('how')}
-              type="button"
-            >
-              See how scoring works
-            </button>
           </div>
 
           {/* Stats strip */}
