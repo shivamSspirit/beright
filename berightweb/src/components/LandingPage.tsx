@@ -215,7 +215,7 @@ function HeroSection() {
         {/* Left column */}
         <div className={styles.heroLeft}>
           <span className={styles.eyebrow}>
-            Solana · Cohort 1 reviewing
+            Solana Devnet · Cohort 1 reviewing
           </span>
 
           <h1 className={styles.heroTitle}>
