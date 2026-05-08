@@ -58,6 +58,11 @@ berightweb/bearcog.md
 # Local logs
 colosseum-agent.log
 
+# Local agent artifacts and generated decks
+.superstack/
+beright-deck/
+landscape-*.html
+
 # Solana test ledger (large files)
 beright-vault/test-ledger/
 staking-pool/target/
