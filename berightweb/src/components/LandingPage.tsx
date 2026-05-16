@@ -286,11 +286,11 @@ function HowItWorksSection() {
             </div>
             <h3 className={styles.howCardTitle}>Connect your venues</h3>
             <p className={styles.howCardDesc}>
-              Read-only API into Polymarket, Kalshi, Manifold, Drift, plus your Solana wallet. We pull every resolved trade. Never custody anything.
+              Read-only API into Polymarket and Limitless, plus your Solana wallet. We pull every resolved trade. Never custody anything.
             </p>
             <div className={styles.howCardFooter}>
               <div className={styles.venueLogos}>
-                {['Polymarket', 'Kalshi', 'Manifold', 'Drift'].map((v) => (
+                {['Polymarket', 'Limitless'].map((v) => (
                   <span key={v} className={styles.venueLogo}>{v.slice(0, 2).toUpperCase()}</span>
                 ))}
               </div>
@@ -322,7 +322,7 @@ function HowItWorksSection() {
             </div>
             <h3 className={styles.howCardTitle}>Get funded to trade</h3>
             <p className={styles.howCardDesc}>
-              The pool deploys USDC to your Solana wallet sized to your VScore. Trade Polymarket, Kalshi, Manifold, Drift. Keep up to 50% of Alpha.
+              The pool deploys USDC to your Solana wallet sized to your VScore. Trade Polymarket, Limitless. Keep up to 50% of Alpha.
             </p>
             <div className={styles.howCardHighlight}>
               <span className={styles.highlightAmount}>up to $100,000</span>
