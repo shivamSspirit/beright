@@ -1,0 +1,69 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "concurrency": "10",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": ["coverage/**"]
+    },
+    "builder": {
+      "cache": false,
+      "persistent": true,
+      "env": ["ANTHROPIC_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+    },
+    "builder:once": {
+      "cache": false
+    },
+    "builder:status": {
+      "cache": false
+    },
+    "dev:api": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:web": {
+      "cache": false,
+      "persistent": true
+    },
+    "heartbeat": {
+      "cache": false,
+      "persistent": true
+    },
+    "validate": {
+      "dependsOn": ["typecheck", "lint", "test"]
+    }
+  },
+  "globalDependencies": [".env"],
+  "globalEnv": [
+    "NODE_ENV",
+    "ANTHROPIC_API_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "HELIUS_API_KEY"
+  ]
+}

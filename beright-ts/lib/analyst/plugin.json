@@ -1,0 +1,29 @@
+{
+  "id": "analyst-engine",
+  "name": "Analyst Engine",
+  "description": "Superforecaster methodology with base rate analysis, evidence gathering, and calibration tracking",
+  "version": "1.0.0",
+  "author": "BeRight Protocol",
+  "provides": ["analysis"],
+  "requires": {
+    "env": ["GROQ_API_KEY"],
+    "plugins": ["data-fabric"]
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "methodology": {
+        "type": "string",
+        "default": "tetlock",
+        "enum": ["tetlock", "bayesian", "simple"],
+        "description": "Forecasting methodology"
+      },
+      "calibrationTracking": {
+        "type": "boolean",
+        "default": true,
+        "description": "Track Brier scores"
+      }
+    }
+  },
+  "entry": "./index.ts"
+}

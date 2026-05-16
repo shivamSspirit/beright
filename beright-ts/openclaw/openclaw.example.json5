@@ -1,0 +1,55 @@
+{
+  gateway: {
+    reload: { mode: "hybrid" }
+  },
+
+  session: {
+    dmScope: "per-channel-peer",
+    reset: {
+      mode: "daily",
+      atHour: 4
+    }
+  },
+
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspace-beright",
+      model: {
+        primary: "anthropic/claude-sonnet-4-6"
+      },
+      heartbeat: {
+        every: "30m",
+        target: "last"
+      },
+      skills: []
+    },
+    list: [
+      {
+        id: "beright-terminal",
+        default: true,
+        workspace: "~/.openclaw/workspace-beright",
+        groupChat: {
+          mentionPatterns: ["@beright_bot", "beright"]
+        }
+      }
+    ]
+  },
+
+  channels: {
+    telegram: {
+      enabled: true,
+      botToken: "env:TELEGRAM_BOT_TOKEN",
+      dmPolicy: "pairing",
+      groups: {
+        "*": { requireMention: true }
+      }
+    }
+  },
+
+  bindings: [
+    {
+      agentId: "beright-terminal",
+      match: { channel: "telegram" }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# Railway Configuration for BeRight Web Frontend
+# ==============================================
+# Deploy with: railway up
+# Or link repo and auto-deploy on push
+
+[build]
+# Use Nixpacks (Railway default) for Next.js
+builder = "nixpacks"
+
+[deploy]
+# Number of instances
+numReplicas = 1
+
+# Health check for Next.js
+healthcheckPath = "/"
+healthcheckTimeout = 60
+
+# Graceful shutdown
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[deploy.resources]
+# Adjust based on your Railway plan
+memory = "512Mi"
+cpu = "0.5"
+
+[env]
+# Railway sets PORT automatically
+NODE_ENV = "production"

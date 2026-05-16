@@ -1,0 +1,180 @@
+/**
+ * Card Component Styles
+ * Uses design tokens from tokens.css
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  transition: all var(--transition-normal);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Default - Solid surface */
+.default {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+}
+
+/* Elevated - With subtle glow */
+.elevated {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(16, 185, 129, 0.08);
+}
+
+/* Glass - Backdrop blur effect */
+.glass {
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Outline - Border only */
+.outline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+/* Terminal - Flat dark style */
+.terminal {
+  background: #050505;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+/* Interactive - GSAP-ready with premium hover (Chainlift-inspired) */
+.interactive {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.3s var(--ease-smooth);
+}
+
+.interactive:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 255, 178, 0.3);
+  box-shadow:
+    var(--elevation-3),
+    0 0 0 1px rgba(0, 255, 178, 0.15);
+}
+
+.interactive:active {
+  transform: translateY(-2px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PADDING VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.padding-none {
+  padding: 0;
+}
+
+.padding-sm {
+  padding: var(--space-3);
+}
+
+.padding-md {
+  padding: var(--space-6);
+}
+
+.padding-lg {
+  padding: var(--space-8);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTERACTIVE STATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hoverable:hover {
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+}
+
+.clickable:active {
+  transform: translateY(0);
+}
+
+/* Elevated hover */
+.elevated.hoverable:hover,
+.elevated.clickable:hover {
+  box-shadow: var(--shadow-lg), var(--shadow-glow-green);
+}
+
+/* Glass hover */
+.glass.hoverable:hover,
+.glass.clickable:hover {
+  background: rgba(15, 23, 36, 0.98);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+/* Terminal hover */
+.terminal.hoverable:hover,
+.terminal.clickable:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUB-COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  margin-bottom: var(--space-4);
+}
+
+.cardBody {
+  flex: 1;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+  margin-top: var(--space-4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 639px) {
+  .padding-md {
+    padding: var(--space-4);
+  }
+
+  .padding-lg {
+    padding: var(--space-6);
+  }
+
+  .card {
+    border-radius: var(--radius-lg);
+  }
+}

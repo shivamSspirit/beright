@@ -1,0 +1,9 @@
+{
+  "scoreVersion": "v3",
+  "totalForecasters": 0,
+  "polymarketCount": 0,
+  "metaculusCount": 0,
+  "averageVaultScore": 0,
+  "calculatedAt": "2026-05-04T00:00:00.000Z",
+  "notes": "Sample placeholder. Generate fresh stats via: cd forecaster-scoring-engine && npm run calculate:leaderboard"
+}

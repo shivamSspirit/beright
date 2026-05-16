@@ -1,0 +1,32 @@
+{
+  "id": "data-fabric",
+  "name": "Data Fabric",
+  "description": "Unified prediction market data layer aggregating Polymarket, Kalshi, Manifold, Limitless, Metaculus, and Jupiter",
+  "version": "2.0.0",
+  "author": "BeRight Protocol",
+  "provides": ["data-source"],
+  "requires": {
+    "env": [],
+    "plugins": []
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "cacheTTL": {
+        "type": "number",
+        "default": 30000,
+        "description": "Cache TTL in milliseconds"
+      },
+      "maxCacheEntries": {
+        "type": "number",
+        "default": 1000,
+        "description": "Maximum cache entries (LRU eviction)"
+      },
+      "platformTimeouts": {
+        "type": "object",
+        "description": "Per-platform timeout in milliseconds"
+      }
+    }
+  },
+  "entry": "./index.ts"
+}

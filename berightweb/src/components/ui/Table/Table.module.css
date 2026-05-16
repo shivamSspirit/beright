@@ -1,0 +1,167 @@
+/**
+ * Table Component Styles
+ * Clean data table with Chainlift-inspired design
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WRAPPER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface-1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.thead {
+  background: var(--color-bg-surface-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.th {
+  padding: 14px 20px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tbody {
+  /* Body styles */
+}
+
+.tr {
+  border-bottom: 1px solid var(--color-border-subtle);
+  transition: background 0.15s var(--ease-smooth);
+}
+
+.tr:last-child {
+  border-bottom: none;
+}
+
+.tr.striped {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.tr.hoverable:hover {
+  background: var(--surface-state-hover);
+}
+
+.tr.clickable {
+  cursor: pointer;
+}
+
+.tr.clickable:active {
+  background: var(--surface-state-pressed);
+}
+
+.td {
+  padding: 16px 20px;
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPACT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.compact .th {
+  padding: 10px 16px;
+}
+
+.compact .td {
+  padding: 12px 16px;
+  font-size: var(--text-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 20px;
+  color: var(--color-text-muted);
+}
+
+.loadingSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hideOnMobile {
+  display: table-cell;
+}
+
+@media (max-width: 768px) {
+  .th,
+  .td {
+    padding: 12px 16px;
+  }
+
+  .hideOnMobile {
+    display: none;
+  }
+
+  .table {
+    font-size: var(--text-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .th,
+  .td {
+    padding: 10px 12px;
+  }
+}

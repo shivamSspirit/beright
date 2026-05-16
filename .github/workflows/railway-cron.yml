@@ -1,0 +1,65 @@
+name: Railway Cron Jobs
+
+on:
+  schedule:
+    # Heartbeat - Every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run (heartbeat, scanner, telegram)'
+        required: false
+        default: 'heartbeat'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================
+  # Heartbeat - Autonomous cognitive loop
+  # ============================================
+  heartbeat:
+    name: Heartbeat Cron
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'heartbeat')
+
+    steps:
+      - name: Trigger Railway Heartbeat
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Triggering heartbeat on Railway..."
+          # Railway cron jobs run on the deployed service automatically
+          # This workflow is a fallback/monitoring mechanism
+          curl -X POST https://api.railway.app/v1/cron/trigger \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"job":"heartbeat"}' || echo "Railway handles cron internally"
+
+  # ============================================
+  # Health Check - Verify Railway services
+  # ============================================
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Check API Health
+        env:
+          RAILWAY_APP_URL: ${{ secrets.RAILWAY_APP_URL }}
+        run: |
+          echo "Checking Railway deployment health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${RAILWAY_APP_URL}/api/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ Railway service is healthy"
+          else
+            echo "❌ Railway service returned $response"
+            exit 1
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "🚨 Railway health check failed"
+          # Add Telegram/Discord notification here
