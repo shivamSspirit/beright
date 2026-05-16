@@ -1,0 +1,37 @@
+# Systemd Service for BeRight Autonomous Trader
+#
+# Installation:
+#   1. Copy to systemd: sudo cp scripts/beright-trader.service /etc/systemd/system/
+#   2. Edit the paths in the file to match your setup
+#   3. Reload systemd: sudo systemctl daemon-reload
+#   4. Enable on boot: sudo systemctl enable beright-trader
+#   5. Start: sudo systemctl start beright-trader
+#
+# Commands:
+#   sudo systemctl start beright-trader    # Start
+#   sudo systemctl stop beright-trader     # Stop
+#   sudo systemctl restart beright-trader  # Restart
+#   sudo systemctl status beright-trader   # Status
+#   journalctl -u beright-trader -f        # View logs
+#
+
+[Unit]
+Description=BeRight Autonomous Paper Trader
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/beright/beright-ts
+ExecStart=/usr/bin/npx ts-node services/autonomousTrader.ts
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/ubuntu/beright/beright-ts/logs/trader.log
+StandardError=append:/home/ubuntu/beright/beright-ts/logs/trader-error.log
+
+# Environment
+Environment=NODE_ENV=production
+EnvironmentFile=/home/ubuntu/beright/beright-ts/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,552 @@
+/* ============================================
+   INSIGHT CARD STYLES
+   AI-powered probability insights on swipe cards
+   ============================================ */
+
+/* ============================================
+   INLINE CARD
+   ============================================ */
+
+.insightCard {
+  background: linear-gradient(
+    135deg,
+    rgba(123, 97, 255, 0.08) 0%,
+    rgba(17, 17, 24, 0.95) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(123, 97, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.insightCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5), transparent);
+}
+
+.insightCard:hover {
+  border-color: rgba(123, 97, 255, 0.4);
+  box-shadow: 0 0 20px rgba(123, 97, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.insightCard:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.aiIcon {
+  font-size: 14px;
+  filter: drop-shadow(0 0 4px rgba(123, 97, 255, 0.5));
+}
+
+.headerText {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(123, 97, 255, 0.9);
+  text-transform: uppercase;
+}
+
+.loadingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(123, 97, 255, 0.8);
+  animation: pulse 1.5s ease-in-out infinite;
+  margin-left: auto;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.confidenceBadge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.confidenceLow {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9CA3AF;
+}
+
+.confidenceMedium {
+  background: rgba(255, 179, 0, 0.15);
+  color: #FFB300;
+}
+
+.confidenceHigh {
+  background: rgba(0, 255, 178, 0.15);
+  color: #00FFB2;
+}
+
+/* ============================================
+   CONTENT
+   ============================================ */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Stats Row */
+.statsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  font-size: 9px;
+  font-weight: 500;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Edge Colors */
+.edgePositive {
+  color: #00FFB2 !important;
+}
+
+.edgeNegative {
+  color: #FF4757 !important;
+}
+
+.edgeNeutral {
+  color: #FFB300 !important;
+}
+
+/* Verdict Row */
+.verdictRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.verdictDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.verdictDot.edgePositive {
+  background: #00FFB2;
+  box-shadow: 0 0 8px rgba(0, 255, 178, 0.5);
+}
+
+.verdictDot.edgeNegative {
+  background: #FF4757;
+  box-shadow: 0 0 8px rgba(255, 71, 87, 0.5);
+}
+
+.verdictDot.edgeNeutral {
+  background: #FFB300;
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.5);
+}
+
+.verdictText {
+  font-size: 12px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+/* Tap Hint */
+.tapHint {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.tapHint span {
+  font-size: 10px;
+  color: rgba(123, 97, 255, 0.6);
+  font-weight: 500;
+}
+
+/* ============================================
+   SKELETON LOADING
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonValue {
+  width: 40px;
+  height: 22px;
+}
+
+.skeletonVerdict {
+  width: 100%;
+  height: 32px;
+}
+
+/* ============================================
+   ERROR STATE
+   ============================================ */
+
+.errorContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.errorText {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.retryButton {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7B61FF;
+  background: rgba(123, 97, 255, 0.1);
+  border: 1px solid rgba(123, 97, 255, 0.3);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retryButton:hover {
+  background: rgba(123, 97, 255, 0.2);
+  border-color: rgba(123, 97, 255, 0.5);
+}
+
+.noDataText {
+  font-size: 12px;
+  color: #6B7280;
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* ============================================
+   EXPANDED MODAL
+   ============================================ */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: linear-gradient(
+    180deg,
+    rgba(123, 97, 255, 0.1) 0%,
+    rgba(17, 17, 24, 0.98) 20%
+  );
+  border: 1px solid rgba(123, 97, 255, 0.3);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7B61FF, #00FFB2, #7B61FF);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Modal Header */
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modalTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.05em;
+}
+
+.closeButton {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #6B7280;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+/* Modal Content */
+.modalContent {
+  padding: 20px;
+}
+
+/* Modal Stats */
+.modalStats {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 0;
+}
+
+.modalStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.modalStatValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
+}
+
+.modalStatLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 16px 0;
+}
+
+/* Verdict Section */
+.verdictSection {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.verdictLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.verdictValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+}
+
+.confidenceTag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Factors Section */
+.factorsSection {
+  padding: 8px 0;
+}
+
+.factorsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.bullishIcon {
+  color: #00FFB2;
+  font-weight: bold;
+}
+
+.bearishIcon {
+  color: #FF4757;
+  font-weight: bold;
+}
+
+.factorsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.factorItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #A1A5B8;
+  line-height: 1.4;
+}
+
+.bulletBullish {
+  color: #00FFB2;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.bulletBearish {
+  color: #FF4757;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* Methodology */
+.methodology {
+  text-align: center;
+  font-size: 11px;
+  color: #6B7280;
+  font-style: italic;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 380px) {
+  .insightCard {
+    padding: 10px 12px;
+  }
+
+  .statValue {
+    font-size: 16px;
+  }
+
+  .verdictText {
+    font-size: 11px;
+  }
+
+  .modal {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    position: absolute;
+    bottom: 0;
+    max-height: 85vh;
+  }
+
+  .modalStatValue {
+    font-size: 24px;
+  }
+}

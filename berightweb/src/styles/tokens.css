@@ -1,0 +1,413 @@
+/**
+ * BeRight Design Tokens (CSS)
+ * Single source of truth for all design values
+ *
+ * Import this file in globals.css or any CSS module
+ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COLORS - Updated Brand Palette
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Primary Accent - Electric Lime (de-slopped from AI mint green) */
+  --color-primary: #e8ff47;
+  --color-primary-dim: rgba(232, 255, 71, 0.15);
+  --color-primary-glow: rgba(232, 255, 71, 0.25);
+  --color-primary-hover: #d4eb3d;
+  --color-primary-bright: #f0ff70;
+
+  /* Secondary Accent - Royal Blue (de-slopped from purple-violet) */
+  --color-secondary: #5b7bff;
+  --color-secondary-dim: rgba(91, 123, 255, 0.15);
+  --color-secondary-glow: rgba(91, 123, 255, 0.25);
+
+  /* Warning/Streak - Orange (fire, streaks, warnings) */
+  --color-warning: #FF6B35;
+  --color-warning-dim: rgba(255, 107, 53, 0.15);
+  --color-warning-glow: rgba(255, 107, 53, 0.4);
+
+  /* Error/Danger - Red */
+  --color-error: #FF4757;
+  --color-error-dim: rgba(255, 71, 87, 0.15);
+  --color-error-glow: rgba(255, 71, 87, 0.4);
+
+  /* Binary States (Yes/No) - Softer, less neon */
+  --color-yes: #34d399;
+  --color-yes-dim: rgba(52, 211, 153, 0.15);
+  --color-yes-glow: rgba(52, 211, 153, 0.25);
+  --color-no: #f87171;
+  --color-no-dim: rgba(248, 113, 113, 0.15);
+  --color-no-glow: rgba(248, 113, 113, 0.25);
+
+  /* Backgrounds - Warm Dark Scale (de-slopped from cold void blacks) */
+  --color-bg-base: #0d0d0b;
+  --color-bg-void: #0d0d0b;
+  --color-bg-surface-1: #131310;
+  --color-bg-surface-2: #1a1a16;
+  --color-bg-surface-3: #242420;
+  --color-bg-elevated: #2a2a26;
+  --color-bg-deep: #131310;
+  --color-bg-surface: #1a1a16;
+
+  /* Text Hierarchy - Warm whites (de-slopped from pure white) */
+  --color-text-primary: #f5f4ef;
+  --color-text-secondary: #a8a79e;    /* Warm gray */
+  --color-text-muted: #8a8880;        /* Warm muted */
+  --color-text-ghost: #5a5854;        /* Warm ghost */
+  --color-text-inverse: #0d0d0b;
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-hover: rgba(255, 255, 255, 0.15);
+  --color-border-focus: rgba(0, 255, 178, 0.5);
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+
+  /* Glass/Overlay */
+  --color-glass-bg: rgba(17, 17, 24, 0.85);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-overlay: rgba(10, 10, 15, 0.8);
+
+  /* Accent Colors - Updated to match primary */
+  --color-accent: #e8ff47;
+  --color-accent-dim: rgba(232, 255, 71, 0.15);
+  --color-accent-glow: none;
+
+  --color-ai: #5b7bff;
+  --color-ai-dim: rgba(91, 123, 255, 0.15);
+  --color-ai-glow: none;
+
+  --color-fire: #FF6B35;
+  --color-fire-dim: rgba(255, 107, 53, 0.15);
+
+  --color-gold: #FFD700;
+  --color-gold-dim: rgba(255, 215, 0, 0.15);
+
+  --color-amber: #FF9500;
+  --color-amber-dim: rgba(255, 149, 0, 0.15);
+
+  --color-indigo: #7B61FF;
+  --color-indigo-dim: rgba(123, 97, 255, 0.15);
+
+  /* League Colors */
+  --color-league-bronze: #CD7F32;
+  --color-league-silver: #C0C0C0;
+  --color-league-gold: #FFD700;
+  --color-league-platinum: #E5E4E2;
+  --color-league-diamond: #B9F2FF;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TYPOGRAPHY
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Font Families - DM Sans (de-slopped from Inter) */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'DM Mono', 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  /* Font Sizes */
+  --text-4xs: 8px;
+  --text-3xs: 9px;
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 42px;
+  --text-5xl: 48px;
+  --text-hero: 56px;
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+  --font-black: 900;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.03em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SPACING (4px base)
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  --space-px: 1px;
+  --space-0: 0;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BORDER RADIUS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;       /* Pills */
+  --radius-lg: 12px;      /* Cards */
+  --radius-xl: 16px;
+  --radius-2xl: 24px;     /* Buttons */
+  --radius-3xl: 32px;
+  --radius-full: 9999px;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SHADOWS - Premium Flat Design (subtle, minimal)
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Subtle shadows for premium flat look */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.18);
+
+  /* Inset shadows - subtle */
+  --shadow-inset-sm: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-inset-md: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-inset-lg: inset 0 3px 6px rgba(0, 0, 0, 0.12);
+
+  /* Card shadow - premium flat (no shadow, border-based elevation) */
+  --shadow-card: none;
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  /* Glow effects - REMOVED (de-slopped: glows are AI visual filler) */
+  --shadow-glow-primary: none;
+  --shadow-glow-primary-lg: none;
+  --shadow-glow-secondary: none;
+  --shadow-glow-warning: none;
+  --shadow-glow-error: none;
+  --shadow-glow-green: none;
+  --shadow-glow-cyan: none;
+  --shadow-glow-purple: none;
+  --shadow-glow-gold: none;
+  --shadow-glow-red: none;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TRANSITIONS & ANIMATION
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Transition durations */
+  --transition-fast: 0.1s ease;
+  --transition-base: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  --transition-slower: 0.5s ease;
+
+  /* Animation durations (for GSAP) */
+  --duration-instant: 100ms;
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-medium: 500ms;
+  --duration-slow: 800ms;
+  --duration-slower: 1200ms;
+
+  /* Easing curves */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     STATE LAYERS (Material Design 3)
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* State layer opacities */
+  --state-hover: 0.08;
+  --state-focus: 0.12;
+  --state-pressed: 0.16;
+  --state-dragged: 0.16;
+  --state-disabled: 0.38;
+
+  /* State layer colors - standardized */
+  --surface-state-rest: rgba(255, 255, 255, 0.03);
+  --surface-state-hover: rgba(255, 255, 255, 0.06);
+  --surface-state-active: rgba(255, 255, 255, 0.08);
+  --surface-state-focus: rgba(0, 255, 178, 0.12);
+  --surface-state-pressed: rgba(0, 255, 178, 0.16);
+
+  /* Focus ring - WCAG compliant visible focus */
+  --focus-ring: 0 0 0 2px var(--color-bg-base), 0 0 0 4px var(--color-primary);
+  --focus-ring-inset: inset 0 0 0 2px var(--color-primary);
+
+  /* Elevation - subtle for premium flat design */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --elevation-2: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --elevation-3: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --elevation-4: 0 8px 16px rgba(0, 0, 0, 0.15);
+
+  /* Content widths */
+  --content-sm: 640px;
+  --content-md: 768px;
+  --content-lg: 1024px;
+  --content-xl: 1200px;
+  --content-2xl: 1440px;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     Z-INDEX
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  --z-below: -1;
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+  --z-toast: 80;
+  --z-max: 9999;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COMPONENT TOKENS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Navigation */
+  --nav-height: 64px;
+  --nav-height-mobile: 56px;
+  --bottom-nav-height: 72px;
+  --page-header-height: 56px;
+  --app-header-height: 72px;
+
+  /* Safe areas */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* App chrome offsets */
+  --app-bottom-offset: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+
+  /* Cards */
+  --card-bg: var(--color-bg-surface-1);
+  --card-border: var(--color-border);
+  --card-radius: var(--radius-lg);
+  --card-padding: var(--space-6);
+  --card-shadow: var(--shadow-md);
+
+  /* Buttons */
+  --button-radius: var(--radius-2xl);
+  --button-font-weight: var(--font-semibold);
+
+  /* Inputs */
+  --input-bg: var(--color-bg-surface-2);
+  --input-border: var(--color-border);
+  --input-radius: var(--radius-md);
+  --input-padding-x: var(--space-4);
+  --input-padding-y: var(--space-3);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LEGACY ALIASES (for backward compatibility)
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Background aliases */
+  --bg-void: var(--color-bg-base);
+  --bg-deep: var(--color-bg-surface-1);
+  --bg-elevated: var(--color-bg-surface-2);
+
+  /* Card aliases */
+  --card-bg-gradient: linear-gradient(145deg, var(--color-bg-surface-2), var(--color-bg-surface-1));
+
+  /* Yes/No aliases */
+  --yes: var(--color-yes);
+  --yes-glow: var(--color-yes-glow);
+  --yes-subtle: var(--color-yes-dim);
+  --no: var(--color-no);
+  --no-glow: var(--color-no-glow);
+  --no-subtle: var(--color-no-dim);
+
+  /* Accent aliases */
+  --accent: var(--color-primary);
+  --accent-glow: var(--color-primary-glow);
+  --accent-subtle: var(--color-primary-dim);
+
+  /* AI aliases */
+  --ai: var(--color-secondary);
+  --ai-glow: var(--color-secondary-glow);
+  --ai-subtle: var(--color-secondary-dim);
+
+  /* Text aliases */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --text-ghost: var(--color-text-ghost);
+
+  /* Other aliases */
+  --fire: var(--color-warning);
+  --gold: var(--color-gold);
+  --font-display: var(--font-sans);
+  --card-radius: var(--radius-lg);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TERMINAL - Fintech/Crypto Trading Terminal Theme
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Terminal Backgrounds - Slate palette for trading aesthetic */
+  --terminal-bg: #0F172A;
+  --terminal-bg-panel: #0B1120;
+  --terminal-bg-elevated: #1E293B;
+
+  /* Terminal Borders */
+  --terminal-border: rgba(248, 250, 252, 0.1);
+  --terminal-border-subtle: rgba(248, 250, 252, 0.05);
+
+  /* Terminal Primary Colors - Fintech/Crypto palette */
+  --terminal-primary: #F59E0B;      /* Gold - trust, value */
+  --terminal-secondary: #FBBF24;    /* Light gold */
+  --terminal-cta: #8B5CF6;          /* Purple - tech, innovation */
+  --terminal-green: #10B981;        /* Success/positive */
+  --terminal-cyan: #00C2FF;         /* Info/accent */
+  --terminal-red: #F43F5E;          /* Error/negative */
+  --terminal-white: #F8FAFC;
+
+  /* Terminal Text */
+  --terminal-text: #F8FAFC;
+  --terminal-text-dim: #94A3B8;
+  --terminal-text-muted: #64748B;
+
+  /* Terminal Fonts - Web3/Crypto typography */
+  --terminal-font-display: 'Orbitron', sans-serif;
+  --terminal-font-ui: 'Exo 2', sans-serif;
+  --terminal-font-mono: 'JetBrains Mono', monospace;
+
+  /* Terminal Glow Effects */
+  --terminal-glow-primary: 0 0 10px rgba(245, 158, 11, 0.4);
+  --terminal-glow-cta: 0 0 10px rgba(139, 92, 246, 0.4);
+  --terminal-glow-green: 0 0 8px rgba(16, 185, 129, 0.4);
+  --terminal-glow-cyan: 0 0 8px rgba(0, 194, 255, 0.4);
+  --terminal-glow-red: 0 0 8px rgba(244, 63, 94, 0.4);
+}

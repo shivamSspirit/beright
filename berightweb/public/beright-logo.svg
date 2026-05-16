@@ -1,0 +1,42 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="globeGrad" cx="32%" cy="28%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="20%" stop-color="#eef4fa" />
+      <stop offset="50%" stop-color="#b8cfe0" />
+      <stop offset="80%" stop-color="#6e8fa6" />
+      <stop offset="100%" stop-color="#3a5568" />
+    </radialGradient>
+
+    <radialGradient id="shineGrad" cx="30%" cy="24%" r="22%">
+      <stop offset="0%" stop-color="rgba(255,255,255,1)" />
+      <stop offset="60%" stop-color="rgba(255,255,255,0.4)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+    </radialGradient>
+
+    <radialGradient id="rimGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="70%" stop-color="rgba(0,0,0,0)" />
+      <stop offset="100%" stop-color="rgba(0,0,0,0.4)" />
+    </radialGradient>
+
+    <radialGradient id="glowRing" cx="50%" cy="50%" r="50%">
+      <stop offset="60%" stop-color="rgba(180,215,255,0)" />
+      <stop offset="85%" stop-color="rgba(180,215,255,0.15)" />
+      <stop offset="100%" stop-color="rgba(180,215,255,0.35)" />
+    </radialGradient>
+  </defs>
+
+  <circle cx="50" cy="50" r="49" fill="url(#globeGrad)" />
+  <circle cx="50" cy="50" r="49" fill="url(#rimGrad)" />
+  <circle cx="50" cy="50" r="49" fill="url(#glowRing)" />
+  <circle cx="50" cy="50" r="49" fill="url(#shineGrad)" />
+
+  <ellipse
+    cx="38"
+    cy="32"
+    rx="10"
+    ry="7"
+    fill="rgba(255,255,255,0.25)"
+    transform="rotate(-20 38 32)"
+  />
+</svg>

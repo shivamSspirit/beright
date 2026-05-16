@@ -1,0 +1,281 @@
+'use client';
+
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import {
+  extractReferralCode,
+  storeReferralAttribution,
+  getReferralAttribution,
+  generateReferralCode,
+} from '@/lib/referral';
+
+interface UserProfile {
+  id: string;
+  walletAddress: string | null;
+  email: string | null;
+  phone: string | null;
+  telegramId: string | null;
+  username: string | null;
+  avatar: string | null;
+  // Extended profile fields
+  bio: string | null;
+  twitterHandle: string | null;
+  discordHandle: string | null;
+  websiteUrl: string | null;
+  avatarUrl: string | null;
+  // Stats
+  totalPredictions: number;
+  accuracy: number;
+  brierScore: number;
+  streak: number;
+  rank: number;
+  joinedAt: string;
+}
+
+interface UserContextType {
+  user: UserProfile | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  walletAddress: string | null;
+  linkTelegram: (telegramId: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  refreshUser: () => Promise<void>; // Alias for refreshProfile
+  referralCode: string | null; // User's own referral code
+}
+
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+export function UserProvider({ children }: { children: ReactNode }) {
+  const { ready, authenticated, user: privyUser, login: privyLogin, logout: privyLogout } = usePrivy();
+  const { wallets } = useWallets();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [privyTimedOut, setPrivyTimedOut] = useState(false);
+
+  // Timeout fallback for Privy initialization (prevent infinite loading)
+  useEffect(() => {
+    if (ready) return; // Privy is ready, no need for timeout
+
+    const timeout = setTimeout(() => {
+      if (!ready) {
+        console.warn('[UserContext] Privy initialization timed out after 5s');
+        setPrivyTimedOut(true);
+        setIsLoading(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [ready]);
+
+  // Track referral on initial page load
+  useEffect(() => {
+    const refCode = extractReferralCode();
+    if (refCode) {
+      storeReferralAttribution(refCode);
+    }
+  }, []);
+
+  // Get wallet address - prioritize external wallets over embedded wallets
+  // External wallets: Phantom, Backpack, Solflare, etc.
+  // Embedded wallets: Created by Privy on social login (walletClientType: 'privy')
+
+  // Check useWallets for connected external wallets
+  const externalWallet = wallets?.find((w) => w.walletClientType !== 'privy');
+  const embeddedWalletFromHook = wallets?.find((w) => w.walletClientType === 'privy');
+
+  // Also check linkedAccounts for any wallet (fallback)
+  const linkedWalletAccount = privyUser?.linkedAccounts?.find(
+    (account) => account.type === 'wallet'
+  );
+  const linkedWalletAddress = linkedWalletAccount && 'address' in linkedWalletAccount
+    ? (linkedWalletAccount as { address: string }).address
+    : null;
+
+  // Priority: External wallet > Embedded wallet from hook > Linked wallet from user
+  const walletAddress =
+    externalWallet?.address ||
+    embeddedWalletFromHook?.address ||
+    linkedWalletAddress ||
+    null;
+
+  // Debug: Log wallet sources
+  console.log('[UserContext] Wallet Debug:', {
+    walletsFromHook: wallets?.map(w => ({ address: w.address?.slice(0, 8), type: w.walletClientType })),
+    externalWallet: externalWallet?.address?.slice(0, 8) || 'none',
+    embeddedWallet: embeddedWalletFromHook?.address?.slice(0, 8) || 'none',
+    linkedWallet: linkedWalletAddress?.slice(0, 8) || 'none',
+    selectedWallet: walletAddress?.slice(0, 8) || 'none',
+    source: externalWallet ? 'EXTERNAL' : embeddedWalletFromHook ? 'EMBEDDED' : linkedWalletAddress ? 'LINKED' : 'NONE',
+  });
+
+  // Wrapped login function with error handling
+  const login = async () => {
+    try {
+      await privyLogin();
+    } catch (error) {
+      // Silently handle - Privy shows its own error UI
+      console.warn('[UserContext] Login error:', error);
+    }
+  };
+
+  // Wrapped logout function with error handling
+  const logout = async () => {
+    try {
+      await privyLogout();
+      setUser(null);
+    } catch (error) {
+      console.warn('[UserContext] Logout error:', error);
+    }
+  };
+
+  // Fetch or create user profile when authenticated
+  useEffect(() => {
+    if (!ready) return;
+
+    if (authenticated && privyUser) {
+      fetchOrCreateProfile();
+    } else {
+      setUser(null);
+      setIsLoading(false);
+    }
+  }, [ready, authenticated, privyUser, walletAddress]);
+
+  const fetchOrCreateProfile = async () => {
+    setIsLoading(true);
+    try {
+      const API_BASE = ''; // Use relative paths for Next.js rewrites
+
+      // Get referral attribution if exists
+      const referralAttribution = getReferralAttribution();
+
+      // Try to get existing profile
+      const res = await fetch(`${API_BASE}/api/users/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          privyId: privyUser?.id,
+          walletAddress,
+          email: privyUser?.email?.address,
+          phone: privyUser?.phone?.number,
+          referredBy: referralAttribution?.code || null,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      } else {
+        // Create mock profile for demo
+        setUser({
+          id: privyUser?.id || 'demo-user',
+          walletAddress,
+          email: privyUser?.email?.address || null,
+          phone: privyUser?.phone?.number || null,
+          telegramId: null,
+          username: walletAddress
+            ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+            : 'Anonymous',
+          avatar: null,
+          bio: null,
+          twitterHandle: null,
+          discordHandle: null,
+          websiteUrl: null,
+          avatarUrl: null,
+          totalPredictions: 0,
+          accuracy: 0,
+          brierScore: 0,
+          streak: 0,
+          rank: 0,
+          joinedAt: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      // Fallback to local profile
+      setUser({
+        id: privyUser?.id || 'demo-user',
+        walletAddress,
+        email: privyUser?.email?.address || null,
+        phone: privyUser?.phone?.number || null,
+        telegramId: null,
+        username: walletAddress
+          ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+          : 'Anonymous',
+        avatar: null,
+        bio: null,
+        twitterHandle: null,
+        discordHandle: null,
+        websiteUrl: null,
+        avatarUrl: null,
+        totalPredictions: 0,
+        accuracy: 0,
+        brierScore: 0,
+        streak: 0,
+        rank: 0,
+        joinedAt: new Date().toISOString(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const linkTelegram = async (telegramId: string) => {
+    if (!user) return;
+
+    try {
+      const API_BASE = ''; // Use relative paths for Next.js rewrites
+      const res = await fetch(`${API_BASE}/api/users/link-telegram`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          walletAddress,
+          telegramId,
+        }),
+      });
+
+      if (res.ok) {
+        setUser(prev => prev ? { ...prev, telegramId } : null);
+      }
+    } catch (error) {
+      console.error('Failed to link Telegram:', error);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (authenticated && privyUser) {
+      await fetchOrCreateProfile();
+    }
+  };
+
+  // Generate user's own referral code
+  const referralCode = walletAddress ? generateReferralCode(walletAddress) : null;
+
+  return (
+    <UserContext.Provider
+      value={{
+        user,
+        isAuthenticated: authenticated,
+        isLoading: (!ready && !privyTimedOut) || isLoading,
+        login,
+        logout,
+        walletAddress,
+        linkTelegram,
+        refreshProfile,
+        refreshUser: refreshProfile, // Alias
+        referralCode,
+      }}
+    >
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+export function useUser() {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+}

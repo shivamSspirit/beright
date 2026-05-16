@@ -1,0 +1,30 @@
+# Anchor
+.anchor
+target/
+node_modules/
+test-ledger/
+.DS_Store
+
+# Build artifacts
+*.so
+*.wasm
+
+# IDL
+app/idl/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Solana
+.config/
+test-results/

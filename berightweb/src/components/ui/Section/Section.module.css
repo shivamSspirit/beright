@@ -1,0 +1,127 @@
+/**
+ * Section Component Styles
+ * Consistent page section container with variants
+ */
+
+.section {
+  width: 100%;
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.default {
+  background: transparent;
+}
+
+.alt {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.gradient {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 255, 178, 0.03) 0%,
+    transparent 100%
+  );
+}
+
+.dark {
+  background: var(--color-bg-surface-1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIZE VARIANTS (padding)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.size-sm {
+  padding: 48px 24px;
+}
+
+.size-md {
+  padding: 80px 24px;
+}
+
+.size-lg {
+  padding: 120px 24px;
+}
+
+.size-xl {
+  padding: 160px 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INNER CONTENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.inner {
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Content max-widths */
+.width-sm {
+  max-width: var(--content-sm);
+}
+
+.width-md {
+  max-width: var(--content-md);
+}
+
+.width-lg {
+  max-width: var(--content-lg);
+}
+
+.width-xl {
+  max-width: var(--content-xl);
+}
+
+.width-2xl {
+  max-width: var(--content-2xl);
+}
+
+.width-full {
+  max-width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .size-sm {
+    padding: 32px 16px;
+  }
+
+  .size-md {
+    padding: 48px 16px;
+  }
+
+  .size-lg {
+    padding: 64px 16px;
+  }
+
+  .size-xl {
+    padding: 80px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .size-sm {
+    padding: 24px 16px;
+  }
+
+  .size-md {
+    padding: 40px 16px;
+  }
+
+  .size-lg {
+    padding: 56px 16px;
+  }
+
+  .size-xl {
+    padding: 72px 16px;
+  }
+}

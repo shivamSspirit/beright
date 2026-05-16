@@ -1,0 +1,80 @@
+{
+  "scoreEpoch": "2026-04-25T00:00:00.000Z",
+  "forecasters": [
+    {
+      "forecasterId": "demo-forecaster",
+      "identity": {
+        "forecasterId": "demo-forecaster",
+        "solanaPubkey": "Demo111111111111111111111111111111111111111",
+        "linkedAccounts": {
+          "polymarket": "0xdemo",
+          "beright": "demo-forecaster"
+        }
+      },
+      "importedPredictions": [
+        {
+          "id": "imp-1",
+          "platform": "polymarket",
+          "marketId": "market-imported-1",
+          "marketTitle": "Imported Market 1",
+          "predictedProbability": 0.72,
+          "direction": "YES",
+          "predictedAt": "2026-03-01T00:00:00.000Z",
+          "resolvedAt": "2026-03-20T00:00:00.000Z",
+          "outcome": true,
+          "entryPrice": 0.70,
+          "communityMedian": 0.61,
+          "difficulty": 0.48,
+          "category": "politics"
+        },
+        {
+          "id": "imp-2",
+          "platform": "polymarket",
+          "marketId": "market-imported-2",
+          "marketTitle": "Imported Market 2",
+          "predictedProbability": 0.34,
+          "direction": "YES",
+          "predictedAt": "2026-02-01T00:00:00.000Z",
+          "resolvedAt": "2026-02-12T00:00:00.000Z",
+          "outcome": false,
+          "entryPrice": 0.33,
+          "communityMedian": 0.40,
+          "difficulty": 0.52,
+          "category": "macro"
+        }
+      ],
+      "nativePredictions": [
+        {
+          "id": "nat-1",
+          "platform": "beright",
+          "marketId": "market-native-1",
+          "marketTitle": "Native Market 1",
+          "predictedProbability": 0.66,
+          "direction": "YES",
+          "predictedAt": "2026-04-01T00:00:00.000Z",
+          "resolvedAt": "2026-04-10T00:00:00.000Z",
+          "outcome": true,
+          "communityMedian": 0.58,
+          "communitySpread": 0.18,
+          "difficulty": 0.44,
+          "category": "crypto"
+        },
+        {
+          "id": "nat-2",
+          "platform": "beright",
+          "marketId": "market-native-2",
+          "marketTitle": "Native Market 2",
+          "predictedProbability": 0.41,
+          "direction": "YES",
+          "predictedAt": "2026-04-05T00:00:00.000Z",
+          "resolvedAt": "2026-04-18T00:00:00.000Z",
+          "outcome": false,
+          "communityMedian": 0.47,
+          "communitySpread": 0.22,
+          "difficulty": 0.51,
+          "category": "sports"
+        }
+      ]
+    }
+  ]
+}

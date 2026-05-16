@@ -1,0 +1,913 @@
+{
+  "address": "GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ",
+  "metadata": {
+    "name": "calibration",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "BeRight Forecaster Calibration Tracking Program"
+  },
+  "instructions": [
+    {
+      "name": "initialize_forecaster",
+      "docs": [
+        "Initialize a forecaster's calibration tracking state",
+        "",
+        "Creates a PDA at [b\"forecaster\", authority.key()]",
+        "to store aggregated calibration statistics.",
+        "",
+        "# Arguments",
+        "* `ctx` - InitializeForecaster accounts context"
+      ],
+      "discriminator": [
+        16,
+        22,
+        244,
+        53,
+        163,
+        61,
+        216,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Forecaster's wallet (authority)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "forecaster_state",
+          "docs": [
+            "Forecaster state account (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  111,
+                  114,
+                  101,
+                  99,
+                  97,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "record_prediction",
+      "docs": [
+        "Record a new prediction",
+        "",
+        "Creates a PDA at [b\"prediction\", authority.key(), market_id, timestamp]",
+        "to store individual prediction details and updates forecaster stats.",
+        "",
+        "# Arguments",
+        "* `ctx` - RecordPrediction accounts context",
+        "* `market_id` - 32-byte hash of market identifier",
+        "* `timestamp_seed` - Unix timestamp for PDA derivation (prevents duplicates)",
+        "* `predicted_probability` - Predicted probability (0.0 - 1.0)",
+        "* `direction` - YES or NO",
+        "* `memo_tx_signature` - Reference to Memo transaction (64 bytes)",
+        "* `category` - Market category (0-255)"
+      ],
+      "discriminator": [
+        6,
+        250,
+        152,
+        187,
+        248,
+        58,
+        42,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Forecaster's wallet (authority)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "forecaster_state",
+          "docs": [
+            "Forecaster state account (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  111,
+                  114,
+                  101,
+                  99,
+                  97,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prediction_record",
+          "docs": [
+            "Prediction record account (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  101,
+                  100,
+                  105,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "market_id"
+              },
+              {
+                "kind": "arg",
+                "path": "timestamp_seed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "market_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "timestamp_seed",
+          "type": "i64"
+        },
+        {
+          "name": "predicted_probability",
+          "type": "f64"
+        },
+        {
+          "name": "direction",
+          "type": {
+            "defined": {
+              "name": "PredictionDirection"
+            }
+          }
+        },
+        {
+          "name": "memo_tx_signature",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "category",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resolve_prediction",
+      "docs": [
+        "Resolve a prediction with the actual outcome",
+        "",
+        "Updates the prediction record with outcome, calculates Brier score",
+        "and log score, then updates forecaster's aggregated stats.",
+        "",
+        "# Arguments",
+        "* `ctx` - ResolvePrediction accounts context",
+        "* `outcome` - Actual outcome (true = YES, false = NO)"
+      ],
+      "discriminator": [
+        199,
+        159,
+        54,
+        235,
+        121,
+        68,
+        53,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Forecaster's wallet (authority) - only forecaster can resolve their own predictions"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "forecaster_state",
+          "docs": [
+            "Forecaster state account (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  111,
+                  114,
+                  101,
+                  99,
+                  97,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "prediction_record",
+          "docs": [
+            "Prediction record account (PDA)"
+          ],
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome",
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ForecasterState",
+      "discriminator": [
+        212,
+        193,
+        152,
+        113,
+        29,
+        18,
+        196,
+        118
+      ]
+    },
+    {
+      "name": "PredictionRecord",
+      "discriminator": [
+        75,
+        202,
+        55,
+        23,
+        136,
+        28,
+        7,
+        241
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CalibrationUpdated",
+      "discriminator": [
+        111,
+        209,
+        254,
+        74,
+        12,
+        19,
+        222,
+        4
+      ]
+    },
+    {
+      "name": "ForecasterInitialized",
+      "discriminator": [
+        25,
+        52,
+        213,
+        82,
+        162,
+        4,
+        115,
+        128
+      ]
+    },
+    {
+      "name": "PredictionRecorded",
+      "discriminator": [
+        216,
+        38,
+        7,
+        207,
+        73,
+        218,
+        122,
+        206
+      ]
+    },
+    {
+      "name": "PredictionResolved",
+      "discriminator": [
+        117,
+        60,
+        206,
+        67,
+        119,
+        213,
+        84,
+        17
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized: Only the forecaster can perform this action"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidProbability",
+      "msg": "Invalid probability: Must be between 0.0 and 1.0"
+    },
+    {
+      "code": 6002,
+      "name": "AlreadyResolved",
+      "msg": "Prediction already resolved"
+    },
+    {
+      "code": 6003,
+      "name": "PredictionNotFound",
+      "msg": "Prediction not found"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidMarketId",
+      "msg": "Market ID hash invalid"
+    },
+    {
+      "code": 6005,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6006,
+      "name": "NoPredictions",
+      "msg": "No predictions to resolve"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidCategory",
+      "msg": "Invalid category ID"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidMemoSignature",
+      "msg": "Memo signature invalid"
+    },
+    {
+      "code": 6009,
+      "name": "NotInitialized",
+      "msg": "Forecaster state not initialized"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidTimestamp",
+      "msg": "Invalid timestamp"
+    }
+  ],
+  "types": [
+    {
+      "name": "CalibrationUpdated",
+      "docs": [
+        "Emitted when calibration stats are updated"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "forecaster",
+            "type": "pubkey"
+          },
+          {
+            "name": "avg_brier_score",
+            "type": "f64"
+          },
+          {
+            "name": "avg_log_score",
+            "type": "f64"
+          },
+          {
+            "name": "accuracy",
+            "type": "f64"
+          },
+          {
+            "name": "resolved_predictions",
+            "type": "u32"
+          },
+          {
+            "name": "streak_correct",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForecasterInitialized",
+      "docs": [
+        "Emitted when a forecaster state is initialized"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "forecaster",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ForecasterState",
+      "docs": [
+        "Forecaster calibration state account",
+        "PDA: [b\"forecaster\", forecaster_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "docs": [
+              "Bump seed for PDA derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "Forecaster's wallet address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "total_predictions",
+            "docs": [
+              "Total number of predictions made (lifetime)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "resolved_predictions",
+            "docs": [
+              "Number of resolved predictions"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "cumulative_brier_score",
+            "docs": [
+              "Cumulative Brier score (sum of all Brier scores)",
+              "Brier score = (predicted_prob - actual_outcome)^2",
+              "Range: 0.0 (perfect) to 1.0 (worst)"
+            ],
+            "type": "f64"
+          },
+          {
+            "name": "avg_brier_score",
+            "docs": [
+              "Average Brier score (cumulative / resolved_predictions)",
+              "This is the primary calibration metric"
+            ],
+            "type": "f64"
+          },
+          {
+            "name": "cumulative_log_score",
+            "docs": [
+              "Cumulative log score (sum of all log scores)",
+              "Log score = log2(predicted_prob) if correct, log2(1 - predicted_prob) if wrong"
+            ],
+            "type": "f64"
+          },
+          {
+            "name": "avg_log_score",
+            "docs": [
+              "Average log score"
+            ],
+            "type": "f64"
+          },
+          {
+            "name": "correct_predictions",
+            "docs": [
+              "Number of correct predictions (predicted > 0.5 and outcome = YES, or predicted < 0.5 and outcome = NO)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "accuracy",
+            "docs": [
+              "Simple accuracy percentage (correct_predictions / resolved_predictions)"
+            ],
+            "type": "f64"
+          },
+          {
+            "name": "markets_traded",
+            "docs": [
+              "Number of unique markets predicted on"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "best_category",
+            "docs": [
+              "Best category by Brier score (0-255, mapped to categories)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "worst_category",
+            "docs": [
+              "Worst category by Brier score"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "streak_correct",
+            "docs": [
+              "Current winning streak (consecutive correct predictions)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_streak_correct",
+            "docs": [
+              "Longest winning streak (historical)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "last_prediction_ts",
+            "docs": [
+              "Unix timestamp of last prediction"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "Unix timestamp of account creation"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "calibration_buckets",
+            "docs": [
+              "Calibration buckets (10 buckets: 0-10%, 10-20%, ..., 90-100%)",
+              "Each bucket stores: [count, sum_actual_outcomes]",
+              "This enables calibration curve analysis"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u16",
+                    2
+                  ]
+                },
+                10
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "docs": [
+              "Schema version for future migrations"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "docs": [
+              "Reserved space for future fields (64 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PredictionDirection",
+      "docs": [
+        "Direction of prediction (YES or NO)"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Yes"
+          },
+          {
+            "name": "No"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PredictionRecord",
+      "docs": [
+        "Individual prediction record",
+        "PDA: [b\"prediction\", forecaster_pubkey, market_id_hash, timestamp_bytes]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "docs": [
+              "Bump seed for PDA"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "forecaster",
+            "docs": [
+              "Forecaster who made the prediction"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "docs": [
+              "Market ID (32-byte hash of market identifier)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "predicted_probability",
+            "docs": [
+              "Predicted probability (0.0 - 1.0)"
+            ],
+            "type": "f64"
+          },
+          {
+            "name": "direction",
+            "docs": [
+              "Direction of prediction"
+            ],
+            "type": {
+              "defined": {
+                "name": "PredictionDirection"
+              }
+            }
+          },
+          {
+            "name": "committed_at",
+            "docs": [
+              "Unix timestamp when prediction was committed"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "resolved_at",
+            "docs": [
+              "Unix timestamp when prediction was resolved (None if unresolved)"
+            ],
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "outcome",
+            "docs": [
+              "Actual outcome (None if unresolved)"
+            ],
+            "type": {
+              "option": "bool"
+            }
+          },
+          {
+            "name": "brier_score",
+            "docs": [
+              "Calculated Brier score (None if unresolved)"
+            ],
+            "type": {
+              "option": "f64"
+            }
+          },
+          {
+            "name": "log_score",
+            "docs": [
+              "Calculated log score (None if unresolved)"
+            ],
+            "type": {
+              "option": "f64"
+            }
+          },
+          {
+            "name": "memo_tx_signature",
+            "docs": [
+              "Reference to Memo transaction signature (64 bytes)",
+              "This links to the immutable commit on-chain"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "docs": [
+              "Market category (0-255)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "version",
+            "docs": [
+              "Schema version"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PredictionRecorded",
+      "docs": [
+        "Emitted when a new prediction is recorded"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "forecaster",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "predicted_probability",
+            "type": "f64"
+          },
+          {
+            "name": "direction",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "total_predictions",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PredictionResolved",
+      "docs": [
+        "Emitted when a prediction is resolved"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "forecaster",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "name": "brier_score",
+            "type": "f64"
+          },
+          {
+            "name": "log_score",
+            "type": "f64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "resolved_predictions",
+            "type": "u32"
+          },
+          {
+            "name": "avg_brier_score",
+            "type": "f64"
+          },
+          {
+            "name": "accuracy",
+            "type": "f64"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+# ==============================================================================
+# BeRight Protocol - Pre-commit Configuration
+# ==============================================================================
+# Install: pip install pre-commit && pre-commit install
+# Or use: ./scripts/install-hooks.sh
+#
+# This prevents secrets from being committed to git.
+# ==============================================================================
+
+default_install_hook_types: [pre-commit, pre-push]
+fail_fast: true
+
+repos:
+  # ============================================
+  # SECRET DETECTION
+  # ============================================
+
+  # Yelp's detect-secrets - catches most secret patterns
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+          - --exclude-files
+          - 'package-lock\.json'
+          - --exclude-files
+          - '\.env\.example'
+          - --exclude-files
+          - 'node_modules/.*'
+        exclude: |
+          (?x)^(
+            .*\.lock|
+            .*package-lock\.json|
+            .*yarn\.lock|
+            .*pnpm-lock\.yaml
+          )$
+
+  # Gitleaks - fast secret scanner with custom rules
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+        args:
+          - --config
+          - .gitleaks.toml
+          - --verbose
+
+  # ============================================
+  # CODE QUALITY (Optional - uncomment to enable)
+  # ============================================
+
+  # TypeScript/JavaScript linting
+  # - repo: local
+  #   hooks:
+  #     - id: eslint
+  #       name: eslint
+  #       entry: npx eslint --fix
+  #       language: system
+  #       types: [javascript, typescript]
+  #       files: \.(js|jsx|ts|tsx)$
+
+  # ============================================
+  # FILE HYGIENE
+  # ============================================
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+        exclude: |
+          (?x)^(
+            .*\.mp4|
+            .*\.so
+          )$
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            .*\.json|
+            .*\.lock
+          )$
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+            .*\.md
+          )$
+
+      # Check for merge conflicts
+      - id: check-merge-conflict
+
+      # Prevent commits to main/master directly
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+      # Validate JSON
+      - id: check-json
+        exclude: |
+          (?x)^(
+            .*tsconfig.*\.json
+          )$
+
+      # Validate YAML
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom tags
+
+      # Check for private keys
+      - id: detect-private-key
+
+  # ============================================
+  # DEPENDENCY SECURITY
+  # ============================================
+
+  # Check for known vulnerabilities (runs on push only)
+  - repo: local
+    hooks:
+      - id: npm-audit
+        name: npm audit
+        entry: bash -c 'npm audit --audit-level=high || echo "⚠️ Vulnerabilities found - review before pushing"'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+# ==============================================================================
+# CI INTEGRATION
+# ==============================================================================
+# These hooks also run in GitHub Actions via .github/workflows/security.yml
+# Local hooks catch issues before they reach CI
+# ==============================================================================

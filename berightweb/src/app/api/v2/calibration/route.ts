@@ -1,0 +1,557 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { BN, Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
+import calibrationIdl from '@/lib/calibration-idl.json';
+import bs58 from 'bs58';
+
+/**
+ * Calibration Program API
+ *
+ * GET: Fetch forecaster state and predictions from devnet
+ * POST: Build unsigned transactions for initialization/recording
+ *
+ * Program ID: GDMJpNckYfRCKbsC1m1qRx1x4jbtKGhdAHRLbQqrihPZ (devnet)
+ */
+
+// Always use devnet for calibration - program is deployed on devnet
+const DEVNET_RPC = process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+const PROGRAM_ID = new PublicKey(calibrationIdl.address);
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Derive forecaster state PDA
+ */
+function deriveForecasterPda(forecasterPubkey: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('forecaster_v2'), forecasterPubkey.toBuffer()],
+    PROGRAM_ID
+  );
+}
+
+/**
+ * Derive prediction record PDA
+ */
+function derivePredictionPda(
+  forecasterPubkey: PublicKey,
+  marketIdHash: Buffer,
+  timestampSeed: BN
+): [PublicKey, number] {
+  const timestampBuffer = Buffer.alloc(8);
+  timestampBuffer.writeBigInt64LE(BigInt(timestampSeed.toString()));
+
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('prediction'),
+      forecasterPubkey.toBuffer(),
+      marketIdHash,
+      timestampBuffer,
+    ],
+    PROGRAM_ID
+  );
+}
+
+/**
+ * Hash market ID to 32 bytes
+ */
+function hashMarketId(marketId: string): Buffer {
+  const hash = Buffer.alloc(32);
+  const marketBytes = Buffer.from(marketId, 'utf-8');
+  marketBytes.copy(hash, 0, 0, Math.min(marketBytes.length, 32));
+  return hash;
+}
+
+function decodeMemoTxSignature(memoTxSignature: number[] | Uint8Array | Buffer | null | undefined): string | null {
+  if (!memoTxSignature) return null;
+  const buf = Buffer.from(memoTxSignature as any);
+  if (buf.length !== 64) return null;
+  // Treat an all-zero signature as "not present"
+  let allZero = true;
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] !== 0) { allZero = false; break; }
+  }
+  if (allZero) return null;
+  return bs58.encode(buf);
+}
+
+async function findRecordPredictionSignatures(
+  connection: Connection,
+  walletPubkey: PublicKey,
+  limit: number
+): Promise<Array<{ signature: string; blockTime: number | null }>> {
+  const sigInfos = await connection.getSignaturesForAddress(walletPubkey, { limit: Math.min(50, Math.max(1, limit * 5)) });
+  if (sigInfos.length === 0) return [];
+
+  // Only inspect a small number of transactions; RPC can be slow.
+  const candidates = sigInfos.slice(0, Math.min(20, sigInfos.length));
+
+  const results: Array<{ signature: string; blockTime: number | null }> = [];
+
+  for (const info of candidates) {
+    try {
+      const tx = await connection.getTransaction(info.signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+      const logMessages = tx?.meta?.logMessages || [];
+      const includesProgram = (tx?.transaction.message.staticAccountKeys || [])
+        .some((k) => k.equals(PROGRAM_ID));
+      const isRecordPrediction = logMessages.some((l) => l.includes('Instruction: RecordPrediction'));
+
+      if (includesProgram && isRecordPrediction) {
+        results.push({ signature: info.signature, blockTime: info.blockTime ?? null });
+        if (results.length >= limit) break;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Get read-only Anchor program instance
+ */
+function getReadOnlyProgram(): Program {
+  const connection = new Connection(DEVNET_RPC, 'confirmed');
+
+  // Create a dummy wallet for read-only operations
+  const dummyWallet = {
+    publicKey: PublicKey.default,
+    signTransaction: async () => { throw new Error('Read-only'); },
+    signAllTransactions: async () => { throw new Error('Read-only'); },
+  };
+
+  const provider = new AnchorProvider(
+    connection,
+    dummyWallet as any,
+    { commitment: 'confirmed' }
+  );
+
+  return new Program(calibrationIdl as any, provider);
+}
+
+/**
+ * GET: Fetch forecaster state
+ */
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const wallet = searchParams.get('wallet');
+    const limitParam = searchParams.get('limit');
+    const limit = Math.max(1, Math.min(50, Number.parseInt(limitParam || '50', 10) || 50));
+    const history = searchParams.get('history') === 'true';
+
+    if (!wallet) {
+      return NextResponse.json(
+        { success: false, error: 'Wallet address required' },
+        { status: 400 }
+      );
+    }
+
+    let walletPubkey: PublicKey;
+    try {
+      walletPubkey = new PublicKey(wallet);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid wallet address' },
+        { status: 400 }
+      );
+    }
+
+    const program = getReadOnlyProgram();
+    const [forecasterStatePda] = deriveForecasterPda(walletPubkey);
+
+    // Optional: fetch the wallet's recent tx signatures for RecordPrediction so the UI can show an explorer link
+    // even if the on-chain account doesn't store a signature (programs can't read their own tx sig).
+    let recordPredictionSigs: Array<{ signature: string; blockTime: number | null }> = [];
+    if (history) {
+      try {
+        const connection = new Connection(DEVNET_RPC, 'confirmed');
+        recordPredictionSigs = await findRecordPredictionSignatures(connection, walletPubkey, Math.min(10, limit));
+      } catch (err) {
+        console.warn('[Calibration API] Failed to scan wallet tx signatures:', err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    // Fetch forecaster state
+    let forecasterAccount;
+    try {
+      forecasterAccount = await (program.account as any).forecasterState.fetchNullable(
+        forecasterStatePda
+      );
+    } catch (err) {
+      console.error('[Calibration API] Error fetching forecaster state:', err);
+      forecasterAccount = null;
+    }
+
+    if (!forecasterAccount) {
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            isInitialized: false,
+            forecasterPda: forecasterStatePda.toBase58(),
+            totalPredictions: 0,
+            predictions: [],
+          },
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    // Fetch predictions for this forecaster
+    let predictions: any[] = [];
+    try {
+      const accounts = await (program.account as any).predictionRecord.all([
+        {
+          memcmp: {
+            offset: 8 + 1, // discriminator + bump
+            bytes: walletPubkey.toBase58(),
+          },
+        },
+      ]);
+
+      predictions = accounts.map(({ publicKey, account }: { publicKey: PublicKey; account: any }) => {
+        const marketIdBytes = Buffer.from(account.marketId as number[]);
+        const marketIdStr = marketIdBytes.toString('utf-8').replace(/\0+$/, '');
+        const committedAtSec = (account.committedAt as BN).toNumber();
+        const resolvedAtSec = account.resolvedAt ? (account.resolvedAt as BN).toNumber() : null;
+
+        const txSignature = decodeMemoTxSignature(account.memoTxSignature as number[]);
+
+        return {
+          pda: publicKey.toBase58(),
+          forecaster: (account.forecaster as PublicKey).toBase58(),
+          marketId: marketIdStr,
+          marketIdText: marketIdStr,
+          marketIdHex: marketIdBytes.toString('hex'),
+          predictedProbability: account.predictedProbability as number,
+          direction: (account.direction as any).yes ? 'yes' : 'no',
+          directionLabel: (account.direction as any).yes ? 'YES' : 'NO',
+          committedAt: committedAtSec,
+          committedAtISO: new Date(committedAtSec * 1000).toISOString(),
+          resolvedAt: resolvedAtSec,
+          resolvedAtISO: resolvedAtSec ? new Date(resolvedAtSec * 1000).toISOString() : null,
+          outcome: (account.outcome as boolean | null) ?? null,
+          brierScore: (account.brierScore as number | null) ?? null,
+          category: account.category as number,
+          version: account.version as number,
+          txSignature,
+          explorerUrl: txSignature ? `https://explorer.solana.com/tx/${txSignature}?cluster=devnet` : null,
+        };
+      });
+
+      // Sort by committedAt descending
+      predictions.sort((a, b) =>
+        (b.committedAt as number) - (a.committedAt as number)
+      );
+
+      // If we don't have txSignature in the account, attempt a best-effort match from wallet tx history.
+      // We match by time: closest RecordPrediction tx blockTime to committedAt.
+      if (history && recordPredictionSigs.length > 0) {
+        for (const p of predictions) {
+          if (p.txSignature) continue;
+          const committedAt = typeof p.committedAt === 'number' ? p.committedAt : null;
+          if (!committedAt) continue;
+
+          let best: { signature: string; blockTime: number | null } | null = null;
+          let bestDelta = Number.POSITIVE_INFINITY;
+
+          for (const s of recordPredictionSigs) {
+            if (!s.blockTime) continue;
+            const delta = Math.abs(s.blockTime - committedAt);
+            if (delta < bestDelta) {
+              bestDelta = delta;
+              best = s;
+            }
+          }
+
+          // Only accept a close match (2 minutes) to avoid wrong links if wallet has other txs.
+          if (best && best.blockTime && bestDelta <= 120) {
+            p.txSignature = best.signature;
+            p.explorerUrl = `https://explorer.solana.com/tx/${best.signature}?cluster=devnet`;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Calibration API] Error fetching predictions:', err);
+    }
+
+    // Parse calibration buckets
+    const calibrationBuckets = (forecasterAccount.calibrationBuckets as number[][]).map(
+      (bucket: number[], index: number) => ({
+        range: `${index * 10}%-${(index + 1) * 10}%`,
+        count: bucket[0] || 0,
+        avgOutcome: bucket[1] || 0,
+      })
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        isInitialized: true,
+        forecasterPda: forecasterStatePda.toBase58(),
+        authority: (forecasterAccount.authority as PublicKey).toBase58(),
+        totalPredictions: forecasterAccount.totalPredictions as number,
+        stats: {
+          totalPredictions: forecasterAccount.totalPredictions as number,
+          resolvedPredictions: forecasterAccount.resolvedPredictions as number,
+          pendingPredictions:
+            (forecasterAccount.totalPredictions as number) -
+            (forecasterAccount.resolvedPredictions as number),
+          correctPredictions: forecasterAccount.correctPredictions as number,
+          accuracy: forecasterAccount.accuracy as number,
+          avgBrierScore: forecasterAccount.avgBrierScore as number,
+          avgLogScore: forecasterAccount.avgLogScore as number,
+          marketsTraded: forecasterAccount.marketsTraded as number,
+          streakCorrect: forecasterAccount.streakCorrect as number,
+          maxStreakCorrect: forecasterAccount.maxStreakCorrect as number,
+          bestCategory: forecasterAccount.bestCategory as number,
+          worstCategory: forecasterAccount.worstCategory as number,
+        },
+        calibrationBuckets,
+        timestamps: {
+          createdAt: (forecasterAccount.createdAt as BN).toNumber(),
+          createdAtISO: new Date(
+            (forecasterAccount.createdAt as BN).toNumber() * 1000
+          ).toISOString(),
+          lastPredictionTs: (forecasterAccount.lastPredictionTs as BN).toNumber(),
+          lastPredictionISO:
+            (forecasterAccount.lastPredictionTs as BN).toNumber() > 0
+              ? new Date(
+                  (forecasterAccount.lastPredictionTs as BN).toNumber() * 1000
+                ).toISOString()
+              : null,
+        },
+        version: forecasterAccount.version as number,
+        predictions: predictions.slice(0, limit),
+      },
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('[Calibration API] GET error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch calibration data',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST: Build unsigned transactions
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  try {
+    const body = await request.json();
+    const { action, authority, marketId, predictedProbability, direction, category } = body;
+
+    if (!action || !authority) {
+      return NextResponse.json(
+        { success: false, error: 'Action and authority are required' },
+        { status: 400 }
+      );
+    }
+
+    let authorityPubkey: PublicKey;
+    try {
+      authorityPubkey = new PublicKey(authority);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid authority address' },
+        { status: 400 }
+      );
+    }
+
+    const connection = new Connection(DEVNET_RPC, 'confirmed');
+    const [forecasterStatePda] = deriveForecasterPda(authorityPubkey);
+
+    if (action === 'initialize') {
+      // Check if already initialized
+      const program = getReadOnlyProgram();
+      let existingAccount;
+      try {
+        existingAccount = await (program.account as any).forecasterState.fetchNullable(
+          forecasterStatePda
+        );
+      } catch {
+        existingAccount = null;
+      }
+
+      if (existingAccount) {
+        return NextResponse.json({
+          success: false,
+          code: 'ALREADY_INITIALIZED',
+          error: 'Forecaster already initialized',
+        });
+      }
+
+      // Build initialize transaction manually (without signing)
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+
+      // Build the instruction data for initialize_forecaster
+      // Discriminator: [16, 22, 244, 53, 163, 61, 216, 211]
+      const discriminator = Buffer.from([16, 22, 244, 53, 163, 61, 216, 211]);
+
+      const transaction = new Transaction();
+      transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+      transaction.feePayer = authorityPubkey;
+
+      // Create the instruction manually
+      const keys = [
+        { pubkey: authorityPubkey, isSigner: true, isWritable: true },
+        { pubkey: forecasterStatePda, isSigner: false, isWritable: true },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ];
+
+      transaction.add({
+        programId: PROGRAM_ID,
+        keys,
+        data: discriminator,
+      });
+
+      // Serialize without signatures
+      const serialized = transaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          transaction: serialized.toString('base64'),
+          forecasterPda: forecasterStatePda.toBase58(),
+        },
+      });
+    }
+
+    if (action === 'record') {
+      if (!marketId || predictedProbability === undefined || !direction) {
+        return NextResponse.json(
+          { success: false, error: 'marketId, predictedProbability, and direction are required' },
+          { status: 400 }
+        );
+      }
+
+      // Check if forecaster is initialized
+      const program = getReadOnlyProgram();
+      let forecasterAccount;
+      try {
+        forecasterAccount = await (program.account as any).forecasterState.fetchNullable(
+          forecasterStatePda
+        );
+      } catch {
+        forecasterAccount = null;
+      }
+
+      const needsInit = !forecasterAccount;
+
+      // Hash market ID
+      const marketIdHash = hashMarketId(marketId);
+
+      // Use current timestamp (seconds) as seed
+      const timestampSeed = new BN(Math.floor(Date.now() / 1000));
+
+      // Derive prediction PDA
+      const [predictionPda] = derivePredictionPda(
+        authorityPubkey,
+        marketIdHash,
+        timestampSeed
+      );
+
+      // Build transaction with blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+
+      const transaction = new Transaction();
+      transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+      transaction.feePayer = authorityPubkey;
+
+      // If forecaster not initialized, add init instruction FIRST
+      if (needsInit) {
+        const initDiscriminator = Buffer.from([16, 22, 244, 53, 163, 61, 216, 211]);
+        transaction.add({
+          programId: PROGRAM_ID,
+          keys: [
+            { pubkey: authorityPubkey, isSigner: true, isWritable: true },
+            { pubkey: forecasterStatePda, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          ],
+          data: initDiscriminator,
+        });
+      }
+
+      // Build record prediction instruction
+      const recordDiscriminator = Buffer.from([6, 250, 152, 187, 248, 58, 42, 136]);
+
+      // Encode arguments: market_id[32] + timestamp_seed[8] + probability[8] + direction[1] + memo[64] + category[1]
+      const argsBuffer = Buffer.alloc(32 + 8 + 8 + 1 + 64 + 1);
+      let offset = 0;
+
+      marketIdHash.copy(argsBuffer, offset);
+      offset += 32;
+
+      argsBuffer.writeBigInt64LE(BigInt(timestampSeed.toString()), offset);
+      offset += 8;
+
+      argsBuffer.writeDoubleLE(predictedProbability, offset);
+      offset += 8;
+
+      argsBuffer.writeUInt8(direction.toLowerCase() === 'yes' ? 0 : 1, offset);
+      offset += 1;
+
+      // memo_tx_signature [64 bytes] - zeros
+      offset += 64;
+
+      argsBuffer.writeUInt8(category || 0, offset);
+
+      const recordInstructionData = Buffer.concat([recordDiscriminator, argsBuffer]);
+
+      // Add record instruction
+      transaction.add({
+        programId: PROGRAM_ID,
+        keys: [
+          { pubkey: authorityPubkey, isSigner: true, isWritable: true },
+          { pubkey: forecasterStatePda, isSigner: false, isWritable: true },
+          { pubkey: predictionPda, isSigner: false, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        data: recordInstructionData,
+      });
+
+      const serialized = transaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          transaction: serialized.toString('base64'),
+          forecasterPda: forecasterStatePda.toBase58(),
+          predictionPda: predictionPda.toBase58(),
+          timestampSeed: timestampSeed.toString(),
+          includesInit: needsInit, // Let frontend know if init was included
+        },
+      });
+    }
+
+    return NextResponse.json(
+      { success: false, error: `Unknown action: ${action}` },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('[Calibration API] POST error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to build transaction',
+      },
+      { status: 500 }
+    );
+  }
+}

@@ -1,0 +1,179 @@
+# ==============================================================================
+# BeRight Protocol - Security Scanning Workflow
+# ==============================================================================
+# Runs on every push and PR to detect secrets and vulnerabilities
+# ==============================================================================
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop, agent-build]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================
+  # SECRET SCANNING
+  # ============================================
+  secrets-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for thorough scanning
+
+      # Gitleaks - Fast secret scanner
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      # TruffleHog - Deep secret scanning
+      - name: TruffleHog Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      # Detect-secrets baseline check
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: Check against baseline
+        run: |
+          if [ -f .secrets.baseline ]; then
+            detect-secrets scan \
+              --exclude-files 'package-lock\.json' \
+              --exclude-files '\.env\.example' \
+              --exclude-files 'node_modules/.*' \
+              --exclude-files '.*\.lock' \
+              --baseline .secrets.baseline \
+              || echo "::warning::New potential secrets detected"
+          else
+            echo "::warning::No secrets baseline found. Run: detect-secrets scan > .secrets.baseline"
+          fi
+
+  # ============================================
+  # DEPENDENCY AUDIT
+  # ============================================
+  dependency-audit:
+    name: Dependency Vulnerabilities
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: NPM Audit (Root)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: NPM Audit (beright-ts)
+        working-directory: beright-ts
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: NPM Audit (berightweb)
+        working-directory: berightweb
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  # ============================================
+  # CODEQL ANALYSIS
+  # ============================================
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================
+  # SECURITY SUMMARY
+  # ============================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secrets-scan, dependency-audit]
+    if: always()
+
+    steps:
+      - name: Check Results
+        run: |
+          echo "=============================================="
+          echo "Security Scan Summary"
+          echo "=============================================="
+          echo ""
+          echo "Secrets Scan: ${{ needs.secrets-scan.result }}"
+          echo "Dependency Audit: ${{ needs.dependency-audit.result }}"
+          echo ""
+
+          if [ "${{ needs.secrets-scan.result }}" == "failure" ]; then
+            echo "::error::SECRET DETECTED! This PR cannot be merged until secrets are removed."
+            exit 1
+          fi
+
+          echo "All security checks passed or had non-blocking warnings."
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "::error::SECURITY SCAN FAILED"
+          echo "Please check the logs above for details."
+          echo ""
+          echo "Common issues:"
+          echo "1. Secrets committed to code - REMOVE IMMEDIATELY"
+          echo "2. High severity vulnerabilities - Review and fix"
+          echo "3. CodeQL warnings - Review and address"

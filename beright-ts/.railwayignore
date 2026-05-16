@@ -1,0 +1,17 @@
+node_modules
+.next
+.turbo
+*.log
+.env.local
+.DS_Store
+coverage
+.nyc_output
+dist
+build
+*.mp4
+*.mov
+*.avi
+logs/
+.playwright-mcp/
+beright-ranger/
+staking-pool/target/

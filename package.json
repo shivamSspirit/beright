@@ -1,0 +1,39 @@
+{
+  "name": "beright",
+  "version": "1.0.1",
+  "private": true,
+  "workspaces": [
+    "beright-ts",
+    "berightweb",
+    "forecaster-scoring-engine"
+  ],
+  "scripts": {
+    "agent": "npm run agent --workspace=beright-ts",
+    "dev": "turbo run dev",
+    "dev:full": "npx concurrently \"turbo run dev\" \"sleep 5 && npm run agent\"",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "dev:api": "npm run dev --workspace=beright-ts",
+    "dev:web": "npm run dev --workspace=berightweb",
+    "gateway": "npm run gateway --workspace=beright-ts",
+    "telegram": "npm run gateway --workspace=beright-ts",
+    "heartbeat": "npm run heartbeat --workspace=beright-ts",
+    "test:calibration": "cd calibration-program && npm run test:calibration"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  },
+  "dependencies": {
+    "@solana-program/memo": "^0.11.0",
+    "@solana/kit": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.2.0",
+  "overrides": {
+    "@solana/kit": "^6.0.0"
+  }
+}

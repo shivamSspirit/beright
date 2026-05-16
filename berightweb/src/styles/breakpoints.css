@@ -1,0 +1,139 @@
+/**
+ * BeRight Breakpoints
+ * Standardized responsive breakpoints
+ *
+ * Standard breakpoints (mobile-first):
+ * - sm:  640px  (small tablets)
+ * - md:  768px  (tablets portrait)
+ * - lg:  1024px (desktop)
+ * - xl:  1280px (wide desktop)
+ * - 2xl: 1536px (ultra wide)
+ *
+ * Usage in CSS Modules:
+ *
+ * Mobile-first (recommended):
+ * .element { mobile styles }
+ * @media (min-width: 640px) { tablet styles }
+ * @media (min-width: 1024px) { desktop styles }
+ *
+ * Mobile-only:
+ * @media (max-width: 639px) { mobile-only styles }
+ *
+ * Range:
+ * @media (min-width: 640px) and (max-width: 1023px) { tablet-only }
+ */
+
+
+/* ========================================
+   BREAKPOINT VALUES (for JS import)
+   ======================================== */
+
+:root {
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1536px;
+}
+
+
+/* ========================================
+   COMMON RESPONSIVE PATTERNS
+   Import this file to use these utilities
+   ======================================== */
+
+/* Hide on mobile, show on tablet+ */
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .hide-mobile {
+    display: block;
+  }
+}
+
+/* Show on mobile, hide on tablet+ */
+.show-mobile {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .show-mobile {
+    display: none;
+  }
+}
+
+/* Hide on mobile/tablet, show on desktop+ */
+.hide-until-desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .hide-until-desktop {
+    display: block;
+  }
+}
+
+/* Show on mobile/tablet, hide on desktop+ */
+.show-until-desktop {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .show-until-desktop {
+    display: none;
+  }
+}
+
+
+/* ========================================
+   RESPONSIVE CONTAINER
+   ======================================== */
+
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+
+/* ========================================
+   LANDSCAPE MODE HANDLING
+   ======================================== */
+
+/* Compact mode for landscape phones */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --nav-height-mobile: 48px;
+    --bottom-nav-height: 56px;
+  }
+}

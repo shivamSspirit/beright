@@ -1,0 +1,260 @@
+/**
+ * Button Component Styles
+ * Uses design tokens from tokens.css
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE BUTTON
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Material Design 3 State Layer */
+.button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-smooth);
+  pointer-events: none;
+}
+
+.button:hover:not(:disabled)::before {
+  opacity: var(--state-hover);
+}
+
+.button:focus-visible::before {
+  opacity: var(--state-focus);
+}
+
+.button:active:not(:disabled)::before {
+  opacity: var(--state-pressed);
+}
+
+.button:focus {
+  outline: none;
+}
+
+.button:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-bg-void), 0 0 0 4px var(--color-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Primary - Green filled */
+.primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-glow-green);
+  transform: translateY(-2px);
+}
+
+.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Secondary - Green outline */
+.secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--color-primary-dim);
+  box-shadow: var(--shadow-glow-green);
+}
+
+.secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Ghost - Subtle transparent */
+.ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-hover);
+}
+
+.ghost:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Danger - Red for destructive */
+.danger {
+  background: var(--color-no);
+  color: var(--color-text-primary);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--shadow-glow-red);
+}
+
+.danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Success - Green confirmation */
+.success {
+  background: var(--color-yes);
+  color: var(--color-text-inverse);
+}
+
+.success:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--shadow-glow-green);
+}
+
+.success:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIZES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+  min-height: 32px;
+}
+
+.md {
+  padding: var(--space-2-5) var(--space-5);
+  font-size: var(--text-base);
+  border-radius: var(--radius-md);
+  min-height: 40px;
+}
+
+.lg {
+  padding: var(--space-3) var(--space-7);
+  font-size: var(--text-lg);
+  border-radius: var(--radius-lg);
+  min-height: 48px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fullWidth {
+  width: 100%;
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.loading {
+  color: transparent;
+}
+
+.loading .label {
+  visibility: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INNER ELEMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING SPINNER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinnerIcon {
+  width: 20px;
+  height: 20px;
+  animation: spin 0.8s linear infinite;
+}
+
+.sm .spinnerIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.lg .spinnerIcon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Restore color for spinner */
+.primary .spinnerIcon,
+.success .spinnerIcon {
+  color: var(--color-text-inverse);
+}
+
+.secondary .spinnerIcon {
+  color: var(--color-primary);
+}
+
+.ghost .spinnerIcon {
+  color: var(--color-text-primary);
+}
+
+.danger .spinnerIcon {
+  color: var(--color-text-primary);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

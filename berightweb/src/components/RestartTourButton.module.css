@@ -1,0 +1,185 @@
+/* Restart Tour Button - Responsive floating help button */
+
+.restartBtn {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0F1419 0%, #1A1F26 100%);
+  border: 1px solid rgba(0, 255, 178, 0.3);
+  color: #00FFB2;
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 9997;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  /* Ensure touch target meets WCAG AA standards */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.restartBtn:hover {
+  background: linear-gradient(135deg, #1A1F26 0%, #0F1419 100%);
+  border-color: rgba(0, 255, 178, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 255, 178, 0.3);
+  transform: translateY(-2px);
+}
+
+.restartBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.restartBtn:focus-visible {
+  outline: 2px solid #00FFB2;
+  outline-offset: 2px;
+}
+
+/* ========================================
+   RESPONSIVE BREAKPOINTS
+   ======================================== */
+
+/* Large Desktop (1440px+) - Default styles apply */
+
+/* Standard Desktop (1024px - 1440px) */
+@media (max-width: 1440px) {
+  .restartBtn {
+    width: 46px;
+    height: 46px;
+    font-size: 21px;
+    bottom: 90px;
+    right: 18px;
+  }
+}
+
+/* Tablet Landscape (1024px) */
+@media (max-width: 1024px) {
+  .restartBtn {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    bottom: 80px;
+    right: 16px;
+  }
+}
+
+/* Tablet Portrait (768px) */
+@media (max-width: 768px) {
+  .restartBtn {
+    /* Move to bottom-left to avoid conflicting with nav */
+    /* iOS safe area support */
+    bottom: max(90px, calc(90px + env(safe-area-inset-bottom)));
+    right: auto;
+    left: max(16px, env(safe-area-inset-left));
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
+  }
+}
+
+/* Large Phone (480px - 768px) */
+@media (max-width: 640px) {
+  .restartBtn {
+    bottom: 80px;
+    left: 12px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+}
+
+/* Standard Phone (375px - 480px) */
+@media (max-width: 480px) {
+  .restartBtn {
+    bottom: 75px;
+    left: 12px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+    /* Slightly reduce shadow on small screens for performance */
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Small Phone (320px - 375px) - iPhone SE */
+@media (max-width: 375px) {
+  .restartBtn {
+    bottom: 70px;
+    left: 10px;
+    width: 44px;
+    height: 44px;
+    font-size: 17px;
+  }
+}
+
+/* Extra Small Phone (< 320px) */
+@media (max-width: 320px) {
+  .restartBtn {
+    bottom: 65px;
+    left: 8px;
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+}
+
+/* Landscape orientation on phones - move higher to avoid navigation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .restartBtn {
+    bottom: 60px;
+    left: 12px;
+  }
+}
+
+/* Very short screens (landscape phones) */
+@media (max-height: 400px) and (orientation: landscape) {
+  .restartBtn {
+    bottom: 50px;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
+
+/* Accessibility - Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .restartBtn {
+    transition: none;
+    animation: none;
+  }
+
+  .restartBtn:hover {
+    transform: none;
+  }
+
+  .restartBtn:active {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .restartBtn {
+    border-width: 2px;
+    border-color: rgba(0, 255, 178, 0.6);
+  }
+
+  .restartBtn:hover {
+    border-color: rgba(0, 255, 178, 0.9);
+  }
+}
+
+/* Dark mode specific (if using system dark mode) */
+@media (prefers-color-scheme: dark) {
+  .restartBtn {
+    /* Already dark by default, but can enhance */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+}

@@ -1,0 +1,148 @@
+/**
+ * Accordion Component Styles
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.accordion {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Default - connected items */
+.default .item {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.default .item:last-child {
+  border-bottom: none;
+}
+
+/* Bordered - card style */
+.bordered {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.bordered .item {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.bordered .item:last-child {
+  border-bottom: none;
+}
+
+/* Separated - individual cards */
+.separated {
+  gap: 12px;
+}
+
+.separated .item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ITEM
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.item {
+  background: transparent;
+}
+
+.item.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRIGGER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 18px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s var(--ease-smooth);
+}
+
+.trigger:hover {
+  background: var(--surface-state-hover);
+}
+
+.trigger:focus-visible {
+  outline: none;
+  background: var(--surface-state-focus);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.title {
+  flex: 1;
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.3s var(--ease-smooth);
+}
+
+.item.open .chevron {
+  transform: rotate(180deg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.content {
+  overflow: hidden;
+}
+
+.contentInner {
+  padding: 0 20px 20px;
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .trigger {
+    padding: 16px;
+  }
+
+  .contentInner {
+    padding: 0 16px 16px;
+  }
+
+  .title {
+    font-size: var(--text-sm);
+  }
+}
