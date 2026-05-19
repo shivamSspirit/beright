@@ -1,6 +1,6 @@
 import { differenceInDays, differenceInWeeks, getWeek, getYear } from 'date-fns';
 
-import { SourceScoreConfig, V3Prediction } from './types';
+import { ResolutionFinality, SourceScoreConfig, V3Prediction } from './types';
 
 export interface WeightedPrediction {
   prediction: V3Prediction;
@@ -146,4 +146,39 @@ export function calculateConsistencyQuality(predictions: V3Prediction[]): number
   ).size;
 
   return clamp(activeWeeks / totalWeeks, 0, 1);
+}
+
+export function calculateEvidenceQuality(weighted: WeightedPrediction[]): number {
+  const weightSum = weighted.reduce((sum, item) => sum + item.weight, 0);
+  if (weightSum === 0) return 0;
+
+  const weightedEvidence = weighted.reduce((sum, item) => {
+    const evidence = item.prediction.resolutionEvidence;
+    const finalityQuality = getFinalityQuality(evidence?.finality);
+    const confidence = clamp(evidence?.confidence ?? finalityQuality, 0, 1);
+    return sum + item.weight * Math.min(finalityQuality, confidence);
+  }, 0) / weightSum;
+
+  return clamp(weightedEvidence, 0, 1);
+}
+
+function getFinalityQuality(finality: ResolutionFinality | undefined): number {
+  switch (finality) {
+    case 'venue_final':
+    case 'oracle_final':
+      return 1;
+    case 'redeemable':
+      return 0.98;
+    case 'api_resolved':
+      return 0.9;
+    case 'provisional':
+      return 0.65;
+    case 'disputed':
+      return 0.25;
+    case 'unknown':
+    case undefined:
+      return 0.8;
+    default:
+      return 0.8;
+  }
 }

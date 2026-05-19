@@ -16,6 +16,24 @@ export type ForecasterTier =
   | 'advanced'
   | 'elite';
 
+export type ResolutionFinality =
+  | 'venue_final'
+  | 'oracle_final'
+  | 'redeemable'
+  | 'api_resolved'
+  | 'provisional'
+  | 'disputed'
+  | 'unknown';
+
+export interface ResolutionEvidence {
+  source: string;
+  finality: ResolutionFinality;
+  confidence: number;
+  observedAt?: Date;
+  referenceUrl?: string;
+  evidenceHash?: string;
+}
+
 export interface V3Prediction {
   id: string;
   forecasterId: string;
@@ -36,6 +54,7 @@ export interface V3Prediction {
   marketOpenTime?: Date;
   marketCloseTime?: Date;
   category?: string;
+  resolutionEvidence?: ResolutionEvidence;
 }
 
 export interface V3Identity {
@@ -52,6 +71,7 @@ export interface ScoreBreakdown {
   difficultyQuality: number;
   edgeQuality: number;
   consistencyQuality: number;
+  evidenceQuality: number;
   confidence: number;
   confidenceAdjustment: number;
   penalty: number;

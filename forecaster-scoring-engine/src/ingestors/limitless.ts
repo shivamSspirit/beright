@@ -303,6 +303,15 @@ export class LimitlessIngestor extends BaseIngestor {
       marketCloseTime,
       category: `imported:limitless:${position.market.slug ?? this.getMarketId(position.market)}`,
       difficulty: this.estimateDifficulty(predictedProbability),
+      resolutionEvidence: {
+        source: 'limitless-portfolio-api',
+        finality: 'api_resolved',
+        confidence: 0.85,
+        observedAt: new Date(),
+        referenceUrl: position.market.slug
+          ? `https://limitless.exchange/markets/${position.market.slug}`
+          : undefined,
+      },
     };
   }
 

@@ -203,6 +203,15 @@ export class PolymarketIngestor extends BaseIngestor {
       marketCloseTime,
       category: `imported:polymarket:${position.eventSlug || position.slug}`,
       difficulty: this.estimateDifficulty(predictedProbability),
+      resolutionEvidence: {
+        source: 'polymarket-data-api',
+        finality: 'venue_final',
+        confidence: 0.95,
+        observedAt: new Date(),
+        referenceUrl: position.slug
+          ? `https://polymarket.com/event/${position.eventSlug || position.slug}`
+          : undefined,
+      },
     };
   }
 

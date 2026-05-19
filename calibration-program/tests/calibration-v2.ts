@@ -22,7 +22,7 @@ describe('calibration V2 - Migration & New Features', () => {
 
       // Derive PDA
       [v2ForecasterPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('forecaster'), v2Forecaster.publicKey.toBuffer()],
+        [Buffer.from('forecaster_v2'), v2Forecaster.publicKey.toBuffer()],
         program.programId
       );
     });
@@ -84,7 +84,9 @@ describe('calibration V2 - Migration & New Features', () => {
   describe('V1 to V2 Migration Tests', () => {
     // We'll create a V1-style account (old test) and migrate it
     const v1Forecaster = Keypair.generate();
+    const resolverKeypair = (provider.wallet as anchor.Wallet).payer;
     let v1ForecasterPda: PublicKey;
+    let scoreConfigPda: PublicKey;
 
     before(async () => {
       // Airdrop SOL
@@ -95,9 +97,27 @@ describe('calibration V2 - Migration & New Features', () => {
       await provider.connection.confirmTransaction(signature);
 
       [v1ForecasterPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('forecaster'), v1Forecaster.publicKey.toBuffer()],
+        [Buffer.from('forecaster_v2'), v1Forecaster.publicKey.toBuffer()],
         program.programId
       );
+
+      [scoreConfigPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('score_config')],
+        program.programId
+      );
+
+      const scoreConfigInfo = await provider.connection.getAccountInfo(scoreConfigPda);
+      if (!scoreConfigInfo) {
+        await program.methods
+          .initializeScoreConfig()
+          .accounts({
+            authority: resolverKeypair.publicKey,
+            scoreConfig: scoreConfigPda,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([resolverKeypair])
+          .rpc();
+      }
     });
 
     it('Creates forecaster (simulating V1)', async () => {
@@ -163,11 +183,12 @@ describe('calibration V2 - Migration & New Features', () => {
         await program.methods
           .resolvePrediction(outcome)
           .accounts({
-            authority: v1Forecaster.publicKey,
-            forecasterState: v1ForecasterPda,
+            resolver: resolverKeypair.publicKey,
+            scoreConfig: scoreConfigPda,
             predictionRecord: predictionPda,
+            forecasterState: v1ForecasterPda,
           })
-          .signers([v1Forecaster])
+          .signers([resolverKeypair])
           .rpc();
       }
 

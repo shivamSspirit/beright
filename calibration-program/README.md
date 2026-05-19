@@ -32,12 +32,14 @@ The calibration program now also exposes a dedicated V3 score-sync surface for t
 
 This keeps the native calibration history (`ForecasterState`) separate from the off-chain scoring engine output. The scoring layer computes the math; the calibration layer only anchors the accepted summary onchain.
 
+Capital-impacting reputation must use accepted V3 score snapshots. Native resolution is gated by the configured resolver authority so the forecaster being scored cannot settle their own outcome.
+
 ## Architecture
 
 ### Accounts
 
 #### 1. ForecasterState (PDA)
-**Seeds**: `[b"forecaster", forecaster_pubkey]`
+**Seeds**: `[b"forecaster_v2", forecaster_pubkey]`
 
 Stores aggregated calibration statistics for a forecaster:
 
@@ -93,9 +95,11 @@ Record a new prediction and update forecaster stats.
 **Cost**: ~0.002 SOL rent + 0.000005 SOL tx fee
 
 #### 3. `resolve_prediction(outcome)`
-Resolve a prediction with the actual outcome, calculate scores.
+Resolve a prediction with the actual outcome from the configured `score_config` authority.
 
 **Cost**: 0.000005 SOL tx fee (updates existing accounts)
+
+**Trust note**: forecasters cannot resolve records they are scored on. Resolution must be submitted by the configured market/oracle/program resolver authority and reflected in an accepted V3 score snapshot before it affects capital mandates.
 
 ## Calibration Metrics
 
@@ -190,9 +194,10 @@ const tx = await recordPrediction(
 // Later: resolve prediction
 await resolvePrediction(
   program,
-  wallet,
+  wallet.publicKey,         // Forecaster being scored
+  resolverWallet,           // Configured score_config authority
   predictionPda,
-  true                    // Actual outcome
+  true                      // Actual outcome
 );
 
 // Fetch stats

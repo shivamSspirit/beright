@@ -130,6 +130,13 @@ export class MetaculusIngestor extends BaseIngestor {
           communitySpread,
           difficulty: communitySpread,  // Higher spread = harder question
           category: 'imported:metaculus',
+          resolutionEvidence: isResolved ? {
+            source: 'metaculus-api',
+            finality: 'venue_final',
+            confidence: 0.9,
+            observedAt: new Date(),
+            referenceUrl: question.url,
+          } : undefined,
         };
 
         convertedPredictions.push(prediction);

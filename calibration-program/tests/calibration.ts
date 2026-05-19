@@ -11,8 +11,10 @@ describe('calibration', () => {
 
   // Test forecaster
   const forecasterKeypair = Keypair.generate();
+  const resolverKeypair = (provider.wallet as anchor.Wallet).payer;
   let forecasterStatePda: PublicKey;
   let predictionPda: PublicKey;
+  let scoreConfigPda: PublicKey;
 
   // Test data
   const marketId = Buffer.alloc(32, 1); // Simple market ID
@@ -30,7 +32,12 @@ describe('calibration', () => {
 
     // Derive PDAs
     [forecasterStatePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('forecaster'), forecasterKeypair.publicKey.toBuffer()],
+      [Buffer.from('forecaster_v2'), forecasterKeypair.publicKey.toBuffer()],
+      program.programId
+    );
+
+    [scoreConfigPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('score_config')],
       program.programId
     );
 
@@ -45,6 +52,19 @@ describe('calibration', () => {
       ],
       program.programId
     );
+
+    const scoreConfigInfo = await provider.connection.getAccountInfo(scoreConfigPda);
+    if (!scoreConfigInfo) {
+      await program.methods
+        .initializeScoreConfig()
+        .accounts({
+          authority: resolverKeypair.publicKey,
+          scoreConfig: scoreConfigPda,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([resolverKeypair])
+        .rpc();
+    }
   });
 
   it('Initializes forecaster state', async () => {
@@ -123,11 +143,12 @@ describe('calibration', () => {
     const tx = await program.methods
       .resolvePrediction(outcome)
       .accounts({
-        authority: forecasterKeypair.publicKey,
-        forecasterState: forecasterStatePda,
+        resolver: resolverKeypair.publicKey,
+        scoreConfig: scoreConfigPda,
         predictionRecord: predictionPda,
+        forecasterState: forecasterStatePda,
       })
-      .signers([forecasterKeypair])
+      .signers([resolverKeypair])
       .rpc();
 
     console.log('Resolve prediction tx:', tx);
@@ -170,11 +191,12 @@ describe('calibration', () => {
       await program.methods
         .resolvePrediction(false)
         .accounts({
-          authority: forecasterKeypair.publicKey,
-          forecasterState: forecasterStatePda,
+          resolver: resolverKeypair.publicKey,
+          scoreConfig: scoreConfigPda,
           predictionRecord: predictionPda,
+          forecasterState: forecasterStatePda,
         })
-        .signers([forecasterKeypair])
+        .signers([resolverKeypair])
         .rpc();
 
       assert.fail('Should have thrown error');
@@ -228,11 +250,12 @@ describe('calibration', () => {
       await program.methods
         .resolvePrediction(pred.outcome)
         .accounts({
-          authority: forecasterKeypair.publicKey,
-          forecasterState: forecasterStatePda,
+          resolver: resolverKeypair.publicKey,
+          scoreConfig: scoreConfigPda,
           predictionRecord: pda,
+          forecasterState: forecasterStatePda,
         })
-        .signers([forecasterKeypair])
+        .signers([resolverKeypair])
         .rpc();
     }
 
