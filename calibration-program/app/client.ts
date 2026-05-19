@@ -279,27 +279,31 @@ export async function recordPrediction(
  */
 export async function resolvePrediction(
   program: Program<any>,
-  forecasterKeypair: Keypair,
+  forecasterPubkey: PublicKey,
+  resolverKeypair: Keypair,
   predictionPda: PublicKey,
   outcome: boolean
 ): Promise<string> {
   const [forecasterStatePda] = deriveForecasterPda(
-    forecasterKeypair.publicKey,
+    forecasterPubkey,
     program.programId
   );
+  const [scoreConfigPda] = deriveScoreConfigPda(program.programId);
 
   const tx = await asDynamicProgram(program).methods
     .resolvePrediction(outcome)
     .accounts({
-      authority: forecasterKeypair.publicKey,
-      forecasterState: forecasterStatePda,
+      resolver: resolverKeypair.publicKey,
+      scoreConfig: scoreConfigPda,
       predictionRecord: predictionPda,
+      forecasterState: forecasterStatePda,
     })
-    .signers([forecasterKeypair])
+    .signers([resolverKeypair])
     .rpc();
 
   console.log('Prediction resolved:', {
-    forecaster: forecasterKeypair.publicKey.toBase58(),
+    forecaster: forecasterPubkey.toBase58(),
+    resolver: resolverKeypair.publicKey.toBase58(),
     predictionPda: predictionPda.toBase58(),
     outcome,
     tx,

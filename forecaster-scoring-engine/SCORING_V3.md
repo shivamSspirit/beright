@@ -27,6 +27,8 @@ The downstream policy/risk layer should consume score outputs and enforce capita
 4. Proper scoring rules should dominate the model
 5. Anti-gaming must reduce score, not merely annotate it
 6. Capital rights must not be mapped linearly from raw score
+7. Venue history must carry explicit resolution evidence before it can influence capital
+8. Forecasters must never be the trusted resolver for their own capital-impacting native forecasts
 
 ## Inputs
 
@@ -53,6 +55,7 @@ The engine should emit a versioned snapshot with:
 - `nativeScore`
 - `vaultScore`
 - `confidence`
+- `evidenceQuality`
 - `nativeResolvedCount`
 - `importedResolvedCount`
 - `penalties`
@@ -105,7 +108,7 @@ ImportedSkill =
   0.10 * ConsistencyQuality +
   0.05 * EdgeQuality
 
-IScore = 1000 * ImportedSkill * ImportedConfidenceAdjustment * ImportedPenalty
+IScore = 1000 * ImportedSkill * ImportedEvidenceQuality * ImportedConfidenceAdjustment * ImportedPenalty
 ```
 
 ## Native Score
@@ -142,7 +145,7 @@ NativeSkill =
   0.10 * EdgeQuality +
   0.05 * ConsistencyQuality
 
-NScore = 1000 * NativeSkill * NativeConfidenceAdjustment * NativePenalty
+NScore = 1000 * NativeSkill * NativeEvidenceQuality * NativeConfidenceAdjustment * NativePenalty
 ```
 
 ## Unified Score
@@ -208,6 +211,42 @@ Suggested probation rule:
 - imported-only forecasters cannot exceed `1000 bps`
 - full sleeve rights require minimum native history
 
+## Capital Mandate Policy
+
+`riskCaps` are recommendations, not custody. Downstream Solana policy should translate them into a bounded `CapitalMandate`:
+
+```text
+CapitalLimit =
+  BaseLimit
+  * VScoreMultiplier
+  * ConfidenceMultiplier
+  * EvidenceQualityMultiplier
+  * DrawdownMultiplier
+  * LiquidityMultiplier
+```
+
+Suggested public tiers:
+
+| Tier | Trust State | Suggested Capital |
+| --- | --- | ---: |
+| `restricted` | no capital rights | `$0` |
+| `bootstrap` | imported skill only or early native history | up to `$5,000` |
+| `standard` | clean history and enough observations | up to `$25,000` |
+| `advanced` | strong cross-market performance | up to `$50,000` |
+| `elite` | high score, high confidence, low drawdown | up to `$100,000` |
+
+Capital mandates must be bounded by:
+
+- max active capital
+- max market exposure
+- max theme/category exposure
+- max daily/epoch loss
+- allowed venues
+- mandate expiry
+- emergency pause
+
+Forecasters should direct capital through signed intents or policy-checked workflows. They should not receive withdrawal authority over BeRight capital.
+
 ## Effective Sample Size
 
 Use exponentially decayed observation weights:
@@ -251,6 +290,47 @@ For forecast platforms:
 For trade-based platforms:
 
 - use entry price vs resolution quality, not raw pnl alone
+
+## Resolution Evidence Quality
+
+Every resolved observation should include `resolutionEvidence`:
+
+```typescript
+interface ResolutionEvidence {
+  source: string; // e.g. polymarket-data-api, limitless-portfolio-api, pyth, switchboard
+  finality: 'venue_final' | 'oracle_final' | 'redeemable' | 'api_resolved' | 'provisional' | 'disputed' | 'unknown';
+  confidence: number; // 0.0-1.0
+  observedAt?: Date;
+  referenceUrl?: string;
+  evidenceHash?: string;
+}
+```
+
+Resolution evidence is a multiplicative trust factor:
+
+```text
+EvidenceQuality = weighted_mean(min(finality_quality, confidence))
+```
+
+Suggested finality quality:
+
+| Finality | Quality | Use |
+| --- | ---: | --- |
+| `venue_final` | `1.00` | Final venue-settled Polymarket/Metaculus-style record |
+| `oracle_final` | `1.00` | Final Pyth/Switchboard/Chainlink-style objective oracle record |
+| `redeemable` | `0.98` | Position can be redeemed or settled onchain |
+| `api_resolved` | `0.90` | Venue API marks market resolved, but independent redeemability is not proven |
+| `provisional` | `0.65` | Proposed outcome before dispute/finality window closes |
+| `disputed` | `0.25` | Active dispute or ambiguous outcome |
+| `unknown` | `0.80` | Legacy/imported records without explicit evidence metadata |
+
+Current imported-source policy:
+
+- Polymarket closed-position imports use `polymarket-data-api`, `venue_final`, confidence `0.95`
+- Limitless resolved portfolio imports use `limitless-portfolio-api`, `api_resolved`, confidence `0.85`
+- Metaculus resolved imports use `metaculus-api`, `venue_final`, confidence `0.90`
+
+For BeRight-native forecasts, capital-impacting resolution must be written by a resolution adapter or protocol authority. A forecaster-signed self-resolution can remain useful for demos or personal tracking, but it must not unlock capital or increase a capital mandate.
 
 ## Anti-Gaming
 

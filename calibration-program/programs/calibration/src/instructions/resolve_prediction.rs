@@ -1,31 +1,39 @@
 use anchor_lang::prelude::*;
-use crate::state::{ForecasterState, PredictionRecord};
+use crate::state::{ForecasterState, PredictionRecord, ScoreConfig};
 use crate::events::{PredictionResolved, CalibrationUpdated};
 use crate::errors::CalibrationError;
 
 /// Resolve a prediction with the actual outcome
 #[derive(Accounts)]
 pub struct ResolvePrediction<'info> {
-    /// Forecaster's wallet (authority) - only forecaster can resolve their own predictions
+    /// Program scoring authority. Forecasters must not resolve records they are scored on.
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub resolver: Signer<'info>,
 
-    /// Forecaster state account (PDA)
+    /// Global scoring config that defines the trusted resolver authority.
     #[account(
-        mut,
-        seeds = [b"forecaster_v2", authority.key().as_ref()],
-        bump = forecaster_state.bump,
-        constraint = forecaster_state.authority == authority.key() @ CalibrationError::Unauthorized
+        seeds = [b"score_config"],
+        bump = score_config.bump,
+        constraint = !score_config.paused @ CalibrationError::ScoreSyncPaused,
+        constraint = score_config.authority == resolver.key() @ CalibrationError::Unauthorized
     )]
-    pub forecaster_state: Account<'info, ForecasterState>,
+    pub score_config: Account<'info, ScoreConfig>,
 
     /// Prediction record account (PDA)
     #[account(
         mut,
-        constraint = prediction_record.forecaster == authority.key() @ CalibrationError::Unauthorized,
         constraint = prediction_record.outcome.is_none() @ CalibrationError::AlreadyResolved
     )]
     pub prediction_record: Account<'info, PredictionRecord>,
+
+    /// Forecaster state account (PDA)
+    #[account(
+        mut,
+        seeds = [b"forecaster_v2", prediction_record.forecaster.as_ref()],
+        bump = forecaster_state.bump,
+        constraint = forecaster_state.authority == prediction_record.forecaster @ CalibrationError::Unauthorized
+    )]
+    pub forecaster_state: Account<'info, ForecasterState>,
 }
 
 pub fn handler(
@@ -47,7 +55,7 @@ pub fn handler(
 
     // Emit resolution event
     emit!(PredictionResolved {
-        forecaster: ctx.accounts.authority.key(),
+        forecaster: prediction_record.forecaster,
         market_id: prediction_record.market_id,
         outcome,
         brier_score: prediction_record.brier_score.unwrap(),
@@ -60,7 +68,7 @@ pub fn handler(
 
     // Emit calibration update event
     emit!(CalibrationUpdated {
-        forecaster: ctx.accounts.authority.key(),
+        forecaster: prediction_record.forecaster,
         avg_brier_score: forecaster_state.avg_brier_score,
         avg_log_score: forecaster_state.avg_log_score,
         accuracy: forecaster_state.accuracy,
@@ -69,8 +77,9 @@ pub fn handler(
     });
 
     msg!(
-        "Prediction resolved: forecaster={}, outcome={}, brier={:.4}, avg_brier={:.4}, accuracy={:.2}%",
-        ctx.accounts.authority.key(),
+        "Prediction resolved: forecaster={}, resolver={}, outcome={}, brier={:.4}, avg_brier={:.4}, accuracy={:.2}%",
+        prediction_record.forecaster,
+        ctx.accounts.resolver.key(),
         outcome,
         prediction_record.brier_score.unwrap(),
         forecaster_state.avg_brier_score,

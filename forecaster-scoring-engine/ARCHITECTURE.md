@@ -9,9 +9,13 @@
 ## Overview
 
 The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
-1. Ingests prediction data from the implemented adapters (currently Polymarket, Limitless, and Metaculus)
-2. Calculates V3 imported/native/unified reputation scores and score snapshots
-3. Exports leaderboard data and calibration handoff payloads for downstream consumers
+1. Ingests resolved forecasting and trading history from implemented adapters (currently Polymarket, Limitless, and Metaculus)
+2. Normalizes each observation into a venue-agnostic forecast ledger with explicit resolution evidence
+3. Calculates V3 imported/native/unified reputation scores and score snapshots
+4. Emits capital-mandate recommendations for downstream Solana policy services
+5. Exports leaderboard data and calibration handoff payloads for downstream consumers
+
+The trust boundary is deliberate: external venues resolve external history; BeRight scores that history; Solana anchors accepted score summaries and enforces capital permissions. A forecaster must never be the trusted resolver for a capital-impacting BeRight-native forecast.
 
 ---
 
@@ -32,9 +36,20 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
+│            Normalized Forecast Ledger                       │
+├─────────────────────────────────────────────────────────────┤
+│  • ForecastObservation records                              │
+│  • ResolutionEvidence records                               │
+│  • Identity/account linkage                                 │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
 │                Scoring & Snapshot Layer                     │
 ├─────────────────────────────────────────────────────────────┤
 │  • V3 imported/native score calculation                    │
+│  • Evidence-quality multiplier                             │
+│  • Anti-gaming penalties                                   │
 │  • Calibration handoff envelope generation                 │
 └───────────────────────────┬─────────────────────────────────┘
                             │
@@ -46,6 +61,7 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 │  • leaderboard-stats.json                                  │
 │  • score-snapshots.json                                    │
 │  • calibration-summaries.json                              │
+│  • capital-mandate recommendations                         │
 └───────────────────────────┬─────────────────────────────────┘
                             │
                             ▼
@@ -55,6 +71,7 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 │  • Additional adapters (Kalshi, Manifold, others)          │
 │  • Identity linking and orchestration services             │
 │  • On-chain score synchronization                          │
+│  • Solana capital-mandate enforcement                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -67,6 +84,7 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 - **Data**: Order fills, position history, P&L
 - **Update Frequency**: Real-time via webhooks
 - **Key Metrics**: Entry price, size, timestamps
+- **Resolution Evidence**: `polymarket-data-api`, `venue_final`, confidence `0.95`
 
 ### 2. Metaculus (Forecast Platform)
 - **API**: REST API (https://www.metaculus.com/api2/)
@@ -79,6 +97,8 @@ The Forecaster Scoring Engine is an off-chain TypeScript/Node.js service that:
 - **Data**: Resolved positions, realized PnL, traded volume
 - **Update Frequency**: Batch sync for leaderboard exports
 - **Key Metrics**: Entry price, resolved outcome, realized PnL
+- **Resolution Evidence**: `limitless-portfolio-api`, `api_resolved`, confidence `0.85`
+- **Caveat**: API-resolved positions are accepted as imported venue evidence; independent redeemability/finality should be added before increasing capital caps.
 
 ### 4. Kalshi (Planned Adapter)
 - **API**: REST API (https://api.elections.kalshi.com/trade-api/v2)
@@ -101,6 +121,7 @@ At a high level:
 - Build two datasets: `imported` and `native`
 - Apply exponential time decay to resolved predictions
 - Compute proper-scoring-rule quality (Brier + log), calibration quality, difficulty weighting, consensus edge, and consistency
+- Compute resolution evidence quality from venue/oracle source, finality state, and confidence
 - Compute confidence via effective sample size (ESS)
 - Apply anti-gaming penalties as multiplicative score reductions
 - Emit `IScore`, `NScore`, and a blended `VScore` (unified reputation score; serialized as `vaultScore` for compatibility)
@@ -110,6 +131,42 @@ See:
 - `src/v3/metrics.ts`
 - `src/v3/antiGaming.ts`
 - `src/v3/calculator.ts`
+
+---
+
+## Trusted Capital Architecture
+
+BeRight should expose reputation as a capital permission system, not as a custody transfer.
+
+```text
+Resolved venue history
+  -> ForecastObservation + ResolutionEvidence
+  -> V3 score snapshot
+  -> ScoreSnapshot PDA on Solana
+  -> CapitalMandate recommendation
+  -> Policy-checked signed intents
+  -> BeRight-controlled execution workflow
+```
+
+### Capital Mandate Contract
+
+A capital mandate is the downstream policy interpretation of a V3 score snapshot. It should contain:
+
+- forecaster wallet
+- score snapshot hash and epoch
+- max active capital
+- max market exposure
+- max theme/category exposure
+- max daily/epoch loss
+- allowed venues
+- expiry timestamp
+- emergency pause state
+
+The forecaster can direct BeRight capital through signed intents or read-only allocation workflows. They must not receive withdrawal authority over BeRight capital. Imported-only forecasters start probationary even when their Polymarket or Limitless history is strong.
+
+### Reviewer Trust Claim
+
+BeRight does not self-resolve imported reputation. It imports settled forecasting histories from Polymarket and Limitless, validates them through resolution adapters, computes anti-gaming adjusted reputation off-chain, and anchors accepted score summaries on Solana. Capital permissions are bounded by score, confidence, drawdown, liquidity, and evidence quality.
 
 ---
 

@@ -11,6 +11,7 @@
  */
 
 import { Connection, PublicKey } from '@solana/web3.js';
+import { createHash } from 'crypto';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
@@ -29,13 +30,24 @@ const HELIUS_RPC_URL =
   process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL ||
   'https://api.devnet.solana.com';
 
+const FORECASTER_STATE_DISCRIMINATOR = anchorAccountDiscriminator('ForecasterState');
+const PREDICTION_RECORD_DISCRIMINATOR = anchorAccountDiscriminator('PredictionRecord');
+
+function anchorAccountDiscriminator(accountName: string): Buffer {
+  return createHash('sha256').update(`account:${accountName}`).digest().subarray(0, 8);
+}
+
+function hasDiscriminator(data: Buffer, discriminator: Buffer): boolean {
+  return data.length >= 8 && data.subarray(0, 8).equals(discriminator);
+}
+
 // ============================================================================
 // PDA DERIVATION
 // ============================================================================
 
 function deriveForecasterPda(forecasterPubkey: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('forecaster'), forecasterPubkey.toBuffer()],
+    [Buffer.from('forecaster_v2'), forecasterPubkey.toBuffer()],
     CALIBRATION_PROGRAM_ID
   );
 }
@@ -100,6 +112,10 @@ interface PredictionAccount {
 
 function parseForecasterAccount(data: Buffer): ForecasterAccount | null {
   try {
+    if (!hasDiscriminator(data, FORECASTER_STATE_DISCRIMINATOR)) {
+      return null;
+    }
+
     // Anchor adds 8-byte discriminator
     let offset = 8;
 
@@ -180,6 +196,10 @@ function parseForecasterAccount(data: Buffer): ForecasterAccount | null {
 
 function parsePredictionAccount(data: Buffer): PredictionAccount | null {
   try {
+    if (!hasDiscriminator(data, PREDICTION_RECORD_DISCRIMINATOR)) {
+      return null;
+    }
+
     // Anchor adds 8-byte discriminator
     let offset = 8;
 
@@ -290,18 +310,12 @@ async function getAllProgramAccounts(connection: Connection): Promise<{
   for (const { pubkey, account } of accounts) {
     const data = account.data;
 
-    // ForecasterState is ~200 bytes
-    // PredictionRecord is ~200 bytes
-    // Differentiate by checking first field after discriminator
-
     if (data.length < 100) continue;
 
-    // Try parsing as ForecasterState first (has u8 bump, then Pubkey)
     const parsed = parseForecasterAccount(data);
-    if (parsed && parsed.totalPredictions !== undefined) {
+    if (parsed) {
       forecasters.push({ pubkey, account: parsed });
     } else {
-      // Try as PredictionRecord
       const pred = parsePredictionAccount(data);
       if (pred) {
         predictions.push({ pubkey, account: pred });
@@ -387,7 +401,7 @@ async function testForecaster(
     });
 
     const predictions = allAccounts
-      .map(({ pubkey, account }) => parsePredictionAccount(account.data))
+      .map(({ account }) => parsePredictionAccount(account.data))
       .filter((p): p is PredictionAccount => p !== null);
 
     console.log(`Found ${predictions.length} predictions\n`);

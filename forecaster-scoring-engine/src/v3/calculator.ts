@@ -8,6 +8,7 @@ import {
   calculateDifficultyQuality,
   calculateEdgeQuality,
   calculateEffectiveSampleSize,
+  calculateEvidenceQuality,
   calculateLogQuality,
   clamp,
 } from './metrics';
@@ -40,6 +41,7 @@ function computeSourceScore(
   const difficultyQuality = calculateDifficultyQuality(resolved);
   const edgeQuality = calculateEdgeQuality(resolved);
   const consistencyQuality = calculateConsistencyQuality(predictions);
+  const evidenceQuality = calculateEvidenceQuality(resolved);
   const effectiveSampleSize = calculateEffectiveSampleSize(resolved);
   const confidence = effectiveSampleSize / (effectiveSampleSize + config.confidenceAnchor);
   const confidenceAdjustment = 0.35 + 0.65 * confidence;
@@ -61,6 +63,7 @@ function computeSourceScore(
     difficultyQuality,
     edgeQuality,
     consistencyQuality,
+    evidenceQuality,
     confidence,
     confidenceAdjustment,
     penalty: penalties.penaltyMultiplier,
@@ -69,7 +72,7 @@ function computeSourceScore(
 
   return {
     source,
-    score: Math.round(1000 * weightedSkill * confidenceAdjustment * penalties.penaltyMultiplier),
+    score: Math.round(1000 * weightedSkill * evidenceQuality * confidenceAdjustment * penalties.penaltyMultiplier),
     resolvedCount: resolved.length,
     effectiveSampleSize,
     breakdown,
