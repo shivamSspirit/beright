@@ -755,7 +755,7 @@ function Footer() {
           <div className={styles.footerCol}>
             <h4>Forecasters</h4>
             <a href="#apply">Cohort 1</a>
-            <span>FAQ</span>
+            <a href="/docs/faq">FAQ</a>
           </div>
         </div>
 
