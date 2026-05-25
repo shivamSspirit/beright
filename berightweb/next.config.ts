@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 import path from "path";
 
-// API URL: Use environment variable in production, localhost in development
-// Production: https://api.beright.fun (Railway) | Local: http://localhost:3001
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// API URL: prefer configured env, but bypass legacy broken api.beright.fun host.
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL;
+const API_URL =
+  !rawApiUrl || rawApiUrl.includes('api.beright.fun')
+    ? 'https://beright-protocol-production-3b61.up.railway.app'
+    : rawApiUrl;
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployments
