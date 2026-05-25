@@ -8,7 +8,7 @@ echo "🚀 BeRight Railway Deployment"
 echo "================================"
 echo ""
 
-RAILWAY_PROJECT_ID="135d365f-e8bf-469c-a022-9a3a944c38ea"
+RAILWAY_PROJECT_ID="${RAILWAY_PROJECT_ID:-67df6392-2738-4827-b9e4-ac0fe6732b77}"
 RAILWAY_SERVICE_ID="${RAILWAY_SERVICE_ID:-}"
 RAILWAY_APP_URL="${RAILWAY_APP_URL:-}"
 
