@@ -7,10 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { conversations, messages } from '@/lib/supabase/conversations';
 import type { NewConversation, NewMessage } from '@/lib/supabase/types';
-import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { hasSupabaseAdminKey, isSupabaseConfigured } from '@/lib/supabase/client';
 
 export async function GET(request: NextRequest) {
-  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured || !hasSupabaseAdminKey) {
     return NextResponse.json(
       {
         success: false,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured || !hasSupabaseAdminKey) {
     return NextResponse.json(
       {
         success: false,

@@ -7,14 +7,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { conversations } from '@/lib/supabase/conversations';
-import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { hasSupabaseAdminKey, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured || !hasSupabaseAdminKey) {
     return NextResponse.json(
       {
         success: false,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured || !hasSupabaseAdminKey) {
     return NextResponse.json(
       {
         success: false,
@@ -99,7 +99,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  if (!isSupabaseConfigured || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured || !hasSupabaseAdminKey) {
     return NextResponse.json(
       {
         success: false,
