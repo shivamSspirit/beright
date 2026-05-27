@@ -30,6 +30,11 @@ The product combines market aggregation, AI-assisted analysis, Solana-linked for
 
 BeRight has been developed through a private four-month build cycle and is published here as a clean reviewer snapshot. The public history is intentionally squashed to keep the review surface focused on the current product and to avoid redistributing old operational noise, retired implementation branches, or sensitive development artifacts.
 
+For collaborators who need to inspect earlier development history, the recovered commits are available on GitHub in two review branches:
+
+- `restore/original-history` — the main recovered historical chain.
+- `restore/all-recovered-commits` — all recoverable commits, including additional dangling commits anchored for review.
+
 See [Project Provenance](docs/PROVENANCE.md) for the full note on authorship, reviewer trust, and why the public repository uses a clean single-commit history.
 
 ## What BeRight Does
