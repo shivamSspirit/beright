@@ -3,7 +3,6 @@
  *
  * View Kalshi account balance and portfolio summary.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

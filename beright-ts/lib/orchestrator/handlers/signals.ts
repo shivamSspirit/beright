@@ -3,7 +3,6 @@
  *
  * View trading signals from followed forecasters.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

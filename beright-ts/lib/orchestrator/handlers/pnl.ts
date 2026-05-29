@@ -3,7 +3,6 @@
  *
  * View profit and loss report for different time periods.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

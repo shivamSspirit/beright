@@ -8,7 +8,7 @@
  *
  * This replaces regex-based intent classification with true understanding.
  *
- * OpenClaw Pattern:
+ * BeRight Pattern:
  * - Loads SOUL.md and IDENTITY.md as context
  * - Uses LLM to understand, not pattern match
  * - Routes to internal Scout/Analyst/Trader capabilities based on semantic understanding
@@ -21,7 +21,7 @@ import {
   UserGoal,
   Domain,
   RecommendedAgent,
-  loadOpenClawContext,
+  loadBeRightContext,
   PREDICTION_MARKET_KNOWLEDGE,
 } from './semanticAgent';
 import { llmChat } from './llm';
@@ -71,7 +71,7 @@ const BERIGHT_TERMINAL_AGENT_ID = 'beright-terminal' as const;
  *
  * This is the main entry point - call this instead of intent classification
  *
- * OpenClaw Pattern:
+ * BeRight Pattern:
  * - Memory: Tracks conversation context and user preferences
  * - Understanding: LLM-based semantic analysis
  * - Routing: Intelligent capability selection inside beright-terminal
@@ -207,7 +207,7 @@ async function handleSelf(
   understanding: SemanticUnderstanding,
   message: string
 ): Promise<OrchestratorResponse> {
-  const context = loadOpenClawContext();
+  const context = loadBeRightContext();
 
   // Generate response using SOUL.md personality
   const response = await llmChat({
@@ -434,7 +434,7 @@ async function handleUnknown(
   understanding: SemanticUnderstanding,
   message: string
 ): Promise<OrchestratorResponse> {
-  const context = loadOpenClawContext();
+  const context = loadBeRightContext();
 
   // Use LLM to generate helpful response even for unclear intents
   const response = await llmChat({

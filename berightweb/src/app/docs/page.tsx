@@ -192,7 +192,7 @@ const COMMANDS = [
   { cmd: '/signals', desc: 'Real-time intelligence signal feed', category: 'Discovery', status: 'live' },
   { cmd: '/research <topic>', desc: 'Deep analysis using Analyst agent', category: 'Research', status: 'live' },
   { cmd: '/predict <market>', desc: 'Make and record predictions', category: 'Research', status: 'live' },
-  { cmd: '/recommend', desc: 'AI-generated trading recommendations', category: 'Research', status: 'live' },
+  { cmd: '/recommend', desc: 'agent-assisted trading recommendations', category: 'Research', status: 'live' },
   { cmd: '/calibration', desc: 'Check your forecasting accuracy', category: 'Research', status: 'soon' },
   { cmd: '/trade <market>', desc: 'Execute trades with smart routing', category: 'Trading', status: 'soon' },
   { cmd: '/positions', desc: 'View current holdings across platforms', category: 'Trading', status: 'soon' },

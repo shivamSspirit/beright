@@ -4,7 +4,6 @@
  * Shows user's DFlow positions from on-chain data.
  * Includes wallet balance and unrealized P&L.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

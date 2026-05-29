@@ -11,7 +11,6 @@
  * ZERO business logic. ZERO formatting decisions.
  * That's the handlers' and formatters' job.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import { getRouter } from '../../router/unifiedRouter';

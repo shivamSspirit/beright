@@ -3,7 +3,6 @@
  *
  * View prediction calibration stats, Brier scores, and accuracy.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

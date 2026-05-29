@@ -1,7 +1,7 @@
 /**
  * Memory Tools for Gateway Agents
  *
- * OpenClaw-compatible memory system that enables agents to:
+ * BeRight-compatible memory system that enables agents to:
  * - Store persistent facts about users (preferences, strategies, decisions)
  * - Save daily notes with insights and observations
  * - Search through memory semantically (pgvector + OpenAI embeddings)
@@ -175,7 +175,7 @@ export async function searchMemory(params: {
 }
 
 /**
- * Save a daily note (OpenClaw pattern)
+ * Save a daily note (BeRight pattern)
  */
 export async function saveDailyNote(params: {
   wallet_address: string;
@@ -492,7 +492,7 @@ Example queries: "Trump", "crypto markets", "risk tolerance", "arbitrage strateg
   {
     name: 'save_daily_note',
     description: `Save a daily observation or note about the user's activity.
-This follows the OpenClaw daily notes pattern - ideal for tracking:
+This follows the BeRight daily notes pattern - ideal for tracking:
 - Session summaries
 - Important market events discussed
 - Changes in user sentiment or strategy

@@ -7,7 +7,7 @@
  * 3. Reasons about user intent semantically (no regex)
  * 4. Routes to appropriate internal specialist capabilities
  *
- * OpenClaw Architecture:
+ * BeRight Architecture:
  * - SOUL.md defines personality and methodology
  * - IDENTITY.md defines capabilities and structure
  * - This file injects both as context for every understanding task
@@ -137,21 +137,21 @@ const PREDICTION_MARKET_KNOWLEDGE = `
 `;
 
 // ============================================================================
-// OpenClaw Context Loader
+// BeRight Context Loader
 // ============================================================================
 
-interface OpenClawContext {
+interface BeRightContext {
   soul: string;
   identity: string;
   loaded: boolean;
 }
 
-let cachedContext: OpenClawContext | null = null;
+let cachedContext: BeRightContext | null = null;
 
 /**
  * Load SOUL.md and IDENTITY.md as context
  */
-function loadOpenClawContext(): OpenClawContext {
+function loadBeRightContext(): BeRightContext {
   if (cachedContext) return cachedContext;
 
   const workspaceRoot = join(process.cwd());
@@ -256,7 +256,7 @@ export interface SemanticUnderstanding {
  * Build the system prompt for semantic understanding
  */
 function buildUnderstandingPrompt(): string {
-  const context = loadOpenClawContext();
+  const context = loadBeRightContext();
 
   return `You are the semantic understanding engine for BeRight, a prediction market intelligence agent.
 
@@ -901,7 +901,7 @@ export function routeToAgent(understanding: SemanticUnderstanding): {
 // ============================================================================
 
 // Named exports for direct import
-export { loadOpenClawContext, PREDICTION_MARKET_KNOWLEDGE };
+export { loadBeRightContext, PREDICTION_MARKET_KNOWLEDGE };
 
 // Note: Types (UserGoal, Domain, RecommendedAgent, SemanticUnderstanding) are
 // already exported inline where they're defined using 'export type' and 'export interface'
@@ -909,6 +909,6 @@ export { loadOpenClawContext, PREDICTION_MARKET_KNOWLEDGE };
 export default {
   understand,
   routeToAgent,
-  loadOpenClawContext,
+  loadBeRightContext,
   PREDICTION_MARKET_KNOWLEDGE,
 };

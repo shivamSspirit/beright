@@ -9,7 +9,6 @@
  * - Error handling
  * - Learning from outcomes
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { v4 as uuid } from 'uuid';

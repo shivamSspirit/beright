@@ -11,7 +11,6 @@
 
 <p align="center">
   <a href="#vision">Vision</a> •
-  <a href="#provenance">Provenance</a> •
   <a href="#active-scope">Active Scope</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#environment">Environment</a> •
@@ -25,17 +24,6 @@
 Prediction markets create public signals about the future, but the best forecasters still have fragmented tooling and weak portable reputation. BeRight is built around a simple idea: forecasting skill should be measurable, composable, and useful across market venues.
 
 The product combines market aggregation, AI-assisted analysis, Solana-linked forecast records, and calibration scoring so that a user can move from market discovery to accountable reputation in one workflow.
-
-## Provenance
-
-BeRight has been developed through a private four-month build cycle and is published here as a clean reviewer snapshot. The public history is intentionally squashed to keep the review surface focused on the current product and to avoid redistributing old operational noise, retired implementation branches, or sensitive development artifacts.
-
-For collaborators who need to inspect earlier development history, the recovered commits are available on GitHub in two review branches:
-
-- `restore/original-history` — the main recovered historical chain.
-- `restore/all-recovered-commits` — all recoverable commits, including additional dangling commits anchored for review.
-
-See [Project Provenance](docs/PROVENANCE.md) for the full note on authorship, reviewer trust, and why the public repository uses a clean single-commit history.
 
 ## What BeRight Does
 

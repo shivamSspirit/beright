@@ -8,7 +8,6 @@
  *
  * This is where intelligence enters the system.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import { Router, RouteMatch, Route } from './types';

@@ -3,7 +3,6 @@
  *
  * Cancel orders on Kalshi.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

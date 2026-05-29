@@ -1,6 +1,6 @@
 /**
  * Plugin Registry
- * Central registry for all BeRight plugins (OpenClaw-compatible)
+ * Central registry for all BeRight plugins (BeRight-compatible)
  *
  * Design principles:
  * - Manifest-first: Read metadata before loading code

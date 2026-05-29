@@ -9,7 +9,6 @@
  * - Inline keyboard buttons
  * - Respects Telegram's 4096 char limit
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { FormattedResponse, Button } from '../types';

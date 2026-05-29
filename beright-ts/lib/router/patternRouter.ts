@@ -7,7 +7,6 @@
  * This is the first router in the chain. Falls through to
  * semantic router if no pattern matches.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { Router, Route, RouteMatch, MatchType } from './types';

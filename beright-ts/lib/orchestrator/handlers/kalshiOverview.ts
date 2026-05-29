@@ -4,7 +4,6 @@
  * Returns overview of Kalshi markets and user portfolio.
  * Shows hot markets, exchange status, and account summary if authenticated.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

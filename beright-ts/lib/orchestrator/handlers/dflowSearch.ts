@@ -4,7 +4,6 @@
  * Searches DFlow prediction markets by query.
  * Returns tokenized markets on Solana with pricing and liquidity.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

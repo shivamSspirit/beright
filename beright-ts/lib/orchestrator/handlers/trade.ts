@@ -4,7 +4,6 @@
  * Executes trades on DFlow prediction markets.
  * Uses smart routing (DFlow vs Jupiter) for best execution.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

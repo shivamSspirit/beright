@@ -1,5 +1,5 @@
 /**
- * Heartbeat Writer - Dynamic HEARTBEAT.md updates for OpenClaw
+ * Heartbeat Writer - Dynamic HEARTBEAT.md updates for BeRight
  *
  * Updates HEARTBEAT.md with real-time agent state:
  * - Active goals and their status
@@ -54,7 +54,7 @@ export function updateHeartbeatMD(): void {
 
     const content = `# BeRight Agent Heartbeat Checklist
 
-*This file is read by the OpenClaw heartbeat mechanism every 30 minutes.*
+*This file is read by the BeRight heartbeat mechanism every 30 minutes.*
 *The agent uses this to determine what needs attention.*
 
 **Last Updated:** ${new Date().toISOString()}

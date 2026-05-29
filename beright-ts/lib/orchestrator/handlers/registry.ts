@@ -4,7 +4,6 @@
  * Central registry for all command handlers.
  * Handlers register themselves here and are auto-loaded by the orchestrator.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import { CommandHandler } from '../types';

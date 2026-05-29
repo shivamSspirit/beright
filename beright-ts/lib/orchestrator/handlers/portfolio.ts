@@ -3,7 +3,6 @@
  *
  * View comprehensive portfolio with positions, P&L, and allocation.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

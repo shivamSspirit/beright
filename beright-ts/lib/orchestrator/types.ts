@@ -10,7 +10,6 @@
  *
  * The Orchestrator is NOT dispatch - it's coordination.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { NormalizedMessage, GatewayContext, GatewayType } from '../gateway/types';

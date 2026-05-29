@@ -7,7 +7,6 @@
  * - Reddit sentiment
  * - LLM synthesis
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

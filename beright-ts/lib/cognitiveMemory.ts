@@ -1,7 +1,7 @@
 /**
  * Cognitive Memory System
  *
- * OpenClaw Pattern: Memory files that persist across sessions
+ * BeRight Pattern: Memory files that persist across sessions
  *
  * This system manages:
  * 1. Episodic Memory - What happened (actions + outcomes)
@@ -486,7 +486,7 @@ export function getLessons(category?: Lesson['category']): Lesson[] {
 // ============================================================================
 
 /**
- * Sync lessons to MEMORY.md (OpenClaw pattern)
+ * Sync lessons to MEMORY.md (BeRight pattern)
  */
 export function syncToMemoryMd(): void {
   const lessons = getLessons();

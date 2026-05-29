@@ -3,7 +3,6 @@
  *
  * Make a prediction on a market with auto-linking to DFlow.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

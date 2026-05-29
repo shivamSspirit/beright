@@ -1,6 +1,0 @@
-# Railway/Heroku Procfile
-# Main web process
-web: npm start
-
-# Background worker for OpenClaw Gateway (optional, can run as separate service)
-# worker: openclaw gateway

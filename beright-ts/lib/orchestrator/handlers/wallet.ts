@@ -3,7 +3,6 @@
  *
  * Manage user wallets for DFlow trading.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

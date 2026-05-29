@@ -927,5 +927,5 @@ export function listActiveSpawns(): SpawnStatus[] {
   return Array.from(activeSpawns.values()).filter(s => s.status === 'running');
 }
 
-// Export for OpenClaw
+// Export for BeRight
 export default spawnAgent;

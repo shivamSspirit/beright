@@ -1,6 +1,6 @@
 /**
  * Conversation & Memory Database Operations
- * OpenClaw-compatible memory architecture with wallet-first identity
+ * BeRight-compatible memory architecture with wallet-first identity
  */
 
 import { supabaseAdmin } from './client';

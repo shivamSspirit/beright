@@ -8,8 +8,8 @@
  * - Cognitive Loop (perceive → deliberate → act → reflect)
  * - Internal capability coordination for autonomous subsystems
  *
- * Integration with OpenClaw:
- * - Uses OpenClaw's memory system (MEMORY.md) for persistent context
+ * Integration with BeRight:
+ * - Uses BeRight's memory system (MEMORY.md) for persistent context
  * - Integrates with heartbeat for autonomous operation
  * - Uses hooks for event-driven triggers
  * - Supports internal capability routing where autonomous subsystems still need it
@@ -88,8 +88,8 @@ export {
   analyzePatterns,
   detectBiases,
   getMemorySummary,
-  formatForOpenClawMemory,
-  syncToOpenClawMemory,
+  formatForBeRightMemory,
+  syncToBeRightMemory,
   resetMemory,
 } from './memory';
 

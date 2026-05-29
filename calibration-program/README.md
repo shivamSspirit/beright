@@ -320,9 +320,7 @@ CalibrationUpdated {
 
 ### Cost Optimization
 
-For high-volume scenarios (>1000 predictions/day):
-- Implement **State Compression** (~99% cost reduction)
-- See `docs/ONCHAIN_ACCURACY_DESIGN.md` for details
+For high-volume scenarios (>1000 predictions/day), the next optimization path is compressed or summarized history while keeping the current account model as the judgeable baseline.
 
 ## Querying Data
 
@@ -419,7 +417,7 @@ anchor test -- --grep "initialize forecaster"
 
 - **Anchor Framework**: https://www.anchor-lang.com
 - **Solana Cookbook**: https://solanacookbook.com
-- **BeRight Docs**: `../beright-ts/docs/ONCHAIN_ACCURACY_DESIGN.md`
+- **BeRight API/Web**: `../beright-ts` and `../berightweb`
 
 ## License
 

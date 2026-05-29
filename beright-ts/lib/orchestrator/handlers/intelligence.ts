@@ -3,7 +3,6 @@
  *
  * Get market intelligence: base rates, consensus, bias warnings.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

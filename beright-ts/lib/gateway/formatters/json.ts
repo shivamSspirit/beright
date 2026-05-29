@@ -6,7 +6,6 @@
  * This formatter enables API parity with Telegram:
  * Same handlers, same data, different presentation.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { FormattedResponse } from '../types';

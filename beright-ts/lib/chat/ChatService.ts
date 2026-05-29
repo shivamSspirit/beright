@@ -7,13 +7,13 @@
  * Flow:
  * 1. Get or create conversation
  * 2. Save user message to DB
- * 3. Process through the BeRight OpenClaw runtime
+ * 3. Process through the BeRight runtime
  * 4. Save agent response to DB
  * 5. Return with IDs for frontend sync
  */
 
 import { conversations, messages } from '../supabase/conversations';
-import { executeBeRightOpenClawRequest } from '../runtime/openclaw';
+import { executeBeRightRuntimeRequest } from '../runtime/berightRuntime';
 import type { Conversation, AgentType } from '../supabase/types';
 
 // ============================================
@@ -238,7 +238,7 @@ export class ChatService {
 
       console.log(`[ChatService] Processing: "${message.slice(0, 50)}..." | Conv: ${conversationId} | Agent: ${agentType}`);
 
-      const execution = await executeBeRightOpenClawRequest({
+      const execution = await executeBeRightRuntimeRequest({
         gateway: 'web',
         userId: userId || walletAddress || sessionId,
         chatId: sessionId,

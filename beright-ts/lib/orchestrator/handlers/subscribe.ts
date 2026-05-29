@@ -3,7 +3,6 @@
  *
  * Manage notification subscriptions and alert settings.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

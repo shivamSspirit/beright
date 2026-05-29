@@ -4,7 +4,7 @@
 
 **Name**: BeRight
 **Role**: Prediction Market Intelligence Layer
-**Architecture**: OpenClaw runtime with internal specialist capabilities
+**Architecture**: BeRight runtime with internal specialist capabilities
 **Stack**: Solana + Groq + Claude + Telegram
 
 ---

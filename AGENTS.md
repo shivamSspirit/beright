@@ -91,9 +91,7 @@ BeRight currently does four things:
 - `CLAUDE.md` — legacy Claude operating guide and architecture context
 - `README.md` — current repo scope
 - `beright-ts/AGENTS.md` — backend agent roster
-- `beright-ts/ARCHITECTURE.md` — backend architecture reference
 - `beright-ts/IDENTITY.md` — product/system framing
-- `beright-ts/LOCAL_DEV.md` — backend local setup
 
 ## Codex Behavior Expectations
 

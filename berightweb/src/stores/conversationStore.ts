@@ -6,7 +6,7 @@
  * - Persists across navigation and page refresh
  * - Syncs with backend via /api/v2/conversations
  * - Tracks async jobs for navigation resilience
- * - OpenClaw-compatible memory integration
+ * - BeRight-compatible memory integration
  */
 
 import { create } from 'zustand';

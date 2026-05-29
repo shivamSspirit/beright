@@ -61,6 +61,7 @@ colosseum-agent.log
 # Local agent artifacts and generated decks
 .superstack/
 beright-deck/
+beright-history/
 landscape-*.html
 
 # Solana test ledger (large files)

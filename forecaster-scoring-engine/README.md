@@ -15,9 +15,7 @@ Off-chain TypeScript service that calculates cross-platform forecaster scores, e
 
 ## V3 Direction
 
-This repository now has a forward path for `Scoring V3` in [`SCORING_V3.md`](./SCORING_V3.md).
-
-V3 introduces three outputs instead of one:
+The current scoring path produces three outputs:
 
 - `IScore`: imported historical score
 - `NScore`: BeRight-native score
@@ -119,7 +117,6 @@ forecaster-scoring-engine/
 │   ├── v3/              # Scoring V3 calculator and snapshot handoff
 │   └── cli/             # CLI tools
 ├── data/                # Example inputs and generated outputs
-├── ARCHITECTURE.md      # Detailed architecture documentation
 ├── package.json
 ├── tsconfig.json
 └── README.md           # This file
@@ -220,10 +217,7 @@ CREATE TABLE forecasters (
 
 ## 🎓 Scoring Details
 
-Scoring V3 formulas and implementation live in:
-
-- `SCORING_V3.md`
-- `src/v3/*`
+Scoring V3 formulas and implementation live in `src/v3/*`.
 
 ---
 

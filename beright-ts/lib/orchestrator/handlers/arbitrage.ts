@@ -3,7 +3,6 @@
  *
  * Detect cross-platform arbitrage opportunities.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

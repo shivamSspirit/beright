@@ -50,7 +50,7 @@ import memory, {
   getMemorySummary,
   analyzePatterns,
   detectBiases,
-  syncToOpenClawMemory,
+  syncToBeRightMemory,
 } from './memory';
 
 import * as fs from 'fs';
@@ -692,7 +692,7 @@ async function executeSkill(skillName: string, params: Record<string, unknown>):
     }
 
     case 'memory': {
-      syncToOpenClawMemory();
+      syncToBeRightMemory();
       return { synced: true };
     }
 
@@ -740,8 +740,8 @@ async function reflect(): Promise<void> {
     }
   }
 
-  // Sync to OpenClaw memory
-  syncToOpenClawMemory();
+  // Sync to BeRight memory
+  syncToBeRightMemory();
 
   console.log(`[Cognitive:Reflect] Patterns: ${patterns.length}, Biases: ${biases.length}, Lessons: ${lessons.length}`);
 }

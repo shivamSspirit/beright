@@ -3,7 +3,6 @@
  *
  * Compare user predictions against market consensus and base rates.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

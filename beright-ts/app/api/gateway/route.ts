@@ -2,7 +2,7 @@
  * Unified Gateway API
  *
  * This endpoint routes web terminal requests through the same
- * BeRight OpenClaw runtime bridge used by the product execution stack.
+ * BeRight runtime bridge used by the product execution stack.
  *
  * POST /api/gateway
  * Body: {

@@ -3,7 +3,6 @@
  *
  * Exports all router-related types and utilities.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 // Router types

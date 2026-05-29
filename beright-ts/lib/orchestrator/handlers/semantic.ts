@@ -7,7 +7,6 @@
  * This wraps the existing semanticOrchestrator to work with
  * the new gateway-agnostic architecture.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

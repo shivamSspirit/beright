@@ -4,7 +4,7 @@
  * Stores episodes (what happened), extracts lessons, and enables
  * retrieval of relevant past experiences for decision-making.
  *
- * Integrates with OpenClaw's memory system (Markdown files with semantic search).
+ * Integrates with BeRight's memory system (Markdown files with semantic search).
  */
 
 import * as fs from 'fs';
@@ -19,7 +19,7 @@ const DAILY_LOG_DIR = path.join(MEMORY_DIR, 'daily');
 const MAX_EPISODES = 500;
 
 // ============================================
-// DIRECTORY INITIALIZATION (OpenClaw requirement)
+// DIRECTORY INITIALIZATION (BeRight requirement)
 // ============================================
 
 /**
@@ -152,7 +152,7 @@ export function recordEpisode(
 
   saveMemory(memoryStore);
 
-  // Also write to daily log (OpenClaw format)
+  // Also write to daily log (BeRight format)
   writeDailyLog(episode);
 
   console.log(`[Memory] Recorded episode: ${actionTaken.slice(0, 50)}... (${outcome})`);
@@ -182,7 +182,7 @@ export function updateEpisodeOutcome(
 }
 
 /**
- * Write to daily log (OpenClaw memory format)
+ * Write to daily log (BeRight memory format)
  */
 function writeDailyLog(episode: Episode): void {
   try {
@@ -510,9 +510,9 @@ export function getMemorySummary(): string {
 }
 
 /**
- * Get lessons formatted for MEMORY.md (OpenClaw format)
+ * Get lessons formatted for MEMORY.md (BeRight format)
  */
-export function formatForOpenClawMemory(): string {
+export function formatForBeRightMemory(): string {
   const lessons = getLessons(0.4);
 
   let content = `# BeRight Agent Memory\n\n`;
@@ -540,11 +540,11 @@ export function formatForOpenClawMemory(): string {
 }
 
 /**
- * Sync to OpenClaw MEMORY.md file
+ * Sync to BeRight MEMORY.md file
  */
-export function syncToOpenClawMemory(): void {
+export function syncToBeRightMemory(): void {
   try {
-    const content = formatForOpenClawMemory();
+    const content = formatForBeRightMemory();
     const memoryFile = path.join(process.cwd(), 'MEMORY.md');
     fs.writeFileSync(memoryFile, content);
     console.log('[Memory] Synced to MEMORY.md');
@@ -580,7 +580,7 @@ export default {
   analyzePatterns,
   detectBiases,
   getMemorySummary,
-  formatForOpenClawMemory,
-  syncToOpenClawMemory,
+  formatForBeRightMemory,
+  syncToBeRightMemory,
   resetMemory,
 };

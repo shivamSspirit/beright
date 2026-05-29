@@ -4,7 +4,6 @@
  * View rankings based on calibration scores and trading performance.
  * Integrates with on-chain calibration program for verified Brier scores.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

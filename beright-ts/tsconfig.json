@@ -46,6 +46,7 @@
     "types/**/*",
     "config/**/*",
     "skills/**/*",
+    "agents/**/*",
     "app/**/*",
     "lib/**/*",
     "services/**/*",

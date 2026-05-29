@@ -3,7 +3,6 @@
  *
  * Execute token swaps via Jupiter aggregator.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

@@ -2,7 +2,7 @@
  * Agent API v2
  *
  * Direct access to the BeRight Terminal runtime.
- * This uses the same OpenClaw-style execution bridge as the rest of beright-ts.
+ * This uses the same BeRight-style execution bridge as the rest of beright-ts.
  *
  * Architecture:
  * ┌─────────────────────────────────────────────────────────────┐
@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { executeBeRightOpenClawRequest } from '../../../../lib/runtime/openclaw';
+import { executeBeRightRuntimeRequest } from '../../../../lib/runtime/berightRuntime';
 import { checkAgentAccess, getTierContext, checkAndIncrementUsage } from '../../../../lib/stripe/middleware';
 
 export const runtime = 'nodejs';
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Agent API] Processing: "${message.slice(0, 50)}..." | Session: ${activeSessionId}`);
 
-    const execution = await executeBeRightOpenClawRequest({
+    const execution = await executeBeRightRuntimeRequest({
       gateway: 'api',
       userId: userId || activeSessionId,
       chatId: activeSessionId,
@@ -258,7 +258,7 @@ export async function GET(request: NextRequest) {
     success: true,
     data: {
       version: '3.0.0',
-      architecture: 'OpenClaw runtime with internal capabilities',
+      architecture: 'BeRight runtime with internal capabilities',
       agent: {
         id: 'beright-terminal',
         available: true,

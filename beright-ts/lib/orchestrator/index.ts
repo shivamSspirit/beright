@@ -3,7 +3,6 @@
  *
  * Exports all orchestrator-related types and utilities.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 // Force-load handler modules so their registerHandler() side effects run.

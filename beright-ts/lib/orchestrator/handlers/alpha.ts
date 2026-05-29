@@ -6,7 +6,6 @@
  * - Contentious markets (40-60% - potential edge)
  * - High volume markets
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

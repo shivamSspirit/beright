@@ -3,7 +3,6 @@
  *
  * Get personalized market recommendations based on user profile and performance.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

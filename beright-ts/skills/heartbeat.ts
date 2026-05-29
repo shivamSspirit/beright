@@ -53,7 +53,6 @@ import { checkAlerts as checkPriceAlerts, getPendingTriggers, formatTriggeredAle
 import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade';
 import { refreshPositionPrices, getExpiringPositions } from './positions';
 // Builder agent disabled - saves ~$2,880/mo in LLM costs
-// import { buildOnce as runBuilderOnce } from './buildLoop';
 import { runProactiveAgent } from './proactiveAgent';
 
 // Signal Intelligence Engine
@@ -80,8 +79,8 @@ import {
   getAgentsSummary,
 } from '../lib/cognitive';
 
-// Memory System (OpenClaw integration)
-import { recordEpisode, syncToOpenClawMemory } from '../lib/cognitive/memory';
+// Memory system
+import { recordEpisode, syncToBeRightMemory } from '../lib/cognitive/memory';
 import { updateHeartbeatMD } from '../lib/cognitive/heartbeatWriter';
 
 // Interval constants — now defined in lib/orchestrator.ts, accessed via INTERVALS
@@ -597,7 +596,7 @@ Reason: ${exec.reason}
     console.warn('Heartbeat on-chain log failed:', err);
   }
 
-  // 15. Record episode and sync to OpenClaw MEMORY.md
+  // 15. Record episode and sync memory
   try {
     const outcome = alerts.length > 0 ? 'success' : 'neutral';
     recordEpisode(
@@ -606,13 +605,13 @@ Reason: ${exec.reason}
       outcome as any,
       { signals: alerts.map(a => String(a.mood || 'NEUTRAL')) }
     );
-    syncToOpenClawMemory();
+    syncToBeRightMemory();
     console.log(`[${timestamp()}] Synced to MEMORY.md`);
   } catch (err) {
     console.warn('Memory sync failed:', err);
   }
 
-  // 16. Update HEARTBEAT.md with dynamic state (OpenClaw)
+  // 16. Update heartbeat state
   try {
     updateHeartbeatMD();
   } catch (err) {
@@ -678,7 +677,7 @@ ${'='.repeat(60)}
 }
 
 /**
- * Main heartbeat skill function (for OpenClaw cron trigger)
+ * Main heartbeat skill function
  */
 export async function heartbeat(): Promise<SkillResponse> {
   const alerts = await heartbeatOnce();

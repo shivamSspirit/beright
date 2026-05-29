@@ -9,7 +9,6 @@
  *
  * The Router is NOT pattern matching - it's understanding.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 // =============================================================================
@@ -19,7 +18,7 @@
 /**
  * User goals - what the user is trying to accomplish
  *
- * These map to OpenClaw's semantic agent goals.
+ * These map to BeRight's semantic agent goals.
  * Used for semantic routing fallback when no command matches.
  */
 export type UserGoal =

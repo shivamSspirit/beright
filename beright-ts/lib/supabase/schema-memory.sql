@@ -1,5 +1,5 @@
 -- BeRight Memory & Conversations Schema
--- OpenClaw-compatible memory architecture with wallet-first identity
+-- BeRight-compatible memory architecture with wallet-first identity
 -- Run after schema-core.sql
 
 -- Enable extensions
@@ -98,7 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_embedding ON messages
 -- ========================================
 -- MEMORY TABLE
 -- ========================================
--- Persistent memory entries (OpenClaw-compatible)
+-- Persistent memory entries (BeRight-compatible)
 -- Like MEMORY.md but structured
 CREATE TABLE IF NOT EXISTS memory_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -429,7 +429,7 @@ CREATE POLICY "Users manage own jobs" ON async_jobs
 
 COMMENT ON TABLE conversations IS 'Chat conversations scoped to wallet address';
 COMMENT ON TABLE messages IS 'Individual messages with semantic search support';
-COMMENT ON TABLE memory_entries IS 'OpenClaw-compatible persistent memory';
+COMMENT ON TABLE memory_entries IS 'BeRight-compatible persistent memory';
 COMMENT ON TABLE prediction_conversation_links IS 'Links research conversations to on-chain predictions';
 COMMENT ON TABLE async_jobs IS 'Track async jobs for navigation resilience';
 COMMENT ON FUNCTION search_messages_semantic IS 'Vector similarity search on message embeddings';

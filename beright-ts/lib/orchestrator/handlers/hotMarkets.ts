@@ -9,7 +9,6 @@
  * - Returns STRUCTURED DATA (never formatted text)
  * - Formatters handle presentation for each gateway
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import {

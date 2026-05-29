@@ -1,6 +1,6 @@
 /**
  * Plugin System Type Definitions
- * OpenClaw-compatible plugin architecture for BeRight Protocol
+ * BeRight-compatible plugin architecture for BeRight Protocol
  */
 
 // ============================================================================

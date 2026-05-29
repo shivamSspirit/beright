@@ -9,7 +9,6 @@
  *
  * They do NOT contain business logic or formatting decisions.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 // =============================================================================

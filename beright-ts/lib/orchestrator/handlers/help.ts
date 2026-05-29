@@ -3,7 +3,6 @@
  *
  * Display available commands and help information.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

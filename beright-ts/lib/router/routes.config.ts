@@ -9,7 +9,6 @@
  * 2. Create handler in lib/orchestrator/handlers/[handler].ts
  * 3. Add formatter methods if needed
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { Route, ParameterizedPattern } from './types';

@@ -3,7 +3,6 @@
  *
  * Follow/unfollow forecasters for copy trading signals.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

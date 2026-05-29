@@ -3,7 +3,6 @@
  *
  * Search and browse Kalshi prediction markets.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

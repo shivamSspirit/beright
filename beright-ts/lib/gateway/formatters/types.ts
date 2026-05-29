@@ -11,7 +11,6 @@
  *
  * Formatters do NOT contain business logic.
  *
- * @see docs/ADR-001-GATEWAY-SKILL-SEPARATION.md
  */
 
 import { FormattedResponse, GatewayType } from '../types';

@@ -17,8 +17,8 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "dev:api": "npm run dev --workspace=beright-ts",
     "dev:web": "npm run dev --workspace=berightweb",
-    "gateway": "npm run gateway --workspace=beright-ts",
-    "telegram": "npm run gateway --workspace=beright-ts",
+    "gateway": "npm run dev --workspace=beright-ts",
+    "telegram": "npm run dev --workspace=beright-ts",
     "heartbeat": "npm run heartbeat --workspace=beright-ts",
     "test:calibration": "cd calibration-program && npm run test:calibration"
   },

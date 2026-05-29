@@ -3,7 +3,6 @@
  *
  * Get detailed calibration feedback with patterns, trends, and recommendations.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

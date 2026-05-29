@@ -4,7 +4,6 @@
  * Place sell orders on Kalshi prediction markets.
  * Sells existing positions.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

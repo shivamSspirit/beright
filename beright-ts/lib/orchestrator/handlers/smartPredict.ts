@@ -3,7 +3,6 @@
  *
  * AI-assisted prediction with market matching, base rates, and bias warnings.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

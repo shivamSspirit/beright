@@ -4,7 +4,6 @@
  * Gets trade quotes with routing comparison.
  * Shows DFlow direct vs Jupiter aggregator pricing.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

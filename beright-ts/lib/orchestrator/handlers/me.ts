@@ -3,7 +3,6 @@
  *
  * View user profile with stats, achievements, and history.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

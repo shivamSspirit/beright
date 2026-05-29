@@ -1,7 +1,7 @@
 /**
  * Research Synthesis - Groq LLM Integration for Superforecaster Analysis
  *
- * Follows OpenClaw Two-Tier Pattern:
+ * Follows BeRight Two-Tier Pattern:
  * - Tier 1: Deterministic data gathering (markets, news, facts) ← Already done
  * - Tier 2: LLM reasoning and synthesis ← This module
  *

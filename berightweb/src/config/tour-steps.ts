@@ -32,7 +32,7 @@ export const MARKETS_TOUR_STEPS: TourStep[] = [
     id: 'fact-check',
     target: '[data-tour="fact-check-btn"]',
     title: 'AI-Powered Fact Check',
-    description: 'Click the fact-check button to see AI-generated analysis, historical data, and probability estimates. Our agents analyze news, social sentiment, and on-chain data to give you an edge.',
+    description: 'Click the fact-check button to see agent-assisted analysis, historical data, and probability estimates. Our agents analyze news, social sentiment, and on-chain data to give you an edge.',
     placement: 'top',
     action: 'Click to see the fact-check analysis',
     highlightPadding: 8,

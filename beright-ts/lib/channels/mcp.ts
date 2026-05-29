@@ -87,7 +87,7 @@ export const MCP_TOOLS: MCPTool[] = [
   },
   {
     name: 'beright_synthesis',
-    description: 'Get the latest market intelligence synthesis report. Provides AI-generated analysis of current market conditions.',
+    description: 'Get the latest market intelligence synthesis report. Provides agent-assisted analysis of current market conditions.',
     inputSchema: {
       type: 'object',
       properties: {},

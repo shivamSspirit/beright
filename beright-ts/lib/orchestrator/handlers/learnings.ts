@@ -3,7 +3,6 @@
  *
  * View accumulated learning insights from past predictions.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {

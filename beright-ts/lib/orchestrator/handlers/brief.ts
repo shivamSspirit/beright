@@ -4,7 +4,6 @@
  * Returns the daily morning brief - aggregated market intelligence.
  * This is the "hook" that gets users engaged every morning.
  *
- * @see docs/ADR-002-TELEGRAM-AS-GATEWAY.md
  */
 
 import {
