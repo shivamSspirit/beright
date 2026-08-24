@@ -9,7 +9,7 @@ BeRight now uses a single BeRight-native runtime path.
 
 ## Primary Agent
 
-`beright-terminal` is the single source of truth for the BeRight terminal experience.
+`beright-runtime` is the single source of truth for BeRight's API capabilities.
 
 It fronts these product capabilities:
 - market discovery

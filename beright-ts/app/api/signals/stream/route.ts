@@ -35,7 +35,7 @@ const connections = new Set<ReadableStreamDefaultController>();
 /**
  * Add a signal to the buffer and broadcast to all connections
  */
-export function emitSignal(signal: Omit<StreamSignal, 'id' | 'type' | 'createdAt'>) {
+function emitSignal(signal: Omit<StreamSignal, 'id' | 'type' | 'createdAt'>) {
   const fullSignal: StreamSignal = {
     ...signal,
     id: `sig-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -119,6 +119,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-
-// For importing in other modules
-export { signalBuffer, connections };

@@ -48,12 +48,29 @@ npx tsc --noEmit
 - Explicit error handling on external calls
 - Use guard clauses and fail fast on invalid state
 
+## Solana Program Standards
+
+Use these rules whenever working in `calibration-program/` or any future Solana program:
+
+- Treat the on-chain program as the source of truth for authority, account ownership, PDA seeds, and replay protection.
+- Prefer Anchor account constraints for signer, seeds, bump, owner, `has_one`, and mutability checks; add explicit `require!` checks where business invariants are not expressible as constraints.
+- Never let a user-controlled role decide outcomes that affect their own reputation, payouts, or limits. Use a protocol authority, oracle, verified market-resolution source, or clearly documented off-chain trust boundary.
+- Keep PDA seed names stable and shared across Rust, TypeScript clients, tests, and docs. If a seed changes, update every derivation and add a regression test.
+- Use fixed-point integers for scoring, probabilities, bps, prices, and risk caps when values must be deterministic or composable. Avoid `f64` in new on-chain state unless the tradeoff is explicitly justified.
+- Size accounts from actual serialized layout and test account sizes. Avoid undocumented padding changes; reserve bytes intentionally for future schema evolution.
+- Validate all externally supplied values: probability bounds, score ranges, timestamps, hashes, version bytes, enum ranges, and monotonic update rules.
+- For mutable snapshots, prevent stale writes by checking epochs, slots, timestamps, or content hashes when order matters.
+- Do not keep disabled prototype instructions in the active program surface. Archive or clearly isolate compression, vault, staking, or experimental paths unless they are part of the current demo.
+- Tests must cover happy paths, wrong signer, wrong PDA seed, duplicate/replay attempt, invalid bounds, stale update, unauthorized resolution, and double resolution.
+- Keep Anchor CLI, `@coral-xyz/anchor`, Solana CLI, and generated IDL/client versions aligned. Version mismatch warnings should be treated as cleanup work, not ignored.
+- For hackathon/demo claims, phrase trust boundaries precisely. Do not call something trustless, verified, or tamper-proof unless the program enforces it or the verifier path is implemented and tested.
+
 ## Current Product Shape
 
 BeRight currently does four things:
 
 1. Aggregates prediction markets and related signals
-2. Powers AI-assisted terminal and API workflows
+2. Provides market analysis and API workflows
 3. Records forecasts on Solana-linked infrastructure
 4. Calculates forecaster reputation and leaderboard outputs
 

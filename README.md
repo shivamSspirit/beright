@@ -28,7 +28,7 @@ The product combines market aggregation, AI-assisted analysis, Solana-linked for
 ## What BeRight Does
 
 - Aggregates prediction markets and related signals from supported venues.
-- Powers an AI-assisted terminal for market research and forecasting workflows.
+- Provides market analysis APIs and forecasting workflows.
 - Records forecasts through Solana-linked infrastructure.
 - Scores forecaster calibration and produces leaderboard/reputation outputs.
 - Presents the experience through a mobile-first Next.js web app.
@@ -39,7 +39,7 @@ This repository is focused on four active systems:
 
 | Area | Path | Purpose |
 | --- | --- | --- |
-| Web product | `berightweb/` | Next.js app, landing page, markets, terminal, profile, leaderboard, docs |
+| Web product | `berightweb/` | Next.js app, landing page, markets, profile, leaderboard, docs |
 | API and agents | `beright-ts/` | API routes, market adapters, agent runtime, orchestration, integrations |
 | Calibration program | `calibration-program/` | Solana prediction recording and calibration program work |
 | Scoring engine | `forecaster-scoring-engine/` | Forecaster scoring, market ingestors, leaderboard outputs |

@@ -18,7 +18,6 @@ export interface StartupValidation {
   features: {
     onchain: boolean;
     kalshi: boolean;
-    telegram: boolean;
     supabase: boolean;
     agents: boolean;
     rateLimit: boolean;
@@ -37,7 +36,6 @@ export function validateStartup(strict = false): StartupValidation {
     features: {
       onchain: false,
       kalshi: false,
-      telegram: false,
       supabase: false,
       agents: false,
       rateLimit: false,
@@ -63,13 +61,6 @@ export function validateStartup(strict = false): StartupValidation {
   result.features.kalshi = kalshiCheck.valid;
   if (!kalshiCheck.valid) {
     result.warnings.push(`Kalshi trading disabled: missing ${kalshiCheck.missing.join(', ')}`);
-  }
-
-  const telegramCheck = secrets.validateForFeature('telegram');
-  result.features.telegram = telegramCheck.valid;
-  if (!telegramCheck.valid) {
-    result.errors.push(`Telegram bot disabled: missing ${telegramCheck.missing.join(', ')}`);
-    result.valid = false; // Telegram is required
   }
 
   const supabaseCheck = secrets.validateForFeature('supabase');

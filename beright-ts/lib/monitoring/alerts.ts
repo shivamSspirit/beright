@@ -1,16 +1,13 @@
 /**
  * Security Alerts Module
  *
- * Sends critical alerts via:
- * - Telegram (to SUPER_ADMIN)
- * - Console logging
- * - Future: PagerDuty, Opsgenie, Slack
+ * Emits security alerts through the active console/observability path.
  *
  * Usage:
  *   import { sendAlert, sendCriticalAlert, AlertChannel } from '@/lib/monitoring/alerts';
  *
  *   await sendAlert({
- *     channel: 'telegram',
+ *     channel: 'console',
  *     severity: 'critical',
  *     title: 'High Value Transaction',
  *     message: '10 SOL transferred out',
@@ -18,14 +15,13 @@
  *   });
  */
 
-import { secrets } from '../secrets';
 import { isProduction } from '../config/env';
 
 // ============================================
 // TYPES
 // ============================================
 
-export type AlertChannel = 'telegram' | 'console' | 'all';
+export type AlertChannel = 'console' | 'all';
 export type AlertSeverity = 'info' | 'warning' | 'critical';
 
 export interface Alert {
@@ -48,8 +44,6 @@ export interface AlertResult {
 // CONFIGURATION
 // ============================================
 
-const SUPER_ADMIN_TELEGRAM_ID = process.env.SUPER_ADMIN_TELEGRAM_ID || '5504043269';
-
 // Emoji indicators by severity
 const SEVERITY_EMOJI: Record<AlertSeverity, string> = {
   info: 'ℹ️',
@@ -60,85 +54,6 @@ const SEVERITY_EMOJI: Record<AlertSeverity, string> = {
 // Rate limiting for alerts (prevent spam)
 const alertRateLimits = new Map<string, number>();
 const RATE_LIMIT_MS = 60000; // 1 minute between identical alerts
-
-// ============================================
-// TELEGRAM SENDER
-// ============================================
-
-async function sendTelegramAlert(alert: Alert): Promise<AlertResult> {
-  const botToken = secrets.getTelegramBotToken();
-
-  if (!botToken) {
-    console.warn('[Alerts] No Telegram bot token configured');
-    return { success: false, channel: 'telegram', error: 'No bot token' };
-  }
-
-  const emoji = SEVERITY_EMOJI[alert.severity];
-  const timestamp = (alert.timestamp || new Date()).toISOString();
-
-  // Format message for Telegram
-  const lines = [
-    `${emoji} <b>${escapeHtml(alert.title)}</b>`,
-    '',
-    escapeHtml(alert.message),
-  ];
-
-  if (alert.walletAddress) {
-    lines.push('', `<b>Wallet:</b> <code>${alert.walletAddress}</code>`);
-  }
-
-  if (alert.details) {
-    lines.push('', '<b>Details:</b>');
-    for (const [key, value] of Object.entries(alert.details)) {
-      const displayValue = typeof value === 'string' ? value :
-                          typeof value === 'number' ? value.toString() :
-                          JSON.stringify(value);
-      lines.push(`• ${key}: <code>${escapeHtml(displayValue)}</code>`);
-    }
-  }
-
-  lines.push('', `<i>${timestamp}</i>`);
-
-  const text = lines.join('\n');
-
-  try {
-    const response = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: SUPER_ADMIN_TELEGRAM_ID,
-          text,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Alerts] Telegram API error:', error);
-      return { success: false, channel: 'telegram', error };
-    }
-
-    return { success: true, channel: 'telegram' };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Alerts] Failed to send Telegram alert:', errorMessage);
-    return { success: false, channel: 'telegram', error: errorMessage };
-  }
-}
-
-/**
- * Escape HTML special characters for Telegram
- */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
 
 // ============================================
 // CONSOLE SENDER
@@ -197,7 +112,8 @@ function cleanupRateLimits(): void {
 }
 
 // Cleanup every 5 minutes
-setInterval(cleanupRateLimits, 5 * 60 * 1000);
+const cleanupTimer = setInterval(cleanupRateLimits, 5 * 60 * 1000);
+cleanupTimer.unref();
 
 // ============================================
 // PUBLIC API
@@ -221,16 +137,6 @@ export async function sendAlert(alert: Alert): Promise<AlertResult[]> {
 
   // Always log to console
   results.push(sendConsoleAlert(alert));
-
-  // Send to Telegram for production or if explicitly requested
-  if (
-    alert.channel === 'telegram' ||
-    alert.channel === 'all' ||
-    (isProduction() && alert.severity === 'critical')
-  ) {
-    const telegramResult = await sendTelegramAlert(alert);
-    results.push(telegramResult);
-  }
 
   return results;
 }
@@ -272,7 +178,7 @@ export async function sendWarningAlert(
 }
 
 /**
- * Send an info alert (console only in dev, telegram in prod)
+ * Send an informational alert.
  */
 export async function sendInfoAlert(
   title: string,

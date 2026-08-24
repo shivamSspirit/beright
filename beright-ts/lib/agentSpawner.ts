@@ -1,7 +1,7 @@
 /**
- * Internal capability dispatcher for the BeRight Terminal runtime.
+ * Internal capability dispatcher for the BeRight runtime.
  *
- * `beright-terminal` is the only top-level runtime agent.
+ * `beright-runtime` is the only top-level runtime agent.
  * This module dispatches semantic work to internal capabilities
  * like scout, analyst, and trader.
  */

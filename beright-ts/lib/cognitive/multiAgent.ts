@@ -1,7 +1,7 @@
 /**
  * Legacy capability coordinator for autonomous subsystems.
  *
- * `beright-terminal` is the single runtime agent. This module is retained as
+ * `beright-runtime` is the single runtime agent. This module is retained as
  * an internal coordination prototype for long-running cognitive flows that may
  * still model Scout/Analyst/Trader as independent capabilities.
  */

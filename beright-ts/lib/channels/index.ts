@@ -10,7 +10,6 @@
  */
 
 export * from './types';
-export * from './client';
 export * from './discord';
 export * from './twitter';
 export * from './mcp';
@@ -36,7 +35,7 @@ import {
   isTwitterConfigured,
 } from './twitter';
 
-export type DistributionChannel = 'telegram' | 'discord' | 'twitter' | 'mcp';
+export type DistributionChannel = 'discord' | 'twitter' | 'mcp';
 
 interface BroadcastResult {
   channel: DistributionChannel;
@@ -68,10 +67,6 @@ export async function broadcastSignal(
           if (isTwitterConfigured()) {
             success = await postSignalToTwitter(signal);
           }
-          break;
-
-        case 'telegram':
-          success = true; // Handled by alertRouter
           break;
 
         case 'mcp':
@@ -140,7 +135,6 @@ export async function broadcastReport(
  */
 export function getDistributionChannelStatus(): Record<DistributionChannel, boolean> {
   return {
-    telegram: true,
     discord: isDiscordConfigured(),
     twitter: isTwitterConfigured(),
     mcp: true,

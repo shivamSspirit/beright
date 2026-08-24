@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useStagger } from '@/components/ui';
 import BrandLogo from '@/components/BrandLogo';
 import styles from './docs.module.css';
@@ -16,7 +16,6 @@ const NAV_SECTIONS = [
   { id: 'signals', label: 'Intelligence Signals' },
   { id: 'forecaster-network', label: 'Forecaster Network' },
   { id: 'platforms', label: 'Supported Platforms' },
-  { id: 'commands', label: 'Commands' },
   { id: 'api', label: 'API Reference' },
   { id: 'roadmap', label: 'Roadmap' },
 ];
@@ -184,25 +183,6 @@ const PLATFORMS = [
   { name: 'Metaculus', type: 'Forecasting', chain: 'Off-chain', status: 'soon', volume: 'Long-range' },
 ];
 
-// Commands - Available in the BeRight Terminal
-const COMMANDS = [
-  { cmd: '/hot', desc: 'Trending markets with high activity', category: 'Discovery', status: 'live' },
-  { cmd: '/brief', desc: 'Market brief with hot markets, signals, and news', category: 'Discovery', status: 'live' },
-  { cmd: '/arb', desc: 'Current arbitrage opportunities across platforms', category: 'Discovery', status: 'live' },
-  { cmd: '/signals', desc: 'Real-time intelligence signal feed', category: 'Discovery', status: 'live' },
-  { cmd: '/research <topic>', desc: 'Deep analysis using Analyst agent', category: 'Research', status: 'live' },
-  { cmd: '/predict <market>', desc: 'Make and record predictions', category: 'Research', status: 'live' },
-  { cmd: '/recommend', desc: 'agent-assisted trading recommendations', category: 'Research', status: 'live' },
-  { cmd: '/calibration', desc: 'Check your forecasting accuracy', category: 'Research', status: 'soon' },
-  { cmd: '/trade <market>', desc: 'Execute trades with smart routing', category: 'Trading', status: 'soon' },
-  { cmd: '/positions', desc: 'View current holdings across platforms', category: 'Trading', status: 'soon' },
-  { cmd: '/portfolio', desc: 'Full portfolio with P&L analysis', category: 'Trading', status: 'soon' },
-  { cmd: '/whale', desc: 'Track smart money movements', category: 'Trading', status: 'soon' },
-  { cmd: '/leaderboard', desc: 'Community forecaster rankings', category: 'Social', status: 'soon' },
-  { cmd: '/follow <user>', desc: 'Follow top forecasters', category: 'Social', status: 'soon' },
-  { cmd: '/alerts', desc: 'Set up real-time alerts', category: 'Social', status: 'soon' },
-];
-
 // API Endpoints - Actual routes from beright-ts/app/api/
 const API_ENDPOINTS = [
   { method: 'GET', path: '/api/v2/markets', description: 'Search and list markets' },
@@ -274,7 +254,6 @@ export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
   // GSAP stagger animations for grids
   const agentsGridRef = useStagger<HTMLDivElement>({ stagger: 0.1 });
   const signalsGridRef = useStagger<HTMLDivElement>({ stagger: 0.05 });
@@ -289,20 +268,9 @@ export default function DocsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Filter commands by search
-  const filteredCommands = useMemo(() => {
-    if (!searchQuery) return COMMANDS;
-    const q = searchQuery.toLowerCase();
-    return COMMANDS.filter(c =>
-      c.cmd.toLowerCase().includes(q) ||
-      c.desc.toLowerCase().includes(q) ||
-      c.category.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
-
   return (
     <div className={styles.docsPage}>
-        {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
           className={styles.mobileOverlay}
@@ -382,8 +350,8 @@ export default function DocsPage() {
         </nav>
 
         <div className={styles.sidebarCta}>
-          <Link href="/beright-terminal" className={styles.ctaBtn}>
-            Open Terminal
+          <Link href="/markets" className={styles.ctaBtn}>
+            Explore Markets
           </Link>
         </div>
       </aside>
@@ -463,11 +431,11 @@ export default function DocsPage() {
 
             <div className={styles.tryCta}>
               <p className={styles.paragraph}>Start exploring prediction markets with AI assistance.</p>
-              <Link href="/beright-terminal" className={styles.tryBtn}>
+              <Link href="/markets" className={styles.tryBtn}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 17l6-6-6-6M12 19h8" />
                 </svg>
-                Open Terminal
+                Explore Markets
               </Link>
             </div>
           </section>
@@ -533,19 +501,19 @@ export default function DocsPage() {
                 <div className={styles.card}>
                   <h3 className={styles.h3}>Calibration Metric</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Brier score<br/>Lower is better
+                    Brier score<br />Lower is better
                   </p>
                 </div>
                 <div className={styles.card}>
                   <h3 className={styles.h3}>On-Chain Record</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Immutable<br/>Portable & verifiable
+                    Immutable<br />Portable & verifiable
                   </p>
                 </div>
                 <div className={styles.card}>
                   <h3 className={styles.h3}>Credibility Signal</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Better calibration<br/>→ stronger reputation
+                    Better calibration<br />→ stronger reputation
                   </p>
                 </div>
               </div>
@@ -565,18 +533,18 @@ export default function DocsPage() {
                 <div className={`${styles.card} ${styles.solutionCard}`}>
                   <h3 className={styles.h3}>For Forecasters</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Public calibration history<br/>
-                    • Ranked performance surfaces<br/>
-                    • Verifiable prediction archive<br/>
+                    • Public calibration history<br />
+                    • Ranked performance surfaces<br />
+                    • Verifiable prediction archive<br />
                     • Wallet-linked reputation
                   </p>
                 </div>
                 <div className={`${styles.card} ${styles.solutionCard}`}>
                   <h3 className={styles.h3}>For Traders and Researchers</h3>
                   <p style={{ fontSize: '14px', margin: 0 }}>
-                    • Discover reliable forecasters<br/>
-                    • Compare historical accuracy<br/>
-                    • Inspect on-chain activity<br/>
+                    • Discover reliable forecasters<br />
+                    • Compare historical accuracy<br />
+                    • Inspect on-chain activity<br />
                     • Validate AI-assisted calls
                   </p>
                 </div>
@@ -586,19 +554,19 @@ export default function DocsPage() {
                 <div className={styles.card}>
                   <h3 className={styles.h3}>Public Score</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Brier-based<br/>Lower is better
+                    Brier-based<br />Lower is better
                   </p>
                 </div>
                 <div className={styles.card}>
                   <h3 className={styles.h3}>Resolution Linked</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    Predictions resolve<br/>against outcomes
+                    Predictions resolve<br />against outcomes
                   </p>
                 </div>
                 <div className={styles.card}>
                   <h3 className={styles.h3}>Portable Profile</h3>
                   <p style={{ fontSize: '14px', margin: 0, color: 'var(--color-primary)' }}>
-                    One wallet<br/>one track record
+                    One wallet<br />one track record
                   </p>
                 </div>
               </div>
@@ -682,10 +650,10 @@ export default function DocsPage() {
 
             <div className={styles.tryCta}>
               <p className={styles.paragraph}>
-                <strong>Ready to build your forecaster reputation?</strong><br/>
+                <strong>Ready to build your forecaster reputation?</strong><br />
                 Start making predictions and see your Brier score improve over time.
               </p>
-              <Link href="/beright-terminal" className={styles.tryBtn}>
+              <Link href="/markets" className={styles.tryBtn}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 17l6-6-6-6M12 19h8" />
                 </svg>
@@ -844,66 +812,6 @@ export default function DocsPage() {
           </section>
         )}
 
-        {/* Commands Section */}
-        {activeSection === 'commands' && (
-          <section className={styles.contentSection}>
-            <div className={styles.sectionHeader}>
-              <span className={styles.sectionBadge}>Reference</span>
-              <h1 className={styles.sectionTitle}>Commands</h1>
-              <p className={styles.sectionSubtitle}>
-                40+ commands available in the BeRight Terminal
-              </p>
-            </div>
-
-            <div className={styles.searchContainer}>
-              <input
-                type="text"
-                className={styles.searchInput}
-                placeholder="Search commands..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            <div className={styles.commandsList}>
-              {filteredCommands.map(cmd => (
-                <div key={cmd.cmd} className={styles.commandRow}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <code className={styles.commandCode}>{cmd.cmd}</code>
-                    <span className={cmd.status === 'live' ? styles.statusLive : styles.statusSoon} style={{ fontSize: '11px', fontWeight: '600' }}>
-                      {cmd.status === 'live' ? '● LIVE' : '○ Coming Soon'}
-                    </span>
-                  </div>
-                  <span className={styles.commandDesc}>{cmd.desc}</span>
-                </div>
-              ))}
-            </div>
-
-            <h2 className={styles.h2}><span className={styles.h2Accent} />Natural Language</h2>
-            <p className={styles.paragraph}>
-              You do not need to memorize commands. Just ask in plain English:
-            </p>
-            <div className={styles.grid2}>
-              <div className={styles.card}>
-                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>&quot;What are the odds on the Fed cutting rates?&quot;</p>
-                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Returns odds from all platforms</p>
-              </div>
-              <div className={styles.card}>
-                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>&quot;Find me arbitrage opportunities&quot;</p>
-                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Lists current spreads with profit potential</p>
-              </div>
-              <div className={styles.card}>
-                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>&quot;What is hot right now?&quot;</p>
-                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Trending markets by volume</p>
-              </div>
-              <div className={styles.card}>
-                <p style={{ color: '#00FFB2', fontStyle: 'italic', margin: '0 0 8px' }}>&quot;Analyze the Bitcoin ETF market&quot;</p>
-                <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.5)' }}>Deep research with probability estimate</p>
-              </div>
-            </div>
-          </section>
-        )}
-
         {/* API Section */}
         {activeSection === 'api' && (
           <section className={styles.contentSection}>
@@ -1024,7 +932,7 @@ export default function DocsPage() {
             <span>BeRight</span>
           </div>
           <div className={styles.footerLinks}>
-            <Link href="/beright-terminal">Terminal</Link>
+            <Link href="/markets">Markets</Link>
             <a href="https://x.com/AgentBEright" target="_blank" rel="noopener noreferrer">Twitter</a>
           </div>
           <p className={styles.footerCopyright}>© 2026 BeRight Protocol</p>

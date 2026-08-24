@@ -8,17 +8,13 @@
     "forecaster-scoring-engine"
   ],
   "scripts": {
-    "agent": "npm run agent --workspace=beright-ts",
     "dev": "turbo run dev",
-    "dev:full": "npx concurrently \"turbo run dev\" \"sleep 5 && npm run agent\"",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
     "clean": "turbo run clean && rm -rf node_modules",
     "dev:api": "npm run dev --workspace=beright-ts",
     "dev:web": "npm run dev --workspace=berightweb",
-    "gateway": "npm run dev --workspace=beright-ts",
-    "telegram": "npm run dev --workspace=beright-ts",
     "heartbeat": "npm run heartbeat --workspace=beright-ts",
     "test:calibration": "cd calibration-program && npm run test:calibration"
   },

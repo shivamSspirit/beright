@@ -35,9 +35,6 @@ export interface SecretsConfig {
   supabaseAnonKey?: string;
   supabaseServiceRoleKey?: string;
 
-  // Telegram
-  telegramBotToken?: string;
-
   // Anthropic
   anthropicApiKey?: string;
 
@@ -65,6 +62,7 @@ export interface SecretsConfig {
 
   // Jito
   jitoAuthKeypair?: string;
+
 }
 
 class SecretsManager {
@@ -73,7 +71,7 @@ class SecretsManager {
   private initialized = false;
   private validationErrors: string[] = [];
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): SecretsManager {
     if (!SecretsManager.instance) {
@@ -120,9 +118,6 @@ class SecretsManager {
     this.config.supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     this.config.supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     this.config.supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    // Telegram
-    this.config.telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 
     // Anthropic
     this.config.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
@@ -224,14 +219,6 @@ class SecretsManager {
   }
 
   /**
-   * Get Telegram bot token
-   */
-  getTelegramBotToken(): string | undefined {
-    this.ensureInitialized();
-    return this.config.telegramBotToken;
-  }
-
-  /**
    * Get Anthropic API key
    */
   getAnthropicApiKey(): string | undefined {
@@ -304,7 +291,7 @@ class SecretsManager {
   /**
    * Validate required secrets for a specific feature
    */
-  validateForFeature(feature: 'onchain' | 'kalshi' | 'telegram' | 'supabase' | 'agents'): {
+  validateForFeature(feature: 'onchain' | 'kalshi' | 'supabase' | 'agents'): {
     valid: boolean;
     missing: string[];
   } {
@@ -319,9 +306,6 @@ class SecretsManager {
       case 'kalshi':
         if (!this.config.kalshiApiKey) missing.push('KALSHI_API_KEY');
         if (!this.config.kalshiApiSecret) missing.push('KALSHI_API_SECRET');
-        break;
-      case 'telegram':
-        if (!this.config.telegramBotToken) missing.push('TELEGRAM_BOT_TOKEN');
         break;
       case 'supabase':
         if (!this.config.supabaseUrl) missing.push('SUPABASE_URL');
@@ -346,7 +330,6 @@ class SecretsManager {
       kalshi: !!(this.config.kalshiApiKey && this.config.kalshiApiSecret),
       supabase: !!(this.config.supabaseUrl && this.config.supabaseAnonKey),
       supabaseServiceRole: !!this.config.supabaseServiceRoleKey,
-      telegram: !!this.config.telegramBotToken,
       anthropic: !!this.config.anthropicApiKey,
       mistral: !!this.config.mistralApiKey,
       groq: !!this.config.groqApiKey,

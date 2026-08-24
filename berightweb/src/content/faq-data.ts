@@ -47,7 +47,7 @@ export const FAQ_ITEMS: FAQItem[] = [
 • **Build reputation** — Track your accuracy with on-chain Brier scores
 • **Prove your edge** — Build a public calibration history and verified prediction record
 
-Think of it as Bloomberg Terminal meets AI copilot for prediction markets.`,
+Think of it as a forecasting workspace for prediction markets.`,
   },
   {
     id: 'get-started',
@@ -57,9 +57,7 @@ Think of it as Bloomberg Terminal meets AI copilot for prediction markets.`,
 
 1. **Connect wallet** — Click "Connect" (Phantom, Solflare, or email login via Privy)
 2. **Explore markets** — Swipe cards on the home page or browse the Markets tab
-3. **Make predictions** — Swipe right for YES, left for NO. Your accuracy is tracked automatically.
-
-For power users, open the **Terminal** and type naturally: "What's hot?" or "Find arbitrage opportunities."`,
+3. **Make predictions** — Swipe right for YES, left for NO. Your accuracy is tracked automatically.`,
   },
 
   // ===========================================================================
@@ -100,26 +98,6 @@ You get unified search, cross-platform arbitrage detection, and whale tracking �
   // PLATFORM
   // ===========================================================================
   {
-    id: 'terminal',
-    category: 'Platform',
-    question: 'How does the Terminal work?',
-    answer: `The Terminal is a natural language interface for power users.
-
-**Just type what you want:**
-• "What's hot right now?"
-• "Find arbitrage opportunities"
-• "Research the Fed rate decision"
-• "Show my calibration stats"
-
-**Or use commands:**
-• \`/hot\` — Trending markets
-• \`/arb\` — Arbitrage scanner
-• \`/research <topic>\` — Deep AI analysis
-• \`/predict YES on <market> at 70%\` — Record a prediction
-
-The AI routes your request to the right agent (Scout, Analyst, or Trader) automatically.`,
-  },
-  {
     id: 'onchain-reputation',
     category: 'Platform',
     question: 'How does on-chain reputation work?',
@@ -146,11 +124,11 @@ The goal is simple: make forecasting skill measurable instead of self-reported.`
     id: 'pricing',
     category: 'Pricing',
     question: 'What are the subscription tiers?',
-    answer: `**Free** — Profile aggregation, 3 AI edge insights per market, 5 Terminal queries/day, unlimited manual trade execution
+    answer: `**Free** — Profile aggregation, 3 AI edge insights per market, unlimited manual trade execution
 
-**Pro ($19/mo)** — 10-20 arbitrage alerts, 50 Terminal queries/day, portfolio tracking, 20 AI fact-checks, unlimited trading
+**Pro ($19/mo)** — 10-20 arbitrage alerts, portfolio tracking, 20 AI fact-checks, unlimited trading
 
-**Alpha ($49/mo)** — All AI agents, deep research, 100 Terminal queries/day, AI alerts, 30+ arbitrage detection, 50+ AI fact-checks
+**Alpha ($49/mo)** — Deep research, AI alerts, 30+ arbitrage detection, 50+ AI fact-checks
 
 All paid plans include a 7-day money-back guarantee.`,
   },

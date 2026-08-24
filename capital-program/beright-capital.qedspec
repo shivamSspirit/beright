@@ -1,0 +1,513 @@
+// BeRight Capital — aggregate accounting and authorization model.
+//
+// The executable Anchor program uses separate config, market, position, oracle,
+// lending, loan, and intent PDAs. This intentionally smaller model proves the
+// conservation invariants across the complete instruction surface. Token ownership,
+// mint identity, PDA seeds, signer authority, and oracle freshness are enforced
+// by Anchor constraints and explicit Rust guards.
+
+spec BeRightCapital
+program_id "F2WkXzns4p5pe8NAuK6V5NhZ4bdpXxAE9h5kLAMtxqCT"
+
+const MAX_TVL = 1_000_000_000_000
+
+type State
+  | Active of {
+      config_initialized       : U8,
+      market_count             : U64,
+      position_count           : U64,
+      lender_count             : U64,
+      loan_count               : U64,
+      paused                   : U8,
+      strategy_enabled         : U8,
+      pending_strategy_enabled : U8,
+      strategy_activate_after  : U64,
+      pending_admin            : U8,
+      total_yes                : U64,
+      total_no                 : U64,
+      matched_pairs            : U64,
+      strategy_principal       : U64,
+      harvested_yield          : U64,
+      claimed_yield            : U64,
+      total_cash               : U64,
+      total_borrows            : U64,
+      total_lender_shares      : U64,
+      collateral_amount        : U64,
+      bad_debt                 : U64,
+      status                   : U8,
+      next_intent_nonce        : U64,
+      consumed                 : U8,
+      observed_slot            : U64,
+      vault_structure          : U8,
+      thesis_status            : U8,
+      total_assets             : U64,
+      total_shares             : U64,
+      pending_redemption_shares: U64,
+      nav_epoch                : U64,
+      next_redemption_nonce    : U64,
+      graduation_threshold    : U64,
+      qualifying_capital      : U64,
+      unique_contributors     : U64,
+      minimum_unique_contributors : U64,
+      accounting_liquid_assets: U64,
+      accrued_fees           : U64,
+      accrued_curator_fees   : U64,
+      accrued_protocol_fees  : U64,
+      contributor_shares     : U64,
+      lockup_seconds         : U64,
+      lockup_started_at      : U64,
+    }
+
+type Error
+  | ProtocolPaused
+  | InvalidAmount
+  | TvlCapExceeded
+  | InsufficientUnmatched
+  | InsufficientMatched
+  | StrategyLimitExceeded
+  | YieldUnavailable
+  | InsufficientLiquidity
+  | Insolvent
+  | AlreadyResolved
+  | InvalidNonce
+  | MathOverflow
+
+handler initialize_protocol : State.Active -> State.Active {
+  auth upgrade_authority
+  requires state.config_initialized == 0 else InvalidAmount
+  effect {
+    config_initialized := 1
+    strategy_activate_after := 0
+    pending_strategy_enabled := 0
+    pending_admin := 0
+  }
+}
+
+handler initialize_market : State.Active -> State.Active {
+  auth admin
+  requires state.config_initialized == 1 else InvalidAmount
+  requires state.market_count + 1 <= MAX_TVL else MathOverflow
+  effect { market_count += 1 }
+}
+
+handler initialize_position : State.Active -> State.Active {
+  auth owner
+  requires state.position_count + 1 <= MAX_TVL else MathOverflow
+  effect { position_count += 1 }
+}
+
+handler pause : State.Active -> State.Active {
+  auth emergency_authority
+  effect { paused := 1 }
+}
+
+handler unpause : State.Active -> State.Active {
+  auth admin
+  effect { paused := 0 }
+}
+
+handler configure_strategy (enabled : U8) : State.Active -> State.Active {
+  auth admin
+  requires enabled <= 1 else InvalidAmount
+  effect {
+    pending_strategy_enabled := enabled
+    strategy_activate_after := 1
+  }
+}
+
+handler activate_strategy : State.Active -> State.Active {
+  permissionless
+  requires state.strategy_activate_after > 0 else InvalidAmount
+  effect {
+    strategy_enabled := state.pending_strategy_enabled
+    pending_strategy_enabled := 0
+    strategy_activate_after := 0
+  }
+}
+
+handler cancel_strategy_change : State.Active -> State.Active {
+  auth admin
+  requires state.strategy_activate_after > 0 else InvalidAmount
+  effect {
+    pending_strategy_enabled := 0
+    strategy_activate_after := 0
+  }
+}
+
+handler propose_admin : State.Active -> State.Active {
+  auth admin
+  effect { pending_admin := 1 }
+}
+
+handler accept_admin : State.Active -> State.Active {
+  auth pending_admin
+  requires state.pending_admin == 1 else InvalidAmount
+  effect { pending_admin := 0 }
+}
+
+handler update_protocol_authorities : State.Active -> State.Active {
+  auth admin
+  requires state.config_initialized == 1 else InvalidAmount
+  effect { pending_admin := state.pending_admin }
+}
+
+// The aggregate model adds both sides for a deposit. The executable program
+// updates exactly one side selected by the validated enum.
+handler deposit (side : U8) (amount : U64) : State.Active -> State.Active {
+  permissionless
+  requires state.paused == 0 else ProtocolPaused
+  requires side <= 1 and amount > 0 else InvalidAmount
+  requires state.total_yes + amount <= MAX_TVL else TvlCapExceeded
+  requires state.total_no + amount <= MAX_TVL else TvlCapExceeded
+  effect {
+    total_yes += amount
+    total_no += amount
+  }
+}
+
+handler withdraw_unmatched (side : U8) (amount : U64) : State.Active -> State.Active {
+  auth owner
+  requires side <= 1 and amount > 0 else InvalidAmount
+  requires state.total_yes - state.matched_pairs >= amount else InsufficientUnmatched
+  requires state.total_no - state.matched_pairs >= amount else InsufficientUnmatched
+  effect {
+    total_yes -= amount
+    total_no -= amount
+  }
+}
+
+handler match_positions (amount : U64) : State.Active -> State.Active {
+  permissionless
+  requires state.paused == 0 else ProtocolPaused
+  requires amount > 0 else InvalidAmount
+  requires state.total_yes - state.matched_pairs >= amount else InsufficientUnmatched
+  requires state.total_no - state.matched_pairs >= amount else InsufficientUnmatched
+  requires state.matched_pairs + amount <= MAX_TVL else TvlCapExceeded
+  effect { matched_pairs += amount }
+}
+
+handler unmatch_positions (amount : U64) : State.Active -> State.Active {
+  auth owners_or_resolved_keeper
+  requires amount > 0 else InvalidAmount
+  requires state.matched_pairs >= amount else InsufficientMatched
+  requires state.strategy_principal <= state.matched_pairs - amount else StrategyLimitExceeded
+  effect { matched_pairs -= amount }
+}
+
+handler harvest_yield (amount : U64) : State.Active -> State.Active {
+  auth strategy_authority
+  requires state.paused == 0 else ProtocolPaused
+  requires state.strategy_enabled == 1 else InvalidAmount
+  requires amount > 0 and state.matched_pairs > 0 else InvalidAmount
+  requires state.harvested_yield + amount <= MAX_TVL else TvlCapExceeded
+  effect { harvested_yield += amount }
+}
+
+handler claim_yield (amount : U64) : State.Active -> State.Active {
+  auth owner
+  requires amount > 0 else InvalidAmount
+  requires state.harvested_yield - state.claimed_yield >= amount else YieldUnavailable
+  requires state.claimed_yield + amount <= MAX_TVL else TvlCapExceeded
+  effect { claimed_yield += amount }
+}
+
+handler resolve_market (winning_side : U8) : State.Active -> State.Active {
+  auth resolution_authority
+  requires state.status == 0 else AlreadyResolved
+  requires winning_side <= 1 else InvalidAmount
+  requires state.strategy_principal == 0 else StrategyLimitExceeded
+  effect { status := 1 }
+}
+
+handler update_price (observed_slot : U64) : State.Active -> State.Active {
+  auth oracle_authority
+  requires observed_slot > state.observed_slot else InvalidAmount
+  effect { observed_slot := observed_slot }
+}
+
+handler initialize_lending_pool : State.Active -> State.Active {
+  permissionless
+  requires state.total_cash == 0 and state.total_borrows == 0 else InvalidAmount
+  effect { bad_debt := 0 }
+}
+
+handler initialize_lender : State.Active -> State.Active {
+  auth owner
+  requires state.lender_count + 1 <= MAX_TVL else MathOverflow
+  effect { lender_count += 1 }
+}
+
+handler fund_lending (amount : U64) : State.Active -> State.Active {
+  auth owner
+  requires state.paused == 0 else ProtocolPaused
+  requires amount > 0 else InvalidAmount
+  requires state.total_cash + amount <= MAX_TVL else TvlCapExceeded
+  requires state.total_lender_shares + amount <= MAX_TVL else TvlCapExceeded
+  effect {
+    total_cash += amount
+    total_lender_shares += amount
+  }
+}
+
+handler withdraw_lending (shares : U64) : State.Active -> State.Active {
+  auth owner
+  requires shares > 0 else InvalidAmount
+  requires state.total_lender_shares >= shares else Insolvent
+  requires state.total_cash >= shares else InsufficientLiquidity
+  effect {
+    total_cash -= shares
+    total_lender_shares -= shares
+  }
+}
+
+handler initialize_loan : State.Active -> State.Active {
+  auth borrower
+  requires state.loan_count + 1 <= MAX_TVL else MathOverflow
+  effect { loan_count += 1 }
+}
+
+handler borrow (amount : U64) (collateral : U64) : State.Active -> State.Active {
+  auth borrower
+  requires state.paused == 0 else ProtocolPaused
+  requires amount > 0 and collateral > 0 else InvalidAmount
+  requires state.total_cash >= amount else InsufficientLiquidity
+  requires state.total_borrows + amount <= MAX_TVL else TvlCapExceeded
+  requires state.collateral_amount + collateral <= MAX_TVL else TvlCapExceeded
+  effect {
+    total_cash -= amount
+    total_borrows += amount
+    collateral_amount += collateral
+  }
+}
+
+handler repay (amount : U64) (collateral : U64) : State.Active -> State.Active {
+  auth borrower
+  requires amount > 0 else InvalidAmount
+  requires state.total_borrows >= amount else Insolvent
+  requires state.collateral_amount >= collateral else Insolvent
+  requires state.total_cash + amount <= MAX_TVL else TvlCapExceeded
+  effect {
+    total_cash += amount
+    total_borrows -= amount
+    collateral_amount -= collateral
+  }
+}
+
+handler liquidate : State.Active -> State.Active {
+  permissionless
+  requires state.total_borrows > 0 and state.collateral_amount > 0 else InvalidAmount
+  requires state.total_cash + state.total_borrows <= MAX_TVL else TvlCapExceeded
+  effect {
+    total_cash += state.total_borrows
+    total_borrows := 0
+    collateral_amount := 0
+  }
+}
+
+handler create_agent_intent (nonce : U64) : State.Active -> State.Active {
+  auth owner
+  requires nonce == state.next_intent_nonce else InvalidNonce
+  requires state.next_intent_nonce + 1 <= MAX_TVL else MathOverflow
+  effect {
+    next_intent_nonce += 1
+    consumed := 0
+  }
+}
+
+handler execute_agent_intent : State.Active -> State.Active {
+  auth executor
+  requires state.consumed == 0 else InvalidNonce
+  effect { consumed := 1 }
+}
+
+handler cancel_agent_intent : State.Active -> State.Active {
+  auth owner
+  requires state.consumed == 0 else InvalidNonce
+  effect { consumed := 1 }
+}
+
+handler create_thesis (vault_structure : U8) (initial_status : U8) (lockup_seconds : U64) : State.Active -> State.Active {
+  auth creator
+  requires state.paused == 0 else ProtocolPaused
+  requires state.thesis_status == 0 else InvalidAmount
+  requires vault_structure <= 1 else InvalidAmount
+  requires lockup_seconds <= 31_536_000 else InvalidAmount
+  requires (vault_structure == 0 and initial_status == 1) or (vault_structure == 1 and initial_status == 4) else InvalidAmount
+  effect {
+    vault_structure := vault_structure
+    thesis_status := initial_status
+    lockup_seconds := lockup_seconds
+  }
+}
+
+handler initialize_thesis_vault (graduation_threshold : U64) (minimum_contributors : U64) : State.Active -> State.Active {
+  auth creator_or_curator
+  requires state.paused == 0 else ProtocolPaused
+  requires (state.vault_structure == 0 and state.thesis_status == 1 and graduation_threshold > 0 and minimum_contributors >= 2) or (state.vault_structure == 1 and state.thesis_status == 4 and graduation_threshold == 0 and minimum_contributors == 0) else InvalidAmount
+  requires state.total_assets == 0 and state.total_shares == 0 else InvalidAmount
+  effect {
+    graduation_threshold := graduation_threshold
+    minimum_unique_contributors := minimum_contributors
+    accounting_liquid_assets := 0
+  }
+}
+
+handler deposit_thesis_vault (amount : U64) (shares : U64) (qualifying : U64) (new_contributor : U8) (next_status : U8) (now : U64) : State.Active -> State.Active {
+  auth owner
+  requires state.paused == 0 else ProtocolPaused
+  requires (state.vault_structure == 0 and state.thesis_status == 1 and (next_status == 1 or next_status == 2)) or (state.vault_structure == 1 and (state.thesis_status == 4 or state.thesis_status == 2) and next_status == 2) else InvalidAmount
+  requires amount > 0 and shares > 0 else InvalidAmount
+  requires (state.vault_structure == 0 and qualifying <= amount and new_contributor <= 1) or (state.vault_structure == 1 and qualifying == 0 and new_contributor == 0) else InvalidAmount
+  requires state.total_assets + amount <= MAX_TVL else TvlCapExceeded
+  requires state.total_shares + shares <= MAX_TVL else TvlCapExceeded
+  requires state.qualifying_capital + qualifying <= MAX_TVL else TvlCapExceeded
+  requires state.unique_contributors + new_contributor <= MAX_TVL else TvlCapExceeded
+  requires state.accounting_liquid_assets + amount <= MAX_TVL else TvlCapExceeded
+  requires state.contributor_shares + shares <= MAX_TVL else TvlCapExceeded
+  effect {
+    total_assets += amount
+    total_shares += shares
+    accounting_liquid_assets += amount
+    contributor_shares += shares
+    lockup_started_at := now
+    qualifying_capital += qualifying
+    unique_contributors += new_contributor
+    thesis_status := next_status
+  }
+}
+
+handler cancel_thesis_funding (shares : U64) (assets : U64) (qualifying : U64) : State.Active -> State.Active {
+  auth owner
+  requires state.vault_structure == 0 else InvalidAmount
+  requires state.thesis_status == 1 else InvalidAmount
+  requires shares > 0 and assets > 0 else InvalidAmount
+  requires qualifying <= state.qualifying_capital else InvalidAmount
+  requires shares <= state.total_shares and assets <= state.total_assets else Insolvent
+  requires shares <= state.contributor_shares else Insolvent
+  requires assets <= state.accounting_liquid_assets else InsufficientLiquidity
+  effect {
+    total_assets -= assets
+    total_shares -= shares
+    qualifying_capital -= qualifying
+    accounting_liquid_assets -= assets
+    contributor_shares -= shares
+  }
+}
+
+handler submit_thesis_nav (epoch : U64) (assets : U64) (curator_fee : U64) (protocol_fee : U64) : State.Active -> State.Active {
+  auth oracle_authority
+  requires epoch == state.nav_epoch + 1 else InvalidAmount
+  requires assets <= MAX_TVL else TvlCapExceeded
+  requires curator_fee + protocol_fee <= assets else InvalidAmount
+  requires state.accrued_fees + curator_fee + protocol_fee <= assets else InvalidAmount
+  requires state.accrued_curator_fees + curator_fee <= MAX_TVL else TvlCapExceeded
+  requires state.accrued_protocol_fees + protocol_fee <= MAX_TVL else TvlCapExceeded
+  effect {
+    nav_epoch := epoch
+    accrued_curator_fees += curator_fee
+    accrued_protocol_fees += protocol_fee
+    accrued_fees += curator_fee
+    accrued_fees += protocol_fee
+    total_assets := assets - state.accrued_fees - curator_fee - protocol_fee
+  }
+}
+
+handler collect_thesis_fees : State.Active -> State.Active {
+  auth curator_or_admin
+  requires state.paused == 0 and state.thesis_status == 2 else ProtocolPaused
+  requires state.accrued_fees == state.accrued_curator_fees + state.accrued_protocol_fees else InvalidAmount
+  requires state.accounting_liquid_assets >= state.accrued_fees else InsufficientLiquidity
+  effect {
+    accounting_liquid_assets -= state.accrued_fees
+    accrued_fees := 0
+    accrued_curator_fees := 0
+    accrued_protocol_fees := 0
+  }
+}
+
+handler request_thesis_redemption (shares : U64) (now : U64) : State.Active -> State.Active {
+  auth owner
+  requires shares > 0 else InvalidAmount
+  requires shares <= state.contributor_shares else Insolvent
+  requires state.thesis_status == 1 or now >= state.lockup_started_at + state.lockup_seconds else InvalidAmount
+  requires state.pending_redemption_shares + shares <= state.total_shares else Insolvent
+  requires state.next_redemption_nonce + 1 <= MAX_TVL else MathOverflow
+  effect {
+    pending_redemption_shares += shares
+    contributor_shares -= shares
+    next_redemption_nonce += 1
+  }
+}
+
+handler cancel_thesis_redemption (shares : U64) : State.Active -> State.Active {
+  auth owner
+  requires shares > 0 and state.pending_redemption_shares >= shares else InvalidAmount
+  effect { pending_redemption_shares -= shares }
+}
+
+handler settle_thesis_redemption (shares : U64) (assets : U64) : State.Active -> State.Active {
+  permissionless
+  requires shares > 0 and assets > 0 else InvalidAmount
+  requires state.pending_redemption_shares >= shares else InvalidAmount
+  requires state.total_shares >= shares and state.total_assets >= assets else Insolvent
+  effect {
+    pending_redemption_shares -= shares
+    total_shares -= shares
+    total_assets -= assets
+  }
+}
+
+handler pause_thesis_vault : State.Active -> State.Active {
+  auth emergency_authority
+  requires state.thesis_status == 2 else InvalidAmount
+  effect { thesis_status := 3 }
+}
+
+handler unpause_thesis_vault : State.Active -> State.Active {
+  auth admin
+  requires state.thesis_status == 3 else InvalidAmount
+  effect { thesis_status := 2 }
+}
+
+property matched_pairs_are_backed :
+  state.matched_pairs <= state.total_yes and state.matched_pairs <= state.total_no
+  preserved_by all
+
+property strategy_is_pair_backed :
+  state.strategy_principal <= state.matched_pairs
+  preserved_by all
+
+property yield_cannot_be_overclaimed :
+  state.claimed_yield <= state.harvested_yield
+  preserved_by all
+
+property lending_is_conserved :
+  state.total_cash + state.total_borrows + state.bad_debt >= state.total_lender_shares
+  preserved_by all
+
+property agent_nonce_is_monotonic :
+  state.next_intent_nonce >= old(state.next_intent_nonce)
+  preserved_by all
+
+property pending_redemptions_are_share_backed :
+  state.pending_redemption_shares <= state.total_shares
+  preserved_by all
+
+property fee_split_is_conserved :
+  state.accrued_fees == state.accrued_curator_fees + state.accrued_protocol_fees
+  preserved_by all
+
+property nav_epoch_is_monotonic :
+  state.nav_epoch >= old(state.nav_epoch)
+  preserved_by all
+
+property redemption_nonce_is_monotonic :
+  state.next_redemption_nonce >= old(state.next_redemption_nonce)
+  preserved_by all
+
+cover matched_yield_cycle [deposit, match_positions, harvest_yield, claim_yield, unmatch_positions]
+cover lending_cycle [fund_lending, borrow, repay, liquidate, withdraw_lending]
+cover agent_cycle [create_agent_intent, execute_agent_intent, cancel_agent_intent]
+cover governance_cycle [propose_admin, accept_admin, configure_strategy, activate_strategy]
+cover thesis_vault_cycle [create_thesis, initialize_thesis_vault, deposit_thesis_vault, submit_thesis_nav, collect_thesis_fees, request_thesis_redemption, settle_thesis_redemption]
+cover open_ended_vault_cycle [create_thesis, initialize_thesis_vault, deposit_thesis_vault, request_thesis_redemption, settle_thesis_redemption]

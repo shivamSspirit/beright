@@ -5,27 +5,27 @@ import PageLoader from "@/components/PageLoader";
 import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "BeRight — Get funded to trade prediction markets on Solana",
-  description: "A Solana-based public fund that allocates USDC capital to proven prediction-market forecasters.",
+  title: "BeRight — Forecast prediction markets",
+  description: "Swipe through live prediction markets, compare your view with AI, and build a forecasting track record.",
   keywords: ["predictions", "forecasting", "prediction markets", "Kalshi", "Polymarket", "Solana", "USDC", "VScore"],
   authors: [{ name: "BeRight" }],
   openGraph: {
-    title: "BeRight — Get funded to trade prediction markets on Solana",
-    description: "A Solana-based public fund that allocates USDC capital to proven prediction-market forecasters.",
+    title: "BeRight — Forecast prediction markets",
+    description: "Swipe through live prediction markets, compare your view with AI, and build a forecasting track record.",
     type: "website",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 1200,
-        alt: "BeRight - Public fund for prediction market forecasters",
+        alt: "BeRight prediction market forecasting",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "BeRight — Get funded to trade prediction markets on Solana",
-    description: "A Solana-based public fund that allocates USDC capital to proven prediction-market forecasters.",
+    title: "BeRight — Forecast prediction markets",
+    description: "Swipe through live prediction markets, compare your view with AI, and build a forecasting track record.",
     images: ["/og-image.jpg"],
   },
 };

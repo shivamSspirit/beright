@@ -1,0 +1,6158 @@
+{
+  "address": "F2WkXzns4p5pe8NAuK6V5NhZ4bdpXxAE9h5kLAMtxqCT",
+  "metadata": {
+    "name": "berightcapital",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "accept_admin",
+      "discriminator": [
+        112,
+        42,
+        45,
+        90,
+        116,
+        181,
+        13,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "activate_strategy",
+      "discriminator": [
+        149,
+        232,
+        177,
+        145,
+        240,
+        90,
+        2,
+        192
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "borrow",
+      "discriminator": [
+        228,
+        253,
+        131,
+        202,
+        207,
+        116,
+        89,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "relations": [
+            "pool",
+            "position",
+            "price"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "relations": [
+            "loan"
+          ]
+        },
+        {
+          "name": "loan",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "price"
+        },
+        {
+          "name": "borrower",
+          "signer": true,
+          "relations": [
+            "loan"
+          ]
+        },
+        {
+          "name": "lending_vault",
+          "writable": true
+        },
+        {
+          "name": "borrower_destination",
+          "writable": true
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "collateral",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_agent_intent",
+      "discriminator": [
+        116,
+        77,
+        22,
+        176,
+        243,
+        162,
+        68,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "intent"
+          ]
+        },
+        {
+          "name": "intent",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_strategy_change",
+      "discriminator": [
+        216,
+        234,
+        34,
+        242,
+        98,
+        176,
+        145,
+        114
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_thesis_funding",
+      "discriminator": [
+        39,
+        32,
+        156,
+        172,
+        123,
+        65,
+        200,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "thesis",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis",
+            "contributor"
+          ]
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_deposit_account",
+          "writable": true
+        },
+        {
+          "name": "liquid_vault",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "deposit_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "deposit_token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "share_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        },
+        {
+          "name": "minimum_assets_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_thesis_redemption",
+      "discriminator": [
+        23,
+        181,
+        254,
+        176,
+        102,
+        210,
+        112,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "thesis",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis",
+            "contributor",
+            "request"
+          ]
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "contributor",
+            "request"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "share_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_yield",
+      "discriminator": [
+        49,
+        74,
+        111,
+        7,
+        186,
+        22,
+        61,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "settlement_vault",
+          "writable": true,
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "user_destination",
+          "writable": true
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "collect_thesis_fees",
+      "discriminator": [
+        149,
+        182,
+        100,
+        2,
+        136,
+        48,
+        91,
+        192
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "thesis",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "liquid_vault",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "curator_destination",
+          "writable": true
+        },
+        {
+          "name": "curator"
+        },
+        {
+          "name": "protocol_destination",
+          "writable": true
+        },
+        {
+          "name": "protocol_treasury"
+        },
+        {
+          "name": "deposit_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "deposit_token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "configure_strategy",
+      "discriminator": [
+        121,
+        251,
+        51,
+        122,
+        37,
+        70,
+        251,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "adapter",
+          "type": "pubkey"
+        },
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "create_agent_intent",
+      "discriminator": [
+        231,
+        94,
+        26,
+        70,
+        242,
+        59,
+        155,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "market",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "intent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  116,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              },
+              {
+                "kind": "arg",
+                "path": "params.nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateIntentParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_thesis",
+      "discriminator": [
+        211,
+        194,
+        95,
+        96,
+        95,
+        148,
+        109,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "thesis",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "params.thesis_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateThesisParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "user_source",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit_thesis_vault",
+      "discriminator": [
+        244,
+        62,
+        35,
+        20,
+        150,
+        17,
+        207,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "thesis",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_deposit_account",
+          "writable": true
+        },
+        {
+          "name": "liquid_vault",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "deposit_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "deposit_token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "share_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "minimum_shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "execute_agent_intent",
+      "discriminator": [
+        145,
+        179,
+        129,
+        168,
+        138,
+        6,
+        99,
+        248
+      ],
+      "accounts": [
+        {
+          "name": "market",
+          "relations": [
+            "intent"
+          ]
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "keeper",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "action",
+          "type": {
+            "defined": {
+              "name": "AgentAction"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "min_output",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fund_lending",
+      "discriminator": [
+        240,
+        15,
+        84,
+        186,
+        89,
+        159,
+        178,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "relations": [
+            "lender"
+          ]
+        },
+        {
+          "name": "lender",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "lender"
+          ]
+        },
+        {
+          "name": "lender_source",
+          "writable": true
+        },
+        {
+          "name": "lending_vault",
+          "writable": true
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "harvest_yield",
+      "discriminator": [
+        28,
+        200,
+        150,
+        200,
+        69,
+        56,
+        38,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "strategy_source",
+          "writable": true
+        },
+        {
+          "name": "settlement_vault",
+          "writable": true,
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_lender",
+      "discriminator": [
+        116,
+        27,
+        248,
+        201,
+        199,
+        38,
+        118,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "lender",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  110,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_lending_pool",
+      "discriminator": [
+        236,
+        76,
+        136,
+        68,
+        196,
+        14,
+        9,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lending_vault"
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_loan",
+      "discriminator": [
+        235,
+        149,
+        178,
+        147,
+        146,
+        178,
+        207,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true
+        },
+        {
+          "name": "loan",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  97,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool"
+              },
+              {
+                "kind": "account",
+                "path": "borrower"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_market",
+      "discriminator": [
+        35,
+        35,
+        189,
+        193,
+        155,
+        48,
+        170,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "arg",
+                "path": "params.market_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "price",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint"
+        },
+        {
+          "name": "no_mint"
+        },
+        {
+          "name": "yes_vault"
+        },
+        {
+          "name": "no_vault"
+        },
+        {
+          "name": "settlement_vault"
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeMarketParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_position",
+      "discriminator": [
+        219,
+        192,
+        234,
+        71,
+        190,
+        191,
+        102,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_protocol",
+      "discriminator": [
+        188,
+        233,
+        252,
+        106,
+        134,
+        146,
+        202,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "F2WkXzns4p5pe8NAuK6V5NhZ4bdpXxAE9h5kLAMtxqCT"
+        },
+        {
+          "name": "program_data"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  112,
+                  105,
+                  116,
+                  97,
+                  108,
+                  45,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeProtocolParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_thesis_vault",
+      "discriminator": [
+        204,
+        23,
+        174,
+        175,
+        147,
+        194,
+        160,
+        106
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "thesis",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "thesis"
+              }
+            ]
+          }
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "liquid_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  108,
+                  105,
+                  113,
+                  117,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_mint"
+        },
+        {
+          "name": "deposit_token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "share_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeThesisVaultParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "liquidate",
+      "discriminator": [
+        223,
+        179,
+        226,
+        125,
+        48,
+        46,
+        39,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "relations": [
+            "pool",
+            "position",
+            "price"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "relations": [
+            "loan"
+          ]
+        },
+        {
+          "name": "loan",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "price"
+        },
+        {
+          "name": "liquidator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "liquidator_source",
+          "writable": true
+        },
+        {
+          "name": "lending_vault",
+          "writable": true
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "liquidator_destination",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "match_positions",
+      "discriminator": [
+        33,
+        3,
+        8,
+        102,
+        235,
+        63,
+        80,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "relations": [
+            "yes_position",
+            "no_position"
+          ]
+        },
+        {
+          "name": "yes_position",
+          "writable": true
+        },
+        {
+          "name": "yes_owner"
+        },
+        {
+          "name": "no_position",
+          "writable": true
+        },
+        {
+          "name": "no_owner"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pause_thesis_vault",
+      "discriminator": [
+        233,
+        201,
+        153,
+        68,
+        140,
+        186,
+        118,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "thesis",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "propose_admin",
+      "discriminator": [
+        121,
+        214,
+        199,
+        212,
+        87,
+        39,
+        117,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "repay",
+      "discriminator": [
+        234,
+        103,
+        67,
+        82,
+        208,
+        234,
+        219,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "relations": [
+            "pool",
+            "position",
+            "price"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "relations": [
+            "loan"
+          ]
+        },
+        {
+          "name": "loan",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "price"
+        },
+        {
+          "name": "borrower",
+          "signer": true,
+          "relations": [
+            "loan"
+          ]
+        },
+        {
+          "name": "borrower_source",
+          "writable": true
+        },
+        {
+          "name": "lending_vault",
+          "writable": true
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "collateral_to_unlock",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "request_thesis_redemption",
+      "discriminator": [
+        173,
+        85,
+        84,
+        15,
+        165,
+        119,
+        126,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "thesis",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis",
+            "contributor"
+          ]
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  104,
+                  101,
+                  115,
+                  105,
+                  115,
+                  45,
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "request",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  100,
+                  101,
+                  109,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "params.nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "share_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RedemptionParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "resolve_market",
+      "discriminator": [
+        155,
+        23,
+        80,
+        173,
+        46,
+        74,
+        23,
+        239
+      ],
+      "accounts": [
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "winning_side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle_thesis_redemption",
+      "discriminator": [
+        244,
+        71,
+        244,
+        32,
+        238,
+        84,
+        95,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "thesis",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis",
+            "request"
+          ]
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "liquid_vault",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "user_deposit_account",
+          "writable": true
+        },
+        {
+          "name": "deposit_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "share_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "deposit_token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_thesis_nav",
+      "discriminator": [
+        45,
+        50,
+        189,
+        129,
+        67,
+        213,
+        212,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "oracle_authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "thesis",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "liquid_vault",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "deposit_mint"
+        }
+      ],
+      "args": [
+        {
+          "name": "checkpoint",
+          "type": {
+            "defined": {
+              "name": "NavCheckpoint"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unmatch_positions",
+      "discriminator": [
+        160,
+        74,
+        192,
+        251,
+        149,
+        43,
+        166,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "relations": [
+            "yes_position",
+            "no_position"
+          ]
+        },
+        {
+          "name": "yes_position",
+          "writable": true
+        },
+        {
+          "name": "yes_owner"
+        },
+        {
+          "name": "no_position",
+          "writable": true
+        },
+        {
+          "name": "no_owner"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "unpause_thesis_vault",
+      "discriminator": [
+        86,
+        38,
+        251,
+        155,
+        238,
+        208,
+        210,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "thesis",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "thesis"
+          ]
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_price",
+      "discriminator": [
+        61,
+        34,
+        117,
+        155,
+        75,
+        34,
+        123,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "relations": [
+            "price"
+          ]
+        },
+        {
+          "name": "price",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "update",
+          "type": {
+            "defined": {
+              "name": "PriceUpdate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_protocol_authorities",
+      "discriminator": [
+        113,
+        149,
+        120,
+        105,
+        50,
+        158,
+        29,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UpdateProtocolAuthoritiesParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_lending",
+      "discriminator": [
+        75,
+        44,
+        82,
+        115,
+        226,
+        23,
+        33,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "relations": [
+            "lender"
+          ]
+        },
+        {
+          "name": "lender",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "lender"
+          ]
+        },
+        {
+          "name": "lending_vault",
+          "writable": true
+        },
+        {
+          "name": "lender_destination",
+          "writable": true
+        },
+        {
+          "name": "settlement_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_unmatched",
+      "discriminator": [
+        179,
+        41,
+        206,
+        240,
+        175,
+        199,
+        127,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "relations": [
+            "market"
+          ]
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "user_destination",
+          "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AgentIntent",
+      "discriminator": [
+        6,
+        231,
+        199,
+        33,
+        164,
+        148,
+        248,
+        87
+      ]
+    },
+    {
+      "name": "LenderPosition",
+      "discriminator": [
+        165,
+        98,
+        244,
+        204,
+        209,
+        158,
+        88,
+        19
+      ]
+    },
+    {
+      "name": "LendingPool",
+      "discriminator": [
+        208,
+        40,
+        242,
+        82,
+        186,
+        18,
+        75,
+        36
+      ]
+    },
+    {
+      "name": "LoanPosition",
+      "discriminator": [
+        45,
+        172,
+        28,
+        194,
+        82,
+        206,
+        243,
+        190
+      ]
+    },
+    {
+      "name": "MarketVault",
+      "discriminator": [
+        49,
+        9,
+        150,
+        132,
+        124,
+        162,
+        137,
+        208
+      ]
+    },
+    {
+      "name": "PriceSnapshot",
+      "discriminator": [
+        152,
+        36,
+        67,
+        109,
+        153,
+        115,
+        119,
+        27
+      ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "RedemptionRequest",
+      "discriminator": [
+        117,
+        157,
+        214,
+        214,
+        64,
+        160,
+        31,
+        58
+      ]
+    },
+    {
+      "name": "Thesis",
+      "discriminator": [
+        234,
+        135,
+        245,
+        206,
+        132,
+        164,
+        99,
+        8
+      ]
+    },
+    {
+      "name": "ThesisContributor",
+      "discriminator": [
+        241,
+        142,
+        125,
+        163,
+        205,
+        125,
+        35,
+        3
+      ]
+    },
+    {
+      "name": "ThesisVault",
+      "discriminator": [
+        11,
+        121,
+        62,
+        221,
+        237,
+        249,
+        167,
+        94
+      ]
+    },
+    {
+      "name": "UserPosition",
+      "discriminator": [
+        251,
+        248,
+        209,
+        245,
+        83,
+        234,
+        17,
+        27
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AdminTransferProposed",
+      "discriminator": [
+        203,
+        168,
+        175,
+        51,
+        239,
+        104,
+        20,
+        85
+      ]
+    },
+    {
+      "name": "AdminTransferred",
+      "discriminator": [
+        255,
+        147,
+        182,
+        5,
+        199,
+        217,
+        38,
+        179
+      ]
+    },
+    {
+      "name": "AgentIntentCancelled",
+      "discriminator": [
+        139,
+        214,
+        208,
+        44,
+        88,
+        228,
+        83,
+        95
+      ]
+    },
+    {
+      "name": "AgentIntentCreated",
+      "discriminator": [
+        214,
+        24,
+        20,
+        46,
+        168,
+        232,
+        57,
+        102
+      ]
+    },
+    {
+      "name": "AgentIntentExecuted",
+      "discriminator": [
+        39,
+        87,
+        62,
+        140,
+        38,
+        0,
+        19,
+        2
+      ]
+    },
+    {
+      "name": "FundingYieldConfigurationChanged",
+      "discriminator": [
+        68,
+        144,
+        176,
+        197,
+        22,
+        25,
+        150,
+        174
+      ]
+    },
+    {
+      "name": "FundingYieldNavSubmitted",
+      "discriminator": [
+        221,
+        223,
+        134,
+        70,
+        88,
+        210,
+        129,
+        97
+      ]
+    },
+    {
+      "name": "LendingFunded",
+      "discriminator": [
+        180,
+        16,
+        142,
+        69,
+        66,
+        124,
+        132,
+        133
+      ]
+    },
+    {
+      "name": "LendingWithdrawn",
+      "discriminator": [
+        44,
+        255,
+        67,
+        92,
+        164,
+        27,
+        209,
+        34
+      ]
+    },
+    {
+      "name": "LoanBorrowed",
+      "discriminator": [
+        190,
+        192,
+        122,
+        180,
+        16,
+        48,
+        118,
+        145
+      ]
+    },
+    {
+      "name": "LoanLiquidated",
+      "discriminator": [
+        1,
+        29,
+        28,
+        96,
+        66,
+        95,
+        8,
+        204
+      ]
+    },
+    {
+      "name": "LoanRepaid",
+      "discriminator": [
+        202,
+        183,
+        88,
+        60,
+        211,
+        54,
+        142,
+        243
+      ]
+    },
+    {
+      "name": "MarketInitialized",
+      "discriminator": [
+        134,
+        160,
+        122,
+        87,
+        50,
+        3,
+        255,
+        81
+      ]
+    },
+    {
+      "name": "MarketResolved",
+      "discriminator": [
+        89,
+        67,
+        230,
+        95,
+        143,
+        106,
+        199,
+        202
+      ]
+    },
+    {
+      "name": "PauseChanged",
+      "discriminator": [
+        238,
+        188,
+        213,
+        78,
+        134,
+        209,
+        178,
+        218
+      ]
+    },
+    {
+      "name": "PositionDeposited",
+      "discriminator": [
+        198,
+        104,
+        233,
+        60,
+        18,
+        93,
+        100,
+        50
+      ]
+    },
+    {
+      "name": "PositionWithdrawn",
+      "discriminator": [
+        207,
+        105,
+        38,
+        76,
+        190,
+        32,
+        8,
+        81
+      ]
+    },
+    {
+      "name": "PositionsMatched",
+      "discriminator": [
+        61,
+        181,
+        65,
+        177,
+        98,
+        86,
+        138,
+        179
+      ]
+    },
+    {
+      "name": "PositionsUnmatched",
+      "discriminator": [
+        48,
+        125,
+        183,
+        170,
+        220,
+        141,
+        156,
+        225
+      ]
+    },
+    {
+      "name": "PriceUpdated",
+      "discriminator": [
+        154,
+        72,
+        87,
+        150,
+        246,
+        230,
+        23,
+        217
+      ]
+    },
+    {
+      "name": "ProtocolAuthoritiesUpdated",
+      "discriminator": [
+        1,
+        11,
+        190,
+        85,
+        218,
+        167,
+        244,
+        248
+      ]
+    },
+    {
+      "name": "ProtocolInitialized",
+      "discriminator": [
+        173,
+        122,
+        168,
+        254,
+        9,
+        118,
+        76,
+        132
+      ]
+    },
+    {
+      "name": "SimulatedDefiAllocationUpdated",
+      "discriminator": [
+        107,
+        224,
+        211,
+        80,
+        87,
+        33,
+        29,
+        103
+      ]
+    },
+    {
+      "name": "SimulatedFundingYieldAllocationUpdated",
+      "discriminator": [
+        56,
+        134,
+        121,
+        158,
+        239,
+        133,
+        157,
+        47
+      ]
+    },
+    {
+      "name": "SimulatedPredictionPositionUpdated",
+      "discriminator": [
+        83,
+        141,
+        226,
+        164,
+        198,
+        61,
+        156,
+        220
+      ]
+    },
+    {
+      "name": "StrategyChangeCancelled",
+      "discriminator": [
+        167,
+        10,
+        26,
+        141,
+        202,
+        47,
+        198,
+        6
+      ]
+    },
+    {
+      "name": "StrategyChangeProposed",
+      "discriminator": [
+        170,
+        161,
+        133,
+        188,
+        102,
+        225,
+        67,
+        164
+      ]
+    },
+    {
+      "name": "StrategyConfigured",
+      "discriminator": [
+        152,
+        3,
+        149,
+        41,
+        1,
+        174,
+        209,
+        162
+      ]
+    },
+    {
+      "name": "ThesisCreated",
+      "discriminator": [
+        119,
+        155,
+        105,
+        249,
+        93,
+        181,
+        160,
+        70
+      ]
+    },
+    {
+      "name": "ThesisDeposit",
+      "discriminator": [
+        157,
+        157,
+        226,
+        235,
+        80,
+        180,
+        18,
+        175
+      ]
+    },
+    {
+      "name": "ThesisFeesCollected",
+      "discriminator": [
+        228,
+        43,
+        242,
+        170,
+        46,
+        192,
+        7,
+        108
+      ]
+    },
+    {
+      "name": "ThesisFundingCancelled",
+      "discriminator": [
+        9,
+        209,
+        132,
+        72,
+        148,
+        73,
+        61,
+        130
+      ]
+    },
+    {
+      "name": "ThesisGraduated",
+      "discriminator": [
+        64,
+        17,
+        40,
+        224,
+        216,
+        24,
+        232,
+        49
+      ]
+    },
+    {
+      "name": "ThesisLifecycleChanged",
+      "discriminator": [
+        22,
+        148,
+        214,
+        252,
+        97,
+        163,
+        110,
+        193
+      ]
+    },
+    {
+      "name": "ThesisNavSubmitted",
+      "discriminator": [
+        177,
+        142,
+        140,
+        90,
+        113,
+        139,
+        143,
+        29
+      ]
+    },
+    {
+      "name": "ThesisRedemptionCancelled",
+      "discriminator": [
+        18,
+        48,
+        81,
+        222,
+        52,
+        229,
+        107,
+        8
+      ]
+    },
+    {
+      "name": "ThesisRedemptionRequested",
+      "discriminator": [
+        245,
+        180,
+        96,
+        174,
+        134,
+        242,
+        162,
+        182
+      ]
+    },
+    {
+      "name": "ThesisRedemptionSettled",
+      "discriminator": [
+        113,
+        139,
+        174,
+        17,
+        108,
+        24,
+        255,
+        44
+      ]
+    },
+    {
+      "name": "ThesisVaultInitialized",
+      "discriminator": [
+        205,
+        94,
+        190,
+        115,
+        68,
+        237,
+        101,
+        176
+      ]
+    },
+    {
+      "name": "ThesisVaultPauseChanged",
+      "discriminator": [
+        211,
+        125,
+        162,
+        82,
+        206,
+        217,
+        4,
+        172
+      ]
+    },
+    {
+      "name": "YieldClaimed",
+      "discriminator": [
+        177,
+        201,
+        94,
+        68,
+        19,
+        200,
+        227,
+        27
+      ]
+    },
+    {
+      "name": "YieldHarvested",
+      "discriminator": [
+        49,
+        197,
+        226,
+        232,
+        154,
+        211,
+        249,
+        222
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ProtocolPaused",
+      "msg": "The protocol is paused"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "TvlCapExceeded",
+      "msg": "The market TVL cap would be exceeded"
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientUnmatched",
+      "msg": "The position does not have enough unmatched tokens"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientMatched",
+      "msg": "The position does not have enough matched tokens"
+    },
+    {
+      "code": 6005,
+      "name": "StrategyLimitExceeded",
+      "msg": "The strategy principal limit would be exceeded"
+    },
+    {
+      "code": 6006,
+      "name": "YieldUnavailable",
+      "msg": "No yield is available to claim"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientLiquidity",
+      "msg": "The lending pool has insufficient cash"
+    },
+    {
+      "code": 6008,
+      "name": "Insolvent",
+      "msg": "The requested action would make the account insolvent"
+    },
+    {
+      "code": 6009,
+      "name": "AlreadyResolved",
+      "msg": "The market is already resolved"
+    },
+    {
+      "code": 6010,
+      "name": "NotResolved",
+      "msg": "The market has not resolved"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidNonce",
+      "msg": "The supplied nonce is invalid"
+    },
+    {
+      "code": 6012,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow or underflow"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidLifecycle",
+      "msg": "The account is in the wrong lifecycle state"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidSide",
+      "msg": "The supplied side is invalid for this operation"
+    },
+    {
+      "code": 6015,
+      "name": "InvalidMint",
+      "msg": "The supplied token mint does not match the market"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidVault",
+      "msg": "The supplied token account does not match the market vault"
+    },
+    {
+      "code": 6017,
+      "name": "Unauthorized",
+      "msg": "This signer is not authorized"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidMatch",
+      "msg": "The two positions cannot be matched"
+    },
+    {
+      "code": 6019,
+      "name": "StaleOracle",
+      "msg": "The oracle price is stale"
+    },
+    {
+      "code": 6020,
+      "name": "OracleConfidenceTooWide",
+      "msg": "The oracle confidence interval is too wide"
+    },
+    {
+      "code": 6021,
+      "name": "StaleUpdate",
+      "msg": "The oracle update is not monotonic"
+    },
+    {
+      "code": 6022,
+      "name": "LtvExceeded",
+      "msg": "The requested loan exceeds the configured LTV"
+    },
+    {
+      "code": 6023,
+      "name": "LoanHealthy",
+      "msg": "The loan is healthy and cannot be liquidated"
+    },
+    {
+      "code": 6024,
+      "name": "IntentExpired",
+      "msg": "The agent intent has expired"
+    },
+    {
+      "code": 6025,
+      "name": "IntentConsumed",
+      "msg": "The agent intent has already been executed or cancelled"
+    },
+    {
+      "code": 6026,
+      "name": "IntentMismatch",
+      "msg": "The intent payload does not match the requested execution"
+    },
+    {
+      "code": 6027,
+      "name": "AdapterDisabled",
+      "msg": "The external strategy adapter is disabled"
+    },
+    {
+      "code": 6028,
+      "name": "InvalidAdapter",
+      "msg": "The external strategy program is not allowlisted"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidOutcome",
+      "msg": "Market resolution outcome is invalid"
+    },
+    {
+      "code": 6030,
+      "name": "CapitalStillDeployed",
+      "msg": "The market cannot close while capital remains deployed"
+    },
+    {
+      "code": 6031,
+      "name": "BorrowWindowClosed",
+      "msg": "New borrowing is closed before market resolution"
+    },
+    {
+      "code": 6032,
+      "name": "FutureOracleSlot",
+      "msg": "The oracle observation slot cannot be in the future"
+    },
+    {
+      "code": 6033,
+      "name": "StrategyTimelockActive",
+      "msg": "The strategy change timelock has not elapsed"
+    },
+    {
+      "code": 6034,
+      "name": "NoPendingStrategy",
+      "msg": "No strategy change is pending"
+    },
+    {
+      "code": 6035,
+      "name": "InvalidAuthority",
+      "msg": "The proposed authority is invalid"
+    },
+    {
+      "code": 6036,
+      "name": "InvalidThesisParameters",
+      "msg": "The thesis parameters violate protocol risk limits"
+    },
+    {
+      "code": 6037,
+      "name": "InvalidGraduationParameters",
+      "msg": "The thesis graduation parameters are invalid"
+    },
+    {
+      "code": 6038,
+      "name": "FundingCapitalMustRemainLiquid",
+      "msg": "Funding liquid and idle-yield assets do not reconcile with NAV"
+    },
+    {
+      "code": 6039,
+      "name": "FundingAlreadyGraduated",
+      "msg": "The thesis has already graduated and funding cancellation is closed"
+    },
+    {
+      "code": 6040,
+      "name": "FundingYieldExitRequired",
+      "msg": "The idle-yield position must be fully exited before thesis strategy execution"
+    },
+    {
+      "code": 6041,
+      "name": "ThesisNotActive",
+      "msg": "The thesis or vault is not active"
+    },
+    {
+      "code": 6042,
+      "name": "StaleNav",
+      "msg": "The NAV checkpoint is stale"
+    },
+    {
+      "code": 6043,
+      "name": "NavChangeTooLarge",
+      "msg": "The NAV checkpoint change exceeds the configured review threshold"
+    },
+    {
+      "code": 6044,
+      "name": "InvalidNav",
+      "msg": "The NAV components do not reconcile"
+    },
+    {
+      "code": 6045,
+      "name": "DepositCapExceeded",
+      "msg": "The requested deposit would exceed the vault cap"
+    },
+    {
+      "code": 6046,
+      "name": "ShareSlippageExceeded",
+      "msg": "The share amount is below the user's minimum"
+    },
+    {
+      "code": 6047,
+      "name": "RedemptionSlippageExceeded",
+      "msg": "The redemption amount is below the user's minimum"
+    },
+    {
+      "code": 6048,
+      "name": "RedemptionEpochPending",
+      "msg": "The redemption must wait for a newer NAV checkpoint"
+    },
+    {
+      "code": 6049,
+      "name": "RedemptionNotPending",
+      "msg": "The redemption request is not pending"
+    },
+    {
+      "code": 6050,
+      "name": "InsufficientRedemptionLiquidity",
+      "msg": "The vault does not have enough liquid custody to settle"
+    },
+    {
+      "code": 6051,
+      "name": "PredictionAllocationExceeded",
+      "msg": "The prediction allocation exceeds the thesis limit"
+    },
+    {
+      "code": 6052,
+      "name": "MarketAllocationExceeded",
+      "msg": "The market allocation exceeds the thesis limit"
+    },
+    {
+      "code": 6053,
+      "name": "ReserveRequirementViolated",
+      "msg": "The liquid reserve is below the thesis requirement"
+    },
+    {
+      "code": 6054,
+      "name": "InvalidRedemptionNonce",
+      "msg": "The redemption nonce is invalid"
+    },
+    {
+      "code": 6055,
+      "name": "InvalidVaultStructure",
+      "msg": "The requested operation is not supported by this vault structure"
+    },
+    {
+      "code": 6056,
+      "name": "InvalidLockup",
+      "msg": "The configured lockup is outside the supported range"
+    },
+    {
+      "code": 6057,
+      "name": "LockupActive",
+      "msg": "This investor's vault shares are still locked"
+    },
+    {
+      "code": 6058,
+      "name": "FeesUnavailable",
+      "msg": "No accrued thesis fees are available to collect"
+    },
+    {
+      "code": 6059,
+      "name": "InsufficientFeeLiquidity",
+      "msg": "The vault needs more liquid custody before fees can be collected"
+    }
+  ],
+  "types": [
+    {
+      "name": "AdminTransferProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdminTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentAction",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Match"
+          },
+          {
+            "name": "ClaimYield"
+          },
+          {
+            "name": "Repay"
+          },
+          {
+            "name": "WithdrawUnmatched"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentIntent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "executor",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "action",
+            "type": {
+              "defined": {
+                "name": "AgentAction"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "min_output",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "consumed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                30
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentIntentCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentIntentCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "action",
+            "type": {
+              "defined": {
+                "name": "AgentAction"
+              }
+            }
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentIntentExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "keeper",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateIntentParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "executor",
+            "type": "pubkey"
+          },
+          {
+            "name": "action",
+            "type": {
+              "defined": {
+                "name": "AgentAction"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "min_output",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateThesisParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "thesis_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "curator",
+            "type": "pubkey"
+          },
+          {
+            "name": "metadata_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metadata_uri",
+            "type": "string"
+          },
+          {
+            "name": "vault_type",
+            "type": {
+              "defined": {
+                "name": "ThesisVaultType"
+              }
+            }
+          },
+          {
+            "name": "vault_structure",
+            "type": {
+              "defined": {
+                "name": "ThesisVaultStructure"
+              }
+            }
+          },
+          {
+            "name": "prediction_allocation_max_bps",
+            "type": "u16"
+          },
+          {
+            "name": "defi_allocation_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "liquid_reserve_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_market_allocation_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_drawdown_bps",
+            "type": "u16"
+          },
+          {
+            "name": "curator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "minimum_reputation_tier",
+            "type": "u8"
+          },
+          {
+            "name": "max_active_positions",
+            "type": "u8"
+          },
+          {
+            "name": "expiry",
+            "type": "i64"
+          },
+          {
+            "name": "lockup_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundingYieldConfigurationChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "target_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundingYieldNavSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "idle_principal",
+            "type": "u64"
+          },
+          {
+            "name": "idle_assets",
+            "type": "u64"
+          },
+          {
+            "name": "total_assets",
+            "type": "u64"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeMarketParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "resolution_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "tvl_cap",
+            "type": "u64"
+          },
+          {
+            "name": "max_ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "liquidation_ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "collateral_haircut_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_oracle_age_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "max_confidence_bps",
+            "type": "u16"
+          },
+          {
+            "name": "resolution_time",
+            "type": "i64"
+          },
+          {
+            "name": "borrow_cutoff_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeProtocolParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "emergency_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_delay_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeThesisVaultParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "deposit_cap",
+            "type": "u64"
+          },
+          {
+            "name": "graduation_threshold",
+            "type": "u64"
+          },
+          {
+            "name": "per_wallet_qualifying_cap",
+            "type": "u64"
+          },
+          {
+            "name": "minimum_unique_contributors",
+            "type": "u16"
+          },
+          {
+            "name": "funding_yield_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_nav_age_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "max_nav_change_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LenderPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "LendingFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LendingPool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "settlement_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_cash",
+            "type": "u64"
+          },
+          {
+            "name": "total_borrows",
+            "type": "u64"
+          },
+          {
+            "name": "total_lender_shares",
+            "type": "u64"
+          },
+          {
+            "name": "bad_debt",
+            "type": "u64"
+          },
+          {
+            "name": "lender_count",
+            "type": "u64"
+          },
+          {
+            "name": "loan_count",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                63
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "LendingWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanBorrowed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "collateral",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanLiquidated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "liquidator",
+            "type": "pubkey"
+          },
+          {
+            "name": "debt_repaid",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_seized",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "borrowed_amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanRepaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_unlocked",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "winning_side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketStatus",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Resolved"
+          },
+          {
+            "name": "Closed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "yes_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "settlement_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "resolution_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "MarketStatus"
+              }
+            }
+          },
+          {
+            "name": "winning_side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "total_yes",
+            "type": "u64"
+          },
+          {
+            "name": "total_no",
+            "type": "u64"
+          },
+          {
+            "name": "matched_pairs",
+            "type": "u64"
+          },
+          {
+            "name": "matched_units",
+            "type": "u64"
+          },
+          {
+            "name": "strategy_principal",
+            "type": "u64"
+          },
+          {
+            "name": "harvested_yield",
+            "type": "u64"
+          },
+          {
+            "name": "claimed_yield",
+            "type": "u64"
+          },
+          {
+            "name": "reward_index_x64",
+            "type": "u128"
+          },
+          {
+            "name": "reward_dust_x64",
+            "type": "u128"
+          },
+          {
+            "name": "tvl_cap",
+            "type": "u64"
+          },
+          {
+            "name": "max_ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "liquidation_ltv_bps",
+            "type": "u16"
+          },
+          {
+            "name": "collateral_haircut_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_oracle_age_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "max_confidence_bps",
+            "type": "u16"
+          },
+          {
+            "name": "resolution_time",
+            "type": "i64"
+          },
+          {
+            "name": "borrow_cutoff_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "position_count",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                40
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NavCheckpoint",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "accounting_liquid_assets",
+            "type": "u64"
+          },
+          {
+            "name": "defi_assets",
+            "type": "u64"
+          },
+          {
+            "name": "prediction_assets",
+            "type": "u64"
+          },
+          {
+            "name": "resolved_unclaimed_assets",
+            "type": "u64"
+          },
+          {
+            "name": "liabilities",
+            "type": "u64"
+          },
+          {
+            "name": "observed_at",
+            "type": "i64"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PauseChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionsMatched",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionsUnmatched",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceSnapshot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_executable_bid",
+            "type": "u64"
+          },
+          {
+            "name": "no_executable_bid",
+            "type": "u64"
+          },
+          {
+            "name": "yes_twap",
+            "type": "u64"
+          },
+          {
+            "name": "no_twap",
+            "type": "u64"
+          },
+          {
+            "name": "confidence_bps",
+            "type": "u16"
+          },
+          {
+            "name": "observed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "observed_at",
+            "type": "i64"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "yes_executable_bid",
+            "type": "u64"
+          },
+          {
+            "name": "no_executable_bid",
+            "type": "u64"
+          },
+          {
+            "name": "yes_twap",
+            "type": "u64"
+          },
+          {
+            "name": "no_twap",
+            "type": "u64"
+          },
+          {
+            "name": "confidence_bps",
+            "type": "u16"
+          },
+          {
+            "name": "observed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "observed_at",
+            "type": "i64"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "observed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolAuthoritiesUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergency_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "emergency_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "settlement_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowed_strategy_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_strategy_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_activate_after",
+            "type": "i64"
+          },
+          {
+            "name": "strategy_delay_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "market_count",
+            "type": "u64"
+          },
+          {
+            "name": "config_initialized",
+            "type": "bool"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "strategy_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "pending_strategy_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                15
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedemptionParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "minimum_assets_out",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedemptionRequest",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "minimum_assets_out",
+            "type": "u64"
+          },
+          {
+            "name": "request_nav_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "assets_settled",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "RedemptionStatus"
+              }
+            }
+          },
+          {
+            "name": "requested_at",
+            "type": "i64"
+          },
+          {
+            "name": "settled_at",
+            "type": "i64"
+          },
+          {
+            "name": "funding_principal_removed",
+            "type": "u64"
+          },
+          {
+            "name": "funding_qualifying_removed",
+            "type": "u64"
+          },
+          {
+            "name": "funding_contributor_removed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                13
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedemptionStatus",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Cancelled"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Side",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Yes"
+          },
+          {
+            "name": "No"
+          },
+          {
+            "name": "Unresolved"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SimulatedDefiAllocationUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "allocated_principal",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SimulatedFundingYieldAllocationUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "principal",
+            "type": "u64"
+          },
+          {
+            "name": "current_value",
+            "type": "u64"
+          },
+          {
+            "name": "liquid_assets",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SimulatedPredictionPositionUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "allocated_principal",
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyChangeCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "StrategyChangeProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "adapter",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "activate_after",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyConfigured",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "adapter",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Thesis",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "thesis_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "curator",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "metadata_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metadata_uri",
+            "type": "string"
+          },
+          {
+            "name": "vault_type",
+            "type": {
+              "defined": {
+                "name": "ThesisVaultType"
+              }
+            }
+          },
+          {
+            "name": "vault_structure",
+            "type": {
+              "defined": {
+                "name": "ThesisVaultStructure"
+              }
+            }
+          },
+          {
+            "name": "thesis_status",
+            "type": {
+              "defined": {
+                "name": "ThesisStatus"
+              }
+            }
+          },
+          {
+            "name": "prediction_allocation_max_bps",
+            "type": "u16"
+          },
+          {
+            "name": "defi_allocation_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "liquid_reserve_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_market_allocation_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_drawdown_bps",
+            "type": "u16"
+          },
+          {
+            "name": "curator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "minimum_reputation_tier",
+            "type": "u8"
+          },
+          {
+            "name": "max_active_positions",
+            "type": "u8"
+          },
+          {
+            "name": "expiry",
+            "type": "i64"
+          },
+          {
+            "name": "lockup_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                22
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisContributor",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposited_assets",
+            "type": "u64"
+          },
+          {
+            "name": "owned_shares",
+            "type": "u64"
+          },
+          {
+            "name": "qualifying_assets",
+            "type": "u64"
+          },
+          {
+            "name": "last_deposit_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                7
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "thesis",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "curator",
+            "type": "pubkey"
+          },
+          {
+            "name": "thesis_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vault_structure",
+            "type": {
+              "defined": {
+                "name": "ThesisVaultStructure"
+              }
+            }
+          },
+          {
+            "name": "initial_status",
+            "type": {
+              "defined": {
+                "name": "ThesisStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisDeposit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "assets",
+            "type": "u64"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisFeesCollected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "curator",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "curator_amount",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_amount",
+            "type": "u64"
+          },
+          {
+            "name": "nav_epoch",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisFundingCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares_burned",
+            "type": "u64"
+          },
+          {
+            "name": "assets_returned",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisGraduated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "thesis",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "qualifying_capital",
+            "type": "u64"
+          },
+          {
+            "name": "unique_contributors",
+            "type": "u32"
+          },
+          {
+            "name": "graduated_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisLifecycleChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "thesis",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous_status",
+            "type": {
+              "defined": {
+                "name": "ThesisStatus"
+              }
+            }
+          },
+          {
+            "name": "next_status",
+            "type": {
+              "defined": {
+                "name": "ThesisStatus"
+              }
+            }
+          },
+          {
+            "name": "changed_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisNavSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "type": "u64"
+          },
+          {
+            "name": "total_assets",
+            "type": "u64"
+          },
+          {
+            "name": "share_price_x64",
+            "type": "u128"
+          },
+          {
+            "name": "drawdown_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "curator_fees_accrued",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fees_accrued",
+            "type": "u64"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisRedemptionCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "request",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisRedemptionRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "request",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "request_nav_epoch",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisRedemptionSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "request",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "assets",
+            "type": "u64"
+          },
+          {
+            "name": "nav_epoch",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisStatus",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Funding"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Paused"
+          },
+          {
+            "name": "Expired"
+          },
+          {
+            "name": "Closed"
+          },
+          {
+            "name": "Dormant"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "thesis",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "liquid_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_assets",
+            "type": "u64"
+          },
+          {
+            "name": "total_shares",
+            "type": "u64"
+          },
+          {
+            "name": "pending_redemption_shares",
+            "type": "u64"
+          },
+          {
+            "name": "accounting_liquid_assets",
+            "type": "u64"
+          },
+          {
+            "name": "defi_assets",
+            "type": "u64"
+          },
+          {
+            "name": "prediction_assets",
+            "type": "u64"
+          },
+          {
+            "name": "resolved_unclaimed_assets",
+            "type": "u64"
+          },
+          {
+            "name": "accrued_fees",
+            "type": "u64"
+          },
+          {
+            "name": "accrued_curator_fees",
+            "type": "u64"
+          },
+          {
+            "name": "accrued_protocol_fees",
+            "type": "u64"
+          },
+          {
+            "name": "liabilities",
+            "type": "u64"
+          },
+          {
+            "name": "simulated_prediction_principal",
+            "type": "u64"
+          },
+          {
+            "name": "simulated_defi_principal",
+            "type": "u64"
+          },
+          {
+            "name": "active_position_count",
+            "type": "u8"
+          },
+          {
+            "name": "deposit_cap",
+            "type": "u64"
+          },
+          {
+            "name": "nav_epoch",
+            "type": "u64"
+          },
+          {
+            "name": "last_nav_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "last_nav_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "high_water_mark_share_price_x64",
+            "type": "u128"
+          },
+          {
+            "name": "next_redemption_nonce",
+            "type": "u64"
+          },
+          {
+            "name": "max_nav_age_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "max_nav_change_bps",
+            "type": "u16"
+          },
+          {
+            "name": "graduation_threshold",
+            "type": "u64"
+          },
+          {
+            "name": "qualifying_capital",
+            "type": "u64"
+          },
+          {
+            "name": "per_wallet_qualifying_cap",
+            "type": "u64"
+          },
+          {
+            "name": "unique_contributors",
+            "type": "u32"
+          },
+          {
+            "name": "minimum_unique_contributors",
+            "type": "u16"
+          },
+          {
+            "name": "graduated_at",
+            "type": "i64"
+          },
+          {
+            "name": "funding_yield_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "funding_yield_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "funding_idle_principal",
+            "type": "u64"
+          },
+          {
+            "name": "funding_idle_assets",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisVaultInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "thesis",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_cap",
+            "type": "u64"
+          },
+          {
+            "name": "vault_structure",
+            "type": {
+              "defined": {
+                "name": "ThesisVaultStructure"
+              }
+            }
+          },
+          {
+            "name": "graduation_threshold",
+            "type": "u64"
+          },
+          {
+            "name": "minimum_unique_contributors",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisVaultPauseChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisVaultStructure",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ClosedEnded"
+          },
+          {
+            "name": "OpenEnded"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ThesisVaultType",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Index"
+          },
+          {
+            "name": "Curated"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateProtocolAuthoritiesParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "emergency_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_amount",
+            "type": "u64"
+          },
+          {
+            "name": "no_amount",
+            "type": "u64"
+          },
+          {
+            "name": "matched_yes",
+            "type": "u64"
+          },
+          {
+            "name": "matched_no",
+            "type": "u64"
+          },
+          {
+            "name": "locked_yes",
+            "type": "u64"
+          },
+          {
+            "name": "locked_no",
+            "type": "u64"
+          },
+          {
+            "name": "pending_yield",
+            "type": "u64"
+          },
+          {
+            "name": "reward_index_x64",
+            "type": "u128"
+          },
+          {
+            "name": "next_intent_nonce",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "YieldClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "YieldHarvested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "reward_index_x64",
+            "type": "u128"
+          }
+        ]
+      }
+    }
+  ]
+}

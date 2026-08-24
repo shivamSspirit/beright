@@ -14,13 +14,10 @@ import type { GatewayContext, GatewayType, NormalizedMessage, FormattedResponse 
 import { getRouter } from '../router/unifiedRouter';
 import { getOrchestrator } from '../orchestrator/orchestrator';
 import { getFormatter } from '../gateway/formatters/types';
-import { getTelegramFormatter } from '../gateway/formatters/telegram';
 import { syncToOrchestrator } from '../orchestrator/handlers/registry';
-import type { SkillResponse, TelegramMessage } from '../../types';
 
 // Import handler/formatter modules for registration side effects.
 import '../orchestrator/index';
-import '../gateway/formatters/telegram';
 import '../gateway/formatters/json';
 import '../gateway/formatters/web';
 
@@ -34,6 +31,7 @@ export interface RuntimeExecutionRequest {
   wallet?: CommandContext['wallet'];
   memory?: CommandContext['memory'];
   gatewayContext?: Partial<GatewayContext>;
+  executionPolicy?: 'allow' | 'prepare_only';
 }
 
 export interface RuntimeExecutionResult {
@@ -43,6 +41,78 @@ export interface RuntimeExecutionResult {
 }
 
 let initialized = false;
+
+interface PreparedExecutionData {
+  text: string;
+  mood: 'NEUTRAL';
+  agentUsed: 'beright-runtime';
+  capabilityUsed: 'TRADER';
+  data: {
+    kind: 'execution_review';
+    routeId: string;
+    originalCommand: string;
+    quoteCommand: string | null;
+    requiresWalletSignature: true;
+    executable: false;
+  };
+}
+
+function isExecutionRoute(route: RuntimeExecutionResult['context']['route']): boolean {
+  return route.goals?.some((goal) => goal === 'EXECUTE_TRADE' || goal === 'MANAGE_WALLET') === true;
+}
+
+function buildQuoteCommand(context: CommandContext): string | null {
+  if (context.route.id !== 'trade') return null;
+
+  const ticker = typeof context.params.ticker === 'string'
+    ? context.params.ticker
+    : context.arguments?.[0];
+  const side = typeof context.params.side === 'string'
+    ? context.params.side.toUpperCase()
+    : context.arguments?.[1]?.toUpperCase();
+  const amount = typeof context.params.amount === 'string'
+    ? context.params.amount
+    : context.arguments?.[2];
+
+  if (!ticker || (side !== 'YES' && side !== 'NO')) return '/quote';
+  return `/quote ${ticker} ${side} ${amount || '10'}`;
+}
+
+function prepareExecution(context: CommandContext): CommandResult<PreparedExecutionData> {
+  const quoteCommand = buildQuoteCommand(context);
+  return {
+    success: true,
+    data: {
+      text: quoteCommand
+        ? 'I prepared this as a quote-first trade review. Check the live price and risk, then approve the final transaction in your wallet.'
+        : 'This action can move funds. Open its review flow and approve the exact transaction in your wallet.',
+      mood: 'NEUTRAL',
+      agentUsed: 'beright-runtime',
+      capabilityUsed: 'TRADER',
+      data: {
+        kind: 'execution_review',
+        routeId: context.route.id,
+        originalCommand: context.message.text,
+        quoteCommand,
+        requiresWalletSignature: true,
+        executable: false,
+      },
+    },
+    meta: {
+      handlerId: 'execution-preparer',
+      routeId: context.route.id,
+      executedAt: new Date(),
+      durationMs: 0,
+      skillsUsed: ['execution-policy'],
+      apiCallsMade: 0,
+    },
+    hints: {
+      mood: 'NEUTRAL',
+      category: 'execution_review',
+      suggestedActions: quoteCommand ? [quoteCommand] : ['/markets'],
+    },
+  };
+}
 
 function getDefaultGatewayContext(gateway: GatewayType, chatId: string): GatewayContext {
   switch (gateway) {
@@ -126,44 +196,17 @@ export async function executeBeRightRuntimeRequest(
     wallet: request.wallet,
   });
 
-  const result = await getOrchestrator().execute(context);
-  const formatter = getFormatter(request.gateway) || getTelegramFormatter();
-  const formatted = formatter.format(result, context);
+  const result = request.executionPolicy === 'prepare_only' && isExecutionRoute(context.route)
+    ? prepareExecution(context)
+    : await getOrchestrator().execute(context);
+  const formatter = getFormatter(request.gateway);
+  const formatted = formatter
+    ? formatter.format(result, context)
+    : { text: typeof result.data === 'string' ? result.data : JSON.stringify(result.data) };
 
   return {
     context,
     result,
     formatted,
-  };
-}
-
-export async function executeBeRightRuntimeTelegramMessage(
-  message: TelegramMessage
-): Promise<SkillResponse> {
-  const text = message.text?.trim() || '';
-  const userId = message.from?.id ? String(message.from.id) : String(message.chat.id);
-  const chatId = String(message.chat.id);
-  const isGroup = message.chat.type === 'group' || message.chat.type === 'supergroup';
-
-  const execution = await executeBeRightRuntimeRequest({
-    gateway: 'telegram',
-    userId,
-    chatId,
-    text,
-    raw: message,
-    isAuthenticated: true,
-    gatewayContext: {
-      isGroup,
-      supportsButtons: true,
-      supportsMedia: true,
-      supportsStreaming: false,
-      maxTextLength: 4096,
-    },
-  });
-
-  return {
-    text: execution.formatted.text,
-    mood: execution.result.hints?.mood,
-    data: execution.result.data,
   };
 }

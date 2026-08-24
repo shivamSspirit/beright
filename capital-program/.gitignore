@@ -1,0 +1,6 @@
+/target/
+**/target/
+*.keypair.json
+
+# Never commit program authorities or deployment keypairs.
+target/deploy/*-keypair.json

@@ -35,12 +35,6 @@ const FLAG_DEFINITIONS: Record<string, FeatureFlag> = {
     defaultValue: false,
     envVar: 'FF_REDIS_CACHE',
   },
-  USE_NEW_TELEGRAM_HANDLERS: {
-    name: 'USE_NEW_TELEGRAM_HANDLERS',
-    description: 'Use the refactored modular Telegram handlers',
-    defaultValue: false,
-    envVar: 'FF_NEW_TELEGRAM_HANDLERS',
-  },
   USE_NEW_FORMATTERS: {
     name: 'USE_NEW_FORMATTERS',
     description: 'Use the consolidated formatting utilities from lib/core/format',
@@ -126,9 +120,6 @@ export const FLAGS = {
   },
   get USE_REDIS_CACHE(): boolean {
     return getFlagValue('USE_REDIS_CACHE');
-  },
-  get USE_NEW_TELEGRAM_HANDLERS(): boolean {
-    return getFlagValue('USE_NEW_TELEGRAM_HANDLERS');
   },
   get USE_NEW_FORMATTERS(): boolean {
     return getFlagValue('USE_NEW_FORMATTERS');

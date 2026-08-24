@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BeRight Protocol (TypeScript edition) - Prediction market intelligence terminal built for OpenClaw/Clawdbot platform. Provides arbitrage detection, superforecaster analysis, whale tracking, and news/social intelligence via Telegram.
+BeRight Protocol (TypeScript edition) - AI-powered prediction market intelligence. Provides arbitrage detection, superforecaster analysis, whale tracking, and news/social intelligence.
 
 **Autonomous Building**: This codebase includes a Builder subagent that can autonomously build and improve itself 24/7.
 
@@ -70,12 +70,11 @@ npx ts-node skills/devTest.ts validate        # Run full validation
 
 ## Architecture
 
-### OpenClaw Skills Pattern
+### Skills Pattern
 
 ```
 agent/system.md          # Agent identity + skill registration
 skills/
-├── telegramHandler.ts   # Main router/dispatcher (triggered by telegram)
 ├── markets.ts           # Unified market data (Polymarket, Kalshi, Manifold)
 ├── arbitrage.ts         # Cross-platform arb detection
 ├── research.ts          # Superforecaster analysis
@@ -120,7 +119,7 @@ From analyzing **515 projects** in the Colosseum Agent Hackathon, key patterns e
 | Pattern | Leading Projects | Adoption Rate |
 |---------|-----------------|---------------|
 | **Modular Plugin Architecture** | Solana Agent Kit, ElizaOS | ~80% of winning agents |
-| **Skill-Based Routing** | OpenClaw, Clodds | ~60% of multi-function agents |
+| **Skill-Based Routing** | BeRight, Clodds | ~60% of multi-function agents |
 | **Simulation-First Execution** | DeFi Risk Guardian | ~40% of trading agents |
 | **On-Chain Commitment** | SOLPRISM, KAMIYO | ~20% (emerging) |
 | **Human-in-the-Loop** | Solana Agent Kit v2 | ~70% of trading agents |
@@ -139,7 +138,7 @@ From analyzing **515 projects** in the Colosseum Agent Hackathon, key patterns e
 | Market aggregation | 3 platforms | 2+ platforms | 2 platforms |
 | Arbitrage detection | Yes | Yes (more comprehensive) | No |
 | AI forecasting | Superforecaster | None | AI probability |
-| Multi-channel | Telegram (OpenClaw) | 22 platforms | Web only |
+| Multi-channel | Web + API | 22 platforms | Web only |
 | On-chain verification | **Native Memo** | None | None |
 | Calibration tracking | **Brier Score** | None | None |
 

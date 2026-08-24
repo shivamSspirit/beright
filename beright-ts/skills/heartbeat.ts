@@ -50,14 +50,12 @@ import { getCalibrationStats } from './calibration';
 import { timestamp, sleep } from './utils';
 import { checkAndSendNotifications, generateArbAlerts, generateWhaleAlerts, queueAlerts } from './notifications';
 import { checkAlerts as checkPriceAlerts, getPendingTriggers, formatTriggeredAlert } from './priceAlerts';
-import { checkRules as checkAutoRules, getPendingExecutions } from './autoTrade';
 import { refreshPositionPrices, getExpiringPositions } from './positions';
 // Builder agent disabled - saves ~$2,880/mo in LLM costs
 import { runProactiveAgent } from './proactiveAgent';
 
 // Signal Intelligence Engine
 import { runAllDetectors } from '../lib/signals/index';
-import { routeAlerts as routeSignalAlerts, setAlertRouterSender } from '../lib/alertRouter';
 
 // Momentum Score Engine
 import { runMomentumUpdate } from '../lib/momentum';
@@ -321,41 +319,7 @@ ${opp.pair.marketA.title.slice(0, 45)}
     console.warn('Price alert check failed:', err);
   }
 
-  // 6. Check auto-trade rules (stop-loss, take-profit, DCA)
-  try {
-    const executions = await checkAutoRules();
-    if (executions.length > 0) {
-      console.log(`[${timestamp()}] ${executions.length} auto-trade rules triggered`);
-      state.lastAutoRuleCheck = timestamp();
-      state.totalAutoExecutions += executions.length;
-      saveState(state);
-
-      // Log pending executions (actual execution requires confirmation)
-      for (const exec of executions) {
-        const emoji = exec.action === 'BUY' ? '' : exec.action === 'SELL' ? '' : '';
-        alerts.push({
-          text: `
-*AUTO-TRADE TRIGGERED*
-${'─'.repeat(35)}
-
-${emoji} ${exec.type.replace('_', ' ').toUpperCase()}
-
-Market: ${exec.market}
-Action: ${exec.action} ${exec.direction || ''} $${exec.amount?.toFixed(2) || '?'}
-Reason: ${exec.reason}
-
-⚠️ Review and confirm in /autobet
-`,
-          mood: 'ALERT',
-          data: exec,
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('Auto-trade rule check failed:', err);
-  }
-
-  // 7. Refresh position prices (every 5 minutes)
+  // 6. Refresh position prices (every 5 minutes)
   if (shouldRun(state.lastPositionRefresh, 5 * 60 * 1000)) {
     try {
       const refreshed = await refreshPositionPrices();
@@ -494,22 +458,19 @@ Reason: ${exec.reason}
     try {
       console.log(`[${timestamp()}] Running signal intelligence pipeline...`);
 
-      // Wire up Telegram sender for alert routing
-      setAlertRouterSender(async (chatId: string, message: string) => {
-        const result = await sendTelegramMessage(chatId, message, { parseMode: 'Markdown' });
-        if (!result.success) throw new Error(result.error || 'Send failed');
-      });
-
       const signalResults = await runAllDetectors();
       state.lastSignalRun = timestamp();
       saveState(state);
 
       if (signalResults.length > 0) {
-        const alertCount = await routeSignalAlerts(signalResults);
+        // Signal distribution is now pulled through the canonical BeRight
+        // runtime. Count actionable callouts here without invoking the retired
+        // alert-router execution shell.
+        const alertCount = signalResults.filter((signal) => signal.action === 'ALERT').length;
         state.totalSignalAlerts += alertCount;
         saveState(state);
 
-        console.log(`[${timestamp()}] Signal intelligence: ${signalResults.length} signals, ${alertCount} alerts sent`);
+        console.log(`[${timestamp()}] Signal intelligence: ${signalResults.length} signals, ${alertCount} callouts available`);
 
         // Inject top signals into cognitive loop for awareness
         for (const sig of signalResults.filter(s => s.action === 'ALERT').slice(0, 3)) {
@@ -637,7 +598,7 @@ ${'='.repeat(60)}
   Cognitive:  Perceive -> Deliberate -> Act -> Reflect
   Goals:      Persistent goal-driven behavior
   Memory:     Episodic learning from experiences
-  Runtime:    beright-terminal with Scout, Analyst, Trader capabilities
+  Runtime:    beright-runtime with Scout, Analyst, Trader capabilities
 
   === DATA SOURCES ===
   Scanning: Polymarket, Kalshi, Manifold, Limitless, Metaculus

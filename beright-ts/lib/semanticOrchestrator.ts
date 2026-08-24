@@ -49,7 +49,7 @@ export interface OrchestratorResponse {
   mood: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'EDUCATIONAL' | 'ERROR';
   data?: unknown;
   understanding?: SemanticUnderstanding;
-  agentUsed: 'beright-terminal';
+  agentUsed: 'beright-runtime';
   capabilityUsed?: RecommendedAgent;
 }
 
@@ -60,7 +60,7 @@ export interface ConversationContext {
   recentMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
-const BERIGHT_TERMINAL_AGENT_ID = 'beright-terminal' as const;
+const BERIGHT_RUNTIME_AGENT_ID = 'beright-runtime' as const;
 
 // ============================================================================
 // Main Orchestrator
@@ -74,7 +74,7 @@ const BERIGHT_TERMINAL_AGENT_ID = 'beright-terminal' as const;
  * BeRight Pattern:
  * - Memory: Tracks conversation context and user preferences
  * - Understanding: LLM-based semantic analysis
- * - Routing: Intelligent capability selection inside beright-terminal
+ * - Routing: Intelligent capability selection inside the BeRight runtime
  * - Learning: Records episodes for future improvement
  */
 export async function orchestrate(
@@ -123,7 +123,7 @@ export async function orchestrate(
       text: understanding.directAnswer,
       mood: 'NEUTRAL',
       understanding,
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'SELF',
     };
   }
@@ -191,7 +191,7 @@ export async function orchestrate(
   return {
     ...response,
     understanding,
-    agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+    agentUsed: BERIGHT_RUNTIME_AGENT_ID,
     capabilityUsed: routing.primary,
   };
 }
@@ -228,7 +228,7 @@ Understanding: ${understanding.interpretation}`,
     return {
       text: "I can help with prediction market intelligence. Try /hot for trending markets or ask me about any topic.",
       mood: 'NEUTRAL',
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'SELF',
     };
   }
@@ -236,7 +236,7 @@ Understanding: ${understanding.interpretation}`,
   return {
     text: response.text,
     mood: 'NEUTRAL',
-    agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+    agentUsed: BERIGHT_RUNTIME_AGENT_ID,
     capabilityUsed: 'SELF',
   };
 }
@@ -267,7 +267,7 @@ async function handleScout(
       text: result.response?.text || 'No data found.',
       mood: mapMood(result.response?.mood),
       data: result.response?.data,
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'SCOUT',
     };
   } catch (error) {
@@ -275,7 +275,7 @@ async function handleScout(
     return {
       text: "Couldn't fetch market data right now. Try again in a moment.",
       mood: 'ERROR',
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'SCOUT',
     };
   }
@@ -306,7 +306,7 @@ async function handleAnalyst(
       text: result.response?.text || 'Analysis complete but no insights generated.',
       mood: mapMood(result.response?.mood),
       data: result.response?.data,
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'ANALYST',
     };
   } catch (error) {
@@ -314,7 +314,7 @@ async function handleAnalyst(
     return {
       text: "Deep analysis unavailable right now. Try a simpler query or /hot for trending markets.",
       mood: 'ERROR',
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'ANALYST',
     };
   }
@@ -355,7 +355,7 @@ async function handleTrader(
       text: result.response?.text || 'Trade information unavailable.',
       mood: mapMood(result.response?.mood),
       data: result.response?.data,
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'TRADER',
     };
   } catch (error) {
@@ -363,7 +363,7 @@ async function handleTrader(
     return {
       text: "Trading functions unavailable right now.",
       mood: 'ERROR',
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'TRADER',
     };
   }
@@ -413,7 +413,7 @@ async function handleHybrid(
       text: analystResult.response?.text || 'Analysis complete.',
       mood: mapMood(analystResult.response?.mood),
       data: { scoutData, analysis: analystResult.response?.data },
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'HYBRID',
     };
   } catch (error) {
@@ -421,7 +421,7 @@ async function handleHybrid(
     return {
       text: "Couldn't complete analysis. Try /hot for trending markets.",
       mood: 'ERROR',
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'HYBRID',
     };
   }
@@ -463,7 +463,7 @@ Ambiguities: ${understanding.ambiguities?.join(', ') || 'none detected'}`,
 
 Or just tell me what market you're curious about.`,
       mood: 'NEUTRAL',
-      agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+      agentUsed: BERIGHT_RUNTIME_AGENT_ID,
       capabilityUsed: 'SELF',
     };
   }
@@ -471,7 +471,7 @@ Or just tell me what market you're curious about.`,
   return {
     text: response.text,
     mood: 'NEUTRAL',
-    agentUsed: BERIGHT_TERMINAL_AGENT_ID,
+    agentUsed: BERIGHT_RUNTIME_AGENT_ID,
     capabilityUsed: 'SELF',
   };
 }

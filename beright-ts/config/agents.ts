@@ -1,7 +1,7 @@
 /**
- * Internal capability profiles for the BeRight Terminal runtime.
+ * Internal capability profiles for the BeRight runtime.
  *
- * `beright-terminal` is the only top-level runtime agent.
+ * `beright-runtime` is the only top-level runtime agent.
  * These profiles describe the internal specialist capabilities used by the
  * semantic execution path.
  */
@@ -33,7 +33,7 @@ export const AGENTS: Record<BeRightCapabilityId, AgentConfig> = {
       'Quick price checks',
       'Volume spike detection',
     ],
-    systemPrompt: `You are Scout, an internal market-scanning capability used by the BeRight Terminal.
+    systemPrompt: `You are Scout, an internal market-scanning capability used by the BeRight runtime.
 
 Your job is SPEED and BREADTH. Scan markets quickly, find opportunities, report concisely.
 
@@ -59,7 +59,7 @@ OUTPUT RULES:
       'Calibration reports',
       'Scenario modeling',
     ],
-    systemPrompt: `You are Analyst, an internal research capability used by the BeRight Terminal.
+    systemPrompt: `You are Analyst, an internal research capability used by the BeRight runtime.
 
 Your job is DEPTH and RIGOR. Apply superforecaster methodology to every analysis.
 
@@ -91,7 +91,7 @@ OUTPUT RULES:
       'Trade execution',
       'Risk assessment',
     ],
-    systemPrompt: `You are Trader, an internal execution capability used by the BeRight Terminal.
+    systemPrompt: `You are Trader, an internal execution capability used by the BeRight runtime.
 
 Your job is PRECISION and SAFETY for PREDICTION MARKETS ONLY.
 

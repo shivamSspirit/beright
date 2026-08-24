@@ -949,8 +949,12 @@ export interface AgentResponse {
     text: string;
     mood: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'EDUCATIONAL' | 'ERROR';
     agent?: string;
+    capability?: string;
     agentEmoji?: string;
     metadata?: Record<string, unknown>;
+    structuredData?: unknown;
+    suggestedActions?: string[];
+    executionPolicy?: 'prepare_only';
   };
   session?: {
     id: string;
@@ -986,6 +990,11 @@ export interface AgentInfo {
     activeSessions: number;
     capabilities: string[];
     exampleQueries: string[];
+    executionPolicy?: {
+      mode: 'prepare_only';
+      serverCanSign: false;
+      walletConfirmationRequired: true;
+    };
   };
 }
 
@@ -1037,141 +1046,6 @@ export async function getAgentSession(sessionId: string): Promise<{
   };
 }> {
   return apiFetch(`/api/v2/agent?sessionId=${sessionId}`);
-}
-
-// ============ UNIFIED GATEWAY API ============
-// Routes commands through the same handler as Telegram
-// Enables full agent/skill system in web terminal
-
-export interface GatewayResponse {
-  success: boolean;
-  text: string;           // Formatted for web (markdown stripped)
-  rawText?: string;       // Original with Telegram markdown
-  mood: string;
-  data?: any;
-  sessionId?: string;
-  error?: string;
-  // Conversation persistence fields (v2.0)
-  conversationId?: string;   // Supabase conversation ID
-  userMessageId?: string;    // ID of saved user message
-  agentMessageId?: string;   // ID of saved agent message
-  agentType?: string;        // SCOUT, ANALYST, TRADER
-  // Async job fields (for long-running operations)
-  async?: boolean;        // True if this is an async job
-  jobId?: string;         // Job ID for polling
-  pollUrl?: string;       // URL to poll for status
-}
-
-export interface JobStatus {
-  id: string;
-  status: 'queued' | 'running' | 'complete' | 'failed';
-  progress: number;
-  progressMessage?: string;
-  result?: GatewayResponse;
-  error?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * Send a command or message through the unified gateway
- * This routes through the full Telegram handler logic including:
- * - Multi-agent routing (COMMANDER, RESEARCH, ARBITRAGE, WHALE, etc.)
- * - All 60+ commands
- * - LLM reasoning layer
- * - Context and memory
- * - Skill execution
- *
- * v2.0: Now supports conversation persistence with Supabase
- * - Pass walletAddress to enable persistence
- * - Pass conversationId to continue existing conversation
- */
-export async function sendToGateway(
-  message: string,
-  options?: {
-    userId?: string;
-    sessionId?: string;
-    walletAddress?: string;     // For Supabase persistence
-    conversationId?: string;    // Continue existing conversation
-  }
-): Promise<GatewayResponse> {
-  return apiFetch('/api/gateway', {
-    method: 'POST',
-    body: JSON.stringify({
-      message,
-      userId: options?.userId,
-      sessionId: options?.sessionId,
-      walletAddress: options?.walletAddress,
-      conversationId: options?.conversationId,
-    }),
-    // Gateway may call LLMs + multiple providers; allow more time than normal API calls.
-    // This prevents the terminal from showing "Request timed out" while the backend is still working.
-    timeoutMs: 60_000,
-  });
-}
-
-/**
- * Poll for async job status
- * Used for long-running operations (research, analyze, etc.)
- */
-export async function pollJobStatus(jobId: string): Promise<JobStatus> {
-  return apiFetch(`/api/jobs/${jobId}`);
-}
-
-/**
- * Poll for job completion with progress callbacks
- * Returns the final result when complete or throws on failure
- */
-export async function waitForJob(
-  jobId: string,
-  options?: {
-    onProgress?: (progress: number, message?: string) => void;
-    maxAttempts?: number;
-    pollIntervalMs?: number;
-  }
-): Promise<GatewayResponse> {
-  const maxAttempts = options?.maxAttempts ?? 60;  // 60 attempts
-  const pollInterval = options?.pollIntervalMs ?? 2000;  // 2 seconds
-
-  for (let i = 0; i < maxAttempts; i++) {
-    const status = await pollJobStatus(jobId);
-
-    // Report progress
-    if (options?.onProgress) {
-      options.onProgress(status.progress, status.progressMessage);
-    }
-
-    // Check if complete
-    if (status.status === 'complete' && status.result) {
-      return status.result;
-    }
-
-    // Check if failed
-    if (status.status === 'failed') {
-      throw new Error(status.error || 'Job failed');
-    }
-
-    // Wait before next poll (with exponential backoff, max 5s)
-    const waitTime = Math.min(pollInterval * Math.pow(1.2, Math.min(i, 5)), 5000);
-    await new Promise(resolve => setTimeout(resolve, waitTime));
-  }
-
-  throw new Error('Job timed out - please try again');
-}
-
-/**
- * Get gateway status and available commands
- */
-export async function getGatewayStatus(sessionId?: string): Promise<{
-  status: string;
-  activeSessions: number;
-  supportedCommands: string[];
-  sessionId?: string;
-  exists?: boolean;
-  messageCount?: number;
-}> {
-  const params = sessionId ? `?sessionId=${sessionId}` : '';
-  return apiFetch(`/api/gateway${params}`);
 }
 
 // ============ SEARCH API (Powered by Serper.dev) ============
@@ -3129,55 +3003,6 @@ export async function getV2Health(): Promise<{
   return apiFetch('/api/v2/health');
 }
 
-// ============ COMBINED TERMINAL DATA ============
-// Helper to fetch all terminal data in one call
-
-export interface TerminalData {
-  markets: ApiMarket[];
-  arbitrage: ApiArbitrage[];
-  portfolio: any;
-  risk: any;
-  connected: boolean;
-}
-
-/**
- * Fetch all terminal data in parallel
- * Uses v2 feed API for ML-powered market matching
- */
-export async function fetchTerminalData(): Promise<TerminalData> {
-  const [marketsRes, portfolioRes, riskRes] = await Promise.all([
-    getHotMarketsFeed(20).catch(() => ({ markets: [], count: 0 })),
-    apiFetch('/api/v2/portfolio').catch(() => ({ success: false, data: null })),
-    apiFetch('/api/v2/risk').catch(() => ({ success: false, data: null })),
-  ]);
-
-  // Extract arbitrage from feed response or fetch separately
-  const arbRes = await getFeed({ type: 'arbitrage', limit: 10 }).catch(() => ({ data: [], meta: {} }));
-
-  // Convert feed arbitrage to ApiArbitrage format
-  const arbitrageOpportunities: ApiArbitrage[] = arbRes.data
-    ?.filter((m: FeedMarket) => m.arbitrage)
-    .map((m: FeedMarket) => ({
-      topic: m.question,
-      platformA: m.arbitrage!.buyPlatform,
-      platformB: m.arbitrage!.sellPlatform,
-      priceA: m.arbitrage!.buyPrice,
-      priceB: m.arbitrage!.sellPrice,
-      spread: m.arbitrage!.spread,
-      profitPercent: m.arbitrage!.profitPct,
-      strategy: `Buy on ${m.arbitrage!.buyPlatform}, sell on ${m.arbitrage!.sellPlatform}`,
-      confidence: m.matchConfidence,
-    })) || [];
-
-  return {
-    markets: marketsRes.markets || [],
-    arbitrage: arbitrageOpportunities,
-    portfolio: (portfolioRes as any)?.data || null,
-    risk: (riskRes as any)?.data || null,
-    connected: true,
-  };
-}
-
 // ============ MODE API ============
 // Get app mode info (demo vs production)
 
@@ -3216,4 +3041,526 @@ export async function isInDemoMode(): Promise<boolean> {
     // Default to demo if can't determine
     return true;
   }
+}
+
+// ============ CAPITAL SIMULATOR API ============
+
+export type CapitalSide = 'YES' | 'NO';
+export type CapitalEligibilityStatus = 'eligible' | 'review' | 'ineligible';
+
+export interface CapitalEligibilityReason {
+  code: string;
+  severity: 'block' | 'warning';
+  message: string;
+}
+
+export interface CapitalRiskPrice {
+  price: number | null;
+  source: 'executable_bid' | 'unavailable';
+  bestBid: number | null;
+  bestAsk: number | null;
+  spreadBps: number | null;
+  availableDepthShares: number | null;
+  availableDepthUsd: number | null;
+  asOf: string;
+}
+
+export interface CapitalEligibility {
+  status: CapitalEligibilityStatus;
+  eligible: boolean;
+  score: number;
+  daysToResolution: number | null;
+  riskPrice: CapitalRiskPrice;
+  reasons: CapitalEligibilityReason[];
+  evaluatedAt: string;
+}
+
+export interface CapitalMarketSnapshot {
+  ticker: string;
+  eventTicker: string;
+  title: string;
+  status: string;
+  side: CapitalSide;
+  bid: number | null;
+  ask: number | null;
+  volumeUsd: number;
+  openInterestUsd: number;
+  closeTime: number;
+  expirationTime: number;
+  canCloseEarly: boolean;
+  resolutionRules: string | null;
+  account: {
+    marketLedger: string;
+    yesMint: string;
+    noMint: string;
+    isInitialized: boolean;
+    redemptionStatus: 'open' | 'closed';
+  } | null;
+}
+
+export interface CapitalPosition {
+  market?: CapitalMarketSnapshot;
+  marketTicker?: string;
+  title?: string;
+  side?: CapitalSide;
+  mintAddress: string;
+  shares: number;
+  positionValueUsd?: number | null;
+  eligibility?: CapitalEligibility;
+  available?: boolean;
+  reason?: string;
+}
+
+export interface CapitalYieldRate {
+  apyPct: number | null;
+  source: 'jupiter_earn' | 'demo_model' | 'unavailable';
+  asset: 'USDC';
+  asOf: string;
+  isEstimate: true;
+  message?: string;
+}
+
+export interface CapitalStrategyProvider {
+  id: 'jupiter_earn' | 'kamino_earn' | 'loopscale_vault';
+  name: string;
+  status: 'transaction_ready' | 'configuration_required' | 'partner_required';
+  asset: 'USDC';
+  custody: 'user_wallet';
+  supports: Array<'deposit' | 'withdraw' | 'position'>;
+  reason: string | null;
+}
+
+export interface PreparedCapitalTransaction {
+  provider: 'jupiter_earn';
+  action: 'deposit' | 'withdraw' | 'redeem';
+  asset: 'USDC';
+  amountAtomic: string;
+  wallet: string;
+  transaction: string;
+  encoding: 'base64';
+  messageVersion: 'v0';
+  recentBlockhash: string;
+  lastValidBlockHeight: number;
+  programIds: string[];
+  requiresWalletSignature: true;
+  serverSigned: false;
+  serverSubmits: false;
+}
+
+export interface CapitalSimulation {
+  positionValueUsd: number;
+  matchedShares: number;
+  unmatchedShares: number;
+  matchedPairPrincipalUsd: number;
+  deployedPrincipalUsd: number;
+  reserveUsd: number;
+  estimatedGrossStrategyYieldUsd: number;
+  estimatedGrossUserYieldUsd: number;
+  estimatedProtocolFeeUsd: number;
+  estimatedNetUserYieldUsd: number;
+  estimatedYieldRangeUsd: { low: number; high: number };
+  estimatedEffectiveApyPct: number;
+  assumptions: {
+    userYieldSharePct: 50;
+    reserveBps: number;
+    protocolFeeBps: number;
+    holdingDays: number;
+    strategyApyPct: number;
+  };
+}
+
+export type CapitalRouteAction = 'hold' | 'match_for_yield' | 'borrow' | 'exit';
+
+export interface CapitalRouteRecommendation {
+  action: CapitalRouteAction;
+  confidence: 'high' | 'medium' | 'low';
+  reasons: string[];
+  matchedShares: number;
+  maximumBorrowUsd: number;
+  requestedBorrowUsd: number;
+  requiresWalletSignature: true;
+  executable: false;
+  intent: {
+    version: 1;
+    action: CapitalRouteAction;
+    amount: number;
+    minOutput: number;
+    expiresInSeconds: number;
+  } | null;
+}
+
+export async function getCapitalPositions(walletAddress: string): Promise<{
+  success: boolean;
+  data: CapitalPosition[];
+  meta: { mode: 'demo' | 'production'; custody: false; executable: false };
+}> {
+  return apiFetch(`/api/v2/capital/positions/${encodeURIComponent(walletAddress)}`);
+}
+
+export async function getCapitalYieldRate(): Promise<{
+  success: boolean;
+  data: CapitalYieldRate;
+}> {
+  return apiFetch('/api/v2/capital/yield-rates');
+}
+
+export async function getCapitalStrategyProviders(): Promise<{
+  success: boolean;
+  data: CapitalStrategyProvider[];
+  meta: {
+    custody: 'user_wallet';
+    serverCanSign: false;
+    serverCanSubmit: false;
+    borrowedPrincipalIsYield: false;
+  };
+}> {
+  return apiFetch('/api/v2/capital/strategies');
+}
+
+export async function prepareJupiterEarnTransaction(input: {
+  action: 'deposit' | 'withdraw' | 'redeem';
+  wallet: string;
+  amountAtomic: string;
+}): Promise<{
+  success: boolean;
+  data: PreparedCapitalTransaction;
+}> {
+  return apiFetch('/api/v2/capital/strategies/jupiter/prepare', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function simulateCapitalPosition(input: {
+  ticker: string;
+  side: CapitalSide;
+  shares: number;
+  opposingAvailableShares: number;
+  holdingDays: number;
+}): Promise<{
+  success: boolean;
+  data: {
+    market: CapitalMarketSnapshot;
+    eligibility: CapitalEligibility;
+    yieldRate: CapitalYieldRate;
+    simulation: CapitalSimulation;
+  };
+  meta: {
+    mode: 'demo' | 'production';
+    custody: false;
+    executable: false;
+    disclaimer: string;
+  };
+}> {
+  return apiFetch('/api/v2/capital/simulate', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function recommendCapitalAction(input: {
+  ticker: string;
+  side: CapitalSide;
+  shares: number;
+  opposingAvailableShares: number;
+  holdingDays: number;
+  requestedBorrowUsd?: number;
+}): Promise<{
+  success: boolean;
+  data: {
+    market: CapitalMarketSnapshot;
+    eligibility: CapitalEligibility;
+    recommendation: CapitalRouteRecommendation;
+  };
+  meta: {
+    mode: 'demo' | 'production';
+    deterministic: true;
+    aiControlsCustody: false;
+    executable: false;
+    disclaimer: string;
+  };
+}> {
+  return apiFetch('/api/v2/capital/route', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// ============ CAPITAL THESIS VAULTS (WALLET-SIGNED DEVNET) ============
+
+export type CapitalThesisStatus = 'funding' | 'dormant' | 'active' | 'paused' | 'expired' | 'closed';
+
+export interface CapitalThesisMarketRule {
+  label: string;
+  category: string;
+  targetBps: number;
+}
+
+export interface CapitalThesis {
+  id: string;
+  slug: string;
+  name: string;
+  symbol: string;
+  thesisStatement: string;
+  creatorMotivation: string;
+  failureConditions: string;
+  creatorWallet: string;
+  creatorDisplayName: string;
+  curatorWallet: string;
+  network: 'devnet';
+  vaultType: 'index' | 'curated';
+  vaultStructure: 'closed_ended' | 'open_ended';
+  depositAsset: 'USDC';
+  categories: string[];
+  allowedDefiProtocols: string[];
+  marketRules: CapitalThesisMarketRule[];
+  metadataUri: string | null;
+  predictionAllocationMaxBps: number;
+  defiAllocationTargetBps: number;
+  liquidReserveTargetBps: number;
+  maxMarketAllocationBps: number;
+  maxDrawdownBps: number;
+  curatorFeeBps: number;
+  protocolFeeBps: number;
+  maxActivePositions: number;
+  expiry: string | null;
+  executionMode: 'onchain';
+  shareStandard: 'token-2022-non-transferable';
+  status: CapitalThesisStatus;
+  launchMessage: string;
+  createdAt: string;
+  approvedAt: string | null;
+  graduatedAt: string | null;
+  totalAssetsAtomic: string;
+  totalSharesAtomic: string;
+  pendingRedemptionSharesAtomic: string;
+  depositCapAtomic: string;
+  graduationThresholdAtomic: string;
+  qualifyingCapitalAtomic: string;
+  perWalletQualifyingCapAtomic: string;
+  minimumUniqueContributors: number;
+  uniqueContributors: number;
+  fundingYieldEnabled: boolean;
+  fundingYieldAdapter: 'disabled';
+  fundingYieldTargetBps: number;
+  fundingIdlePrincipalAtomic: string;
+  fundingIdleAssetsAtomic: string;
+  fundingLiquidAssetsAtomic: string;
+  queuedFundingWithdrawalAssetsAtomic: string;
+  indicativeFundingApyPct: number;
+  navUpdatedAt: string;
+  indicativeDefiApyPct: number;
+  predictionReturnPct: number;
+  historicalReturnPct: number;
+  investorCount: number;
+  lockupSeconds: number;
+  onchainStatus: 'pending_signature' | 'confirmed';
+  onchainAddresses: CapitalOnchainAddresses;
+  creationSignature: string | null;
+  accruedFeesAtomic: string;
+  accruedCuratorFeesAtomic: string;
+  accruedProtocolFeesAtomic: string;
+  accountingLiquidAssetsAtomic: string;
+  strategyExecution: 'external_adapter_required';
+}
+
+export interface CapitalOnchainAddresses {
+  programId: string;
+  config: string;
+  thesis: string;
+  vault: string;
+  shareMint: string;
+  liquidVault: string;
+  depositMint: string;
+}
+
+export interface PreparedCapitalVaultTransaction {
+  action: 'create_vault' | 'deposit' | 'cancel_funding' | 'request_redemption' | 'collect_fees';
+  network: 'devnet';
+  transaction: string;
+  encoding: 'base64';
+  recentBlockhash: string;
+  lastValidBlockHeight: number;
+  feePayer: string;
+  programIds: string[];
+  addresses: CapitalOnchainAddresses;
+  expected: {
+    assetsAtomic?: string;
+    sharesAtomic?: string;
+    minimumAssetsOutAtomic?: string;
+    minimumSharesAtomic?: string;
+    lockupSeconds?: number;
+  };
+  requiresWalletSignature: true;
+  serverSigned: false;
+  serverSubmits: false;
+}
+
+export interface CreateCapitalThesisInput {
+  name: string;
+  symbol: string;
+  thesisStatement: string;
+  creatorMotivation: string;
+  failureConditions: string;
+  creatorWallet: string;
+  creatorDisplayName?: string;
+  vaultType: 'index' | 'curated';
+  vaultStructure?: 'closed_ended' | 'open_ended';
+  categories: string[];
+  allowedDefiProtocols: string[];
+  marketRules: CapitalThesisMarketRule[];
+  predictionAllocationMaxBps: number;
+  defiAllocationTargetBps: number;
+  liquidReserveTargetBps: number;
+  maxMarketAllocationBps: number;
+  maxDrawdownBps: number;
+  curatorFeeBps: number;
+  protocolFeeBps: number;
+  maxActivePositions: number;
+  expiry?: string;
+  depositCapUsdc: string;
+  graduationThresholdUsdc?: string;
+  minimumUniqueContributors?: number;
+  fundingYieldEnabled?: boolean;
+  metadataUri?: string;
+  lockupSeconds?: number;
+}
+
+export interface CapitalThesisDepositQuote {
+  thesisSlug: string;
+  depositAmountAtomic: string;
+  sharesAtomic: string;
+  sharePriceUsd: number;
+  estimatedAnnualDefiIncomeUsd: number;
+  predictionOutcomeNotGuaranteed: true;
+  network: 'devnet';
+  executionMode: 'onchain';
+}
+
+export interface CapitalThesisPosition {
+  wallet: string;
+  thesisSlug: string;
+  thesisName: string;
+  symbol: string;
+  sharesAtomic: string;
+  principalAtomic: string;
+  currentValueAtomic: string;
+  unrealizedPnlAtomic: string;
+  pendingRedemptionSharesAtomic: string;
+  pendingRedemptionAssetsAtomic: string;
+  nextSettlementAt: string | null;
+  updatedAt: string;
+}
+
+interface CapitalOnchainMeta {
+  network: 'devnet';
+  executionMode: 'onchain';
+  custody: 'program-pda';
+  onchainProgramDeployed?: boolean;
+  onchainProgramId?: string;
+  onchainProgramStatus?: 'built-awaiting-devnet-funding' | 'deployed';
+  disclaimer?: string;
+}
+
+export async function getCapitalTheses(options: {
+  creatorWallet?: string;
+  includePending?: boolean;
+} = {}): Promise<{ success: boolean; data: CapitalThesis[]; meta: CapitalOnchainMeta }> {
+  const params = new URLSearchParams();
+  if (options.creatorWallet) params.set('creatorWallet', options.creatorWallet);
+  if (options.includePending) params.set('includePending', 'true');
+  const query = params.toString();
+  return apiFetch(`/api/v2/capital/theses${query ? `?${query}` : ''}`);
+}
+
+export async function getCapitalThesis(slug: string): Promise<{
+  success: boolean;
+  data: CapitalThesis;
+  meta: CapitalOnchainMeta & { navSource: 'program-accounting' };
+}> {
+  return apiFetch(`/api/v2/capital/theses/${encodeURIComponent(slug)}`);
+}
+
+export async function createCapitalThesis(input: CreateCapitalThesisInput): Promise<{
+  success: boolean;
+  data: { thesis: CapitalThesis; preparedTransaction: PreparedCapitalVaultTransaction };
+  meta: CapitalOnchainMeta;
+}> {
+  return apiFetch('/api/v2/capital/theses', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function confirmCapitalThesisCreation(input: {
+  slug: string;
+  signature: string;
+}): Promise<{ success: boolean; data: CapitalThesis; meta: CapitalOnchainMeta }> {
+  return apiFetch('/api/v2/capital/theses', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function quoteCapitalThesisDeposit(slug: string, amountUsdc: string): Promise<{
+  success: boolean;
+  data: { quote: CapitalThesisDepositQuote };
+  meta: CapitalOnchainMeta;
+}> {
+  return apiFetch(`/api/v2/capital/theses/${encodeURIComponent(slug)}/deposit`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'quote', amountUsdc }),
+  });
+}
+
+export async function depositCapitalThesis(input: {
+  slug: string;
+  wallet: string;
+  amountUsdc: string;
+}): Promise<{
+  success: boolean;
+  data: { quote: CapitalThesisDepositQuote; preparedTransaction: PreparedCapitalVaultTransaction };
+  meta: CapitalOnchainMeta & { transactionSignature: null };
+}> {
+  return apiFetch(`/api/v2/capital/theses/${encodeURIComponent(input.slug)}/deposit`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deposit', wallet: input.wallet, amountUsdc: input.amountUsdc }),
+  });
+}
+
+export async function requestCapitalThesisRedemption(input: {
+  slug: string;
+  wallet: string;
+  shares: string;
+}): Promise<{
+  success: boolean;
+  data: { preparedTransaction: PreparedCapitalVaultTransaction; expectedAssetsAtomic: string };
+  meta: CapitalOnchainMeta & { settlement: 'nav-epoch' | 'immediate-funding-cancel'; transactionSignature: null };
+}> {
+  return apiFetch(`/api/v2/capital/theses/${encodeURIComponent(input.slug)}/redemptions`, {
+    method: 'POST',
+    body: JSON.stringify({ wallet: input.wallet, shares: input.shares }),
+  });
+}
+
+export async function getCapitalThesisPortfolio(wallet: string): Promise<{
+  success: boolean;
+  data: CapitalThesisPosition[];
+  meta: CapitalOnchainMeta;
+}> {
+  return apiFetch(`/api/v2/capital/portfolio/${encodeURIComponent(wallet)}`);
+}
+
+export async function collectCapitalThesisFees(input: {
+  slug: string;
+  wallet: string;
+}): Promise<{
+  success: boolean;
+  data: { preparedTransaction: PreparedCapitalVaultTransaction };
+  meta: CapitalOnchainMeta & { feeModel: 'profit-only-high-watermark' };
+}> {
+  return apiFetch(`/api/v2/capital/theses/${encodeURIComponent(input.slug)}/fees`, {
+    method: 'POST',
+    body: JSON.stringify({ wallet: input.wallet }),
+  });
 }

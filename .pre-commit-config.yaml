@@ -29,6 +29,9 @@ repos:
           - '\.env\.example'
           - --exclude-files
           - 'node_modules/.*'
+          # Generated Anchor IDL contains public program addresses and instruction discriminators.
+          - --exclude-files
+          - 'beright-ts/lib/capital/berightcapital\.idl\.json'
         exclude: |
           (?x)^(
             .*\.lock|

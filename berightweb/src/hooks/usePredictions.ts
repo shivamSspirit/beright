@@ -62,6 +62,7 @@ export interface StoredPrediction {
 
 // localStorage key for predictions
 const PREDICTIONS_STORAGE_KEY = 'beright_predictions';
+const LOCAL_FORECASTER_ID = 'local-forecaster';
 
 /**
  * Hook to manage user predictions
@@ -70,41 +71,26 @@ const PREDICTIONS_STORAGE_KEY = 'beright_predictions';
  */
 export function usePredictions(walletAddress: string | null) {
   const { isDemo } = useMode();
+  const ownerId = walletAddress ?? LOCAL_FORECASTER_ID;
+  const isLocal = isDemo || !walletAddress;
   const [predictions, setPredictions] = useState<StoredPrediction[]>([]);
   const [onChainStats, setOnChainStats] = useState<ForecasterStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load predictions from localStorage (demo) or API (production)
+  // Load predictions from localStorage when there is no wallet, or API for a
+  // connected production wallet.
   const loadPredictions = useCallback(async () => {
-    if (!walletAddress) {
-      setPredictions([]);
-      setOnChainStats(null);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      // Demo mode: Load from localStorage
-      if (isDemo) {
+      if (isLocal) {
         const stored = localStorage.getItem(PREDICTIONS_STORAGE_KEY);
         if (stored) {
           const allPredictions: StoredPrediction[] = JSON.parse(stored);
-
-          // Clean up: Remove predictions without onChainTx (old format)
-          const validPredictions = allPredictions.filter(p => p.onChainTx);
-          if (validPredictions.length !== allPredictions.length) {
-            console.log('[Predictions] Cleaning up old predictions without onChainTx:',
-              allPredictions.length - validPredictions.length, 'removed');
-            localStorage.setItem(PREDICTIONS_STORAGE_KEY, JSON.stringify(validPredictions));
-          }
-
-          // Filter by wallet address
-          const userPredictions = validPredictions.filter(p => p.walletAddress === walletAddress);
+          const userPredictions = allPredictions.filter(p => p.walletAddress === ownerId);
           setPredictions(userPredictions.sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           ));
@@ -117,13 +103,13 @@ export function usePredictions(walletAddress: string | null) {
       }
 
       // Production: Fetch from on-chain calibration program via API
-      const response = await fetch(`/api/v2/predictions/user?wallet=${walletAddress}&limit=100`);
+      const response = await fetch(`/api/v2/predictions/user?wallet=${ownerId}&limit=100`);
 
       const data = await response.json();
 
       if (data.success && data.predictions) {
         // Transform on-chain predictions to match StoredPrediction format
-        const transformedPredictions: StoredPrediction[] = data.predictions.map((pred: any) => ({
+        const transformedPredictions: StoredPrediction[] = data.predictions.map((pred: OnChainPrediction) => ({
           id: pred.id,
           marketId: pred.marketId,
           question: pred.marketId, // Question not stored on-chain, use marketId as placeholder
@@ -131,7 +117,7 @@ export function usePredictions(walletAddress: string | null) {
           direction: pred.direction,
           probability: pred.probability,
           marketOdds: pred.probability * 100,
-          walletAddress,
+          walletAddress: ownerId,
           createdAt: pred.createdAt,
           resolvedAt: pred.resolvedAt,
           outcome: pred.outcome,
@@ -162,7 +148,7 @@ export function usePredictions(walletAddress: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress, isDemo]);
+  }, [ownerId, isLocal]);
 
   // Load on mount and when wallet changes
   useEffect(() => {
@@ -176,11 +162,6 @@ export function usePredictions(walletAddress: string | null) {
     txSignature?: string,
     explorerUrl?: string
   ): Promise<StoredPrediction | null> => {
-    if (!walletAddress) {
-      setError('Wallet not connected');
-      return null;
-    }
-
     setIsSaving(true);
     setError(null);
 
@@ -198,14 +179,13 @@ export function usePredictions(walletAddress: string | null) {
         direction: choice,
         probability,
         marketOdds: prediction.marketOdds,
-        walletAddress,
+        walletAddress: ownerId,
         createdAt: new Date().toISOString(),
         onChainTx: txSignature,
         explorerUrl: explorerUrl || (txSignature ? `https://solscan.io/tx/${txSignature}?cluster=devnet` : undefined),
       };
 
-      // Demo mode: Save to localStorage
-      if (isDemo) {
+      if (isLocal) {
         console.log('[Predictions] Saving to localStorage:', newPrediction.id, choice);
 
         const stored = localStorage.getItem(PREDICTIONS_STORAGE_KEY);
@@ -213,7 +193,7 @@ export function usePredictions(walletAddress: string | null) {
 
         // Check if prediction already exists for this market
         const existingIdx = allPredictions.findIndex(
-          p => p.marketId === prediction.id && p.walletAddress === walletAddress
+          p => p.marketId === prediction.id && p.walletAddress === ownerId
         );
 
         if (existingIdx >= 0) {
@@ -227,7 +207,7 @@ export function usePredictions(walletAddress: string | null) {
         localStorage.setItem(PREDICTIONS_STORAGE_KEY, JSON.stringify(trimmed));
 
         // Update local state
-        const userPredictions = trimmed.filter(p => p.walletAddress === walletAddress);
+        const userPredictions = trimmed.filter(p => p.walletAddress === ownerId);
         setPredictions(userPredictions);
 
         console.log('[Predictions] Saved to localStorage:', newPrediction.id);
@@ -247,7 +227,7 @@ export function usePredictions(walletAddress: string | null) {
           direction: choice,
           probability,
           marketOdds: prediction.marketOdds,
-          walletAddress,
+          walletAddress: ownerId,
           onChainTx: txSignature,
           explorerUrl: newPrediction.explorerUrl,
         }),
@@ -278,7 +258,7 @@ export function usePredictions(walletAddress: string | null) {
     } finally {
       setIsSaving(false);
     }
-  }, [walletAddress, isDemo]);
+  }, [ownerId, isLocal]);
 
   // Get predictions as UserPrediction format (for profile display)
   const getUserPredictions = useCallback((): UserPrediction[] => {
@@ -354,5 +334,6 @@ export function usePredictions(walletAddress: string | null) {
     getUserPredictions,
     getStats,
     isDemo,
+    isLocal,
   };
 }

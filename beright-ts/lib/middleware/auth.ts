@@ -30,7 +30,7 @@ import { logSecurityEvent } from './securityLogger';
 // TYPES
 // ============================================
 
-export type AuthSource = 'bearer' | 'api_key' | 'wallet' | 'service' | 'telegram' | 'anonymous';
+export type AuthSource = 'bearer' | 'api_key' | 'wallet' | 'service' | 'anonymous';
 export type UserTier = 'public' | 'verified' | 'admin' | 'service';
 
 export interface AuthContext {
@@ -41,7 +41,6 @@ export interface AuthContext {
   // Identifiers (at least one present if authenticated)
   walletAddress?: string;
   userId?: string;
-  telegramId?: string;
   apiKeyId?: string;
 
   // Rate limiting info
@@ -77,9 +76,6 @@ type AuthenticatedHandler = (
 const ADMIN_WALLETS = new Set(
   (process.env.ADMIN_WALLET_ADDRESSES || '').split(',').filter(Boolean)
 );
-
-// Super admin Telegram ID
-const SUPER_ADMIN_TELEGRAM_ID = process.env.SUPER_ADMIN_TELEGRAM_ID || '5504043269';
 
 // API keys (format: key_id:key_hash)
 // In production, these should be stored in database
@@ -173,16 +169,6 @@ export async function extractAuthContext(request: NextRequest): Promise<AuthCont
     ctx.walletAddress = walletHeader;
     ctx.tier = determineTier(walletHeader);
     return applyRateLimit(ctx, walletHeader);
-  }
-
-  // Try Telegram ID header (for Telegram bot forwarding)
-  const telegramId = request.headers.get('x-telegram-id');
-  if (telegramId) {
-    ctx.authenticated = true;
-    ctx.source = 'telegram';
-    ctx.telegramId = telegramId;
-    ctx.tier = telegramId === SUPER_ADMIN_TELEGRAM_ID ? 'admin' : 'verified';
-    return applyRateLimit(ctx, telegramId);
   }
 
   // Anonymous - apply rate limit by IP
@@ -392,7 +378,6 @@ export function requireAuth(
         action: 'insufficient_tier',
         severity: 'warning',
         walletAddress: ctx.walletAddress,
-        telegramId: ctx.telegramId,
         ipAddress: ctx.ip,
         requestId: ctx.requestId,
         details: { tier: ctx.tier, required: options.allowedTiers },
@@ -427,7 +412,6 @@ export function requireAuth(
         action: 'api_rate_limited',
         severity: 'warning',
         walletAddress: ctx.walletAddress,
-        telegramId: ctx.telegramId,
         ipAddress: ctx.ip,
         requestId: ctx.requestId,
         success: false,
@@ -459,7 +443,6 @@ export function requireAuth(
       action: request.nextUrl.pathname,
       severity: 'debug',
       walletAddress: ctx.walletAddress,
-      telegramId: ctx.telegramId,
       ipAddress: ctx.ip,
       requestId: ctx.requestId,
       success: true,

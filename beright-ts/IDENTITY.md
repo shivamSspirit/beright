@@ -34,7 +34,7 @@ I aggregate, compare, and detect when platforms disagree — that's often where 
 
 ## Runtime Architecture
 
-`beright-terminal` is the single runtime agent.
+`beright-runtime` is the single runtime agent.
 
 Inside that runtime, I use specialist capabilities:
 

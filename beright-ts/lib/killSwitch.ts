@@ -20,7 +20,6 @@ export interface KillSwitches {
   tradingEnabled: boolean;
   walletWithdrawals: boolean;
   apiPublicAccess: boolean;
-  telegramBot: boolean;
   autoTrading: boolean;
   newSignups: boolean;
 }
@@ -52,7 +51,6 @@ export function getKillSwitches(): KillSwitches {
     tradingEnabled: parseEnvBool('TRADING_ENABLED', true),
     walletWithdrawals: parseEnvBool('WALLET_WITHDRAWALS', true),
     apiPublicAccess: parseEnvBool('API_PUBLIC_ACCESS', true),
-    telegramBot: parseEnvBool('TELEGRAM_BOT_ENABLED', true),
     autoTrading: parseEnvBool('AUTO_TRADING_ENABLED', false),
     newSignups: parseEnvBool('NEW_SIGNUPS_ENABLED', true),
   };
@@ -78,10 +76,6 @@ export function isWalletWithdrawalsEnabled(): boolean {
 
 export function isApiPublicAccessEnabled(): boolean {
   return getKillSwitches().apiPublicAccess;
-}
-
-export function isTelegramBotEnabled(): boolean {
-  return getKillSwitches().telegramBot;
 }
 
 export function isAutoTradingEnabled(): boolean {
@@ -137,7 +131,6 @@ export function logKillSwitchStatus(): void {
   console.log('[KillSwitch] Trading: ' + (switches.tradingEnabled ? 'ENABLED' : 'DISABLED'));
   console.log('[KillSwitch] Withdrawals: ' + (switches.walletWithdrawals ? 'ENABLED' : 'DISABLED'));
   console.log('[KillSwitch] Public API: ' + (switches.apiPublicAccess ? 'ENABLED' : 'DISABLED'));
-  console.log('[KillSwitch] Telegram Bot: ' + (switches.telegramBot ? 'ENABLED' : 'DISABLED'));
   console.log('[KillSwitch] Auto-Trading: ' + (switches.autoTrading ? 'ENABLED' : 'DISABLED'));
   console.log('[KillSwitch] New Signups: ' + (switches.newSignups ? 'ENABLED' : 'DISABLED'));
 }

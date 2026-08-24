@@ -40,10 +40,10 @@ export interface HeaderProps {
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', exact: true },
   { href: '/markets', label: 'Markets' },
+  { href: '/copilot', label: 'Copilot' },
+  { href: '/capital', label: 'Capital' },
   { href: '/leaderboard', label: 'Leaderboard' },
-  { href: '/beright-terminal', label: 'Terminal' },
   { href: '/docs', label: 'Docs' },
-  { href: '/docs/faq', label: 'FAQ' },
 ];
 
 export function Header({

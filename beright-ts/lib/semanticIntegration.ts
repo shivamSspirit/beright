@@ -121,7 +121,7 @@ export function getQuickResponse(text: string): OrchestratorResponse | null {
     return {
       text: "Hey. What markets are you watching?",
       mood: 'NEUTRAL',
-      agentUsed: 'beright-terminal',
+      agentUsed: 'beright-runtime',
     };
   }
 
@@ -130,7 +130,7 @@ export function getQuickResponse(text: string): OrchestratorResponse | null {
     return {
       text: "👍",
       mood: 'NEUTRAL',
-      agentUsed: 'beright-terminal',
+      agentUsed: 'beright-runtime',
     };
   }
 

@@ -1,0 +1,6 @@
+{
+  "name": "beright_capital",
+  "spec": "beright-capital.qedspec",
+  "interfaces_dir": ".qed/interfaces",
+  "created_at": "1786394203s-since-epoch"
+}

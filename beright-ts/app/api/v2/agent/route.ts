@@ -1,37 +1,26 @@
-/**
- * Agent API v2
- *
- * Direct access to the BeRight Terminal runtime.
- * This uses the same BeRight-style execution bridge as the rest of beright-ts.
- *
- * Architecture:
- * ┌─────────────────────────────────────────────────────────────┐
- * │                    BERIGHT-TERMINAL                         │
- * │           (Router → Orchestrator → Handlers)               │
- * └──────────────────────────┬──────────────────────────────────┘
- *                            │
- *        ┌───────────────────┼───────────────────┐
- *        ▼                   ▼                   ▼
- * ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
- * │    SCOUT     │   │   ANALYST    │   │   TRADER     │
- * │ Capability   │   │ Capability   │   │ Capability   │
- * └──────────────┘   └──────────────┘   └──────────────┘
- *
- * @author BeRight Protocol
- */
-
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { executeBeRightRuntimeRequest } from '../../../../lib/runtime/berightRuntime';
 import { checkAgentAccess, getTierContext, checkAndIncrementUsage } from '../../../../lib/stripe/middleware';
+import logger from '../../../../lib/logger';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// Session context for web terminal
 interface SessionContext {
   messages: Array<{ role: 'user' | 'agent'; content: string; agent?: string; timestamp: number }>;
   userId?: string;
 }
+
+const AgentRequestSchema = z.object({
+  message: z.string().trim().min(1, 'Message is required').max(4_000, 'Message is too long'),
+  sessionId: z.string().trim().min(1).optional(),
+  userId: z.string().trim().min(1).optional(),
+  agent: z.enum(['scout', 'analyst', 'trader']).optional(),
+});
+
+type AgentRequestBody = z.infer<typeof AgentRequestSchema>;
 
 const sessionCache = new Map<string, SessionContext>();
 const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
@@ -45,8 +34,7 @@ function getOrCreateSession(sessionId: string): SessionContext {
   return newSession;
 }
 
-// Cleanup old sessions
-setInterval(() => {
+const sessionCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [id, session] of sessionCache) {
     const lastMessage = session.messages[session.messages.length - 1];
@@ -55,96 +43,120 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+sessionCleanupTimer.unref();
 
-/**
- * POST /api/v2/agent
- *
- * Send a message to the BeRight Terminal runtime.
- *
- * Body:
- * - message: string (required) - The user's message
- * - sessionId: string (optional) - Session ID for context
- * - userId: string (optional) - User ID
- * - agent: string (optional) - Preferred internal capability hint (scout, analyst, trader)
- */
+function appendSessionMessage(
+  session: SessionContext,
+  message: SessionContext['messages'][number]
+): void {
+  session.messages.push(message);
+  if (session.messages.length > 40) {
+    session.messages.splice(0, session.messages.length - 40);
+  }
+}
+
+function createSessionId(): string {
+  return `web-${randomUUID()}`;
+}
+
+function parseRequestBody(body: unknown): AgentRequestBody {
+  return AgentRequestSchema.parse(body);
+}
+
+async function getTierInfo(userId?: string) {
+  if (!userId) {
+    return null;
+  }
+
+  try {
+    const context = await getTierContext(userId);
+    return {
+      tier: context.tier,
+      usage: context.usage,
+      limits: context.limits,
+    };
+  } catch (error) {
+    logger.warn('Unable to load tier context', { userId, error });
+    return null;
+  }
+}
+
+async function enforceUsageLimits(userId: string | undefined, forcedAgent: AgentRequestBody['agent']) {
+  if (!userId) {
+    return null;
+  }
+
+  const queryCheck = await checkAndIncrementUsage(userId, 'queriesPerDay');
+  if (!queryCheck.allowed) {
+    return NextResponse.json({
+      success: false,
+      error: 'rate_limit',
+      message: queryCheck.reason,
+      data: {
+        text: `You've reached your daily query limit (${queryCheck.currentUsage}/${queryCheck.limit}). Upgrade your plan for more queries.`,
+        mood: 'LIMIT_REACHED',
+      },
+      tier: queryCheck.tier,
+      usage: {
+        current: queryCheck.currentUsage,
+        limit: queryCheck.limit,
+      },
+      upgradeUrl: '/subscription',
+    }, { status: 429 });
+  }
+
+  if (!forcedAgent) {
+    return null;
+  }
+
+  const agentCheck = await checkAgentAccess(userId, forcedAgent);
+  if (agentCheck.allowed) {
+    return null;
+  }
+
+  return NextResponse.json({
+    success: false,
+    error: 'tier_required',
+    message: agentCheck.reason,
+    data: {
+      text: `The ${forcedAgent} capability requires a higher tier. ${agentCheck.reason}`,
+      mood: 'UPGRADE_REQUIRED',
+    },
+    tier: agentCheck.tier,
+    requiredTier: agentCheck.requiredTier,
+    upgradeUrl: '/subscription',
+  }, { status: 403 });
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const body = await request.json();
-    const { message, sessionId, userId, agent: forcedAgent } = body as {
-      message: string;
-      sessionId?: string;
-      userId?: string;
-      agent?: 'scout' | 'analyst' | 'trader';
-    };
+    const { message, sessionId, userId, agent: forcedAgent } = parseRequestBody(await request.json());
 
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Message is required' },
-        { status: 400 }
-      );
-    }
-
-    // Generate session ID if not provided
-    const activeSessionId = sessionId || `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const activeSessionId = sessionId || createSessionId();
     const session = getOrCreateSession(activeSessionId);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // TIER-BASED ACCESS CONTROL
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if (userId) {
-      // Check daily query limit first
-      const queryCheck = await checkAndIncrementUsage(userId, 'queriesPerDay');
-      if (!queryCheck.allowed) {
-        return NextResponse.json({
-          success: false,
-          error: 'rate_limit',
-          message: queryCheck.reason,
-          data: {
-            text: `You've reached your daily query limit (${queryCheck.currentUsage}/${queryCheck.limit}). Upgrade your plan for more queries.`,
-            mood: 'LIMIT_REACHED',
-          },
-          tier: queryCheck.tier,
-          usage: {
-            current: queryCheck.currentUsage,
-            limit: queryCheck.limit,
-          },
-          upgradeUrl: '/subscription',
-        }, { status: 429 });
-      }
-
-      // If a specific capability is requested, check access to that capability tier
-      if (forcedAgent) {
-        const agentCheck = await checkAgentAccess(userId, forcedAgent);
-        if (!agentCheck.allowed) {
-          return NextResponse.json({
-            success: false,
-            error: 'tier_required',
-            message: agentCheck.reason,
-            data: {
-              text: `The ${forcedAgent} capability requires a higher tier. ${agentCheck.reason}`,
-              mood: 'UPGRADE_REQUIRED',
-            },
-            tier: agentCheck.tier,
-            requiredTier: agentCheck.requiredTier,
-            upgradeUrl: '/subscription',
-          }, { status: 403 });
-        }
-      }
+    const limitResponse = await enforceUsageLimits(userId, forcedAgent);
+    if (limitResponse) {
+      return limitResponse;
     }
 
-    // Record user message
-    session.messages.push({
+    appendSessionMessage(session, {
       role: 'user',
       content: message,
       timestamp: Date.now(),
     });
 
-    console.log(`[Agent API] Processing: "${message.slice(0, 50)}..." | Session: ${activeSessionId}`);
+    logger.info('Processing agent request', {
+      sessionId: activeSessionId,
+      userId,
+      preferredCapability: forcedAgent,
+      messageLength: message.length,
+    });
 
     const execution = await executeBeRightRuntimeRequest({
-      gateway: 'api',
+      gateway: 'web',
       userId: userId || activeSessionId,
       chatId: activeSessionId,
       text: message,
@@ -153,20 +165,23 @@ export async function POST(request: NextRequest) {
         preferredCapability: forcedAgent,
       },
       isAuthenticated: !!userId,
+      executionPolicy: 'prepare_only',
     });
 
     const responseText = execution.formatted.text;
     const responseMood = execution.result.hints?.mood || 'NEUTRAL';
     const semanticData = execution.result.data as {
+      text?: string;
+      mood?: string;
       agentUsed?: string;
       capabilityUsed?: string;
       understanding?: { confidence?: number };
+      data?: unknown;
     } | undefined;
-    const agentId = semanticData?.agentUsed || 'beright-terminal';
+    const agentId = semanticData?.agentUsed || 'beright-runtime';
     const capabilityId = semanticData?.capabilityUsed;
 
-    // Record agent response
-    session.messages.push({
+    appendSessionMessage(session, {
       role: 'agent',
       content: responseText,
       agent: capabilityId || agentId,
@@ -175,20 +190,7 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
-    // Get tier context for response (optional, only if userId provided)
-    let tierInfo = null;
-    if (userId) {
-      try {
-        const context = await getTierContext(userId);
-        tierInfo = {
-          tier: context.tier,
-          usage: context.usage,
-          limits: context.limits,
-        };
-      } catch {
-        // Ignore tier context errors
-      }
-    }
+    const tierInfo = await getTierInfo(userId);
 
     return NextResponse.json({
       success: true,
@@ -204,6 +206,9 @@ export async function POST(request: NextRequest) {
           confidence: semanticData?.understanding?.confidence,
           preferredCapability: forcedAgent,
         },
+        structuredData: semanticData?.data ?? execution.result.data,
+        suggestedActions: execution.result.hints?.suggestedActions || [],
+        executionPolicy: 'prepare_only',
       },
       session: {
         id: activeSessionId,
@@ -216,7 +221,14 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[Agent API] Error:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: error.issues[0]?.message || 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+
+    logger.error('Agent request failed', error);
 
     return NextResponse.json(
       {
@@ -232,11 +244,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET /api/v2/agent
- *
- * Get runtime info and internal capabilities.
- */
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
 
@@ -260,7 +267,7 @@ export async function GET(request: NextRequest) {
       version: '3.0.0',
       architecture: 'BeRight runtime with internal capabilities',
       agent: {
-        id: 'beright-terminal',
+        id: 'beright-runtime',
         available: true,
       },
       capabilities: {
@@ -288,11 +295,16 @@ export async function GET(request: NextRequest) {
         'Deep research analysis',
         'Probability estimation',
         'Position sizing (Kelly criterion)',
-        'Trade execution',
+        'Quote-first trade preparation with explicit wallet approval',
         'Risk management',
         'Whale tracking',
         'News aggregation',
       ],
+      executionPolicy: {
+        mode: 'prepare_only',
+        serverCanSign: false,
+        walletConfirmationRequired: true,
+      },
       exampleQueries: [
         "What's hot in prediction markets?",
         "Find arbitrage opportunities",

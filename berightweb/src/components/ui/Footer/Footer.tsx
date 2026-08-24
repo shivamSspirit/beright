@@ -41,7 +41,6 @@ const DEFAULT_SECTIONS: FooterSection[] = [
     links: [
       { href: '/markets', label: 'Markets' },
       { href: '/leaderboard', label: 'Leaderboard' },
-      { href: '/beright-terminal', label: 'Terminal' },
     ],
   },
   {

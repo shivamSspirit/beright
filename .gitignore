@@ -43,6 +43,7 @@ beright-ts/memory/*.json
 # Secrets
 *.pem
 *.key
+*.keypair.json
 credentials.json
 
 # Internal docs (not for public repo)
@@ -63,6 +64,12 @@ colosseum-agent.log
 beright-deck/
 beright-history/
 landscape-*.html
+
+# Local interview, session, and audit artifacts
+HOW_WE_BUILT_BERIGHT.md
+*-session.jsonl
+beright-validation-*.html
+/.qed/
 
 # Solana test ledger (large files)
 beright-vault/test-ledger/

@@ -44,7 +44,6 @@ export {
   isTradingEnabled,
   isWalletWithdrawalsEnabled,
   isApiPublicAccessEnabled,
-  isTelegramBotEnabled,
   isAutoTradingEnabled,
   isNewSignupsEnabled,
   assertTradingEnabled,

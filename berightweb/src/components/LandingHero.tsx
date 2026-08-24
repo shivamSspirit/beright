@@ -846,15 +846,6 @@ function TerminalPreview() {
         </div>
       </div>
 
-      <div className="terminal-cta">
-        <p className="cta-text">Access the terminal via Web</p>
-        <div className="cta-buttons">
-          <a href="/beright-terminal" className="terminal-btn web">
-            <span>Launch Web Terminal</span>
-            <span className="btn-arrow">→</span>
-          </a>
-        </div>
-      </div>
     </section>
   );
 }

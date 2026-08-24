@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useUser } from '@/hooks/useUnifiedUser';
 import styles from './BottomNav.module.css';
 
 interface NavItem {
@@ -13,16 +12,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    href: '/',
-    label: 'Home',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    ),
-  },
-  {
     href: '/markets',
     label: 'Markets',
     icon: (
@@ -30,6 +19,27 @@ const navItems: NavItem[] = [
         <circle cx="12" cy="12" r="10" />
         <path d="M2 12h20" />
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/copilot',
+    label: 'Copilot',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+        <path d="M8 9h8" />
+        <path d="M8 13h5" />
+      </svg>
+    ),
+  },
+  {
+    href: '/capital',
+    label: 'Capital',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v20" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
       </svg>
     ),
   },
@@ -44,16 +54,6 @@ const navItems: NavItem[] = [
         <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
         <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
         <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/beright-terminal',
-    label: 'Terminal',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="4 17 10 11 4 5" />
-        <line x1="12" y1="19" x2="20" y2="19" />
       </svg>
     ),
   },
@@ -86,17 +86,10 @@ function NavItemComponent({ item, isActive }: { item: NavItem; isActive: boolean
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { isAuthenticated, isLoading } = useUser();
 
-  // Don't show on certain routes (e.g., landing, auth, etc.)
+  // Don't show on routes that provide their own embedded shell.
   const hiddenRoutes = ['/coming-soon', '/embed'];
   if (hiddenRoutes.some(route => pathname?.startsWith(route))) {
-    return null;
-  }
-
-  // Hide on landing page (when at '/' and not authenticated)
-  // Don't flash nav while auth is loading
-  if (pathname === '/' && (isLoading || !isAuthenticated)) {
     return null;
   }
 
@@ -107,7 +100,7 @@ export default function BottomNav() {
           <NavItemComponent
             key={item.href}
             item={item}
-            isActive={pathname === item.href}
+            isActive={pathname === item.href || (pathname === '/' && item.href === '/markets')}
           />
         ))}
       </div>

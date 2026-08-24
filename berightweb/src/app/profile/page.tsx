@@ -23,7 +23,6 @@ import ShareButton from '@/components/ShareButton';
 import { useOnboarding } from '@/components/Onboarding';
 import { useMode } from '@/context/ModeContext';
 import BrandLogo from '@/components/BrandLogo';
-import terminalStyles from '../beright-terminal/beright.module.css';
 
 // ═══════════════════════════════════════════════════════════════
 // PROFILE PAGE - Industrial Metallic Design
@@ -996,15 +995,15 @@ export default function ProfilePage() {
   if (!isAuthenticated) {
     return (
       <PageWrapper showHeader={false} showFooter={false}>
-        <div className={terminalStyles.connectScreen}>
-          <div className={terminalStyles.connectLogo}>
+        <div className={styles.connectScreen}>
+          <div className={styles.connectLogo}>
             <BrandLogo size={48} />
-            <span className={terminalStyles.connectLogoText}>beright AI</span>
+            <span className={styles.connectLogoText}>BeRight</span>
           </div>
-          <div className={terminalStyles.connectText}>
+          <div className={styles.connectText}>
             Connect your wallet to view your profile, stats, and achievements.
           </div>
-          <button className={terminalStyles.connectButton} onClick={login}>
+          <button className={styles.connectButton} onClick={login}>
             Connect Wallet
           </button>
         </div>

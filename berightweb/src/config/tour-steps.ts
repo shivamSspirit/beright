@@ -58,77 +58,6 @@ export const MARKETS_TOUR_STEPS: TourStep[] = [
 ];
 
 /**
- * Tour Steps for Terminal Page (Agentic Interface)
- *
- * Guides users through:
- * - Understanding the terminal interface
- * - Using CLI commands
- * - Interacting with AI agents
- * - Viewing portfolio and signals
- */
-export const TERMINAL_TOUR_STEPS: TourStep[] = [
-  {
-    id: 'welcome-terminal',
-    target: '[data-tour="terminal-main"]',
-    title: 'Welcome to BeRight Terminal',
-    description: 'Your professional AI-powered prediction terminal. Chat with specialized agents, analyze markets, and execute trades—all through natural language or slash commands. Free to use in demo mode on Solana devnet.',
-    placement: 'bottom',
-    highlightPadding: 12,
-  },
-  {
-    id: 'agent-fleet',
-    target: '[data-tour="agent-fleet"]',
-    title: 'Your AI Agent Fleet',
-    description: 'Meet your four specialized agents: SCOUT (finds opportunities), ANALYST (deep research), TRADER (executes trades), and WHALE (tracks smart money). They work together autonomously to give you market intelligence.',
-    placement: 'right',
-    highlightPadding: 12,
-  },
-  {
-    id: 'cli-input',
-    target: '[data-tour="cli-input"]',
-    title: 'Command Line Interface',
-    description: 'Type slash commands like "/hot" for trending markets, "/arb" for arbitrage, or just ask questions in plain English: "What are the odds on Bitcoin ETF approval?" Our agents understand natural language.',
-    placement: 'top',
-    action: 'Try typing "/hot" or ask a question',
-    highlightPadding: 12,
-  },
-  {
-    id: 'portfolio-sidebar',
-    target: '[data-tour="portfolio-sidebar"]',
-    title: 'Portfolio & Real-Time Stats',
-    description: 'Track your portfolio value, daily P&L, market exposure, and risk metrics in real-time. All positions across Jupiter and DFlow are aggregated here. Demo mode uses simulated devnet positions.',
-    placement: 'left',
-    highlightPadding: 12,
-  },
-  {
-    id: 'signals-feed',
-    target: '[data-tour="signals-feed"]',
-    title: 'Live Intelligence Signals',
-    description: 'Real-time alerts from AI agents streamed via Server-Sent Events. When SCOUT finds arbitrage, ANALYST spots mispricing, or WHALE detects big moves—you see it instantly. No polling, no delays.',
-    placement: 'left',
-    action: 'Watch for live signals to stream in',
-    highlightPadding: 12,
-  },
-  {
-    id: 'markets-tab',
-    target: '[data-tour="markets-tab"]',
-    title: 'Refresh & Market Data',
-    description: 'Click the refresh button to update market data from Jupiter and DFlow. View latency, connection status, and switch between different views (Markets, Agents, Logs) using the tabs.',
-    placement: 'bottom',
-    highlightPadding: 8,
-  },
-  {
-    id: 'try-commands',
-    target: '[data-tour="cli-input"]',
-    title: 'Quick Start Commands',
-    description: 'Popular commands:\n• "/hot" - Top trending markets by volume\n• "/arb" - Cross-platform arbitrage opportunities\n• "/signals" - Recent agent intelligence\n• "/research [topic]" - Deep market analysis\n• "/calibration" - Your forecasting accuracy\n\nAll free in demo mode with test API!',
-    placement: 'top',
-    action: 'Type a command to start exploring',
-    highlightPadding: 12,
-  },
-];
-
-/**
  * Tour Steps for Single Market Detail Page
  *
  * Guides users through:
@@ -346,7 +275,7 @@ export const PROFILE_TOUR_STEPS: TourStep[] = [
 /**
  * Get tour steps based on page/context
  */
-export function getTourSteps(page: 'home' | 'markets' | 'markets-page' | 'terminal' | 'market-detail' | 'profile'): TourStep[] {
+export function getTourSteps(page: 'home' | 'markets' | 'markets-page' | 'market-detail' | 'profile'): TourStep[] {
   switch (page) {
     case 'home':
       return HOME_TOUR_STEPS;
@@ -354,8 +283,6 @@ export function getTourSteps(page: 'home' | 'markets' | 'markets-page' | 'termin
       return MARKETS_PAGE_TOUR_STEPS;
     case 'markets':
       return MARKETS_TOUR_STEPS; // For backwards compatibility (market detail page used to be called 'markets')
-    case 'terminal':
-      return TERMINAL_TOUR_STEPS;
     case 'market-detail':
       return MARKET_DETAIL_TOUR_STEPS;
     case 'profile':

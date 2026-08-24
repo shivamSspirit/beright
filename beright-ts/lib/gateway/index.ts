@@ -10,8 +10,4 @@ export * from './types';
 
 // Formatters
 export * from './formatters/types';
-export * from './formatters/telegram';
 export * from './formatters/json';
-
-// Telegram gateway
-export * from './telegram/gateway';
