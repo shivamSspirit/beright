@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QEDGen. Proofs, not promises.</title>
+  <meta name="description" content="Describe what your Solana program must guarantee in .qedspec. QEDGen finds the bugs your tests miss, then generates the proofs, property tests, and CI to keep them fixed.">
+  <meta property="og:title" content="QEDGen. Proofs, not promises.">
+  <meta property="og:description" content="Describe what your Solana program must guarantee in .qedspec. QEDGen finds the bugs your tests miss, then generates the proofs, property tests, and CI to keep them fixed.">
+  <meta property="og:url" content="https://qedgen.dev/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://qedgen.dev/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="QEDGen. Proofs, not promises.">
+  <meta name="twitter:description" content="Describe what your Solana program must guarantee in .qedspec. QEDGen finds the bugs your tests miss, then generates the proofs, property tests, and CI to keep them fixed.">
+  <meta name="twitter:image" content="https://qedgen.dev/og.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 42' fill='none'><rect x='4' y='4' width='34' height='34' rx='4' stroke='%2338bdf8' stroke-width='2.5'/><path d='M12 21L18 27L30 15' stroke='%2338bdf8' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/><rect x='28' y='28' width='6' height='6' fill='%2338bdf8'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+
+    <header class="top">
+      <a href="#" class="lockup" aria-label="QEDGen home">
+        <svg width="26" height="26" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="4" y="4" width="34" height="34" rx="4" stroke="#38bdf8" stroke-width="2.5"/>
+          <path d="M12 21L18 27L30 15" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="28" y="28" width="6" height="6" fill="#38bdf8"/>
+        </svg>
+        <span class="wm"><span>QED</span><span class="gen">gen</span></span>
+      </a>
+      <div class="top-meta">
+        <span class="live">mainnet · shipping proofs</span>
+        <a href="https://github.com/qedgen/solana-skills" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+      </div>
+    </header>
+
+    <main class="stage">
+      <div class="stage-grid-bg" aria-hidden="true"></div>
+
+      <div class="claim">
+        <span class="eyebrow"><span class="dot"></span>proofs, not promises</span>
+        <h1>Ship <span class="italic">without</span> <span class="nobr">fear<span class="tomb"></span></span></h1>
+        <p class="sub">
+          Describe what your Solana program must guarantee in <code>.qedspec</code>.
+          QEDGen finds the bugs your tests miss, then generates the proofs, property tests,
+          and CI to keep them fixed.
+        </p>
+        <div class="cta-row">
+          <button class="install" id="install" type="button">
+            <span class="p">$</span>
+            <span>npx skills add qedgen/solana-skills</span>
+            <span class="copy" id="copylabel">COPY</span>
+          </button>
+          <a class="btn" href="https://github.com/qedgen/solana-skills/blob/main/SKILL.md" target="_blank" rel="noopener noreferrer">View the Skill →</a>
+        </div>
+        <p class="compat">
+          Works with Claude Code, Codex, Cursor, Windsurf, and any agent supporting
+          <a href="https://agentskills.io" target="_blank" rel="noopener noreferrer">Agent Skills</a>.
+        </p>
+      </div>
+
+      <div class="demo" aria-label="Sample .qedspec file with generated artifacts">
+        <div class="demo-head">
+          <span class="dot"></span>
+          <span class="filename">escrow.qedspec</span>
+          <span class="tag">SPEC</span>
+        </div>
+<pre class="spec-body"><span class="ln"><span class="cmt">// Token escrow: two parties trade safely.</span></span><span class="ln"><span class="kw">spec</span> <span class="fn">Escrow</span></span><span class="ln"> </span><span class="ln"><span class="kw">type</span> State</span><span class="ln">  <span class="op">|</span> Uninitialized</span><span class="ln">  <span class="op">|</span> Open <span class="kw">of</span> <span class="op">{</span> initializer_amount : <span class="fn">U64</span>, taker_amount : <span class="fn">U64</span> <span class="op">}</span></span><span class="ln">  <span class="op">|</span> Closed</span><span class="ln"> </span><span class="ln"><span class="kw">handler</span> <span class="fn">initialize</span> (deposit : <span class="fn">U64</span>) : State.Uninitialized <span class="op">-&gt;</span> State.Open <span class="op">{</span></span><span class="ln">  <span class="kw">auth</span> initializer</span><span class="ln">  <span class="kw">requires</span> deposit <span class="op">&gt;</span> <span class="num">0</span> <span class="kw">else</span> InvalidAmount</span><span class="ln">  <span class="kw">transfers</span> <span class="op">{</span> <span class="kw">from</span> initializer_ta <span class="kw">to</span> escrow_ta <span class="kw">amount</span> deposit <span class="op">}</span></span><span class="ln">  <span class="kw">emits</span> EscrowInitialized</span><span class="ln"><span class="op">}</span></span></pre>
+        <div class="demo-out">
+          <div class="out-head">generates</div>
+          <div class="out-row">
+            <span class="out-name">tests/proptest.rs</span>
+            <span class="out-tag">proptest</span>
+          </div>
+          <div class="out-row">
+            <span class="out-name">formal_verification/Proofs.lean</span>
+            <span class="out-tag">Lean 4</span>
+          </div>
+          <div class="out-row">
+            <span class="out-name">tests/kani.rs</span>
+            <span class="out-tag">Kani · SMT</span>
+          </div>
+          <div class="out-row">
+            <span class="out-name">.github/workflows/verify.yml</span>
+            <span class="out-tag">CI</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="strip">
+      <div class="agents">
+        <span class="strip-label">Runs with</span>
+        <span class="agent"><span class="agent-glyph">CC</span>Claude Code</span>
+        <span class="agent"><span class="agent-glyph">CX</span>Codex</span>
+        <span class="agent"><span class="agent-glyph">→</span>Cursor</span>
+        <span class="agent"><span class="agent-glyph">W</span>Windsurf</span>
+      </div>
+      <div class="links">
+        <a href="https://github.com/qedgen/solana-skills/blob/main/SKILL.md" target="_blank" rel="noopener noreferrer">SKILL.md</a>
+        <a href="https://github.com/qedgen/solana-skills/tree/main/examples" target="_blank" rel="noopener noreferrer">Examples</a>
+        <a href="https://github.com/qedgen/solana-skills/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+        <a href="https://github.com/qedgen/solana-skills" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById('install').addEventListener('click', () => {
+      navigator.clipboard?.writeText('npx skills add qedgen/solana-skills');
+      const l = document.getElementById('copylabel');
+      l.textContent = 'COPIED';
+      setTimeout(() => l.textContent = 'COPY', 1400);
+    });
+  </script>
+</body>
+</html>

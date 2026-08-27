@@ -1,0 +1,131 @@
+// Escrow Verification Spec
+//
+// A token escrow that lets two parties trade safely. The initializer deposits
+// tokens and sets terms, a taker completes the trade, or the initializer
+// cancels and reclaims their deposit.
+//
+// Lifecycle: initialize -> [Open] -> cancel | exchange -> [Closed]
+
+spec Escrow
+
+type State
+  | Uninitialized
+  | Open of {
+      initializer               : Pubkey,
+      initializer_token_account : Pubkey,
+      taker                     : Pubkey,
+      initializer_amount        : U64,
+      taker_amount              : U64,
+      escrow_token_account      : Pubkey,
+    }
+  | Closed
+
+pda escrow ["escrow", initializer]
+
+event EscrowInitialized {
+  initializer : Pubkey,
+  amount      : U64,
+}
+
+event EscrowExchanged {
+  taker  : Pubkey,
+  amount : U64,
+}
+
+event EscrowCancelled {
+  initializer : Pubkey,
+}
+
+type Error
+  | InvalidAmount
+  | Unauthorized
+  | AlreadyClosed
+
+/// Initializer deposits tokens and opens the escrow
+handler initialize (deposit_amount : U64) (receive_amount : U64) : State.Uninitialized -> State.Open {
+  auth initializer
+
+  accounts {
+    initializer    : signer, writable
+    escrow         : writable, pda ["escrow", initializer]
+    mint           : readonly
+    initializer_ta : writable, type token
+    escrow_ta      : writable, type token, authority escrow
+    token_program  : program
+    system_program : program
+  }
+
+  requires deposit_amount > 0 and receive_amount > 0 else InvalidAmount
+
+  effect {
+    initializer_amount        := deposit_amount
+    taker_amount              := receive_amount
+    initializer_token_account := initializer_ta.pubkey
+  }
+
+  transfers {
+    from initializer_ta to escrow_ta amount deposit_amount authority initializer
+  }
+
+  emits EscrowInitialized
+}
+
+/// Taker completes the trade by sending their tokens
+handler exchange : State.Open -> State.Closed {
+  auth taker
+
+  accounts {
+    taker          : signer, writable
+    escrow         : writable, pda ["escrow", initializer]
+    initializer_ta : writable, type token
+    taker_ta       : writable, type token
+    escrow_ta      : writable, type token, authority escrow
+    token_program  : program
+  }
+
+  // bind initializer_ta to the stored receiver TA so a taker can't
+  // redirect the maker's payout to an arbitrary account (any account
+  // they control with the right mint would otherwise pass the SPL
+  // Token program's runtime mint-mismatch check).
+  requires initializer_ta.pubkey == state.initializer_token_account else Unauthorized
+
+  transfers {
+    from taker_ta to initializer_ta amount taker_amount authority taker
+    from escrow_ta to taker_ta amount initializer_amount authority escrow
+  }
+
+  emits EscrowExchanged
+}
+
+/// Initializer reclaims their deposit and closes the escrow
+handler cancel : State.Open -> State.Closed {
+  auth initializer
+
+  accounts {
+    initializer    : signer, writable
+    escrow         : writable, pda ["escrow", initializer]
+    escrow_ta      : writable, type token, authority escrow
+    initializer_ta : writable, type token
+    token_program  : program
+  }
+
+  // same binding as exchange — even though the initializer is the
+  // signer here, a future delegate-authority pattern or hand-edit
+  // could allow a different token account that doesn't belong to
+  // the initializer to receive the refund. Pin it.
+  requires initializer_ta.pubkey == state.initializer_token_account else Unauthorized
+
+  transfers {
+    from escrow_ta to initializer_ta amount initializer_amount authority escrow
+  }
+
+  emits EscrowCancelled
+}
+
+invariant conservation "total tokens preserved across initialize, exchange, cancel"
+
+cover happy_path [initialize, exchange]
+
+cover cancel_path [initialize, cancel]
+
+liveness escrow_settles : State.Open ~> State.Closed via [exchange, cancel] within 1

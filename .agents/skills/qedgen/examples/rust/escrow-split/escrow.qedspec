@@ -1,0 +1,51 @@
+// Escrow Verification Spec — multi-file edition
+//
+// Byte-for-byte equivalent to examples/rust/escrow/escrow.qedspec, split
+// across files to exercise the convention-based multi-file loader. Every
+// fragment declares `spec Escrow` and contributes top items that are merged
+// in sorted-path order.
+
+spec Escrow
+
+// v2.26 Track F — Token interface arrives via the bundled-stdlib `spl`
+// builtin (no qed.toml entry needed). Replaces the v2.8 G1 path
+// dependency at `interfaces/spl_token.qedspec` with the binary-bundled
+// fixture, so the spec compiles standalone. The Tier-1 binary_hash pin
+// on the interface lets the generated Lean theorems discharge
+// `Token.transfer.ensures_axiom_*` instead of `by sorry`.
+import Token from "spl"
+
+type State
+  | Uninitialized
+  | Open of {
+      initializer          : Pubkey,
+      taker                : Pubkey,
+      initializer_amount   : U64,
+      taker_amount         : U64,
+      escrow_token_account : Pubkey,
+    }
+  | Closed
+
+pda escrow ["escrow", initializer]
+
+event EscrowInitialized {
+  initializer : Pubkey,
+  amount      : U64,
+}
+
+event EscrowExchanged {
+  taker  : Pubkey,
+  amount : U64,
+}
+
+event EscrowCancelled {
+  initializer : Pubkey,
+}
+
+type Error
+  | InvalidAmount
+  | Unauthorized
+  | AlreadyClosed
+  | WrongState
+  | InvalidLifecycle
+  | MathOverflow

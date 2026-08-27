@@ -1,0 +1,46 @@
+[package]
+name = "qedgen-solana-skills"
+version = "2.27.0"
+edition = "2021"
+authors = ["abishekk92"]
+description = "Spec-driven formal verification for Solana programs: .qedspec → Lean 4 proofs, Kani harnesses, coverage matrix, and Anchor-compatible Rust codegen"
+license = "MIT"
+repository = "https://github.com/qedgen/solana-skills"
+
+[[bin]]
+name = "qedgen"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+regex = "1"
+sha2 = { workspace = true }
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+tar = "0.4"
+flate2 = "1"
+chumsky = "0.12"
+toml = { workspace = true }
+tempfile = "3"
+time = { workspace = true }
+
+# ratchet — upgrade-safety + mainnet-readiness lint.
+# `ratchet-anchor` default-features is off to drop `ureq` (ratchet's RPC
+# fetcher), which we don't need: qedgen hands ratchet an IDL JSON file it
+# already has on disk, never an on-chain pubkey. The `package = …`
+# aliases keep the import paths (`ratchet_core::`, `ratchet_anchor::`,
+# `ratchet_quasar::`) short without renaming the upstream crates.
+ratchet-core = { package = "solana-ratchet-core", version = "0.3.2" }
+ratchet-anchor = { package = "solana-ratchet-anchor", version = "0.3.2", default-features = false }
+# `ratchet-quasar` covers Quasar IDLs end-to-end. Not RPC-bearing —
+# the loader reads JSON straight off disk, no fetch path to gate.
+ratchet-quasar = { package = "solana-ratchet-quasar", version = "0.3.2" }
+
+[dev-dependencies]
+tempfile = "3"

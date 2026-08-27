@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "qedgen": {
+      "source": "qedgen/solana-skills",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "4ece849b7e09064a97ee6041b3e85a1c1b4b4c5afa5095a1dd4063dcd7423054"
+    }
+  }
+}

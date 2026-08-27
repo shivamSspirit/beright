@@ -1,0 +1,337 @@
+# QEDGen
+
+> Describe what your Solana program must guarantee in `.qedspec`. QEDGen finds the bugs your tests miss, then generates the proofs, property tests, and CI to keep them fixed. Supports Anchor, Quasar, and native sBPF assembly.
+
+## Installation
+
+```bash
+npx skills add qedgen/solana-skills
+```
+
+The installer sets up Rust, Lean/elan, the CLI binary, and a global Mathlib cache. No API keys are required for the default workflow (spec writing, validation, code generation).
+
+## What It Does
+
+A `.qedspec` is the single source of truth. It can live in one file or span multiple files with upstream spec dependencies. From it, QEDGen generates program code, property tests, Kani harnesses, Lean 4 proofs, and CI workflows, and keeps them in sync with `#[qed(verified)]` drift detection.
+
+### How It Works
+
+1. **Write the spec.** The agent writes a `.qedspec` describing your program's types, state machines, handlers, guards, effects, and properties. Use one file, split across handler/interface files, or extend an upstream spec.
+2. **Validate the spec.** `qedgen check --spec program.qedspec` runs lint, coverage, and drift. Add `--explain` for a Markdown report.
+3. **Generate artifacts.** `qedgen codegen --spec program.qedspec --all` produces Quasar Rust skeletons, proptest harnesses, Kani BMC harnesses, Lean 4 proofs, unit tests, and integration tests.
+4. **Verify the implementation.** `qedgen verify --spec program.qedspec` runs every generated harness on disk (proptest, Kani, Lean). Use `--proptest`, `--kani`, or `--lean` to target one backend.
+5. **Escalate hard proofs.** Leanstral (`qedgen fill-sorry`) handles routine sub-goals in seconds. Aristotle (`qedgen aristotle submit`) runs agentic proof search for the hardest goals, measured in minutes to hours.
+
+### Supported Agents
+
+Works with Claude Code, Codex, Cursor, Windsurf, and any agent supporting the [Agent Skills](https://agentskills.io) spec.
+
+## CLI Commands
+
+The CLI is the interface between the agent and generated artifacts, not a user-facing tool. The agent drives it; humans edit `.qedspec` files and review diffs.
+
+### Validate a spec
+
+```bash
+qedgen check --spec program.qedspec                     # lint + coverage
+qedgen check --spec program.qedspec --json              # machine-readable
+qedgen check --spec program.qedspec --explain           # Markdown report
+qedgen check --spec program.qedspec --drift src/        # drift detection
+qedgen check --spec program.qedspec --drift src/ --deep # transitive drift
+```
+
+### Generate artifacts from a spec
+
+```bash
+qedgen codegen --spec program.qedspec --all             # everything
+qedgen codegen --spec program.qedspec --lean            # Lean proofs only
+qedgen codegen --spec program.qedspec --kani            # Kani harnesses
+qedgen codegen --spec program.qedspec --proptest        # proptest harnesses
+qedgen codegen --spec program.qedspec --fill            # agent-fill prompts for unfilled handlers
+qedgen codegen --spec program.qedspec --fill-tests      # agent-fill prompts for integration test sites
+```
+
+### Run the generated harnesses
+
+```bash
+qedgen verify --spec program.qedspec                    # every backend on disk
+qedgen verify --spec program.qedspec --proptest         # cargo test --release
+qedgen verify --spec program.qedspec --kani             # cargo kani --tests
+qedgen verify --spec program.qedspec --lean             # lake build
+qedgen verify --spec program.qedspec --json             # machine-readable for CI
+```
+
+### Scaffold a new project
+
+```bash
+qedgen init                                             # create .qed/ and starter .qedspec
+qedgen spec --idl target/idl/program.json \
+  --output-dir ./formal_verification                    # draft SPEC.md or .qedspec from Anchor IDL
+```
+
+### Drift and reconciliation
+
+```bash
+qedgen reconcile --spec program.qedspec                 # unified drift report across Rust + Lean
+```
+
+### Fill sorry markers with Leanstral (fast, seconds)
+
+```bash
+qedgen fill-sorry \
+  --file formal_verification/Spec.lean \
+  --passes 3 \
+  --validate
+```
+
+Sends each `sorry` location to the Leanstral model with focused context. Requires `MISTRAL_API_KEY`.
+
+### Escalate to Aristotle (deep, minutes to hours)
+
+```bash
+# Submit and wait inline
+qedgen aristotle submit --project-dir formal_verification --wait
+
+# Or submit, detach, and poll later
+qedgen aristotle submit --project-dir formal_verification
+qedgen aristotle status <project-id> --wait --output-dir formal_verification
+```
+
+Aristotle runs agentic proof search and returns the project with sorry markers filled. `status --wait` polls periodically and auto-downloads the result on completion. Requires `ARISTOTLE_API_KEY`.
+
+### Transpile sBPF assembly to Lean
+
+```bash
+qedgen asm2lean --input src/program.s --output formal_verification/Program.lean
+```
+
+Generates a Lean module with `@[simp] def prog`, chunked `progAt` for large programs, `Int`-typed offsets, named constants, and auto-generated `ea_*`, `bridge_*`, and `insn_*` simp lemmas. Designed for the `wp_exec` one-shot tactic.
+
+### Consolidate proofs
+
+```bash
+qedgen consolidate \
+  --input-dir /tmp/proofs \
+  --output-dir formal_verification
+```
+
+### Set up the global validation workspace
+
+```bash
+qedgen setup
+```
+
+First-time Mathlib build takes 15-45 minutes. Subsequent builds reuse the cache.
+
+## Proof-Writing Workflow (SKILL.md)
+
+The skill instructs your agent to follow this workflow:
+
+### Step 1: Understand the program
+
+Check for existing artifacts:
+1. **`.qedspec` exists.** Read it. It is the source of truth.
+2. **Anchor IDL exists.** Run `qedgen spec --idl <path>` to generate a draft.
+3. **Neither exists.** Read source directly, ask scoping questions, then write a draft spec.
+
+### Step 2: Write the spec
+
+The `.qedspec` declares types, state machines, handlers (with auth, accounts, requires, effects, transfers, emits), and properties. It can live in a single file or be split across handler and interface files with upstream dependencies pinned in `qed.lock`.
+
+### Step 3: Validate
+
+Run `qedgen check --spec program.qedspec`. The lint + coverage + drift report tells the agent whether the spec is well-formed and complete.
+
+### Step 4: Generate artifacts
+
+Run `qedgen codegen --spec program.qedspec --all`. This produces:
+- Quasar Rust program skeleton
+- `tests/proptest.rs` proptest harness
+- `tests/kani.rs` Kani BMC harness
+- `formal_verification/Spec.lean` (generated, regenerated on every codegen)
+- `formal_verification/Proofs.lean` (user-owned preservation proofs, bootstrapped once)
+- `.github/workflows/verify.yml` CI
+
+### Step 5: Fill agent prompts (if any)
+
+For handlers where codegen could not fully mechanize the effect, `qedgen codegen --fill` emits one structured prompt per `todo!()` site. The agent writes the body in-session. If a prompt cannot be filled, the spec is under-specified: refine it and re-generate.
+
+### Step 6: Verify
+
+Run `qedgen verify --spec program.qedspec`. Proptest runs `cargo test --release`, Kani runs `cargo kani --tests`, Lean runs `lake build`. Failures surface verbatim with summarized diagnostics.
+
+### Step 7: Escalate hard proofs (if any)
+
+```bash
+# Fast: Leanstral (seconds)
+qedgen fill-sorry --file formal_verification/Spec.lean --validate
+
+# Deep: Aristotle (minutes to hours), when Leanstral fails after multiple passes
+qedgen aristotle submit --project-dir formal_verification --wait
+```
+
+Always prefer spec refinement over proof shelling. A DSL feature that eliminates the proof obligation structurally is better than a new proof template.
+
+## Support Library API
+
+### Solana (Rust/Anchor)
+
+After `import QEDGen.Solana` and `open QEDGen.Solana`:
+
+**Types:** `Pubkey` (4-chunk LE struct: c0, c1, c2, c3), `U64` (= Nat), `Account`, `Lifecycle` (open | closed), `AccountMeta`, `CpiInstruction`
+
+**Constants:** `TOKEN_PROGRAM_ID`, `SYSTEM_PROGRAM_ID`, `U8_MAX`, `U16_MAX`, `U32_MAX`, `U64_MAX`, `U128_MAX`
+
+**Functions:** `findByKey`, `findByAuthority`, `canWrite`, `transferCpiValid`, `closes`, `valid_u64`
+
+**Key lemmas:** `closes_is_closed`, `closes_was_open`, `closed_irreversible`, `valid_u64_zero`, `find_map_update_other`, `find_map_update_same`
+
+### sBPF Assembly
+
+After `import QEDGen.Solana.SBPF` and `open QEDGen.Solana.SBPF`:
+
+**Types:** `Reg` (.r0 to .r10), `Src` (.reg/.imm), `Width` (.byte/.half/.word/.dword), `Insn` (all sBPF instructions), `Program` (Array Insn), `State` (regs, mem, pc, exitCode), `Mem` (Nat to Nat)
+
+**Execution:** `executeFn` (function-based via match-based `progAt`, generated by `asm2lean`). `initState` (single pointer, r1=input), `initState2` (two pointers, r1=input, r2=insn data, with optional entryPc).
+
+**Memory:** `readU8`, `readU16`, `readU32`, `readU64`, `writeU8` to `writeU64`, `effectiveAddr`
+
+**Tactics:** `wp_exec [fetch_defs] [simp_extras]` is the one-shot sBPF proof tactic. `wp_step` for single-step manual control.
+
+**Key lemmas:** `executeFn_halted`, `executeFn_step`, `executeFn_compose`, `readU64_writeU64_same`, `readU64_writeU64_disjoint`
+
+## Proof Patterns
+
+### Access control: signer must match authority
+
+```lean
+def cancelTransition (s : ProgramState) (signer : Pubkey) : Option Unit :=
+  if signer = s.authority then some () else none
+
+theorem cancel_access_control (s : ProgramState) (signer : Pubkey)
+    (h : cancelTransition s signer ≠ none) :
+    signer = s.authority := by
+  unfold cancelTransition at h
+  split_ifs at h with h_eq
+  · exact h_eq
+  · contradiction
+```
+
+### Conservation: invariant preserved across operations
+
+```lean
+def conservation (s : EngineState) : Prop := s.V >= s.C_tot + s.I
+
+def depositTransition (s : EngineState) (amount : Nat) : Option EngineState :=
+  if s.V + amount <= MAX_VAULT_TVL then
+    some { V := s.V + amount, C_tot := s.C_tot + amount, I := s.I }
+  else none
+
+theorem deposit_conservation (s s' : EngineState) (amount : Nat)
+    (h_inv : conservation s)
+    (h : depositTransition s amount = some s') :
+    conservation s' := by
+  unfold depositTransition at h
+  split_ifs at h with h_le
+  · cases h
+    unfold conservation at h_inv ⊢
+    omega
+  · contradiction
+```
+
+### State machine: lifecycle transitions
+
+```lean
+theorem cancel_closes_escrow (pre post : ProgramState)
+    (h : cancelTransition pre = some post) :
+    post.escrow.lifecycle = Lifecycle.closed := by
+  unfold cancelTransition at h
+  split_ifs at h with h_open
+  cases h
+  rfl
+```
+
+### CPI correctness: parameters match (pure rfl)
+
+```lean
+theorem cancel_cpi_correct (ctx : CancelContext) :
+    let cpi := cancel_build_cpi ctx
+    cpi.program = TOKEN_PROGRAM_ID ∧ cpi.amount = ctx.amount := by
+  unfold cancel_build_cpi
+  exact ⟨rfl, rfl⟩
+```
+
+## Critical Tactic Rules
+
+| Do | Don't |
+|---|---|
+| `unfold f at h` before `split_ifs` | `simp [f] at h` before `split_ifs` (kills if-structure) |
+| `unfold pred at h_inv ⊢` for named predicates | `unfold pred` only in goal (omega can't see hypotheses) |
+| `cases h` after `split_ifs` on `some = some` | `injection h` (unnecessary) |
+| `omega` for linear arithmetic | `norm_num` for linear goals |
+| `exact ⟨rfl, rfl, rfl⟩` for conjunctions of rfl | `constructor` + `rfl` chains (verbose) |
+| `simp [wrapAdd, toU64, ...] at h` to normalize hypotheses to match step-execution goals | `simp only [...]` for this (misses modular identities and numeric evaluation that step-level simp applied) |
+
+## Common Errors and Fixes
+
+| Error | Fix |
+|---|---|
+| `omega could not prove the goal` | Unfold named predicates in hypotheses: `unfold pred at h ⊢` |
+| `no goals to be solved` | Remove redundant tactic (e.g., `· contradiction` after auto-closed branch) |
+| `unknown constant 'X'` | Check imports; add `import QEDGen.Solana.X` or `open QEDGen.Solana` |
+| `tactic 'split_ifs' failed, no if-then-else` | Use `unfold` first, not `simp` |
+| `omega` fails on address disjointness after stack writes | Normalize hypotheses with `simp [wrapAdd, toU64, ...]` (not `simp only`) so address forms match the goal |
+
+## Working Examples
+
+### Escrow (Anchor)
+
+A token escrow that lets two parties trade safely. Verified properties include access control on every handler, CPI correctness for token transfers, state-machine progress (`Open` to `Closed` is one-shot), and arithmetic safety on deposit. Spec lives at `examples/rust/escrow/escrow.qedspec`.
+
+### Escrow-split (Anchor, multi-file)
+
+The same escrow decomposed across `escrow.qedspec`, `handlers/initialize.qedspec`, `handlers/exchange.qedspec`, `handlers/cancel.qedspec`, `interfaces/token.qedspec`, and `properties.qedspec`. Demonstrates spec composition across files and upstream interface dependencies.
+
+### Percolator (Pure Rust)
+
+A perpetual DEX risk engine with protected principal, junior profit claims, and lazy A/K side indices. Verified properties include conservation across deposit, top-up, and fee credits; PnL negation safety; bounded deposits; ADL lifecycle; and fee credits non-positive.
+
+### Multisig (Anchor)
+
+M-of-N threshold signer gating with replay protection.
+
+### Lending (Anchor)
+
+Collateralized lending market with liquidation and interest accrual.
+
+### Transfer (sBPF Assembly)
+
+A native sBPF lamport transfer program. Verified properties: input validation, duplicate account rejection, balance sufficiency.
+
+### Dropset (sBPF Assembly)
+
+An on-chain order book's RegisterMarket instruction (180 sBPF instructions). 13 security properties verified: discriminant dispatch, account count validation, instruction length validation, per-account freshness, per-account uniqueness, PDA integrity, System Program identity, and Rent sysvar identity. See `examples/sbpf/dropset/formal_verification/SPEC.md`.
+
+### Slippage (sBPF Assembly)
+
+A SIMD-0321-style slippage guard.
+
+## Environment Variables
+
+- `MISTRAL_API_KEY`: required only for `fill-sorry` and `generate` (Leanstral sorry-filling). Free from console.mistral.ai.
+- `ARISTOTLE_API_KEY`: required only for `aristotle` commands. Get at aristotle.harmonic.fun.
+- `QEDGEN_VALIDATION_WORKSPACE`: optional override for the global Mathlib cache location.
+
+## Requirements
+
+- Rust toolchain (auto-installed if missing)
+- Lean 4 / elan (auto-installed if missing)
+- Git (QEDGen is git-native: spec changes and regeneration are safe to merge)
+- `MISTRAL_API_KEY` only when calling `fill-sorry` or `generate`
+- `ARISTOTLE_API_KEY` only when calling `aristotle`
+
+Spec writing, `check`, `codegen`, and `verify` require no API keys.
+
+## License
+
+MIT

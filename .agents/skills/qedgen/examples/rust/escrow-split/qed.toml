@@ -1,0 +1,7 @@
+# v2.26 Track F — bundled-stdlib `spl` builtin replaces the v2.8 G1
+# path-dep entry. No manifest entry is required; the resolver
+# materializes the bundled SPL Token fixture on demand. This file is
+# preserved (empty `[dependencies]`) so the v2.8 G1 lock-handling code
+# path stays exercised on this example.
+
+[dependencies]

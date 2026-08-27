@@ -1,0 +1,36 @@
+// Finding #5 — Uninterpreted helpers in requires/ensures never declared
+//
+// History:
+//   v2.7.0: generated Spec.lean never declared `foo`; lake build failed
+//           with "Unknown identifier `foo`". (issue #8 finding #5)
+//   v2.7.1: emitted `axiom foo : Nat → Prop` — fixed the unknown-
+//           identifier failure, but `requires` lowers to a transition
+//           `if`-guard which needs `Decidable`, and `axiom … → Prop` is
+//           opaque + noncomputable. lake build still rejected.
+//   v2.7.2: emits `opaque foo : Nat → Bool` instead. `Bool` is
+//           auto-`Decidable` so the `if`-guard typechecks; `opaque`
+//           keeps the transition function computable. (issue #12)
+//
+// Expected (v2.7.2+): top of generated Spec.lean contains
+//   `opaque foo : Nat → Bool`
+// and `lake build` succeeds.
+//
+// Fix sites:
+//   crates/qedgen/src/chumsky_adapter.rs::walk_apps  — collects helpers
+//   crates/qedgen/src/lean_gen.rs::emit_uninterpreted_helpers — emits
+
+spec Repro5
+program_id "11111111111111111111111111111111"
+
+type State
+  | Uninitialized
+  | Active of { c : U8 }
+
+type Error | E
+
+handler h (y : U8) : State.Active -> State.Active {
+  permissionless
+  requires foo(y) else E
+  effect { c := 1 }
+}
+
