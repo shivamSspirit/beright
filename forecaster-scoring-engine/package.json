@@ -1,7 +1,7 @@
 {
   "name": "@beright/forecaster-scoring-engine",
   "version": "1.0.0",
-  "description": "Off-chain scoring engine for BeRight forecaster reputation system",
+  "description": "Deterministic Passport reputation protocol for prediction-market forecasters",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
@@ -10,9 +10,7 @@
     "start": "node dist/index.js",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "calculate:v3": "tsx src/cli/calculate-v3-snapshots.ts",
-    "calculate:leaderboard": "tsx src/cli/calculate-leaderboard.ts",
-    "fetch:real": "tsx src/cli/fetch-real-leaderboard.ts"
+    "verify:passport": "tsx src/cli/verify-evidence-bundle.ts"
   },
   "keywords": [
     "solana",

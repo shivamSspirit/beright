@@ -28,6 +28,7 @@ import {
   DEFAULT_ARBITRAGE_CONFIG,
 } from './types';
 import { SYNONYM_GROUPS, areSynonyms, extractEntities as extractEntitySet } from '../../config/synonyms';
+import { evaluateCanonicalEquivalence, type CanonicalMarketDescriptor } from '../canonicalMarkets';
 
 // ============================================
 // STAGE 1: METADATA EXTRACTION
@@ -632,7 +633,7 @@ function characterSimilarity(a: string, b: string): number {
 /**
  * Calculate comprehensive equivalence score between two markets
  */
-export function calculateEquivalence(
+function calculateLegacyEquivalence(
   metaA: MarketMetadata,
   metaB: MarketMetadata,
   config: ArbitrageConfig = DEFAULT_ARBITRAGE_CONFIG
@@ -750,6 +751,58 @@ export function calculateEquivalence(
     validations,
     warnings,
     disqualifiers,
+  };
+}
+
+function toCanonicalDescriptor(metadata: MarketMetadata): CanonicalMarketDescriptor {
+  const amount = metadata.entities.amounts[0];
+  return {
+    title: metadata.title,
+    topic: metadata.category,
+    subtopic: metadata.subcategory,
+    entities: [
+      ...metadata.entities.people,
+      ...metadata.entities.organizations,
+      ...metadata.entities.locations,
+      ...metadata.entities.events,
+    ],
+    eventDate: metadata.eventDate?.toISOString() ?? null,
+    marketCloseDate: metadata.resolutionDate?.toISOString() ?? null,
+    resolutionDate: metadata.resolutionDate?.toISOString() ?? null,
+    outcomeStructure: metadata.outcomeType,
+    outcomes: metadata.outcomes,
+    numericalThreshold: amount?.value ?? null,
+    unit: amount?.unit ?? null,
+    timezone: null,
+    resolutionSource: metadata.resolutionSource,
+    cancellationRules: null,
+    normalizedRules: normalizeTitle(metadata.title),
+  };
+}
+
+/** Shared canonical rule service is the source of truth for both reputation and arbitrage matching. */
+export function calculateEquivalence(
+  metaA: MarketMetadata,
+  metaB: MarketMetadata,
+  _config: ArbitrageConfig = DEFAULT_ARBITRAGE_CONFIG,
+): EquivalenceScore {
+  const result = evaluateCanonicalEquivalence(toCanonicalDescriptor(metaA), toCanonicalDescriptor(metaB));
+  return {
+    overallScore: result.score,
+    titleSimilarity: result.componentScores.title,
+    entityOverlap: result.componentScores.entities,
+    dateAlignment: result.componentScores.dates,
+    categoryMatch: metaA.category === metaB.category ? 1 : 0,
+    outcomeAlignment: result.componentScores.outcomes,
+    validations: {
+      sameCoreEvent: result.componentScores.entities >= 0.5 && result.componentScores.title >= 0.4,
+      sameTimeframe: result.componentScores.dates >= 0.8,
+      sameOutcomeStructure: result.componentScores.outcomes === 1,
+      noResolutionConflict: !result.disqualifiers.some((value) => value.includes('resolution-source')),
+      entitiesMatch: !result.disqualifiers.includes('entity-conflict'),
+    },
+    warnings: [result.decision, ...result.warnings],
+    disqualifiers: result.decision === 'exact_equivalent' ? [] : result.disqualifiers.length > 0 ? result.disqualifiers : [result.decision],
   };
 }
 

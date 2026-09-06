@@ -131,51 +131,6 @@ export interface MarketsResponse {
   arbitrage?: ApiArbitrage[];
 }
 
-export interface LeaderboardEntry {
-  rank: number;
-  userId?: string;
-  username?: string;
-  displayName: string;
-  walletAddress?: string;
-  wallet_address?: string; // snake_case from API
-  avatarUrl?: string;
-  avatar_url?: string; // snake_case from API
-  telegramUsername?: string;
-  // Legacy display stats (not canonical scoring inputs)
-  brierScore?: number;
-  accuracy?: number;
-  predictions?: number;
-  streak?: number;
-  streakType?: 'win' | 'loss';
-  isCurrentUser?: boolean;
-  onChainCount?: number;
-
-  // V3 scoring
-  scoreVersion?: 'v3';
-  scoreEpoch?: string;
-  vaultScore?: number;
-  confidence?: number;
-  status?: string;
-  tier?: string;
-}
-
-export interface LeaderboardResponse {
-  count: number;
-  leaderboard: LeaderboardEntry[];
-  userRank: number | null;
-  userStats?: {
-    brierScore: number;
-    accuracy: number;
-    predictions: number;
-    streak: number;
-    onChainCount?: number;
-    avatarUrl?: string;
-    walletAddress?: string;
-    username?: string;
-  };
-  note?: string;
-}
-
 export interface PredictionInput {
   question: string;
   probability: number;
@@ -596,77 +551,6 @@ export async function getCrossOddsArbitrage(options?: {
 }
 
 // ============ LEADERBOARD API ============
-
-export async function getLeaderboard(options?: {
-  limit?: number;
-  userId?: string;
-  walletAddress?: string;
-}): Promise<LeaderboardResponse> {
-  const params = new URLSearchParams({
-    limit: String(options?.limit || 100),
-  });
-  if (options?.userId) params.set('userId', options.userId);
-  if (options?.walletAddress) params.set('wallet', options.walletAddress);
-
-  return apiFetch(`/api/leaderboard?${params}`);
-}
-
-// ============ ON-CHAIN CALIBRATION API ============
-
-export interface OnChainForecaster {
-  rank: number;
-  walletAddress: string;
-  displayName?: string;
-  forecasterPda: string;
-  programId: string;
-  isOnChainVerified: boolean;
-
-  // Legacy aggregates from calibration program (kept for UI/debug)
-  brierScore?: number;
-  accuracy?: number;
-  totalPredictions?: number;
-  resolvedPredictions?: number;
-  correctPredictions?: number;
-  streak?: number;
-  maxStreak?: number;
-  marketsTraded?: number;
-  lastPrediction?: string;
-  createdAt?: string;
-
-  // Canonical V3 scoring snapshot (native-only)
-  scoreVersion: 'v3';
-  scoreEpoch: string;
-  vaultScore: number; // 0-1000
-  confidence: number; // 0-1
-  status: string;
-  tier: string;
-  riskCaps: {
-    maxActiveSleeveBps: number;
-    maxMarketExposureBps: number;
-    maxThemeExposureBps: number;
-    probationary: boolean;
-  };
-}
-
-export interface OnChainLeaderboardResponse {
-  success: boolean;
-  data: {
-    forecasters: OnChainForecaster[];
-    totalOnChain: number;
-    network: 'devnet' | 'mainnet';
-  };
-}
-
-export async function getOnChainLeaderboard(): Promise<OnChainLeaderboardResponse> {
-  return apiFetch('/api/v2/calibration?leaderboard=true');
-}
-
-export async function getOnChainStats(walletAddress: string): Promise<{
-  success: boolean;
-  data: OnChainForecaster | null;
-}> {
-  return apiFetch(`/api/v2/calibration?wallet=${walletAddress}`);
-}
 
 // ============ PREDICTIONS API ============
 
@@ -2816,31 +2700,6 @@ export interface LinkedPlatformSummary {
   createdAt?: string;
 }
 
-export interface CompositeScoreBreakdown {
-  source: string;
-  displayName: string;
-  weight: number;
-  normalizedScore: number;
-  predictionCount: number;
-  isVerified: boolean;
-  brierScore: number;
-}
-
-export interface CompositeScoreData {
-  forecasterPubkey: string;
-  compositeScore: number;
-  tier: string;
-  breakdown: CompositeScoreBreakdown[];
-  totalPredictions: number;
-  lastCalculatedAt?: string;
-  scorePercent?: number;
-  onChainVerified?: boolean;
-  calibrationMultiplier?: number;
-  streakBonus?: number;
-  onChainMetrics?: unknown;
-  message?: string;
-}
-
 /**
  * Get top forecasters leaderboard
  */
@@ -2917,13 +2776,6 @@ export async function getForecasters(options?: {
     total: raw?.total ?? raw?.data?.count ?? normalized.length,
     domain: raw?.domain,
   };
-}
-
-export async function getForecasterCompositeScore(pubkey: string): Promise<{
-  success: boolean;
-  data: CompositeScoreData;
-}> {
-  return apiFetch(`/api/v2/forecaster/${encodeURIComponent(pubkey)}/composite-score`);
 }
 
 export async function getForecasterLinkedPlatforms(pubkey: string): Promise<{

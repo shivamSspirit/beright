@@ -1,11 +1,11 @@
 /**
  * Platform Import Module
  *
- * Cross-platform reputation aggregation for BeRight Forecaster Network.
- * Enables importing and verifying forecaster profiles from external platforms.
+ * Legacy account-linking utilities.
+ * These connectors no longer calculate or publish reputation scores.
  *
  * Usage:
- *   import { fetchPlatformStats, verifyPlatformOwnership, calculateCompositeScore } from './lib/platformImport';
+ *   import { fetchPlatformStats, verifyPlatformOwnership } from './lib/platformImport';
  *
  *   // Link and verify a platform
  *   const code = await createVerificationCode(pubkey, 'metaculus', 'username');
@@ -14,9 +14,6 @@
  *
  *   // Fetch stats
  *   const stats = await fetchPlatformStats('metaculus', 'username');
- *
- *   // Calculate composite score
- *   const composite = await calculateAndStoreCompositeScore(pubkey);
  */
 
 // =============================================================================
@@ -28,17 +25,12 @@ export type {
   VerificationMethod,
   AuthMethod,
   ScoringType,
-  ForecasterTier,
   CalibrationBucket,
   ImportedStats,
   ExternalPlatformLink,
   OwnershipProof,
   VerificationResult,
   VerificationCode,
-  ScoreComponent,
-  CompositeScoreResult,
-  CompositeScoreInput,
-  ForecasterProfileWithImports,
   PlatformConnector,
   LinkPlatformRequest,
   LinkPlatformResponse,
@@ -46,10 +38,7 @@ export type {
   GenerateCodeResponse,
   CheckCodeRequest,
   CheckCodeResponse,
-  CompositeScoreResponse,
   LinkedPlatformsResponse,
-  LeaderboardEntry,
-  LeaderboardResponse,
 } from './types';
 
 // =============================================================================
@@ -57,8 +46,6 @@ export type {
 // =============================================================================
 
 export {
-  PLATFORM_WEIGHTS,
-  BERIGHT_NATIVE_WEIGHT,
   PLATFORM_REGISTRY,
   PLATFORM_DISPLAY_NAMES,
   getPlatformsByTier,
@@ -108,31 +95,19 @@ export {
 } from './connectors';
 
 // =============================================================================
-// COMPOSITE SCORING
-// =============================================================================
-
-export {
-  calculateCompositeScore,
-  calculateTier,
-  calculateAndStoreCompositeScore,
-  getCompositeScore,
-  recalculateStaleScores,
-} from './composite/scoreCalculator';
-
-// =============================================================================
 // CONVENIENCE FUNCTIONS
 // =============================================================================
 
 import { supabaseAdmin } from '../supabase/client';
-import { fetchPlatformStats } from './connectors';
+import { fetchPlatformStats, getConnector } from './connectors';
 import { createVerificationCode, markCodeUsed, verifyOwnership } from './verification';
-import { calculateAndStoreCompositeScore } from './composite/scoreCalculator';
-import { PLATFORM_WEIGHTS, getPlatformProfileUrl } from './registry';
+import { hashCanonicalJson } from '@beright/forecaster-scoring-engine';
+import { getPlatformProfileUrl } from './registry';
 import type { ExternalPlatform, OwnershipProof, ExternalPlatformLink } from './types';
 
 /**
  * Link an external platform to a forecaster's BeRight account.
- * Full flow: verify ownership → fetch stats → store link → recalculate score.
+ * Full flow: verify ownership → fetch stats → store link.
  */
 export async function linkPlatform(
   forecasterPubkey: string,
@@ -142,27 +117,10 @@ export async function linkPlatform(
 ): Promise<{ success: boolean; link?: ExternalPlatformLink; error?: string }> {
   try {
     // Verify ownership
-    const fetchBio = async (): Promise<string | null> => {
-      const { getConnector } = await import('./connectors');
-      const connector = getConnector(platform);
-      if (!connector) return null;
-
-      try {
-        const stats = await connector.fetchStats(platformUserId);
-        // Bio check is handled in verifyOwnership for profile_code
-        return null;
-      } catch {
-        return null;
-      }
-    };
-
-    const verificationResult = await verifyOwnership(
-      platform,
-      platformUserId,
-      forecasterPubkey,
-      proof,
-      fetchBio
-    );
+    const connector = getConnector(platform);
+    const verificationResult = proof.type === 'profile_code' && connector
+      ? await connector.verifyOwnership(platformUserId, proof)
+      : await verifyOwnership(platform, platformUserId, forecasterPubkey, proof);
 
     if (!verificationResult.verified) {
       return { success: false, error: verificationResult.error };
@@ -187,7 +145,7 @@ export async function linkPlatform(
           platform_profile_url: verificationResult.profileUrl || getPlatformProfileUrl(platform, platformUserId),
           verified_at: new Date().toISOString(),
           verification_method: proof.type,
-          verification_proof: proof.type === 'wallet_signature' ? proof.data.signature : proof.data.code,
+          verification_proof: hashCanonicalJson({ proofType: proof.type, challengeMaterial: proof.data.message ?? proof.data.code ?? null }),
           imported_stats: stats,
           last_refreshed_at: new Date().toISOString(),
         },
@@ -199,9 +157,6 @@ export async function linkPlatform(
     if (error) {
       return { success: false, error: `Failed to store platform link: ${error.message}` };
     }
-
-    // Recalculate composite score
-    await calculateAndStoreCompositeScore(forecasterPubkey);
 
     return { success: true, link: data as unknown as ExternalPlatformLink };
   } catch (error) {
@@ -249,9 +204,6 @@ export async function refreshPlatformStats(
       return { success: false, error: `Failed to update stats: ${updateError.message}` };
     }
 
-    // Recalculate composite score
-    await calculateAndStoreCompositeScore(forecasterPubkey);
-
     return { success: true };
   } catch (error) {
     return {
@@ -277,9 +229,6 @@ export async function unlinkPlatform(
   if (error) {
     return { success: false, error: `Failed to unlink platform: ${error.message}` };
   }
-
-  // Recalculate composite score
-  await calculateAndStoreCompositeScore(forecasterPubkey);
 
   return { success: true };
 }

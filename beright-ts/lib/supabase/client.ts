@@ -13,7 +13,17 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { config as loadDotEnv } from 'dotenv';
 import type { Database, User, Prediction, Alert, WatchlistItem, LeaderboardEntry } from './types';
+
+// Next.js preserves variables inherited from the parent shell when it loads
+// `.env`. During local development that can silently keep this process pointed
+// at a retired Supabase project after `.env` has been updated. Treat the
+// package-local development file as authoritative; production remains entirely
+// controlled by its deployment environment.
+if (process.env.NODE_ENV === 'development') {
+  loadDotEnv({ override: true });
+}
 
 // Environment variables
 const supabaseUrl =
@@ -21,11 +31,13 @@ const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   process.env.NEXT_SUPABASE_URL;
 const supabaseAnonKey =
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.NEXT_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  process.env.NEXT_SUPABASE_ANON_KEY;
 const supabaseServiceKey =
+  process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY ||
   process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY;
@@ -36,7 +48,7 @@ export const hasSupabaseAdminKey = !!supabaseServiceKey;
 
 if (!isSupabaseConfigured) {
   console.warn('Supabase credentials not found. Database features disabled.');
-  console.warn('Set SUPABASE_URL and SUPABASE_ANON_KEY in .env to enable database.');
+  console.warn('Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in .env to enable database.');
 }
 
 // Create untyped client (types cause issues with current Supabase version)

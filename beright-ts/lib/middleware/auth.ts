@@ -23,7 +23,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { PrivyClient } from '@privy-io/node';
 import { secrets } from '../secrets';
+import { supabase } from '../supabase/client';
 import { logSecurityEvent } from './securityLogger';
 
 // ============================================
@@ -161,9 +163,14 @@ export async function extractAuthContext(request: NextRequest): Promise<AuthCont
     }
   }
 
-  // Try wallet address header (for simple wallet auth)
+  // An address header is not authentication. It is available only behind an
+  // explicit local-development escape hatch; production identity routes also
+  // require a cryptographic challenge signed by that wallet.
   const walletHeader = request.headers.get('x-wallet-address');
-  if (walletHeader && isValidWalletAddress(walletHeader)) {
+  if (process.env.NODE_ENV === 'development'
+    && process.env.ALLOW_INSECURE_WALLET_HEADER === 'true'
+    && walletHeader
+    && isValidWalletAddress(walletHeader)) {
     ctx.authenticated = true;
     ctx.source = 'wallet';
     ctx.walletAddress = walletHeader;
@@ -190,42 +197,42 @@ function determineTier(walletAddress?: string): UserTier {
  */
 async function verifyJWT(token: string): Promise<{ walletAddress?: string; userId?: string } | null> {
   try {
-    // Decode JWT without verification first to check issuer
-    const [, payloadBase64] = token.split('.');
-    if (!payloadBase64) return null;
-
-    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString());
-
-    // For development, accept the token if it has valid structure
-    // In production, verify with Privy or Supabase
+    // The bypass is deliberately opt-in and development-only.
     if (process.env.NODE_ENV === 'development' && process.env.SKIP_JWT_VERIFY === 'true') {
+      const [, payloadBase64] = token.split('.');
+      if (!payloadBase64) return null;
+      const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString()) as Record<string, unknown>;
       return {
-        walletAddress: payload.wallet_address || payload.walletAddress,
-        userId: payload.sub || payload.user_id,
+        walletAddress: typeof payload.wallet_address === 'string' ? payload.wallet_address : undefined,
+        userId: typeof payload.sub === 'string' ? payload.sub : undefined,
       };
     }
 
-    // Privy verification
-    if (payload.iss?.includes('privy')) {
-      // TODO: Add Privy verification when API key is configured
-      // For now, trust the token structure
-      return {
-        walletAddress: payload.wallet_address,
-        userId: payload.sub,
-      };
+    const privyAppId = process.env.PRIVY_APP_ID ?? process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+    const privyAppSecret = process.env.PRIVY_APP_SECRET;
+    if (privyAppId && privyAppSecret) {
+      try {
+        const privy = new PrivyClient({
+          appId: privyAppId,
+          appSecret: privyAppSecret,
+          jwtVerificationKey: process.env.PRIVY_JWT_VERIFICATION_KEY,
+        });
+        const claims = await privy.utils().auth().verifyAccessToken(token);
+        return { userId: claims.user_id };
+      } catch {
+        // The token may be a Supabase token; continue to its verifier.
+      }
     }
 
-    // Supabase verification
-    if (payload.iss?.includes('supabase')) {
-      const supabase = secrets.getSupabaseCredentials();
-      if (!supabase) return null;
-
-      // The token should be verified by Supabase client
-      // For API routes, we trust headers if service role is used
-      return {
-        walletAddress: payload.wallet_address,
-        userId: payload.sub,
-      };
+    if (secrets.getSupabaseCredentials()) {
+      const { data, error } = await supabase.auth.getUser(token);
+      if (!error && data.user) {
+        const walletCandidate = data.user.user_metadata?.wallet_address;
+        return {
+          walletAddress: typeof walletCandidate === 'string' && isValidWalletAddress(walletCandidate) ? walletCandidate : undefined,
+          userId: data.user.id,
+        };
+      }
     }
 
     return null;

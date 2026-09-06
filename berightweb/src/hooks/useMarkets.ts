@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   getHotMarkets,
   searchMarkets,
-  getLeaderboard,
   getMorningBrief,
   getUserPredictions,
   createPrediction,
@@ -14,7 +13,6 @@ import {
   getAgentFeed,
   getUserProfile,
   MarketsResponse,
-  LeaderboardResponse,
   BriefData,
   PredictionInput,
   PredictionRecord,
@@ -157,94 +155,6 @@ export function useArbitrage(query?: string) {
     error,
     scannedAt,
     refetch: fetchArbitrage,
-  };
-}
-
-// ============ Leaderboard Hook ============
-
-interface UseLeaderboardOptions {
-  limit?: number;
-  userId?: string;
-  walletAddress?: string;
-}
-
-export function useLeaderboard(options?: UseLeaderboardOptions) {
-  const [data, setData] = useState<LeaderboardResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [usingMock, setUsingMock] = useState(false);
-
-  const fetchLeaderboard = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await getLeaderboard(options);
-      setData(response);
-      setUsingMock(false);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch leaderboard';
-      setError(message);
-      setData(null);
-      setUsingMock(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [options?.limit, options?.userId, options?.walletAddress]);
-
-  useEffect(() => {
-    fetchLeaderboard();
-  }, [fetchLeaderboard]);
-
-  return {
-    data,
-    loading,
-    error,
-    usingMock,
-    refetch: fetchLeaderboard,
-  };
-}
-
-// ============ On-Chain Calibration Hook ============
-
-import { getOnChainLeaderboard, OnChainForecaster, OnChainLeaderboardResponse } from '../lib/api';
-
-export function useOnChainLeaderboard() {
-  const [data, setData] = useState<OnChainLeaderboardResponse['data'] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchOnChainLeaderboard = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await getOnChainLeaderboard();
-      if (response.success) {
-        setData(response.data);
-      } else {
-        setError('Failed to fetch on-chain leaderboard');
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch on-chain leaderboard';
-      setError(message);
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOnChainLeaderboard();
-  }, [fetchOnChainLeaderboard]);
-
-  return {
-    data,
-    forecasters: data?.forecasters || [],
-    network: data?.network || 'devnet',
-    loading,
-    error,
-    refetch: fetchOnChainLeaderboard,
   };
 }
 

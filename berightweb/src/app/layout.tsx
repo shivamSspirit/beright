@@ -5,6 +5,10 @@ import PageLoader from "@/components/PageLoader";
 import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://beright.fun')
+  ),
   title: "BeRight — Forecast prediction markets",
   description: "Swipe through live prediction markets, compare your view with AI, and build a forecasting track record.",
   keywords: ["predictions", "forecasting", "prediction markets", "Kalshi", "Polymarket", "Solana", "USDC", "VScore"],

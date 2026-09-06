@@ -1,45 +1,10 @@
 /**
  * Platform Registry
  *
- * Metadata, weights, and configuration for external forecasting platforms.
- * Defines platform tiers, reputation weights, and verification methods.
+ * Metadata and verification configuration for legacy external account links.
  */
 
 import type { ExternalPlatform, AuthMethod, ScoringType } from './types';
-
-// =============================================================================
-// PLATFORM WEIGHTS
-// =============================================================================
-
-/**
- * Platform reputation weights for composite score calculation.
- * Higher weight = more trusted signal.
- *
- * Tier 1 (1.4-1.5): Academic-backed, Brier scoring, 7+ years
- * Tier 2 (1.2-1.3): High volume, transparent scoring, 3+ years
- * Tier 3 (0.8-1.0): Newer or niche platforms
- */
-export const PLATFORM_WEIGHTS: Record<ExternalPlatform, number> = {
-  // Tier 1 - Highest weight (academic-backed, gold standard)
-  metaculus: 1.5,
-  goodjudgment: 1.5,
-  infer: 1.4,
-
-  // Tier 2 - High weight (established, transparent)
-  manifold: 1.2,
-  polymarket: 1.2,
-  kalshi: 1.3, // CFTC-regulated
-
-  // Tier 3 - Moderate weight (newer or niche)
-  hypermind: 1.0,
-  predictit: 0.9,
-};
-
-/**
- * Native BeRight predictions have the highest weight.
- * On-chain = verifiable = most trusted.
- */
-export const BERIGHT_NATIVE_WEIGHT = 2.0;
 
 // =============================================================================
 // PLATFORM REGISTRY
@@ -163,14 +128,14 @@ export const PLATFORM_REGISTRY: Record<ExternalPlatform, PlatformRegistryEntry> 
     tier: 2,
     reputationWeight: 1.3,
     apiAvailable: true,
-    authMethods: ['api_key'],
-    canAutoRefresh: true,
+    authMethods: [],
+    canAutoRefresh: false,
     scoringType: 'pnl',
     apiBaseUrl: 'https://trading-api.kalshi.com/trade-api/v2',
     rateLimitPerMinute: 100,
     requiresAuth: true,
     verificationInstructions:
-      'Generate a read-only API key in your Kalshi settings and paste it here.',
+      'Kalshi linking is unavailable until secure OAuth or scoped read-only verification is implemented. BeRight never accepts raw Kalshi credentials.',
   },
 
   infer: {
@@ -351,8 +316,6 @@ export function isPlatformReputable(criteria: ReputationCriteria): boolean {
 // =============================================================================
 
 export default {
-  PLATFORM_WEIGHTS,
-  BERIGHT_NATIVE_WEIGHT,
   PLATFORM_REGISTRY,
   PLATFORM_DISPLAY_NAMES,
   getPlatformsByTier,

@@ -34,13 +34,6 @@ export type AuthMethod =
 
 export type ScoringType = 'brier' | 'log' | 'accuracy' | 'pnl';
 
-export type ForecasterTier =
-  | 'unranked'
-  | 'rookie'
-  | 'verified'
-  | 'elite'
-  | 'superforecaster';
-
 // =============================================================================
 // CALIBRATION DATA
 // =============================================================================
@@ -148,100 +141,6 @@ export interface VerificationCode {
 }
 
 // =============================================================================
-// COMPOSITE SCORING
-// =============================================================================
-
-export interface ScoreComponent {
-  source: 'beright' | ExternalPlatform;
-  displayName: string;
-  weight: number;
-  normalizedScore: number; // 0-1 (1 = perfect)
-  predictionCount: number;
-  isVerified: boolean;
-}
-
-export interface OnChainMetrics {
-  avgBrierScore: number;
-  avgLogScore: number;
-  accuracy: number;
-  streakCorrect: number;
-  maxStreakCorrect: number;
-  marketsTraded: number;
-}
-
-export interface CompositeScoreResult {
-  score: number;           // 0-10000
-  tier: ForecasterTier;
-  breakdown: ScoreComponent[];
-  totalPredictions: number;
-  lastCalculatedAt: string;
-
-  // On-chain calibration metadata (from Solana calibration program)
-  onChainVerified?: boolean;       // True if score came from on-chain
-  calibrationMultiplier?: number;  // 0.9-1.1 based on bucket accuracy
-  streakBonus?: number;            // 1.0+ based on prediction streaks
-  onChainMetrics?: OnChainMetrics; // Detailed on-chain stats
-}
-
-export interface CompositeScoreInput {
-  // Native BeRight score (on-chain)
-  berightBrier: number | null;
-  berightPredictions: number;
-
-  // Imported scores (from linked platforms)
-  importedScores: {
-    platform: ExternalPlatform;
-    brier: number;
-    predictions: number;
-    weight: number;
-    isVerified: boolean;
-  }[];
-}
-
-// =============================================================================
-// FORECASTER PROFILE
-// =============================================================================
-
-export interface ForecasterProfileWithImports {
-  // Core identity
-  id: string;
-  pubkey: string;
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-
-  // Social links
-  twitterHandle: string | null;
-  telegramUsername: string | null;
-
-  // Native BeRight stats (from on-chain)
-  nativeStats: {
-    brierScore: number | null;
-    predictionCount: number;
-    resolvedCount: number;
-    accuracy: number | null;
-    calibrationBuckets: number[][] | null;
-    streak: number;
-    maxStreak: number;
-    lastPredictionAt: string | null;
-  };
-
-  // Linked external platforms
-  linkedPlatforms: ExternalPlatformLink[];
-
-  // Composite score (weighted average of all platforms)
-  compositeScore: number;
-  compositeTier: ForecasterTier;
-
-  // Score breakdown for transparency
-  scoreBreakdown: ScoreComponent[];
-
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
-}
-
-// =============================================================================
 // PLATFORM CONNECTOR INTERFACE
 // =============================================================================
 
@@ -302,32 +201,6 @@ export interface CheckCodeResponse {
   error?: string;
 }
 
-export interface CompositeScoreResponse {
-  compositeScore: number;
-  tier: ForecasterTier;
-  breakdown: ScoreComponent[];
-  lastCalculatedAt: string;
-}
-
 export interface LinkedPlatformsResponse {
   platforms: ExternalPlatformLink[];
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  forecaster: {
-    pubkey: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-    tier: ForecasterTier;
-  };
-  compositeScore: number;
-  nativeBrier: number | null;
-  linkedPlatforms: ExternalPlatform[];
-  totalPredictions: number;
-}
-
-export interface LeaderboardResponse {
-  entries: LeaderboardEntry[];
-  total: number;
 }

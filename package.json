@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@solana-program/memo": "^0.11.0",
-    "@solana/kit": "^6.0.0"
+    "@solana/kit": "^6.0.0",
+    "@supabase/server": "^1.4.1"
   },
   "engines": {
     "node": ">=18"

@@ -165,7 +165,11 @@ export async function GET(request: NextRequest) {
     // ============================================
 
     // Check if we have database configured
-    const hasDb = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY;
+    const hasDb = process.env.SUPABASE_URL && (
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     if (hasDb && userId) {
       // Use database
@@ -296,7 +300,11 @@ export async function POST(request: NextRequest) {
     // ============================================
 
     // Check if we have database configured
-    const hasDb = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY;
+    const hasDb = process.env.SUPABASE_URL && (
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     if (hasDb) {
       // Get or create user
@@ -459,7 +467,11 @@ export async function PATCH(request: NextRequest) {
     // ============================================
 
     // Check if we have database configured
-    const hasDb = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY;
+    const hasDb = process.env.SUPABASE_URL && (
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     if (hasDb) {
       const prediction = await resolvePrediction(predictionId, outcome);

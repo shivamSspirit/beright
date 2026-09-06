@@ -413,3 +413,78 @@
   border: 1px solid var(--color-secondary);
   background: var(--color-secondary-dim);
 }
+
+.passportActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.actionButton {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface-1);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.actionButton:hover { background: var(--color-bg-surface-2); border-color: var(--color-border-hover); }
+.actionButton:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.xMark { width: 16px; font-size: 13px; font-weight: 800; line-height: 1; text-align: center; }
+.actionMessage { width: 100%; color: var(--color-primary); font: var(--font-bold) var(--text-xs) var(--font-mono); text-align: right; }
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-dim);
+  color: var(--color-warning);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.section { margin-top: var(--space-6); }
+.sectionHeading { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-3); }
+.sectionHeading h2 { margin: 0; font-size: var(--text-xl); }
+.sectionHeading > span { color: var(--color-text-secondary); font: var(--font-bold) var(--text-xs) var(--font-mono); text-transform: uppercase; }
+.topicGrid { display: grid; grid-template-columns: 1fr; gap: var(--space-3); }
+@media (min-width: 640px) { .topicGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1080px) { .topicGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.topicCard { border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg-surface-1); padding: var(--space-4); }
+.topicHeading { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--color-text-secondary); font: var(--font-bold) var(--text-xs) var(--font-mono); text-transform: uppercase; }
+.topicHeading strong { color: var(--color-primary); }
+.topicCard h3 { margin: var(--space-3) 0 var(--space-2); color: var(--color-text-primary); font-size: var(--text-lg); text-transform: capitalize; }
+.topicScore { color: var(--color-primary); font: var(--font-bold) var(--text-3xl) var(--font-mono); }
+.topicScore span { color: var(--color-text-secondary); font-size: var(--text-sm); }
+.topicStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: var(--space-4) 0 0; }
+.topicStats dt { color: var(--color-text-secondary); font-size: var(--text-xs); }
+.topicStats dd { margin: var(--space-1) 0 0; color: var(--color-text-primary); font: var(--font-semibold) var(--text-sm) var(--font-mono); }
+.claimList { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.claimList li { display: flex; gap: var(--space-3); align-items: center; color: var(--color-primary); }
+.claimList span { min-width: 0; display: grid; gap: var(--space-1); }
+.claimList strong { color: var(--color-text-primary); font-size: var(--text-sm); text-transform: capitalize; }
+.claimList small { color: var(--color-text-secondary); font-family: var(--font-mono); overflow-wrap: anywhere; }
+.calibrationChart { min-height: 150px; display: flex; align-items: end; gap: var(--space-2); padding-top: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.calibrationChart > div { min-width: 38px; height: 130px; flex: 1; display: grid; grid-template-rows: auto 1fr auto; align-items: end; gap: var(--space-1); color: var(--color-text-secondary); font: var(--font-bold) 10px var(--font-mono); text-align: center; }
+.calibrationChart i { display: block; width: 100%; min-height: 4px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--color-primary); }
+.calibrationChart small { color: var(--color-text-secondary); font-size: 10px; }
+
+@media (max-width: 639px) {
+  .topbar { align-items: flex-start; }
+  .passportActions { justify-content: flex-start; }
+  .actionMessage { text-align: left; }
+}

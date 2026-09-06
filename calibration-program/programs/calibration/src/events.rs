@@ -62,25 +62,39 @@ pub struct ScoreConfigUpdated {
     pub slot: u64,
 }
 
-/// Emitted when a V3 score snapshot is synced onchain
 #[event]
-pub struct ScoreSnapshotSynced {
-    pub forecaster: Pubkey,
+pub struct PassportConfigInitialized {
     pub authority: Pubkey,
-    pub score_version: u8,
-    pub vault_score: u16,
-    pub has_imported_score: bool,
-    pub has_native_score: bool,
+    pub schema_version: u8,
+    pub paused: bool,
+    pub slot: u64,
+}
+#[event]
+pub struct PassportConfigUpdated {
+    pub authority: Pubkey,
+    pub next_authority: Pubkey,
+    pub schema_version: u8,
+    pub paused: bool,
+    pub slot: u64,
+}
+#[event]
+pub struct PassportSnapshotUpserted {
+    pub subject: Pubkey,
+    pub issuer: Pubkey,
+    pub schema_version: u8,
     pub status: u8,
-    pub tier: u8,
-    pub probationary: bool,
-    pub native_resolved_count: u32,
-    pub imported_resolved_count: u32,
-    pub max_active_sleeve_bps: u16,
-    pub max_market_exposure_bps: u16,
-    pub max_theme_exposure_bps: u16,
-    pub penalty_flags: u32,
-    pub snapshot_hash: [u8; 32],
-    pub score_epoch_hash: [u8; 32],
+    pub passport_root: [u8; 32],
+    pub evidence_root: [u8; 32],
+    pub score_epoch: u64,
+    pub confidence_bps: u16,
+    pub expires_at: i64,
     pub updated_slot: u64,
+}
+#[event]
+pub struct PassportSnapshotRevoked {
+    pub subject: Pubkey,
+    pub issuer: Pubkey,
+    pub score_epoch: u64,
+    pub revoked_at: i64,
+    pub reason_hash: [u8; 32],
 }

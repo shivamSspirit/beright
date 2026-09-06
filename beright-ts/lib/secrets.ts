@@ -116,8 +116,14 @@ class SecretsManager {
 
     // Supabase
     this.config.supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    this.config.supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    this.config.supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    this.config.supabaseAnonKey =
+      process.env.SUPABASE_PUBLISHABLE_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    this.config.supabaseServiceRoleKey =
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     // Anthropic
     this.config.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
@@ -309,7 +315,7 @@ class SecretsManager {
         break;
       case 'supabase':
         if (!this.config.supabaseUrl) missing.push('SUPABASE_URL');
-        if (!this.config.supabaseAnonKey) missing.push('SUPABASE_ANON_KEY');
+        if (!this.config.supabaseAnonKey) missing.push('SUPABASE_PUBLISHABLE_KEY');
         break;
       case 'agents':
         if (!this.config.anthropicApiKey) missing.push('ANTHROPIC_API_KEY');
@@ -348,8 +354,8 @@ class SecretsManager {
 
     const requiredSecrets = [
       { key: 'supabaseUrl', env: 'SUPABASE_URL' },
-      { key: 'supabaseAnonKey', env: 'SUPABASE_ANON_KEY' },
-      { key: 'supabaseServiceRoleKey', env: 'SUPABASE_SERVICE_ROLE_KEY' },
+      { key: 'supabaseAnonKey', env: 'SUPABASE_PUBLISHABLE_KEY' },
+      { key: 'supabaseServiceRoleKey', env: 'SUPABASE_SECRET_KEY' },
       { key: 'anthropicApiKey', env: 'ANTHROPIC_API_KEY' },
       { key: 'upstashRedisUrl', env: 'UPSTASH_REDIS_REST_URL' },
       { key: 'upstashRedisToken', env: 'UPSTASH_REDIS_REST_TOKEN' },

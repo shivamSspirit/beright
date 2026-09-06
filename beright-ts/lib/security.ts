@@ -319,6 +319,7 @@ const SECRET_PATTERNS: RegExp[] = [
   /xoxp-[0-9]{10,}-[0-9]{10,}-[a-zA-Z0-9]{24}/g,  // Slack User Token
 
   // Environment-specific
+  /SUPABASE_SECRET_KEY[=:]\s*["']?[^\s"']+/gi,
   /SUPABASE_SERVICE_ROLE_KEY[=:]\s*["']?[^\s"']+/gi,
   /ANTHROPIC_API_KEY[=:]\s*["']?[^\s"']+/gi,
   /TELEGRAM_BOT_TOKEN[=:]\s*["']?[^\s"']+/gi,

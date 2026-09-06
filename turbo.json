@@ -33,7 +33,7 @@
     "builder": {
       "cache": false,
       "persistent": true,
-      "env": ["ANTHROPIC_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+      "env": ["ANTHROPIC_API_KEY", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"]
     },
     "builder:once": {
       "cache": false
@@ -62,6 +62,9 @@
     "NODE_ENV",
     "ANTHROPIC_API_KEY",
     "SUPABASE_URL",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_JWKS_URL",
     "SUPABASE_ANON_KEY",
     "TELEGRAM_BOT_TOKEN",
     "HELIUS_API_KEY"

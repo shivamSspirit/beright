@@ -46,7 +46,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if we have database configured
-    const hasDb = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY;
+    const hasDb = process.env.SUPABASE_URL && (
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     if (hasDb && walletAddress) {
       // Get user from database

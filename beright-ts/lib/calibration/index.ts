@@ -536,92 +536,6 @@ export function resetCalibrationClient(): void {
 }
 
 // ============================================================================
-// DECAYING BRIER INTEGRATION
-// ============================================================================
-
-import {
-  calculateDecayingBrier,
-  calculateTierFromDecayingBrier,
-  checkSlashingThreshold,
-  DEFAULT_DECAY_CONFIG,
-  DECAY_PRESETS,
-  type DecayConfig,
-  type DecayablePrediction,
-  type DecayingBrierResult,
-  type ForecasterTier,
-} from '../scoring/decay';
-
-/**
- * Convert on-chain PredictionRecord to DecayablePrediction
- */
-export function toDecayablePrediction(record: PredictionRecord): DecayablePrediction | null {
-  if (!record.resolvedAt || record.outcome === null || record.brierScore === null) {
-    return null;
-  }
-
-  return {
-    id: Buffer.from(record.marketId).toString('hex'),
-    probability: record.predictedProbability,
-    direction: record.direction === 'yes' ? 'YES' : 'NO',
-    outcome: record.outcome,
-    resolvedAt: new Date(record.resolvedAt * 1000),
-    category: String(record.category),
-  };
-}
-
-/**
- * Calculate decaying Brier for a forecaster from on-chain records
- */
-export async function calculateForecasterDecayingBrier(
-  client: CalibrationClient,
-  predictionRecords: PredictionRecord[],
-  config: DecayConfig = DEFAULT_DECAY_CONFIG
-): Promise<DecayingBrierResult> {
-  // Convert to decayable predictions
-  const decayablePreds = predictionRecords
-    .map(toDecayablePrediction)
-    .filter((p): p is DecayablePrediction => p !== null);
-
-  return calculateDecayingBrier(decayablePreds, config);
-}
-
-/**
- * Check if forecaster should be slashed based on on-chain records
- */
-export async function checkForecasterSlashingRisk(
-  client: CalibrationClient,
-  predictionRecords: PredictionRecord[],
-  threshold: number = 0.35
-): Promise<{
-  shouldSlash: boolean;
-  decayingBrier: number;
-  threshold: number;
-  margin: number;
-  recentPerformance: 'good' | 'warning' | 'poor';
-}> {
-  const decayablePreds = predictionRecords
-    .map(toDecayablePrediction)
-    .filter((p): p is DecayablePrediction => p !== null);
-
-  return checkSlashingThreshold(decayablePreds, threshold);
-}
-
-/**
- * Get forecaster tier from on-chain records using decay
- */
-export function getForecasterTierFromRecords(
-  predictionRecords: PredictionRecord[],
-  config: DecayConfig = DEFAULT_DECAY_CONFIG
-): ForecasterTier {
-  const decayablePreds = predictionRecords
-    .map(toDecayablePrediction)
-    .filter((p): p is DecayablePrediction => p !== null);
-
-  const result = calculateDecayingBrier(decayablePreds, config);
-  return calculateTierFromDecayingBrier(result, predictionRecords.length);
-}
-
-// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -633,20 +547,6 @@ export const calibration = {
   derivePredictionPda,
   hashMarketId,
   PROGRAM_ID: CALIBRATION_PROGRAM_ID,
-
-  // Decay utilities
-  decay: {
-    calculate: calculateForecasterDecayingBrier,
-    checkSlashing: checkForecasterSlashingRisk,
-    getTier: getForecasterTierFromRecords,
-    toDecayable: toDecayablePrediction,
-    presets: DECAY_PRESETS,
-    defaultConfig: DEFAULT_DECAY_CONFIG,
-  },
 };
-
-// Re-export decay types for convenience
-export type { DecayConfig, DecayablePrediction, DecayingBrierResult, ForecasterTier };
-export { DECAY_PRESETS, DEFAULT_DECAY_CONFIG };
 
 export default calibration;

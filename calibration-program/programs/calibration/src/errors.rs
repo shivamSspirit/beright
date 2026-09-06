@@ -38,27 +38,30 @@ pub enum CalibrationError {
     #[msg("Score sync is currently paused")]
     ScoreSyncPaused,
 
-    #[msg("Invalid score version")]
-    InvalidScoreVersion,
-
-    #[msg("Invalid score value")]
-    InvalidScoreValue,
-
     #[msg("Invalid confidence bps")]
     InvalidConfidenceBps,
-
-    #[msg("Invalid risk cap bps")]
-    InvalidRiskCapBps,
 
     #[msg("Invalid or zero hash")]
     InvalidHash,
 
-    #[msg("Forecaster mismatch for score snapshot")]
-    ForecasterMismatch,
+    #[msg("Passport attestation writes are paused")]
+    PassportPaused,
 
-    #[msg("Invalid forecaster status")]
-    InvalidForecasterStatus,
+    #[msg("Invalid passport schema version")]
+    InvalidPassportSchemaVersion,
 
-    #[msg("Invalid forecaster tier")]
-    InvalidForecasterTier,
+    #[msg("Invalid passport status")]
+    InvalidPassportStatus,
+
+    #[msg("Invalid passport timestamp ordering")]
+    InvalidPassportTimestamp,
+
+    #[msg("Passport subject does not match PDA subject")]
+    PassportSubjectMismatch,
+
+    #[msg("Passport epoch must be strictly increasing")]
+    StalePassportEpoch,
+
+    #[msg("Passport snapshot is already revoked")]
+    PassportAlreadyRevoked,
 }

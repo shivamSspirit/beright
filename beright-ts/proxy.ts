@@ -136,7 +136,7 @@ export function proxy(request: NextRequest) {
       headers: {
         'Access-Control-Allow-Origin': isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Wallet-Address, X-Telegram-ID, X-User-ID, x-beright-mode, x-beright-network, x-user-email',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Wallet-Address, X-User-ID, x-beright-mode, x-beright-network, x-user-email',
         'Access-Control-Max-Age': '86400',
       },
     });
